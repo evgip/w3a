@@ -1,18 +1,25 @@
 {
-    "name": "os",
+    "name": "evgip/soc",
     "description": "A custom modular PHP MVC forum matching the HMVC pattern.",
     "type": "project",
     "license": "MIT",
+    "authors": [
+        {
+            "name": "Evgeny Konchik",
+            "email": "budo@narod.ru",
+            "role": "Developer"
+        }
+    ],
     "autoload": {
         "psr-4": {
             "App\\": "app/"
         },
-		"files": [
+        "files": [
             "app/helpers.php"
         ]
     },
     "require": {
         "php": ">=8.0",
-        "phpmailer/phpmailer": "^7.1"
+        "phpmailer/phpmailer": "^7.1.1"
     }
 }
