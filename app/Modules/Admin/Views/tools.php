@@ -88,5 +88,35 @@
 		</div>
 	</div>
 	
+	
+    <div class="card dev-card">
+		<div class="card-row">
+			<div class="card-info">
+				<strong class="card-title">Тестовой письмо. Добавьте Email:</strong>
+				<span class="card-text">
+				  <form action="<?= route('admin.tools.send_test_email') ?>" method="POST" class="admin-form-group ">
+					<?= $request->csrfField() ?>
+				
+					        
+            <input type="email" name="email" required value="">
+				</span>
+			</div>
+			
+			<div class="btn-group">
+					<button type="submit" class="btn btn-red">
+						📩 Отправить тестовое письмо
+					</button>
+				</form>
+
+
+			</div>
+		</div>
+	</div>
+	
+	 
+
+
+ 
+	
 </div>
 

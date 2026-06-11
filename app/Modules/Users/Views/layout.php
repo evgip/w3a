@@ -10,7 +10,7 @@
 
     <header class="main-navbar">
         <div class="navbar-container">
-            <a href="<?= route('home') ?>" class="navbar-logo">🚀 MyShare</a>
+            <a href="<?= route('home') ?>" class="navbar-logo">🌐 w3a</a>
             
             <nav class="navbar-links">
                 <!-- Глобальные публичные ссылки, видимые всегда -->
@@ -84,7 +84,7 @@
         </div>
     </header>
 
-    <div class="flash-messages-container">
+    <div class="container">
         <?php if (\App\Core\Session::hasFlash('success')): ?>
             <div class="alert alert-success">
                 <strong>Успех!</strong> <?= htmlspecialchars(\App\Core\Session::getFlash('success')) ?>

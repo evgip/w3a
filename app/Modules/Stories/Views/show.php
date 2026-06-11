@@ -136,7 +136,7 @@
 </div>
 
 <!-- БЛОК ОБСУЖДЕНИЯ -->
-<section class="comments-section">
+<section class="container comments-section">
     <h4 class="comments-title">💬 Обсуждение (<?= (int)$story['comments_count'] ?>)</h4>
 
     <?php
@@ -247,7 +247,7 @@
 </section>
 
 <!-- ФОРМА НАПИСАНИЯ КОРНЕВОГО КОММЕНТАРИЯ К ИСТОРИИ -->
-<div class="comments-section">
+<div class="container comments-section">
     <?php if ($currentUserId > 0): ?>
         <h4 id="comment-form-title" class="comments-area-heading">Оставить комментарий</h4>
         

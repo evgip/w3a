@@ -4,6 +4,7 @@ namespace App\Core;
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\SMTP;
 
 class Mailer
 {
@@ -30,30 +31,39 @@ class Mailer
         $mail = new PHPMailer(true);
 
         try {
-            // 1. Core Server Settings Configuration Initialization
-            $mail->isSMTP();
-            $mail->CharSet    = 'UTF-8';
-            $mail->Host       = $config['host'];
-            $mail->SMTPAuth   = $config['auth'];
-            $mail->Username   = $config['username'];
-            $mail->Password   = $config['password'];
-            $mail->SMTPSecure = $config['encryption'] === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = (int)$config['port'];
+			
+			
+                // Server settings
+                $mail->SMTPDebug = SMTP::DEBUG_SERVER;                   //Enable verbose debug output
+                $mail->isSMTP();                                            //Send using SMTP
+                $mail->Host       = $config['host'];        //Set the SMTP server to send through
+                $mail->SMTPAuth   = $config['auth'];                                   //Enable SMTP authentication
+                $mail->Username   = $config['username'];        //SMTP username
+                $mail->Password   = $config['password'];        //SMTP password
+                $mail->SMTPSecure = $config['encryption']; // PHPMailer::ENCRYPTION_SMTPS;  //Enable implicit TLS encryption
+                $mail->Port       = (int)$config['port'];        //TCP port to connect to; use 587 if you have set `SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS`
 
-            // 2. Setup Recipients and Headers metadata envelopes
-            $mail->setFrom($config['from_email'], $config['from_name']);
-            $mail->addAddress($to);
+                /* $mail->SMTPOptions = [
+                    'ssl' => [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
+                        'allow_self_signed' => true
+                    ]
+                ]; */
 
-            // 3. Bind Context Content Text Parameters
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $htmlBody;
-            
-            // Plain-text alternative fallback layout generation for old mail clients
-            $mail->AltBody = strip_tags(str_replace('<br>', "\n", $htmlBody));
+                $mail->CharSet = 'utf-8';
 
-            $mail->send();
-            return true;
+                //Recipients
+                $mail->setFrom($config['from_email'], $config['from_name']);
+                $mail->addAddress($to);                                  //Name is optional
+
+                //Content
+                $mail->isHTML(true);                                        //Set email format to HTML
+                $mail->Subject = $subject;
+                $mail->Body    = $htmlBody;
+
+                $mail->send();
+                return true;
         } catch (Exception $e) {
             Logger::error("PHPMailer Critical Delivery Exception: Mail to [{$to}] failed. Error info: " . $mail->ErrorInfo);
             return false;

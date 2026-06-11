@@ -664,5 +664,42 @@ class AdminController extends Controller
         exit;
     }
 
+	/**
+	 * Отправка тестового письма администратору (POST /admin/tools/send-test-email)
+	 */
+	public function sendTestEmail(): void
+	{
+		$request = new \App\Core\Request();
+		$request->validateCsrf();
 
+		$adminEmail = $request->getParams('email');
+
+		if (!$adminEmail) {
+			\App\Core\Session::setFlash('error', 'Не удалось определить email администратора.');
+			header('Location: /admin/tools');
+			exit;
+		}
+
+		$subject = 'Тестовое письмо — проверка настроек почты';
+		$message = 'Это тестовое письмо для проверки работоспособности настроек почты в системе.';
+
+		try {
+
+            // Dispatch via PHPMailer engine
+            $success = \App\Core\Mailer::send($adminEmail, $subject, $message);
+            // ------------------------------------------------------------------
+
+			if ($success) {
+				\App\Core\Session::setFlash('success', 'Тестовое письмо отправлено успешно на ' . htmlspecialchars($adminEmail));
+				\App\Core\Audit::log('admin.test_email_sent', "Администратор отправил тестовое письмо на {$adminEmail}");
+			} else {
+				\App\Core\Session::setFlash('error', 'Не удалось отправить тестовое письмо. Проверьте настройки PHP mail() или SMTP.');
+			}
+		} catch (\Exception $e) {
+			\App\Core\Session::setFlash('error', 'Ошибка при отправке письма: ' . $e->getMessage());
+		}
+
+		header('Location: /admin/tools');
+		exit;
+	}
 }

@@ -204,6 +204,8 @@ class UsersController extends Controller
         // 4. Securely hash the password string before database persistence
         $hashedPassword = password_hash($rawPassword, PASSWORD_BCRYPT);
 
+        $userModel = new User();
+
         if ($userModel->findBy('name', $username)) {
             \App\Core\Session::setFlash('error', 'Это имя пользователя уже занято.');
             header('Location: /register');
@@ -211,7 +213,7 @@ class UsersController extends Controller
         }
 
         // 5. Instatiate the User model and persist the record
-        $userModel = new User();
+ 
         $newUserId = $userModel->create([
             'name'     => $username,
             'email'    => $email,

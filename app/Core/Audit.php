@@ -36,7 +36,7 @@ class Audit
         $payloadJson = !empty($payload) ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null;
 
         // 1. НАДЕЖНОСТЬ: Пишем в файл (Защита от стирания логов при взломе БД)
-        try {
+        /* try {
             self::initFile();
             $fileRecord = [
                 'timestamp' => date('Y-m-d H:i:s'), 'ip' => $ip, 'user_id' => $actorId,
@@ -46,7 +46,7 @@ class Audit
             file_put_contents(self::$auditLogFile, json_encode($fileRecord, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
         } catch (Exception $e) {
             // Если запись в файл сорвалась, не останавливаем приложение
-        }
+        } */
 
         // 2. УДОБСТВО: Пишем в Базу Данных для вывода в админке
         try {

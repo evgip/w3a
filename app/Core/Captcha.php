@@ -76,16 +76,37 @@ class Captcha
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
 
-        // Яндекс ожидает параметры в формате query-строки или POST, Google — стандартный POST
+		// curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Отключаем проверку сертификата
+		// curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); 
+
+        // Prepare payload correctly based on driver specifications
         $fields = [
-            'secret'   => $secretKey,
-            'response' => $token,
-            'ip'       => $_SERVER['REMOTE_ADDR'] ?? ''
+            'secret' => $secretKey,
+            'ip'     => $_SERVER['REMOTE_ADDR'] ?? ''
         ];
+
+        if ($driver === 'yandex') {
+            $fields['token'] = $token; // Yandex requires 'token'
+        } else {
+            $fields['response'] = $token; // Google requires 'response'
+        }
 
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($fields));
 
         $response = curl_exec($ch);
+		
+        // ULTIMATE DEBUG CHECKPOINT
+        /* if ($response === false) {
+            echo "<h3>cURL Diagnostics failed</h3>";
+            echo "<b>Error Code:</b> " . curl_errno($ch) . "<br>";
+            echo "<b>Error Message:</b> " . curl_error($ch) . "<br>";
+            
+            $info = curl_getinfo($ch);
+            echo "<pre><b>Full Connection Map:</b>\n" . print_r($info, true) . "</pre>";
+            exit;
+        } */
+ 
+
         curl_close($ch);
 
         if (!$response) {

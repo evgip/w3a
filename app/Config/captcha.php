@@ -16,7 +16,7 @@ return [
         'yandex' => [
             'site_key'   => 'YOUR_YANDEX_SITE_KEY',
             'secret_key' => 'YOUR_YANDEX_SECRET_KEY',
-            'submit_url' => 'https://yandexcloud.net'
+            'submit_url' => 'https://smartcaptcha.cloud.yandex.ru/validate'
         ]
     ]
 ];

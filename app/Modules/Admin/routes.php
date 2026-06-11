@@ -39,6 +39,9 @@ $router->add('POST', 'admin/users/{id}/avatar/delete', 'AdminController@deleteUs
 $router->add('POST', 'admin/tools/cache-routes', 'AdminController@cacheRoutes', 'admin.tools.cache_routes');
 $router->add('POST', 'admin/tools/clear-cache-routes', 'AdminController@clearCacheRoutes', 'admin.tools.clear_cache_routes');
 
+$router->add('POST', 'admin/tools/send-test-email', 'AdminController@sendTestEmail', 'admin.tools.send_test_email');
+
+
 // Real-time security alert telemetry payload lookup endpoint
 $router->add('GET', 'api/admin/security-alerts', 'AdminController@getSecurityAlertsApi', 'api.admin.security_alerts');
 
