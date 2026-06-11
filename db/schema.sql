@@ -452,3 +452,6 @@ ALTER TABLE `stories` ADD FULLTEXT INDEX `idx_stories_search` (`title`, `descrip
 
 -- Add a full-text search index to the comments table matrix
 ALTER TABLE `comments` ADD FULLTEXT INDEX `idx_comments_search` (`comment`);
+
+
+ALTER TABLE `audit_logs` CHANGE `ip` `ip_address` VARCHAR(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;

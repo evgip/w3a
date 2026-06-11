@@ -1,6 +1,6 @@
 {
-    "name": "custom/modular-mvc-framework",
-    "description": "A custom modular PHP MVC framework matching the HMVC pattern.",
+    "name": "os",
+    "description": "A custom modular PHP MVC forum matching the HMVC pattern.",
     "type": "project",
     "license": "MIT",
     "autoload": {

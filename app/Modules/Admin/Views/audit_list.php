@@ -1,23 +1,23 @@
 <h3>🔒 Журнал аудита действий пользователей</h3>
-<p style="color: #7f8c8d; margin-bottom: 20px;">
+<p class="audit-description">
     Интерактивный просмотр логов безопасности системы. Данные фильтруются динамически через SQL-запросы к таблице <code>audit_logs</code>.
 </p>
 
 <!-- ФИЛЬТРЫ И ПОИСК -->
-<div class="card" style="margin-bottom: 25px; padding: 20px; background: #fff; border-radius: 8px;">
-    <form action="/admin/audit" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+<div class="card audit-filter-card">
+    <form action="/admin/audit" method="GET" class="audit-filter-form">
         
-        <div style="display: flex; flex-direction: column; gap: 5px;">
-            <label style="font-size: 12px; font-weight: bold; color: #7f8c8d;">ID Пользователя:</label>
+        <div class="filter-group">
+            <label class="filter-label">ID Пользователя:</label>
             <input type="number" name="filter_user_id" 
                    value="<?= htmlspecialchars((string)($currentFilters['user_id'] ?? '')) ?>" 
                    placeholder="Например: 1" 
-                   style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 120px;">
+                   class="filter-input input-w-120">
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 5px;">
-            <label style="font-size: 12px; font-weight: bold; color: #7f8c8d;">Тип события (Action):</label>
-            <select name="filter_action" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 200px;">
+        <div class="filter-group">
+            <label class="filter-label">Тип события (Action):</label>
+            <select name="filter_action" class="filter-select select-min-w-200">
                 <option value="">-- Все события --</option>
                 <?php foreach ($uniqueActions as $act): ?>
                     <option value="<?= htmlspecialchars($act) ?>" <?= ($currentFilters['action'] === $act) ? 'selected' : '' ?>>
@@ -27,20 +27,20 @@
             </select>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 200px;">
-            <label style="font-size: 12px; font-weight: bold; color: #7f8c8d;">Поиск по тексту:</label>
+        <div class="filter-group flex-fill-200">
+            <label class="filter-label">Поиск по тексту:</label>
             <input type="text" name="search" 
                    value="<?= htmlspecialchars($currentFilters['search'] ?? '') ?>" 
                    placeholder="Имя, описание или контекст..." 
-                   style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                   class="filter-input">
         </div>
 
-        <div style="display: flex; gap: 10px;">
-            <button type="submit" style="padding: 9px 15px; background: #34495e; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+        <div class="filter-actions-group">
+            <button type="submit" class="btn-audit-submit">
                 🔍 Применить
             </button>
             <?php if (!empty($currentFilters['user_id']) || !empty($currentFilters['action']) || !empty($currentFilters['search'])): ?>
-                <a href="/admin/audit" style="padding: 9px 15px; background: #e74c3c; color: white; border: none; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; display: inline-block;">
+                <a href="/admin/audit" class="btn-audit-reset">
                     ❌ Сбросить
                 </a>
             <?php endif; ?>
@@ -53,7 +53,7 @@
 <table>
     <thead>
         <tr>
-            <th style="width: 140px;">Время (БД)</th>
+            <th class="th-w-140">Время (БД)</th>
             <th>Пользователь</th>
             <th>Роль</th>
             <th>IP адрес</th>
@@ -65,11 +65,11 @@
         <?php if (!empty($logs)): ?>
             <?php foreach ($logs as $log): ?>
                 <tr>
-                    <td><small style="color: #95a5a6;"><?= htmlspecialchars($log['created_at']) ?></small></td>
+                    <td><small class="audit-timestamp"><?= htmlspecialchars($log['created_at']) ?></small></td>
                     <td>
                         <strong><?= htmlspecialchars($log['username'] ?? 'Guest') ?></strong> 
                         <?php if (!empty($log['user_id'])): ?>
-                            <small style="color: gray;">(ID: <?= (int)$log['user_id'] ?>)</small>
+                            <small class="audit-user-id">(ID: <?= (int)$log['user_id'] ?>)</small>
                         <?php endif; ?>
                     </td>
                     <td>
@@ -77,9 +77,9 @@
                             <?= htmlspecialchars($log['role']) ?>
                         </span>
                     </td>
-                    <td><code><?= htmlspecialchars($log['ip']) ?></code></td>
+                    <td><code><?= htmlspecialchars($log['ip_address']) ?></code></td>
                     <td>
-                        <span style="font-family: monospace; color: #2980b9; font-weight: bold;">
+                        <span class="audit-action-badge">
                             <?= htmlspecialchars($log['action']) ?>
                         </span>
                     </td>
@@ -87,7 +87,7 @@
                         <div><?= htmlspecialchars($log['description']) ?></div>
                         <!-- Если у лога есть полезный контекст, выведем его мелким шрифтом -->
                         <?php if (!empty($log['payload'])): ?>
-                            <div style="margin-top: 5px; font-size: 11px; background: #f8f9fa; padding: 5px; border-left: 2px solid #ccc; font-family: monospace; color: #555;">
+                            <div class="audit-payload-box">
                                 <?= htmlspecialchars(json_encode($log['payload'], JSON_UNESCAPED_UNICODE)) ?>
                             </div>
                         <?php endif; ?>
@@ -96,7 +96,7 @@
             <?php endforeach; ?>
         <?php else: ?>
             <tr>
-                <td colspan="6" style="text-align: center; color: #95a5a6; padding: 30px;">
+                <td colspan="6" class="table-empty-message">
                     Записи, соответствующие заданным критериям фильтрации, не найдены.
                 </td>
             </tr>

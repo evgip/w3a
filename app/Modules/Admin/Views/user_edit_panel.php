@@ -24,7 +24,7 @@
         </div>
 
         <?php if (!empty($userItem['avatar'])): ?>
-            <form action="<?= route('admin.users.avatar.delete', ['id' => $userItem['id']]) ?>" method="POST" class="js-comment-delete-form" style="margin: 0;">
+            <form action="<?= route('admin.users.avatar.delete', ['id' => $userItem['id']]) ?>" method="POST" class="js-comment-delete-form">
                 <?= $request->csrfField() ?>
                 <button type="submit" class="btn-action btn-action-danger">
                     🗑️ Удалить аватар

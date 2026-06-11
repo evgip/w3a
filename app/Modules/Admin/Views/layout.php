@@ -28,7 +28,7 @@
             <div class="page-title"><strong><?= htmlspecialchars($title ?? '') ?></strong></div>
             <div class="user-meta">
                 Добро пожаловать, <b><?= htmlspecialchars($_SESSION['user_name'] ?? 'Администратор') ?></b> | 
-                <a href="/logout" style="color: #e74c3c; text-decoration: none;">Выйти</a>
+                <a href="/logout" class="gray">Выйти</a>
             </div>
         </header>
 

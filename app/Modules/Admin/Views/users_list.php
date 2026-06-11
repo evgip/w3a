@@ -41,7 +41,7 @@
                     <td><?= htmlspecialchars($user['email'] ?? '') ?></td>
                     <td>
                         <?php if ($isArchived): ?>
-                            <span class="badge" style="background: #95a5a6; color: white;">Архивирован</span>
+                            <span class="badge">Архивирован</span>
                         <?php elseif (($user['role'] ?? 'user') === 'admin'): ?>
                             <span class="badge badge-admin">admin</span>
                         <?php else: ?>
@@ -79,7 +79,7 @@
                         <?php if ($isSelf): ?>
                             <small class="text-muted">Нет действий</small>
                         <?php else: ?>
-                            <div class="admin-form-actions-row" style="display: flex; gap: 5px; justify-content: flex-end;">
+                            <div class="admin-form-actions-row">
                                 <a href="<?= route('admin.users.edit', ['id' => $user['id']]) ?>" class="btn-action-inline btn-moderation-blue">
                                     🔧 Модерировать
                                 </a>
