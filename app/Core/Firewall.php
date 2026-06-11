@@ -9,7 +9,7 @@ class Firewall
      */
     public static function check(): void
     {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $ip = self::getRealIp();
         $db = Database::getConnection();
 
         // High-performance single lookup statement index scan
@@ -30,4 +30,20 @@ class Firewall
             exit;
         }
     }
+	
+	public static function getRealIp(): string
+	{
+		// Если сайт за Cloudflare
+		if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+			return $_SERVER['HTTP_CF_CONNECTING_IP'];
+		}
+		// Если сайт за другим прокси
+		if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+			// X-Forwarded-For может содержать цепочку: "client, proxy1, proxy2"
+			$ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+			return trim($ips[0]);
+		}
+		
+		return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+	}
 }

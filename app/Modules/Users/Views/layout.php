@@ -1,16 +1,17 @@
+<?php $config = require dirname(__DIR__, 3) . '/Config/config.php'; ?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($title ?? 'Лента историй') ?></title>
+    <title><?= htmlspecialchars($title ?? 'Лента историй') ?> | <?= htmlspecialchars($config['app']['name']); ?> форум</title>
     <link rel="stylesheet" href="/css/app.min.css">
 </head>
 <body>
 
     <header class="main-navbar">
         <div class="navbar-container">
-            <a href="<?= route('home') ?>" class="navbar-logo">🌐 w3a</a>
+            <a href="<?= route('home') ?>" class="navbar-logo">🌐 <?= htmlspecialchars($config['app']['name']); ?></a>
             
             <nav class="navbar-links">
                 <!-- Глобальные публичные ссылки, видимые всегда -->

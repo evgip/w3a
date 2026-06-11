@@ -606,8 +606,13 @@
 
 
 /** Expanded Polymorphic Upvote and Downvote Presentation Elements **/
+.btn-vote-arrow,
 .btn-vote-down {
     margin-top: 2px;
+	border: 0;
+    background-color: #fff;
+    color: #666;
+    font-size: 16px;
 }
 
 .btn-vote-down:hover {

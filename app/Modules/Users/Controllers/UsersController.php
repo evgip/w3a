@@ -230,7 +230,7 @@ class UsersController extends Controller
             $activationLink = $baseUrl . "/register/activate/" . $token;
 
             // --- CLEAN ARCHITECTURE REFACTOR: FETCH LOCALIZED EMAIL CONTENT ---
-            $subject  = \App\Core\Lang::get('email_activation_subject');
+            $subject  = \App\Core\Lang::format('email_activation_subject', [$config['app']['name']]);
             $htmlBody = \App\Core\Lang::format('email_activation_body', [
                 htmlspecialchars($username), 
                 $activationLink
@@ -578,7 +578,7 @@ class UsersController extends Controller
             $resetLink = $baseUrl . "/password/reset/" . $token;
 
             // --- CLEAN ARCHITECTURE REFACTOR: FETCH LOCALIZED RECOVERY CONTENT ---
-            $subject  = \App\Core\Lang::get('email_recovery_subject');
+            $subject  = \App\Core\Lang::get('email_recovery_subject', [$config['app']['name']]);
             $htmlBody = \App\Core\Lang::format('email_recovery_body', [
                 htmlspecialchars($user['name']), 
                 $resetLink

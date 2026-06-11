@@ -5,9 +5,9 @@ require_once dirname(__DIR__) . '/app/Core/Benchmark.php';
 \App\Core\Benchmark::start();
 
 // 2. Включаем отображение ошибок
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+// error_reporting(E_ALL);
 
 // Настройка безопасного поведения сессионных кук
 //ini_set('session.cookie_httponly', 1); // Браузерный JS вообще не имеет доступа к куке (защита от XSS-угона)
