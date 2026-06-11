@@ -42,11 +42,18 @@ class Security
             return implode(' ', $allOrigins);
         };
 
-        // 2. Compile Strict Environment CSP Directives Blueprint
+        // 2. Compile Strict Environment CSP Directives Blueprint 
         $policy = [
-            "default-src 'self'", // Halt all communication vectors by default unless whitelisted explicitly
+            "default-src 'self' "  . $mergeOrigins('default_src'), // Halt all communication vectors by default unless whitelisted explicitly
             "script-src 'self' 'nonce-{$nonce}' " . $mergeOrigins('script_src'),
-            "style-src 'self' 'nonce-{$nonce}' " . $mergeOrigins('style_src'),
+
+			// РАЗДЕЛЯЕМ ДИРЕКТИВУ СТИЛЕЙ НА ДВЕ:
+            // 1. Для тегов <style> и файлов <link> (разрешаем 'unsafe-inline' Яндексу и Google без конфликта с nonce)
+            "style-src-elem 'self' 'unsafe-inline' " . $mergeOrigins('style_src'),
+            // 2. Для инлайновых атрибутов элементов style="..."
+            "style-src-attr 'self' 'unsafe-inline'",
+			
+			
             "img-src 'self' data: " . $mergeOrigins('img_src'),
             "font-src 'self' " . $mergeOrigins('font_src'),
             "object-src 'none'",   // Turn off Flash, Java Applets, and unsafe legacy runtime environments

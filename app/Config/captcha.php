@@ -5,7 +5,7 @@
  */
 return [
     // Активный движок: 'google', 'yandex' или null (чтобы отключить капчу)
-    'driver' => 'google', 
+    'driver' => 'null', 
 
     'drivers' => [
         'google' => [
