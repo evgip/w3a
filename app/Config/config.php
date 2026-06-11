@@ -2,7 +2,7 @@
 
 return [
     'app' => [
-        'name' => 'My Modular Framework',
+        'name' => 'My Forum',
         'env' => 'development', // development или production
 		'url' => 'http://soc.local',
 		'lang' => 'ru', // Язык по умолчанию

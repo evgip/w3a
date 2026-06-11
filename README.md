@@ -10,6 +10,13 @@ A highly secure, enterprise-grade, and lightweight custom Hierarchical Modular M
 
 The platform functions under strict **Content Security Policy (CSP)** configurations. 100% of presentation design tokens and interaction scripts are completely scrubbed from the view templates and aggregated into compressed public production asset bundles.
 
+![LibArea test design](https://raw.githubusercontent.com/evgip/soc/main/public/github-admin.png)
+
+
+![LibArea test design](https://raw.githubusercontent.com/evgip/soc/main/public/github-setting.png)
+
+
+
 ### 🛠️ Core Architectural Milestones
 
 *   **HMVC Domain Encapsulation:** Absolute separation of concerns. Every isolated feature (`Stories`, `Users`, `Admin`, `Messages`, `Tags`, `Votes`) maintains its own dedicated controller stack, routing maps, class models, and template layers.
