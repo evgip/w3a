@@ -18,7 +18,7 @@ The platform functions under strict **Content Security Policy (CSP)** configurat
 *   **Lobsters-Style Protection Rules:** Access controllers query aggregated user profile metrics dynamically to enforce safety boundaries (e.g., blocking new low-karma accounts from performing downvotes).
 *   **Decoupled Multi-Tier Security Stack:** Built-in cryptographic anti-CSRF form guards, deep binary byte-signature MIME evaluation (`finfo`), single-lookup IP Firewall lockouts, and automated security alert notifications pushed straight to admin dashboards.
 *   **PHPMailer SMTP Integration:** Email templates (account activations and access tokens recovery links) are fully localized inside `Lang` dictionaries and dispatched using secure configuration-driven SMTP servers.
-*   **CLI Database Migration Engine:** A command-line console runner (`php migrate`) that automatically executes raw SQL schema blueprints chronologically and logs transactional records inside a centralized tracking ledger.
+
 
 ### 📂 Repository Directory Blueprint
 
@@ -34,7 +34,6 @@ The platform functions under strict **Content Security Policy (CSP)** configurat
 │       ├── Tags/         # Categorized tag catalog matrices matching Lobsters grid layouts
 │       └── Users/        # Profile workspaces, auth logic & secure shard storage uploads
 ├── db/
-│   ├── migrations/       # Timestamped incremental SQL schema update blueprints
 │   └── schema.sql        # Core baseline relational database architecture dump
 ├── public/               # Shared HTTP webroot entry point
 │   ├── css/              # Minified production compiled asset sheets (app.min.css)
@@ -54,11 +53,7 @@ The platform functions under strict **Content Security Policy (CSP)** configurat
     ```
 2.  **Initialize Database Blueprints:** Create a new MySQL/MariaDB database schema partition and import the core structures `db/schema.sql`.
 3.  **Configure Environment Parameters:** Set up your database credentials, system base URLs (`app.url`), and target SMTP servers inside **`app/Config/config.php`** and **`app/Config/mail.php`**.
-4.  **Execute Database Migrations:** Run the console runner via your server terminal to sync structural matrices:
-    ```bash
-    php migrate
-    ```
-5.  **Compile Static Asset Pipelines:** Log in with an administrator card profile, navigate to `http://soc.local`, and click **«Скомпилировать ресурсы (CSS + JS)»**.
+4.  **Compile Static Asset Pipelines:** Log in with an administrator card profile, navigate to `http://soc.local`, and click **«Скомпилировать ресурсы (CSS + JS)»**.
 
 ---
 
@@ -76,7 +71,7 @@ The platform functions under strict **Content Security Policy (CSP)** configurat
 *   **Лобстер-механизмы защиты рейтинга:** Контроллеры динамически проверяют репутационный профиль и карму голосующего в СУБД, автоматически скрывая в UI и блокируя на сервере кнопки дизлайков (▼) для аккаунтов-новичков.
 *   **Многоуровневый комплекс безопасности:** Надежная криптографическая anti-CSRF защита, проверка реальных байтовых MIME-типов файлов через `finfo`, ограничение частоты запросов (Rate Limiting), встроенный межсетевой экран (Firewall IP) и телеметрия атак в реальном времени.
 *   **Интеграция PHPMailer SMTP:** Все почтовые шаблоны (активация учетных записей, ссылки восстановления доступа) вынесены в файлы локализации (`Lang`) и отправляются через защищенные SMTP-серверы, прописанные в изолированных конфигах.
-*   **Консольный движок миграций (CLI):** Инструмент командной строки (`php migrate`) автоматически сканирует директорию обновлений, накатывает инкрементальные SQL-蓝принты по хронологии и логгирует результаты в центральный реестр.
+
 
 ### 📂 Архитектурная карта репозитория
 
@@ -92,7 +87,6 @@ The platform functions under strict **Content Security Policy (CSP)** configurat
 │       ├── Tags/         # Каталог тегов сообщества с многоколоночной сеткой Lobsters
 │       └── Votes/        # Транзакции полиморфного переключения лайков и дизлайков
 ├── db/
-│   ├── migrations/       # Инкрементальные файлы обновлений структуры таблиц
 │   └── schema.sql        # Базовый SQL-дамп архитектуры базы данных
 ├── public/               # Публичная точка входа веб-сервера (Webroot)
 │   ├── css/              # Сжатые и оптимизированные компилятором файлы стилей (app.min.css)
@@ -112,11 +106,7 @@ The platform functions under strict **Content Security Policy (CSP)** configurat
     ```
 2.  **Инициализация СУБД:** Создайте чистую базу данных в MySQL/MariaDB и импортируйте базовый дамп `db/schema.sql`.
 3.  **Настройка конфигурации:** Заполните параметры подключения к БД, абсолютный базовый URL сайта (`app.url`) и параметры почты в файлах **`app/Config/config.php`** и **`app/Config/mail.php`**.
-4.  **Запуск миграций базы данных:** Накатите структуру таблиц одной командой в терминале:
-    ```bash
-    php migrate
-    ```
-5.  **Компиляция статических ресурсов:** Перейдите по адресу `http://soc.local` под учетной записью администратора и нажмите кнопку **«Скомпилировать ресурсы (CSS + JS)»**.
+4.  **Компиляция статических ресурсов:** Перейдите по адресу `http://soc.local` под учетной записью администратора и нажмите кнопку **«Скомпилировать ресурсы (CSS + JS)»**.
 
 
 License: Open-source software under the [MIT License](LICENSE).

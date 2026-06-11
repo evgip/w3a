@@ -1,0 +1,330 @@
+/** =========================================================================
+    🧱 COMMON CORE STYLES & DESIGN TOKENS
+    ========================================================================= */
+
+/* Системный сброс для стабильной верстки без инлайна */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #f4f6f9;
+    color: #334155;
+}
+
+/** =========================================================================
+    🔲 УНИВЕРСАЛЬНЫЙ КОНТЕНТНЫЙ КОНТЕЙНЕР ПЛАТФОРМЫ (DRY OPTIMIZATION)
+    ========================================================================= */
+.container {
+    max-width: 1000px; /* Оптимальная ширина для ленты, каталога тегов и поиска */
+    margin: 40px auto; /* Центрирование по горизонтали и отступы сверху/снизу */
+    padding: 0 20px; /* Защитные отступы для мобильных экранов */
+    box-sizing: border-box;
+}
+
+/* 1. Универсальные Аватарки и Заглушки */
+.avatar-render {
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #cbd5e1;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.avatar-placeholder {
+    background-color: #34495e;
+    color: #ffffff;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    text-transform: uppercase;
+    vertical-align: middle;
+    line-height: 1;
+    border: 1px solid #cbd5e1;
+}
+
+/* Сетка размеров аватарок фреймворка */
+.avatar-size-xs { width: 16px; height: 16px; font-size: 9px; }
+.avatar-size-sm { width: 35px; height: 35px; font-size: 13px; }
+.avatar-size-md { width: 45px; height: 45px; font-size: 16px; }
+.avatar-size-lg { width: 80px; height: 80px; font-size: 28px; }
+
+/* 2. Универсальные Панели-Карточки */
+.panel-card {
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    border: 1px solid #e2e8f0;
+}
+.panel-card h3, .panel-card h4 {
+    margin-top: 0;
+    color: #2c3e50;
+}
+
+/* 3. Стандартизация Форм */
+.submit-form {
+    max-width: 1000px;
+    margin: 20px auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.form-group-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+.form-group-field label {
+    font-weight: bold;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.form-group-field input, 
+.form-group-field textarea {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.form-group-field textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.form-field-hint {
+    font-size: 12px;
+    color: #95a5a6;
+    margin-top: -2px;
+}
+
+.form-field-hint:disabled {
+    background: #f1f5f9;
+    cursor: not-allowed;
+}
+
+/* 4. Системные Кнопки */
+.btn {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: bold;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    display: inline-block;
+    text-align: center;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+.btn-primary { background: #3498db; color: #fff !important; }
+.btn-primary:hover { background: #2980b9; }
+.btn-danger  { background: #e74c3c; color: #fff !important; }
+.btn-danger:hover  { background: #c0392b; }
+.btn-success { background: #2ecc71; color: #fff !important; }
+.btn-success:hover { background: #27ae60; }
+.btn-secondary { background: #34495e; color: #fff !important; }
+.btn-secondary:hover { background: #2c3e50; }
+
+/* 5. Индикаторы и Статусы (Уведомления / Логи) */
+.badge-status {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: white;
+    font-weight: bold;
+}
+
+/** =========================================================================
+    📊 CORE PERFORMANCE BENCHMARK PANEL PRESENTATION TOOLKIT
+    ========================================================================= */
+
+.benchmark-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: #1e293b; /* Dark slate background profile */
+    color: #94a3b8;
+    font-size: 11px;
+    font-family: monospace, system-ui, -apple-system, sans-serif;
+    border-top: 2px solid #334155;
+    padding: 8px 20px;
+    z-index: 99999;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    box-sizing: border-box;
+    letter-spacing: 0.3px;
+}
+
+/* Base style for metric values */
+.benchmark-value {
+    color: #2ecc71; /* Emerald green accent for high scannability */
+    font-weight: bold;
+}
+
+/* Optional: Slight color shift on memory/files indicators if you want contrast */
+.benchmark-panel span:nth-of-type(2) .benchmark-value {
+    color: #f1c40f; /* Amber/Yellow for memory metrics */
+}
+
+.benchmark-panel span:nth-of-type(3) .benchmark-value {
+    color: #3498db; /* Blue for file volumes */
+}
+
+/** =========================================================================
+    👤 УЛЬТРА-КОМПАКТНЫЙ КЛИКАБЕЛЬНЫЙ ДРОПДАУН (CSP COMPLIANT)
+    ========================================================================= */
+
+/** =========================================================================
+    👤 HARDENED CLICK-DRIVEN USER DROPDOWN (ACTIVE-STATE COMPLIANT)
+    ========================================================================= */
+
+.navbar-user-dropdown-container {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-trigger-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    padding: 6px 12px;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.dropdown-trigger-btn:hover { 
+    background-color: rgba(255, 255, 255, 0.08); 
+}
+
+.nav-trigger-alert-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background-color: #e74c3c;
+    border-radius: 50%;
+    border: 1px solid #1e293b;
+}
+
+.dropdown-arrow-icon {
+    font-size: 10px;
+    color: #94a3b8;
+    transition: transform 0.15s ease;
+    display: inline-block;
+}
+
+/* Dropdown Menu Box Panel: Hidden by default */
+.navbar-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
+    background-color: #ffffff;
+    min-width: 210px;
+    border-radius: 6px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    display: none; /* Hidden state initializer */
+    flex-direction: column;
+    padding: 5px 0;
+    z-index: 10000;
+}
+
+/* =========================================================================
+   🚀 STATE ENGINE: ALIGNED WITH YOUR ACTIVE INTERCEPTOR SCRIPT (.active)
+   ========================================================================= */
+
+/* Display the drawer panel flex layout when javascript adds the active state */
+.navbar-dropdown-menu.active {
+    display: flex;
+}
+
+/* Flips the indicator triangle vertically when parent wrapper gains active state */
+.navbar-user-dropdown-container.active .dropdown-arrow-icon {
+    transform: rotate(180deg);
+}
+
+/* =========================================================================
+   🗂️ LINK ITEMS & DATA COUNTER CHIPS
+   ========================================================================= */
+
+.dropdown-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 16px;
+    font-size: 13px;
+    color: #334155 !important;
+    text-decoration: none !important;
+}
+.dropdown-menu-item:hover { 
+    background-color: #f1f5f9; 
+    color: #0f172a !important; 
+}
+
+.nav-badge-counter, .nav-notification-badge {
+    background-color: #e74c3c;
+    color: #ffffff !important;
+    font-size: 10px;
+    font-weight: bold;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dropdown-divider { 
+    height: 1px; 
+    background-color: #f1f5f9; 
+    margin: 4px 0; 
+}
+
+.dropdown-item-admin { 
+    font-weight: 500; 
+    color: #2c3e50 !important; 
+}
+
+.dropdown-avatar-badge-wrapper {
+    position: relative;
+    display: inline-block;
+    line-height: 1;
+    vertical-align: middle; /* Дополнительно выравнивает аватарку по центру текста */
+}
+
+.navbar-logout-link { 
+    color: #e74c3c !important; 
+}
+.navbar-logout-link:hover { 
+    background-color: #fff5f5; 
+    color: #c0392b !important; 
+}
+
+.badge-hidden { 
+    display: none !important; 
+}
+
+.notif-empty-text {
+    padding: 10px 0 !important;
+    margin: 0 !important;
+    color: #94a3b8;
+}

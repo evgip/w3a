@@ -1,0 +1,20 @@
+/**
+ * Стили панели дебага и бенчмарка ядра фреймворка
+ */
+.benchmark-panel {
+    background: #222;
+    color: #aaa;
+    text-align: center;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 11px;
+    border-top: 1px solid #444;
+    clear: both;
+    position: relative;
+    z-index: 9999;
+}
+
+.benchmark-value {
+    color: #00ff00;
+    font-weight: bold;
+}

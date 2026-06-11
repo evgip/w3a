@@ -1,0 +1,14 @@
+# Включаем отображение ошибок (только на dev!)
+php_flag display_errors on
+php_value error_reporting E_ALL
+php_value html_errors on
+
+
+RewriteEngine On
+
+# Если это существующий файл или папка в public/ — отдаем их напрямую (CSS, JS, картинки)
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+
+# Все остальные запросы отправляем на index.php
+RewriteRule ^(.*)$ index.php [L,QSA]
