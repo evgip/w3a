@@ -1,4 +1,4 @@
-# 🚀 Soc — Modular Forum
+# 🚀 M3A — Modular Forum
 
 [English](#english) | [Русский](#русский)
 

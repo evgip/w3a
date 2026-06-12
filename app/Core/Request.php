@@ -75,41 +75,6 @@ class Request
         return '<input type="hidden" name="csrf_token" value="' . $token . '">';
     }
 
- /*   public function validateCsrf(): bool
-    {
-      if (!hash_equals($_SESSION['csrf_token'], $token)) {
-            // Log security exploit pattern tracking nodes straight down into MySQL
-            \App\Core\Audit::log('security.csrf_failed', 'Обнаружена атака CSRF / Неверный проверочный токен формы', [
-                'ip'  => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-                'url' => $_SERVER['REQUEST_URI'] ?? '/'
-            ]);
-            
-            http_response_code(403);
-            die("CSRF token validation failed.");
-        }
-		
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        $token = $_POST['csrf_token'] ?? '';
-        $sessionToken = $_SESSION['csrf_token'] ?? '';
-
-        if (empty($token) || empty($sessionToken) || !hash_equals($sessionToken, $token)) {
-            http_response_code(419);
-            
-            $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-            if (class_exists($errorController)) {
-                (new $errorController())->notFound("Срок действия страницы истек (Ошибка CSRF).");
-                exit;
-            }
-            die("<h1>419 Page Expired</h1><p>CSRF token missing or invalid.</p>");
-        }
-
-        return true;
-    } */
-	
-	
     /**
      * Validates incoming form tokens against active session cryptographic payloads
      */

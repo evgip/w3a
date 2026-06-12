@@ -53,10 +53,10 @@ class Benchmark
         $files = self::getIncludedFilesCount();
 
         return "
-        <div class='benchmark-panel'>
-            ⏱️ Generation time: <span class='benchmark-value'>{$time} ms</span> | 
-            💾 Peak memory: <span class='benchmark-value'>{$memory} MB</span> | 
-            📂 Included files: <span class='benchmark-value'>{$files}</span>
+        <div class='stats'>
+            ⏱️ {$time} ms | 
+            💾 {$memory} MB | 
+            📂 {$files}
         </div>
         ";
     }
