@@ -15,7 +15,6 @@
             <input type="url" name="url" value="<?= htmlspecialchars($story['url'] ?? '') ?>">
         </div>
 
-
 		<div class="form-group-field">
 			<label>Выберите соответствующие теги (темы):</label>
 			<div class="checkbox-matrix-grid">
@@ -30,8 +29,6 @@
 				<?php endforeach; ?>
 			</div>
 		</div>
-
-
 
         <div class="form-group-field">
             <label>Текст обсуждения:</label>

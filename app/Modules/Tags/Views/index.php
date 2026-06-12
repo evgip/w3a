@@ -1,5 +1,4 @@
-<div class="container">
-    <h3 class="tags-page-title">🏷️ Каталог тегов сообщества</h3>
+<h3 class="tags-page-title">🏷️ Каталог тегов сообщества</h3>
     <p class="tags-page-subtitle">Вы можете кликнуть по любому тегу, чтобы отфильтровать ленту обсуждений по интересующей вас теме.</p>
 
     <?php if (!empty($tags)): ?>
@@ -45,4 +44,3 @@
     <?php else: ?>
         <p class="comment-empty-text">Список тегов пуст.</p>
     <?php endif; ?>
-</div>

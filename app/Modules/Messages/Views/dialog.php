@@ -2,7 +2,7 @@
     $request = new \App\Core\Request(); 
 ?>
 
-<div class="container">
+
     
     <!-- Dialogue Header Bar Container -->
     <div class="chat-history-header">
@@ -59,4 +59,4 @@
             </button>
         </form>
     </div>
-</div>
+

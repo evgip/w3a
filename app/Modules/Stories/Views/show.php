@@ -22,7 +22,6 @@
     }
 ?>
 
-<div class="container">
     <!-- КАРТОЧКА ИСТОРИИ (С динамическим классом .story-item-moderated, если пост скрыт) -->
     <article class="story-item story-item-detailed <?= $isStoryDeleted ? 'story-item-moderated' : '' ?>">
         
@@ -133,10 +132,10 @@
             <?php endif; ?>
         </div>
     </article>
-</div>
+
 
 <!-- БЛОК ОБСУЖДЕНИЯ -->
-<section class="container comments-section">
+<section class="comments-section">
     <h4 class="comments-title">💬 Обсуждение (<?= (int)$story['comments_count'] ?>)</h4>
 
     <?php
@@ -247,7 +246,7 @@
 </section>
 
 <!-- ФОРМА НАПИСАНИЯ КОРНЕВОГО КОММЕНТАРИЯ К ИСТОРИИ -->
-<div class="container comments-section">
+<div class="comments-section">
     <?php if ($currentUserId > 0): ?>
         <h4 id="comment-form-title" class="comments-area-heading">Оставить комментарий</h4>
         

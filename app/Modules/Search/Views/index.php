@@ -4,10 +4,9 @@
     $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
 ?>
 
-<div class="container">
-    
+   
     <!-- ФОРМА ПОИСКА LOBSTERS STYLE С ТУГЛЕРАМИ КОНТЕНТА -->
-    <div class="search-form-card">
+    <div class="card">
         <form action="/search" method="GET">
             <div class="search-input-wrapper">
                 <input type="text" name="q" value="<?= htmlspecialchars($query) ?>" placeholder="Введите поисковый запрос..." required autofocus class="search-bar-field">
@@ -151,4 +150,4 @@
             </div>
         <?php endif; ?>
     <?php endif; ?>
-</div>
+

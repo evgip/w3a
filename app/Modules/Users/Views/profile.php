@@ -1,7 +1,7 @@
 <div class="profile-container">
-    
+
     <div class="profile-header-wrapper">
-	
+
         <?php if (!empty($profileUser['avatar'])): ?>
             <img src="/uploads/avatars/<?= substr($profileUser['avatar'], 0, 2) ?>/<?= htmlspecialchars($profileUser['avatar']) ?>" class="profile-avatar-render-img" alt="<?= htmlspecialchars(mb_substr($profileUser['name'], 0, 1)) ?>">
         <?php else: ?>
@@ -9,20 +9,20 @@
                 <?= htmlspecialchars(mb_substr($profileUser['name'], 0, 1)) ?>
             </div>
         <?php endif; ?>
-        
+
         <div>
             <h2 class="profile-title-username"># <?= htmlspecialchars($profileUser['name']) ?></h2>
             <span class="profile-status-tag">Активный пользователь</span>
 
-			<?php if (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] !== (int)$profileUser['id']): ?>
-				<form action="<?= route('messages.start', ['userId' => $profileUser['id']]) ?>" method="POST" class="profile-chat-form-inline">
-					<?= (new \App\Core\Request())->csrfField() ?>
-					<button type="submit" class="tag-badge-link btn-profile-chat-start">
-						✉️ Написать сообщение
-					</button>
-				</form>
-			<?php endif; ?>
-		</div>
+            <?php if (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] !== (int)$profileUser['id']): ?>
+                <form action="<?= route('messages.start', ['userId' => $profileUser['id']]) ?>" method="POST" class="profile-chat-form-inline">
+                    <?= (new \App\Core\Request())->csrfField() ?>
+                    <button type="submit" class="tag-badge-link btn-profile-chat-start">
+                        ✉️ Написать сообщение
+                    </button>
+                </form>
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php if (!empty($profileUser['bio'])): ?>
@@ -36,18 +36,18 @@
             <tr>
                 <td class="profile-label-cell">Аккаунт создан:</td>
                 <td class="profile-value-cell">
-                    <?= htmlspecialchars(date('d.m.Y', strtotime($profileUser['created_at']))) ?> 
+                    <?= htmlspecialchars(date('d.m.Y', strtotime($profileUser['created_at']))) ?>
                     <small class="profile-id-subtext">(ID: <?= (int)$profileUser['id'] ?>)</small>
                 </td>
             </tr>
             <tr>
                 <td class="profile-label-cell">Репутация (Карма):</td>
                 <td class="profile-value-cell">
-                    <?php 
-                        // Deduce visual color markers based on data weights
-                        $karmaClass = 'profile-karma-neutral';
-                        if ($userKarma > 0) $karmaClass = 'profile-karma-positive';
-                        if ($userKarma < 0) $karmaClass = 'profile-karma-negative';
+                    <?php
+                    // Deduce visual color markers based on data weights
+                    $karmaClass = 'profile-karma-neutral';
+                    if ($userKarma > 0) $karmaClass = 'profile-karma-positive';
+                    if ($userKarma < 0) $karmaClass = 'profile-karma-negative';
                     ?>
                     <span class="<?= $karmaClass ?>">
                         <?= $userKarma > 0 ? '+' : '' ?><?= (int)$userKarma ?> баллов

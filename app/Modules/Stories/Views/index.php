@@ -19,7 +19,7 @@
     }
 ?>
 
-<div class="container">
+ 
     <?php if (!empty($stories)): ?>
         <?php foreach ($stories as $story): ?>
             <?php 
@@ -134,7 +134,7 @@
             <h3>Лента историй пока пуста 🚀</h3>
         </div>
     <?php endif; ?>
-</div>
+ 
 
 <?php if (isset($totalPages) && $totalPages > 1): ?>
     <nav class="pagination-container">

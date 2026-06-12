@@ -2,7 +2,7 @@
     $request = new \App\Core\Request(); 
 ?>
 
-<div class="container">
+
     <h3 class="chats-heading-title">✉️ Мои личные сообщения</h3>
 
     <?php if (!empty($chats)): ?>
@@ -37,4 +37,4 @@
             <p>Перейдите в профиль любого пользователя системы, чтобы начать приватный диалог.</p>
         </div>
     <?php endif; ?>
-</div>
+

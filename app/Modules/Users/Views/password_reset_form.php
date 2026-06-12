@@ -1,7 +1,7 @@
 <div class="submit-form auth-recovery-container">
     <h3>🔒 Новый пароль аккаунта</h3>
     <p class="field-sub-hint">Введите надежный пароль из букв и цифр длиной не менее 6 символов.</p>
-    
+
     <form action="<?= route('password.reset.submit') ?>" method="POST" class="auth-form">
         <?= $request->csrfField() ?>
         <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
@@ -21,4 +21,3 @@
         </button>
     </form>
 </div>
-

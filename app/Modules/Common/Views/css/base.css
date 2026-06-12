@@ -10,20 +10,88 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: "helvetica neue", arial, sans-serif;
     background-color: #f4f6f9;
     color: #334155;
+	line-height: 1.45em;
+	margin: 0 auto;
 }
 
-/** =========================================================================
-    🔲 УНИВЕРСАЛЬНЫЙ КОНТЕНТНЫЙ КОНТЕЙНЕР ПЛАТФОРМЫ (DRY OPTIMIZATION)
-    ========================================================================= */
-.container {
-    max-width: 1000px; /* Оптимальная ширина для ленты, каталога тегов и поиска */
-    margin: 40px auto; /* Центрирование по горизонтали и отступы сверху/снизу */
-    padding: 0 20px; /* Защитные отступы для мобильных экранов */
-    box-sizing: border-box;
+hr {
+	border: 0; 
+	border-top: 1px solid #eee; 
 }
+
+nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+header {
+  background-color: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 15px 0;
+}
+
+main {
+    min-height: calc(100vh - 180px);
+	margin: 20px auto;
+}
+
+footer {
+	box-sizing: border-box;
+	  display: flex;
+	  padding: 0 1.5em;
+	  justify-content: space-between;
+	  width: 100%;
+	  font-size: 14px;
+}
+
+blockquote {
+  font-style: italic;
+  color: #555;
+  border-left: 4px solid #ccc;
+  padding: 10px 20px;
+  margin: 20px 0;
+  background-color: #f9f9f9;
+}
+
+
+nav a {
+    color: #555;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+nav a:hover {
+    color: #3498db;
+}
+
+footer .stats {
+	font-size: 12px;
+	color: #666;
+} 
+
+blockquote {
+  border-left: 4px solid #ccc;
+  padding-left: 10px;
+  margin: 20px 0;
+  color: #555;
+  font-style: italic;
+}
+
+
+.card {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  padding: 25px;
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 25px;
+}
+
 
 /* 1. Универсальные Аватарки и Заглушки */
 .avatar-render {
@@ -144,43 +212,6 @@ body {
     border-radius: 4px;
     color: white;
     font-weight: bold;
-}
-
-/** =========================================================================
-    📊 CORE PERFORMANCE BENCHMARK PANEL PRESENTATION TOOLKIT
-    ========================================================================= */
-
-.benchmark-panel {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background-color: #1e293b; /* Dark slate background profile */
-    color: #94a3b8;
-    font-size: 11px;
-    font-family: monospace, system-ui, -apple-system, sans-serif;
-    border-top: 2px solid #334155;
-    padding: 8px 20px;
-    z-index: 99999;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
-    text-align: center;
-    box-sizing: border-box;
-    letter-spacing: 0.3px;
-}
-
-/* Base style for metric values */
-.benchmark-value {
-    color: #2ecc71; /* Emerald green accent for high scannability */
-    font-weight: bold;
-}
-
-/* Optional: Slight color shift on memory/files indicators if you want contrast */
-.benchmark-panel span:nth-of-type(2) .benchmark-value {
-    color: #f1c40f; /* Amber/Yellow for memory metrics */
-}
-
-.benchmark-panel span:nth-of-type(3) .benchmark-value {
-    color: #3498db; /* Blue for file volumes */
 }
 
 /** =========================================================================
@@ -330,18 +361,7 @@ body {
 }
 
 /** Стили глобальной навигации (Navbar) модуля Stories **/
-.main-navbar {
-    background-color: #fff;
-    border-bottom: 1px solid #e2e8f0;
-    padding: 15px 0;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-
 .navbar-container {
-    max-width: 1000px;
-    margin: 0 auto;
     padding: 0 20px;
     display: flex;
     justify-content: space-between;
@@ -352,23 +372,6 @@ body {
     font-size: 22px;
     color: #2c3e50;
     text-decoration: none;
-}
-
-.navbar-links {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.navbar-links a {
-    color: #555;
-    text-decoration: none;
-    font-size: 14px;
-    transition: color 0.2s;
-}
-
-.navbar-links a:hover {
-    color: #3498db;
 }
 
 .navbar-user {
@@ -409,4 +412,51 @@ body {
 	background-color: #f6f9d9;
     color: #155724;
     border: 1px solid #f7f388;
+}
+
+.gray { color: #666; }
+
+
+.license-section {
+	background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+	padding: 35px;
+	border-radius: 12px;
+	margin-top: 30px;
+}
+
+.license-section h2 {
+	color: #2c3e50;
+	border-bottom-color: #667eea;
+}
+
+.repo-link {
+	display: inline-block;
+	margin-top: 20px;
+	padding: 15px 30px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	text-decoration: none;
+	border-radius: 8px;
+	font-weight: 600;
+	font-size: 1.1em;
+	transition: transform 0.2s, box-shadow 0.2s;
+	box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.repo-link:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.repo-link::before {
+	content: "👉 ";
+	margin-right: 8px;
+}
+
+
+@media screen and (min-width: 481px) {
+    body {
+        max-width: 60rem;
+        padding-bottom: 2em;
+    }
 }

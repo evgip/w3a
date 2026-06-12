@@ -1,9 +1,7 @@
-<?php 
-    // Instantiate core utilities once for cryptographic token validation pairs
-    $request = new \App\Core\Request(); 
+<?php
+// Instantiate core utilities once for cryptographic token validation pairs
+$request = new \App\Core\Request();
 ?>
-
-<div class="container">
 
 <!-- Reusing existing common architecture classes from the Users/Common modules -->
 <div class="panel-card auth-recovery-container">
@@ -35,5 +33,4 @@
             Войти
         </button>
     </form>
-</div>
 </div>

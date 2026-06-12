@@ -1,20 +1,21 @@
 <?php $request = new \App\Core\Request(); ?>
 
-
-
-<?php $request = new \App\Core\Request(); ?>
-
 <div class="submit-form container">
-    
+
     <!-- NEW SYSTEM NOTIFICATIONS PRESENTATION LAYER BLOCK -->
     <div class="notif-section-wrapper">
         <div class="notif-header-row">
             <h4 class="notif-header-title">🔔 Центр системных уведомлений</h4>
-            <?php 
-                $hasUnreadNotif = false;
-                if (!empty($notifications)) {
-                    foreach ($notifications as $n) { if ((int)$n['is_read'] === 0) { $hasUnreadNotif = true; break; } }
+            <?php
+            $hasUnreadNotif = false;
+            if (!empty($notifications)) {
+                foreach ($notifications as $n) {
+                    if ((int)$n['is_read'] === 0) {
+                        $hasUnreadNotif = true;
+                        break;
+                    }
                 }
+            }
             ?>
             <?php if ($hasUnreadNotif): ?>
                 <form action="<?= route('account.notifications.read') ?>" method="POST" style="margin:0;">
@@ -29,9 +30,9 @@
         <div class="notif-stream-list">
             <?php if (!empty($notifications)): ?>
                 <?php foreach ($notifications as $item): ?>
-                    <?php 
-                        $unreadClass = ((int)$item['is_read'] === 0) ? 'notif-unread-card' : '';
-                        $severityClass = 'notif-type-' . htmlspecialchars($item['type']);
+                    <?php
+                    $unreadClass = ((int)$item['is_read'] === 0) ? 'notif-unread-card' : '';
+                    $severityClass = 'notif-type-' . htmlspecialchars($item['type']);
                     ?>
                     <div class="notif-alert-card <?= $unreadClass ?> <?= $severityClass ?>">
                         <span><?= htmlspecialchars($item['message']) ?></span>
@@ -63,7 +64,7 @@
                 <?php endif; ?>
                 <div>
                     <input type="file" name="avatar_file" accept="image/jpeg,image/png,image/gif">
-					<br>
+                    <br>
                     <small>Рекомендуется квадратное изображение JPG, PNG или GIF. Максимум 5 МБ.</small>
                 </div>
             </div>
@@ -93,11 +94,11 @@
             💾 Сохранить изменения
         </button>
     </form>
-	
+
     <div class="settings-section-divider">
         <h3 class="settings-section-title">🔒 Изменение пароля аккаунта</h3>
         <p class="field-sub-hint">Для повышения безопасности вашего профиля рекомендуется использовать сложный пароль из букв, цифр и спецсимволов.</p>
-        
+
         <form action="<?= route('account.password.submit') ?>" method="POST" class="auth-form form-input-text">
             <?= $request->csrfField() ?>
 
@@ -117,10 +118,10 @@
             </div>
 
             <button type="submit" class="btn btn-success">
-				🔑 Обновить пароль
-			</button>
+                🔑 Обновить пароль
+            </button>
         </form>
     </div>
-	
-	
+
+
 </div>

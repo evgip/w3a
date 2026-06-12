@@ -1,4 +1,4 @@
-# 🚀 M3A — Modular Forum
+# 🌐 W3A — Modular Forum
 
 [English](#english) | [Русский](#русский)
 
