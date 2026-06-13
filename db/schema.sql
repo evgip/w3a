@@ -539,3 +539,5 @@ ALTER TABLE `user_notifications`
 ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
+ALTER TABLE `conversations` 
+ADD COLUMN `deleted_at` timestamp NULL DEFAULT NULL AFTER `updated_at`;
