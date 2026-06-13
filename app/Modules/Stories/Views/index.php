@@ -48,9 +48,14 @@ if ($currentUserId > 0) {
                         </a>
 
                         <?php if ($isExternal): ?>
-                            <a href="<?= route('domains.show', ['domain' => parse_url($story['url'], PHP_URL_HOST)]) ?>" class="domain">
-                                (<?= htmlspecialchars(parse_url($story['url'], PHP_URL_HOST)) ?>)
-                            </a>
+							<?php 
+							$domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
+							if ($domainHost): 
+							?>
+								<a href="<?= route('domains.show', ['domain' => $domainHost]) ?>" class="domain">
+									<?= htmlspecialchars($domainHost) ?>
+								</a>
+							<?php endif; ?>
                         <?php endif; ?>
                     </div>
 

@@ -17,31 +17,39 @@ class StoriesController extends Controller
      * @param string|null $tagname Параметр автоматически передается роутером из {tagname}
      */
 
-    public function index(?string $tagname = null): void
-    {
-        $request = new Request();
-        $currentPage = (int)$request->getParams('page', 1);
-        if ($currentPage < 1) $currentPage = 1;
+	public function index(string $tagname = '', string $domain = ''): void
+	{
+		$request = new Request();
+		$currentPage = (int)$request->getParams('page', 1);
+		if ($currentPage < 1) $currentPage = 1;
 
-        $perPage = 15;
-        $offset = ($currentPage - 1) * $perPage;
+		$perPage = 15;
+		$offset = ($currentPage - 1) * $perPage;
 
-        $storyModel = new Story();
-        
-        // Dynamic Visibility Check: Administrators can see hidden/soft-deleted rows inline
-        $showDeleted = \App\Core\Auth::isAdmin();
-        $stories = $storyModel->getFeed($perPage, $offset, $tagname, $showDeleted);
-        
-        $totalStories = $storyModel->getTotalCount();
-        $totalPages = (int)ceil($totalStories / $perPage);
+		$storyModel = new Story();
+		$showDeleted = \App\Core\Auth::isAdmin();
+		
+		// Передаем $domain в модель для фильтрации
+		$stories = $storyModel->getFeed($perPage, $offset, $tagname, $showDeleted, $domain);
+		
+		// Получаем корректное количество записей с учетом фильтра (исправляет баг пагинации)
+		$totalStories = $storyModel->getTotalCount($tagname, $domain);
+		$totalPages = (int)ceil($totalStories / $perPage);
 
-        $this->render('index', [
-            'title'       => $tagname ? "Публикации с тегом # " . htmlspecialchars($tagname) : 'Лента историй',
-            'stories'     => $stories,
-            'currentPage' => $currentPage,
-            'totalPages'  => $totalPages
-        ]);
-    }
+		$title = 'Лента историй';
+		if ($tagname) {
+			$title = "Публикации с тегом # " . htmlspecialchars($tagname);
+		} elseif ($domain) {
+			$title = "Публикации с домена " . htmlspecialchars($domain);
+		}
+
+		$this->render('index', [
+			'title' => $title,
+			'stories' => $stories,
+			'currentPage' => $currentPage,
+			'totalPages' => $totalPages
+		]);
+	}
 	
 	
 	

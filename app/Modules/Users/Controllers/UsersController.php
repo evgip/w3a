@@ -145,119 +145,125 @@ class UsersController extends Controller
     /**
      * Display the registration form (GET /register)
      */
-    public function showRegisterForm(): void
-    {
-        $request = new Request();
-        
-        $this->render('register', [
-            'title' => 'Регистрация нового пользователя',
-            'request' => $request
-        ]);
-    }
+	public function showRegisterForm(): void
+	{
+		$request = new Request();
+		
+		// Получаем старые значения из сессии (если есть)
+		$old = \App\Core\Session::get('old_input', []);
+		\App\Core\Session::delete('old_input'); // Очищаем после использования
+		
+		$this->render('register', [
+			'title' => 'Регистрация нового пользователя',
+			'request' => $request,
+			'old' => $old
+		]);
+	}
 
     /**
      * Process registration submission (POST /register)
      */
-    public function register(): void
-    {
-        $request = new Request();
-        
-        // 1. Mandatory CSRF security validation
-        $request->validateCsrf();
-
-        // --- КРИТИЧЕСКИЙ РУБЕЖ: ПРОВЕРКА КАПЧИ ---
-        if (!\App\Core\Captcha::verify()) {
-            \App\Core\Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот (капча не пройдена).');
-            header('Location: /register');
-            exit;
-        }
-        // --- КОНЕЦ БЛОКА ЗАЩИТЫ ---
-
-
-        // 2. Validate input fields against rules including your dynamic database unique constraint
-        $validator = new Validator();
-        $isValid = $validator->validate($_POST, [
-            'name'     => 'required|min:2',
-            'email'    => 'required|email|unique:users,email', // Dynamic database check
-            'password' => 'required|min:6'
-        ]);
-
-        if (!$isValid) {
-            // Pick the first encountered validation error to present back to the user
-            $errors = $validator->getErrors();
-            $firstField = array_key_first($errors);
-            $errorMessage = $errors[$firstField][0];
-
-            $this->render('register', [
-                'title' => 'Регистрация нового пользователя',
-                'error' => $errorMessage,
-                'request' => $request
-            ]);
-            return;
-        }
-
-        // 3. Extract the verified safe raw input parameters
-        $username = $request->getParams('name');
-        $email = $request->getParams('email');
-        $rawPassword = $request->getParams('password');
-
-        // 4. Securely hash the password string before database persistence
-        $hashedPassword = password_hash($rawPassword, PASSWORD_BCRYPT);
-
-        $userModel = new User();
-
-        if ($userModel->findBy('name', $username)) {
-            \App\Core\Session::setFlash('error', 'Это имя пользователя уже занято.');
-            header('Location: /register');
-            exit;
-        }
-
-        // 5. Instatiate the User model and persist the record
- 
-        $newUserId = $userModel->create([
-            'name'     => $username,
-            'email'    => $email,
-            'password' => $hashedPassword,
-            'role'     => 'user' // Default access tier assignment
-        ]);
-
-        if ($newUserId > 0) {
-            $activationModel = new \App\Modules\Users\Models\EmailActivation();
-            $token = $activationModel->createActivationToken($newUserId);
-
-            $config = require dirname(__DIR__, 3) . '/Config/config.php';
-            $baseUrl = rtrim($config['app']['url'] ?? 'http://soc.local', '/');
-            $activationLink = $baseUrl . "/register/activate/" . $token;
-
-            // --- CLEAN ARCHITECTURE REFACTOR: FETCH LOCALIZED EMAIL CONTENT ---
-            $subject  = \App\Core\Lang::format('email_activation_subject', [$config['app']['name']]);
-            $htmlBody = \App\Core\Lang::format('email_activation_body', [
-                htmlspecialchars($username), 
-                $activationLink
-            ]);
-
-            // Dispatch via PHPMailer engine
-            \App\Core\Mailer::send($email, $subject, $htmlBody);
-            // ------------------------------------------------------------------
-            
-            \App\Core\Session::setFlash('success', 'Регистрация успешна! На ваш Email отправлена ссылка для активации аккаунта. Пожалуйста, проверьте почтовый ящик.');
-            header('Location: /login');
-            exit;
-        }
+	public function register(): void
+	{
+		$request = new Request();
 		
-		// ЖУРНАЛ АУДИТА: Логируем создание нового аккаунта (без сохранения хэша пароля!)
-		\App\Core\Audit::log('user.registered', "Зарегистрирован новый аккаунт", [
-			'new_user_name' => $username,
-			'new_user_email' => $email
+		// 1. Обязательная проверка CSRF-токена
+		$request->validateCsrf();
+		
+		// --- КРИТИЧЕСКИЙ РУБЕЖ: ПРОВЕРКА КАПЧИ ---
+		if (!\App\Core\Captcha::verify()) {
+			\App\Core\Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот (капча не пройдена).');
+			header('Location: /register');
+			exit;
+		}
+		// --- КОНЕЦ БЛОКА ЗАЩИТЫ ---
+		
+		// 2. Валидация входных данных (ИСПРАВЛЕНО: 'name' → 'username')
+		$validator = new Validator();
+		$isValid = $validator->validate($_POST, [
+			'username' => 'required|min:2',
+			'email' => 'required|email|unique:users,email',
+			'password' => 'required|min:6'
 		]);
-
-
-        // 6. Set a temporary success notice and route the visitor to the login page
-        Session::setFlash('success', 'Регистрация прошла успешно! Теперь вы можете войти.');
-        
-        header('Location: /login');
-        exit;
-    }
+		
+		if (!$isValid) {
+			$errors = $validator->getErrors();
+			$firstField = array_key_first($errors);
+			$errorMessage = $errors[$firstField][0];
+			
+			// Используем flash-сообщения вместо переменной $error
+			\App\Core\Session::setFlash('error', $errorMessage);
+			
+			// Сохраняем старые значения полей в сессии
+			\App\Core\Session::set('old_input', [
+				'username' => $_POST['username'] ?? '',
+				'email' => $_POST['email'] ?? ''
+			]);
+			
+			header('Location: /register');
+			exit;
+		}
+		
+		// 3. Извлечение проверенных данных (ИСПРАВЛЕНО: 'name' → 'username')
+		$username = $request->getParams('username');
+		$email = $request->getParams('email');
+		$rawPassword = $request->getParams('password');
+		
+		// 4. Хеширование пароля
+		$hashedPassword = password_hash($rawPassword, PASSWORD_BCRYPT);
+		
+		$userModel = new User();
+		
+		// Дополнительная проверка уникальности имени (на случай гонки данных)
+		if ($userModel->findBy('name', $username)) {
+			\App\Core\Session::setFlash('error', 'Это имя пользователя уже занято.');
+			header('Location: /register');
+			exit;
+		}
+		
+		// 5. Создание пользователя
+		$newUserId = $userModel->create([
+			'name' => $username,
+			'email' => $email,
+			'password' => $hashedPassword,
+			'role' => 'user'
+		]);
+		
+		if ($newUserId > 0) {
+			// Создание токена активации
+			$activationModel = new \App\Modules\Users\Models\EmailActivation();
+			$token = $activationModel->createActivationToken($newUserId);
+			
+			$config = require dirname(__DIR__, 3) . '/Config/config.php';
+			$baseUrl = rtrim($config['app']['url'] ?? 'http://soc.local', '/');
+			$activationLink = $baseUrl . "/register/activate/" . $token;
+			
+			// Формирование письма
+			$subject = \App\Core\Lang::format('email_activation_subject', [$config['app']['name']]);
+			$htmlBody = \App\Core\Lang::format('email_activation_body', [
+				htmlspecialchars($username),
+				$activationLink
+			]);
+			
+			// Отправка письма
+			\App\Core\Mailer::send($email, $subject, $htmlBody);
+			
+			// Логирование
+			\App\Core\Audit::log('user.registered', "Зарегистрирован новый аккаунт", [
+				'new_user_name' => $username,
+				'new_user_email' => $email
+			]);
+			
+			\App\Core\Session::setFlash('success', 'Регистрация успешна! На ваш Email отправлена ссылка для активации аккаунта. Пожалуйста, проверьте почтовый ящик.');
+			header('Location: /login');
+			exit;
+		}
+		
+		// Если создание не удалось
+		\App\Core\Session::setFlash('error', 'Не удалось создать аккаунт. Попробуйте позже.');
+		header('Location: /register');
+		exit;
+	}
 	
 	
 	

@@ -10,54 +10,56 @@ class Story extends Model
     protected string $table = 'stories';
 
     /**
-     * Fetch active stories joined with authors and associated Lobsters tags
-     */
- /**
-     * Fetch active stories joined with authors, tags, and avatars
-     */
-    /**
      * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
      */
-    public function getFeed(int $limit = 30, int $offset = 0, ?string $filterTag = null, bool $showDeleted = false): array
-    {
-        $db = Database::getConnection();
+	public function getFeed(int $limit, int $offset, ?string $tagname = null, bool $showDeleted = false, ?string $domain = null): array
+	{
+		$db = Database::getConnection();
+		$sql = "SELECT s.*, u.name as author_name, u.avatar as author_avatar,
+				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
+				FROM `stories` s
+				JOIN `users` u ON s.user_id = u.id
+				LEFT JOIN `taggings` tg ON s.id = tg.story_id
+				LEFT JOIN `tags` t ON tg.tag_id = t.id";
+		
+		$bindings = [];
+		$where = [];
 
-        $sql = "SELECT s.*, u.name as author_name, u.avatar as author_avatar,
-                       GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
-                FROM `stories` s
-                JOIN `users` u ON s.user_id = u.id
-                LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                LEFT JOIN `tags` t ON tg.tag_id = t.id";
+		if (!$showDeleted) {
+			$where[] = "s.deleted_at IS NULL";
+		}
 
-        // Condition Check: If non-admin user, enforce strict active record filter boundary
-        if (!$showDeleted) {
-            $sql .= " WHERE s.deleted_at IS NULL";
-        } else {
-            $sql .= " WHERE 1=1"; // Catch all rows for moderators
-        }
+		if ($tagname) {
+			$where[] = "t.tag = :tag";
+			$bindings['tag'] = $tagname;
+		}
 
-        if ($filterTag !== null) {
-            $sql .= " AND s.id IN (SELECT story_id FROM `taggings` WHERE tag_id = (SELECT id FROM `tags` WHERE tag = :tag LIMIT 1))";
-            $bindings['tag'] = $filterTag;
-        }
+		// Добавляем условие для домена
+		if ($domain) {
+			$where[] = "s.url LIKE :domain";
+			$bindings['domain'] = '%' . $domain . '%';
+		}
 
-        $sql .= " GROUP BY s.id ORDER BY s.score DESC, s.id DESC LIMIT :limit OFFSET :offset";
+		if (!empty($where)) {
+			$sql .= " WHERE " . implode(" AND ", $where);
+		}
 
-        $stmt = $db->prepare($sql);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
-        if (isset($bindings['tag'])) {
-            $stmt->bindValue(':tag', $bindings['tag']);
-        }
-        
-        $stmt->execute();
-        $stories = $stmt->fetchAll();
+		$sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
 
-        foreach ($stories as &$story) {
-            $story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
-        }
-        return $stories;
-    }
+		$stmt = $db->prepare($sql);
+		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+		$stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+		if (isset($bindings['tag'])) $stmt->bindValue(':tag', $bindings['tag']);
+		if (isset($bindings['domain'])) $stmt->bindValue(':domain', $bindings['domain']);
+
+		$stmt->execute();
+		$stories = $stmt->fetchAll();
+
+		foreach ($stories as &$story) {
+			$story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
+		}
+		return $stories;
+	}
 
     /**
      * Get all platform tags with description fields
@@ -72,12 +74,33 @@ class Story extends Model
     /**
      * Получить общее количество активных постов для расчета страниц
      */
-    public function getTotalCount(): int
-    {
-        $db = Database::getConnection();
-        $stmt = $db->query("SELECT COUNT(*) FROM `stories` WHERE `deleted_at` IS NULL");
-        return (int)$stmt->fetchColumn();
-    }
+	public function getTotalCount(?string $tagname = null, ?string $domain = null): int
+	{
+		$db = Database::getConnection();
+		
+		// Используем COUNT(DISTINCT s.id), чтобы избежать дублирования при LEFT JOIN тегов
+		$sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s 
+				LEFT JOIN `taggings` tg ON s.id = tg.story_id
+				LEFT JOIN `tags` t ON tg.tag_id = t.id
+				WHERE s.deleted_at IS NULL";
+		
+		$bindings = [];
+		if ($tagname) {
+			$sql .= " AND t.tag = :tag";
+			$bindings['tag'] = $tagname;
+		}
+		if ($domain) {
+			$sql .= " AND s.url LIKE :domain";
+			$bindings['domain'] = '%' . $domain . '%';
+		}
+		
+		$stmt = $db->prepare($sql);
+		if (isset($bindings['tag'])) $stmt->bindValue(':tag', $bindings['tag']);
+		if (isset($bindings['domain'])) $stmt->bindValue(':domain', $bindings['domain']);
+		
+		$stmt->execute();
+		return (int)$stmt->fetchColumn();
+	}
 
    /**
      * Получить одну конкретную историю с именем автора и списком тегов
