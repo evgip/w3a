@@ -1,51 +1,66 @@
-<?php $request = new \App\Core\Request(); ?>
+<?php
+$request = new \App\Core\Request();
+?>
 
-<div class="submit-form">
-    <h3 style="margin-top: 0; color: #2c3e50; margin-bottom: 5px;">Поделиться историей или ссылкой</h3>
-    <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 25px;">Отправьте интересную ссылку в духе Lobsters/HackerNews или начните текстовое обсуждение.</p>
+<h1>Создание публикации</h1>
 
-    <?php if (isset($error)): ?>
-        <div class="alert alert-danger" style="color: #e74c3c; background: #fdf2f2; padding: 12px; border: 1px solid #f8b4b4; margin-bottom: 20px; border-radius: 4px; font-size: 14px;">
-            <strong>Ошибка:</strong> <?= htmlspecialchars($error) ?>
-        </div>
-    <?php endif; ?>
+<p class="hint">
+    Поделитесь интересной ссылкой или начните обсуждение с сообществом.
+</p>
 
-    <form action="/stories/create" method="POST">
-        <?= $request->csrfField() ?>
+<?php if (!empty($error)): ?>
+    <div class="flash-error">
+        <?= htmlspecialchars($error) ?>
+    </div>
+<?php endif; ?>
 
-        <div class="form-group-field">
-            <label>Заголовок публикации:</label>
-            <input type="text" name="title" required placeholder="О чем ссылка или обсуждение?" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>">
-        </div>
+<form action="/stories/create" method="POST">
+    <?= $request->csrfField() ?>
 
-        <div class="form-group-field">
-            <label>Ссылка (URL):</label>
-            <input type="url" name="url" placeholder="https://example.com" value="<?= htmlspecialchars($_POST['url'] ?? '') ?>">
-            <span class="form-field-hint">Заполните, если хотите отправить внешнюю ссылку на материал.</span>
-        </div>
+    <div class="form-field-group">
+        <label for="story-title"><strong>Заголовок</strong></label>
+        <input type="text" id="story-title" name="title" 
+               value="<?= htmlspecialchars($old['title'] ?? '') ?>" 
+               required placeholder="Введите заголовок публикации"
+               class="form-input-wide">
+    </div>
 
-		<div class="form-group-field">
-			<label>Выберите соответствующие теги (темы):</label>
-			<div class="checkbox-matrix-grid">
-				<?php foreach ($tags as $tagItem): ?>
-					<label class="checkbox-item-wrapper">
-						<input type="checkbox" name="tags[]" value="<?= (int)$tagItem['id'] ?>">
-						<span class="tag-badge-link tag-checkbox-badge">
-							<?= htmlspecialchars($tagItem['tag']) ?>
-						</span>
-					</label>
-				<?php endforeach; ?>
-			</div>
-		</div>
+    <div class="form-field-group">
+        <label for="story-url">
+            <strong>Ссылка (URL)</strong>
+            <span class="form-field-hint-inline">— необязательно</span>
+        </label>
+        <input type="url" id="story-url" name="url" 
+               value="<?= htmlspecialchars($old['url'] ?? '') ?>"
+               placeholder="https://example.com/article"
+               class="form-input-wide">
+    </div>
 
-        <div class="form-group-field">
-            <label>Текст обсуждения:</label>
-            <textarea name="description" placeholder="Ваш сопроводительный текст или заметка для обсуждения..."><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
-            <span class="form-field-hint">Заполните, если это чисто текстовый пост, либо как дополнение к ссылке.</span>
-        </div>
+    <div class="form-field-group">
+        <label><strong>Теги</strong></label>
+        <p class="hint">Выберите один или несколько тегов, соответствующих теме публикации:</p>
+        
+        <?php foreach ($availableTags as $tagItem): ?>
+            <?php 
+            $isBound = isset($old['tags']) && in_array((int)$tagItem['id'], $old['tags']); 
+            ?>
+            <label class="tag-checkbox-item">
+                <input type="checkbox" name="tags[]" value="<?= (int)$tagItem['id'] ?>" 
+                       <?= $isBound ? 'checked' : '' ?>>
+                <span><?= htmlspecialchars($tagItem['tag']) ?></span>
+            </label>
+        <?php endforeach; ?>
+    </div>
 
-        <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-size: 14px; width: auto; cursor: pointer;">
-            🚀 Опубликовать на главную
-        </button>
-    </form>
-</div>
+    <div class="form-field-group">
+        <label for="story-description"><strong>Текст обсуждения</strong></label>
+        <p class="hint">Поддерживается Markdown-разметка: **жирный**, *курсив*, [ссылки](url), `код`</p>
+        <textarea id="story-description" name="description" rows="8" 
+                  placeholder="Сопроводительный текст, комментарии или дополнительный контекст..."><?= htmlspecialchars($old['description'] ?? '') ?></textarea>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit">Опубликовать</button>
+        <a href="/">Отмена</a>
+    </div>
+</form>

@@ -1,62 +1,69 @@
-<?php 
-    $request = new \App\Core\Request(); 
+<?php
+$request = new \App\Core\Request();
 ?>
 
-
+<!-- Шапка диалога -->
+<div class="dialog-header">
+    <a href="<?= route('messages.index') ?>" class="dialog-back-link">← К списку</a>
     
-    <!-- Dialogue Header Bar Container -->
-    <div class="chat-history-header">
-        <a href="<?= route('messages.index') ?>" class="tag-badge-link chat-btn-back">← К списку</a>
-        <?php if (!empty($recipient['avatar'])): ?>
-            <img src="/uploads/avatars/<?= substr($recipient['avatar'], 0, 2) ?>/<?= htmlspecialchars($recipient['avatar']) ?>" class="profile-avatar-render-img chat-avatar-dialog-size" alt="avatar">
-        <?php else: ?>
-            <div class="profile-avatar-placeholder chat-avatar-dialog-placeholder">
-                <?= htmlspecialchars(mb_substr($recipient['name'], 0, 1)) ?>
-            </div>
-        <?php endif; ?>
-        <strong class="chat-title-text">Чат с пользователем <?= htmlspecialchars($recipient['name']) ?></strong>
-    </div>
-
-    <?php if ($totalPages > 1): ?>
-        <nav class="chat-history-pagination-nav">
-            <?php if ($currentPage < $totalPages): ?>
-                <!-- Clicking here increases page parameter index, pulling older message blocks -->
-                <a href="?chat_page=<?= $currentPage + 1 ?>" class="btn-load-older-chats">
-                    ☝️ Загрузить более ранние сообщения
-                </a>
-            <?php else: ?>
-                <span class="chat-pagination-status-lbl">🗄️ Вы пролистали до самого начала переписки</span>
-            <?php endif; ?>
-        </nav>
+    <?php if (!empty($recipient['avatar'])): ?>
+        <img src="/uploads/avatars/<?= substr($recipient['avatar'], 0, 2) ?>/<?= htmlspecialchars($recipient['avatar']) ?>" 
+             class="dialog-avatar" alt="avatar">
+    <?php else: ?>
+        <div class="dialog-avatar-placeholder">
+            <?= htmlspecialchars(mb_substr($recipient['name'], 0, 1)) ?>
+        </div>
     <?php endif; ?>
+    
+    <span class="dialog-title">
+        Чат с пользователем <?= htmlspecialchars($recipient['name']) ?>
+    </span>
+</div>
 
+<!-- Пагинация (загрузка старых сообщений) -->
+<?php if ($totalPages > 1): ?>
+    <div class="dialog-pagination">
+        <?php if ($currentPage < $totalPages): ?>
+            <a href="?chat_page=<?= $currentPage + 1 ?>" class="dialog-load-older">
+                Загрузить более ранние сообщения
+            </a>
+        <?php else: ?>
+            <span class="dialog-pagination-status">Вы пролистали до самого начала переписки</span>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 
-    <!-- Messages Scroller Stream Container -->
-    <div class="chat-messages-stream">
-        <?php if (!empty($messages)): ?>
-            <?php foreach ($messages as $msg): ?>
-                <?php 
-                    $isOutgoing = ((int)$msg['sender_id'] === (int)$_SESSION['user_id']);
-                ?>
-                <div class="chat-bubble <?= $isOutgoing ? 'chat-bubble-outgoing' : 'chat-bubble-incoming' ?>" title="<?= htmlspecialchars(date('d.m Y H:i', strtotime($msg['created_at']))) ?>">
+<!-- Сообщения -->
+<div class="dialog-messages">
+    <?php if (!empty($messages)): ?>
+        <?php foreach ($messages as $msg): ?>
+            <?php $isOutgoing = ((int)$msg['sender_id'] === (int)$_SESSION['user_id']); ?>
+            
+            <div class="dialog-message <?= $isOutgoing ? 'outgoing' : 'incoming' ?>" 
+                 title="<?= htmlspecialchars(date('d.m.Y H:i', strtotime($msg['created_at']))) ?>">
+                <div class="dialog-message-text">
                     <?= nl2br(htmlspecialchars($msg['message'])) ?>
                 </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <p class="chat-empty-history-text">История сообщений пуста. Напишите что-нибудь первое!</p>
-        <?php endif; ?>
-    </div>
-
-    <!-- Submission Input Controls Form Bar Footer -->
-    <div class="chat-footer-form-bar">
-        <form action="<?= route('messages.send.submit') ?>" method="POST" class="chat-input-row">
-            <?= $request->csrfField() ?>
-            <input type="hidden" name="conversation_id" value="<?= (int)$conversationId ?>">
+                <div class="dialog-message-time">
+                    <?= htmlspecialchars(date('d.m H:i', strtotime($msg['created_at']))) ?>
+                </div>
+            </div>
             
-            <input type="text" name="message_text" required autocomplete="off" placeholder="Введите ваше сообщение..." class="form-input-text chat-input-field-modifier">
-            <button type="submit" class="btn btn-primary btn-chat-send">
-                Отправить 🚀
-            </button>
-        </form>
-    </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <p class="dialog-empty">История сообщений пуста. Напишите что-нибудь первое!</p>
+    <?php endif; ?>
+</div>
 
+<!-- Форма отправки сообщения -->
+<div class="dialog-form">
+    <form action="<?= route('messages.send.submit') ?>" method="POST" class="dialog-form-row">
+        <?= $request->csrfField() ?>
+        <input type="hidden" name="conversation_id" value="<?= (int)$conversationId ?>">
+        
+        <input type="text" name="message_text" required autocomplete="off" 
+               placeholder="Введите ваше сообщение..." class="dialog-form-input">
+        
+        <button type="submit" class="dialog-form-button">Отправить</button>
+    </form>
+</div>

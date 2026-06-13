@@ -1,36 +1,53 @@
 <?php
-// Instantiate core utilities once for cryptographic token validation pairs
 $request = new \App\Core\Request();
 ?>
 
-<!-- Reusing existing common architecture classes from the Users/Common modules -->
-<div class="panel-card auth-recovery-container">
-    <h3>🔑 Вход в систему</h3>
-    <p class="field-sub-hint">Пожалуйста, укажите ваши данные для авторизации.</p>
+<h1>Вход в систему</h1>
 
-    <!-- Reusing your existing decoupled error components -->
-    <?php if (!empty($error)): ?>
-        <div class="notif-alert-card notif-unread-card notif-type-danger">
-            ⚠️ <?= htmlspecialchars($error) ?>
-        </div>
-    <?php endif; ?>
+<?php if (\App\Core\Session::hasFlash('error')): ?>
+    <div class="flash-error">
+        <?= htmlspecialchars(\App\Core\Session::getFlash('error')) ?>
+    </div>
+<?php endif; ?>
 
-    <form action="/login" method="POST" class="auth-form">
-        <?= $request->csrfField() ?>
+<?php if (\App\Core\Session::hasFlash('success')): ?>
+    <div class="flash-success">
+        <?= htmlspecialchars(\App\Core\Session::getFlash('success')) ?>
+    </div>
+<?php endif; ?>
 
-        <div class="form-group-field">
-            <label>Email:</label>
-            <input type="email" name="email" required placeholder="name@example.com" class="form-field">
-        </div>
+<p class="hint">Пожалуйста, укажите ваши данные для авторизации.</p>
 
-        <div class="form-group-field">
-            <label>Пароль:</label>
-            <input type="password" name="password" required placeholder="Введите ваш пароль" class="form-field">
-        </div>
+<form action="/login" method="POST">
+    <?= $request->csrfField() ?>
 
-        <!-- Using the full width submission utility class established in previous recovery steps -->
-        <button type="submit" class="btn btn-primary submit-recovery">
-            Войти
-        </button>
-    </form>
-</div>
+    <div class="form-field-group">
+        <label for="login-email"><strong>Email</strong></label>
+        <input type="email" id="login-email" name="email" required autofocus class="form-input-wide" placeholder="name@example.com">
+    </div>
+
+    <div class="form-field-group">
+        <label for="login-password">
+            <strong>Пароль</strong>
+            <a href="/password/recovery" class="form-field-hint-inline">(забыли пароль?)</a>
+        </label>
+        <input type="password" id="login-password" name="password" required class="form-input-wide">
+    </div>
+
+    <div class="form-field-group">
+        <label>
+            <input type="checkbox" name="remember" value="1">
+            Запомнить меня на этом компьютере
+        </label>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit">Войти</button>
+    </div>
+</form>
+
+<hr>
+
+<p>
+    Нет аккаунта? <a href="/register">Зарегистрироваться</a>
+</p>

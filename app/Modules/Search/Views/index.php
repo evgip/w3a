@@ -1,153 +1,158 @@
-<?php 
-    $request = new \App\Core\Request(); 
-    $voteModel = new \App\Modules\Votes\Models\Vote();
-    $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
+<?php
+$request = new \App\Core\Request();
+$voteModel = new \App\Modules\Votes\Models\Vote();
+$currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
 ?>
 
-   
-    <!-- ФОРМА ПОИСКА LOBSTERS STYLE С ТУГЛЕРАМИ КОНТЕНТА -->
-    <div class="card">
-        <form action="/search" method="GET">
-            <div class="search-input-wrapper">
-                <input type="text" name="q" value="<?= htmlspecialchars($query) ?>" placeholder="Введите поисковый запрос..." required autofocus class="search-bar-field">
-                <button type="submit" class="btn btn-primary search-btn-submit">🔍 Искать</button>
-            </div>
+<h1>Поиск</h1>
 
-            <div class="search-options-row">
-                <span>Искать в:</span>
-                <label class="search-radio-group">
-                    <input type="radio" name="what" value="stories" <?= $what === 'stories' ? 'checked' : '' ?>>
-                    <span>Статьях / Постах</span>
-                </label>
-                <label class="search-radio-group">
-                    <input type="radio" name="what" value="comments" <?= $what === 'comments' ? 'checked' : '' ?>>
-                    <span>Комментариях</span>
-                </label>
+<form action="/search" method="GET">
+    <p>
+        <input type="text" name="q" value="<?= htmlspecialchars($query) ?>" 
+               placeholder="Поисковый запрос..." required autofocus
+               style="width: 60%; padding: 4px 6px;">
+        <button type="submit">Искать</button>
+    </p>
 
-                <span style="margin-left: 20px;">Сортировка:</span>
-                <label class="search-radio-group">
-                    <input type="radio" name="order" value="relevance" <?= $sortBy === 'relevance' ? 'checked' : '' ?>>
-                    <span>Релевантность</span>
-                </label>
-                <label class="search-radio-group">
-                    <input type="radio" name="order" value="date" <?= $sortBy === 'date' ? 'checked' : '' ?>>
-                    <span>По дате</span>
-                </label>
-            </div>
-        </form>
-    </div>
+    <p class="hint">
+        Искать в:
+        <label><input type="radio" name="what" value="stories" <?= $what === 'stories' ? 'checked' : '' ?>> статьях</label>
+        <label><input type="radio" name="what" value="comments" <?= $what === 'comments' ? 'checked' : '' ?>> комментариях</label>
+        &nbsp;&nbsp;
+        Сортировка:
+        <label><input type="radio" name="order" value="relevance" <?= $sortBy === 'relevance' ? 'checked' : '' ?>> по релевантности</label>
+        <label><input type="radio" name="order" value="date" <?= $sortBy === 'date' ? 'checked' : '' ?>> по дате</label>
+    </p>
+</form>
 
-    <!-- ВЫВОД РЕЗУЛЬТАТОВ НА ОСНОВЕ ФИЛЬТРА ТИПА КОНТЕНТА -->
-    <?php if (!empty($query) && strlen($query) >= 3): ?>
-        <h4 class="search-results-heading">Найдено совпадений: <?= count($results) ?></h4>
-        
+<?php if (!empty($query) && strlen($query) >= 3): ?>
+
+    <hr>
+
+    <p class="hint">
+        Найдено: <strong><?= count($results) ?></strong>
         <?php if (!empty($results)): ?>
-            
-            <?php if ($what === 'stories'): ?>
-                <!-- РЕНДЕРИНГ НАЙДЕННЫХ СТАТЕЙ -->
-                <div class="stories-feed search-results-feed-box">
-                    <?php foreach ($results as $story): ?>
-                        <article class="story-item">
-                            
-                            <div class="story-voting-wrapper">
-                                <?php if ($currentUserId > 0): ?>
-                                    <?php $userVoteState = $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']); ?>
-                                    <form action="<?= route('votes.toggle', ['type' => 'story', 'id' => $story['id'], 'direction' => 'up']) ?>" method="POST" class="vote-action-form">
-                                        <?= $request->csrfField() ?>
-                                        <button type="submit" class="btn-vote-arrow <?= $userVoteState === 1 ? 'btn-vote-arrow-active' : '' ?>">▲</button>
-                                    </form>
-                                    <div class="story-counter-value"><?= (int)$story['score'] ?></div>
-                                <?php else: ?>
-                                    <span class="btn-vote-arrow">▲</span>
-                                    <div class="story-counter-value"><?= (int)$story['score'] ?></div>
+            — в <?= $what === 'stories' ? 'статьях' : 'комментариях' ?>
+        <?php endif; ?>
+    </p>
+
+    <?php if (!empty($results)): ?>
+
+        <?php if ($what === 'stories'): ?>
+            <!-- Результаты: СТАТЬИ -->
+            <ol class="stories">
+                <?php foreach ($results as $story): ?>
+                    <li class="story">
+
+                        <!-- Голосование -->
+                        <?php partial('Votes::_voters', [
+							'type' => 'story',
+							'id' => (int)$story['id'],
+							'score' => (int)$story['score'],
+							'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
+							'canDownvote' => $canUserDownvote,
+							'isLoggedIn' => $currentUserId > 0,
+						]); ?>
+
+                        <!-- Контент -->
+                        <div class="story_liner">
+                            <div class="link">
+                                <?php
+                                $isExternal = !empty($story['url']);
+                                $targetUrl = $isExternal ? htmlspecialchars($story['url']) : route('story.show', ['id' => $story['id']]);
+                                ?>
+                                <a href="<?= $targetUrl ?>" <?= $isExternal ? 'target="_blank" rel="noopener noreferrer"' : '' ?>>
+                                    <?= htmlspecialchars($story['title']) ?>
+                                </a>
+                                <?php if ($isExternal): ?>
+                                    <a href="<?= route('domains.show', ['domain' => parse_url($story['url'], PHP_URL_HOST)]) ?>" class="domain">
+                                        (<?= htmlspecialchars(parse_url($story['url'], PHP_URL_HOST)) ?>)
+                                    </a>
                                 <?php endif; ?>
                             </div>
 
-                            <div class="story-content-body">
-                                <h4 class="story-title-line">
-                                    <?php 
-                                        $targetUrl = !empty($story['url']) ? htmlspecialchars($story['url']) : route('story.show', ['id' => $story['id']]);
-                                        $isExternal = !empty($story['url']);
-                                        $domain = $isExternal ? '(' . parse_url($story['url'], PHP_URL_HOST) . ')' : '';
-                                    ?>
-                                    <a href="<?= $targetUrl ?>" class="story-title-link" <?= $isExternal ? 'target="_blank" rel="noopener noreferrer"' : '' ?>>
-                                        <?= htmlspecialchars($story['title']) ?>
-                                    </a>
-                                    <?php if ($isExternal): ?>
-                                        <span class="story-domain-tag"><?= htmlspecialchars($domain) ?></span>
-                                    <?php endif; ?>
+                            <?php if (!empty($story['tags'])): ?>
+                                <span class="tags">
+                                    <?php foreach ($story['tags'] as $tagName): ?>
+                                        <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= htmlspecialchars($tagName) ?></a>
+                                    <?php endforeach; ?>
+                                </span>
+                            <?php endif; ?>
 
-                                    <?php if (!empty($story['tags'])): ?>
-                                        <span class="story-tags-group">
-                                            <?php foreach ($story['tags'] as $tagName): ?>
-                                                <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag-badge-link">
-                                                    <?= htmlspecialchars($tagName) ?>
-                                                </a>
-                                            <?php endforeach; ?>
-                                        </span>
-                                    <?php endif; ?>
-                                </h4>
+                            <div class="byline">
+                                <?php if (!empty($story['author_avatar'])): ?>
+                                    <img src="/uploads/avatars/<?= substr($story['author_avatar'], 0, 2) ?>/<?= htmlspecialchars($story['author_avatar']) ?>" class="avatar" alt="">
+                                <?php endif; ?>
 
-                                <div class="story-metadata-line">
-                                    размещено 
-                                    <?php if (!empty($story['author_avatar'])): ?>
-                                        <img src="/uploads/avatars/<?= substr($story['author_avatar'], 0, 2) ?>/<?= htmlspecialchars($story['author_avatar']) ?>" class="mini-avatar-img" alt="avatar">
+                                <a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>">
+                                    <?= htmlspecialchars($story['author_name']) ?>
+                                </a>
+
+                                <span class="divider">|</span>
+                                <span><?= htmlspecialchars(date('d.m.Y H:i', strtotime($story['created_at']))) ?></span>
+
+                                <span class="divider">|</span>
+                                <a href="<?= route('story.show', ['id' => $story['id']]) ?>">
+                                    <?php if ((int)$story['comments_count'] === 0): ?>
+                                        нет комментариев
                                     <?php else: ?>
-                                        <span class="mini-avatar-placeholder"><?= htmlspecialchars(mb_substr($story['author_name'], 0, 1)) ?></span>
+                                        <?= (int)$story['comments_count'] ?> комм.
                                     <?php endif; ?>
-                                    автором <strong><a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>" class="comment-action-link user-profile-link"><?= htmlspecialchars($story['author_name']) ?></a></strong>
-                                    | <?= htmlspecialchars(date('d.m.Y H:i', strtotime($story['created_at']))) ?>
-                                    | <a href="<?= route('story.show', ['id' => $story['id']]) ?>">💬 <?= (int)$story['comments_count'] ?> коммент.</a>
-                                    <?php if (isset($story['relevance'])): ?>
-                                        | <span class="search-relevance-metric">Релевантность: <?= round($story['relevance'], 2) ?></span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </article>
-                    <?php endforeach; ?>
-                </div>
+                                </a>
 
-            <?php else: ?>
-                <!-- РЕНДЕРИНГ НАЙДЕННЫХ КОММЕНТАРИЕВ -->
-                <div class="search-comments-feed-box">
-                    <?php foreach ($results as $comment): ?>
-                        <div class="search-comment-item-card">
-                            <!-- Ссылка на родительский пост, где оставлен комментарий -->
-                            <a href="<?= route('story.show', ['id' => $comment['story_id']]) ?>#comment-block-<?= $comment['id'] ?>" class="search-comment-parent-link">
-                                📌 В теме: «<?= htmlspecialchars($comment['story_title']) ?>»
-                            </a>
-                            
-                            <!-- Рендеринг текста комментария через наш безопасный Markdown-парсер -->
-                            <div class="search-comment-snippet-box markdown-body">
-                                <?= \App\Core\Markdown::parse($comment['comment']) ?>
-                            </div>
-
-                            <!-- Метаданные автора комментария -->
-                            <div class="story-metadata-line search-meta-group-row">
-                                <div class="search-meta-group-row" style="gap:4px;">
-                                    <?php if (!empty($comment['author_avatar'])): ?>
-                                        <img src="/uploads/avatars/<?= substr($comment['author_avatar'], 0, 2) ?>/<?= htmlspecialchars($comment['author_avatar']) ?>" class="mini-avatar-img" alt="avatar">
-                                    <?php else: ?>
-                                        <span class="mini-avatar-placeholder"><?= htmlspecialchars(mb_substr($comment['author_name'], 0, 1)) ?></span>
-                                    <?php endif; ?>
-                                    от <strong><a href="<?= route('user.profile', ['username' => $comment['author_name']]) ?>" class="comment-action-link user-profile-link"><?= htmlspecialchars($comment['author_name']) ?></a></strong>
-                                </div>
-                                <span>• Оценка: (<?= (int)$comment['score'] ?>)</span>
-                                <span>• <?= htmlspecialchars(date('d.m.Y H:i', strtotime($comment['created_at']))) ?></span>
-                                <?php if (isset($comment['relevance'])): ?>
-                                    <span class="search-relevance-metric">Релевантность: <?= round($comment['relevance'], 2) ?></span>
+                                <?php if (isset($story['relevance'])): ?>
+                                    <span class="divider">|</span>
+                                    <span class="hint">релевантность: <?= round($story['relevance'], 2) ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ol>
 
         <?php else: ?>
-            <div class="story-empty-fallback search-empty-fallback-box">
-                <h3>Ничего не найдено 🔍</h3>
-                <p>Попробуйте изменить формулировку или выбрать другой фильтр поиска.</p>
-            </div>
+            <!-- Результаты: КОММЕНТАРИИ -->
+            <ol class="comments">
+                <?php foreach ($results as $comment): ?>
+                    <li class="comment">
+                        <div class="byline" style="margin-bottom: 0.3em;">
+                            📌 В теме:
+                            <a href="<?= route('story.show', ['id' => $comment['story_id']]) ?>#comment-block-<?= $comment['id'] ?>">
+                                <strong><?= htmlspecialchars($comment['story_title']) ?></strong>
+                            </a>
+                        </div>
+
+                        <div class="comment_text">
+                            <?= \App\Core\Markdown::parse($comment['comment']) ?>
+                        </div>
+
+                        <div class="byline">
+                            <?php if (!empty($comment['author_avatar'])): ?>
+                                <img src="/uploads/avatars/<?= substr($comment['author_avatar'], 0, 2) ?>/<?= htmlspecialchars($comment['author_avatar']) ?>" class="avatar" alt="">
+                            <?php endif; ?>
+
+                            <a href="<?= route('user.profile', ['username' => $comment['author_name']]) ?>">
+                                <?= htmlspecialchars($comment['author_name']) ?>
+                            </a>
+
+                            <span class="divider">|</span>
+                            <span>оценка: <strong><?= (int)$comment['score'] ?></strong></span>
+
+                            <span class="divider">|</span>
+                            <span><?= htmlspecialchars(date('d.m.Y H:i', strtotime($comment['created_at']))) ?></span>
+
+                            <?php if (isset($comment['relevance'])): ?>
+                                <span class="divider">|</span>
+                                <span class="hint">релевантность: <?= round($comment['relevance'], 2) ?></span>
+                            <?php endif; ?>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            </ol>
         <?php endif; ?>
+
+    <?php else: ?>
+        <p class="hint">Ничего не найдено. Попробуйте изменить запрос.</p>
     <?php endif; ?>
 
+<?php endif; ?>

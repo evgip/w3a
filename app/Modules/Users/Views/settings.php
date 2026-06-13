@@ -1,127 +1,143 @@
-<?php $request = new \App\Core\Request(); ?>
+<?php
+$request = new \App\Core\Request();
+?>
 
-<div class="submit-form container">
+<h1>Настройки аккаунта</h1>
 
-    <!-- NEW SYSTEM NOTIFICATIONS PRESENTATION LAYER BLOCK -->
-    <div class="notif-section-wrapper">
-        <div class="notif-header-row">
-            <h4 class="notif-header-title">🔔 Центр системных уведомлений</h4>
-            <?php
-            $hasUnreadNotif = false;
-            if (!empty($notifications)) {
-                foreach ($notifications as $n) {
-                    if ((int)$n['is_read'] === 0) {
-                        $hasUnreadNotif = true;
-                        break;
-                    }
-                }
-            }
-            ?>
-            <?php if ($hasUnreadNotif): ?>
-                <form action="<?= route('account.notifications.read') ?>" method="POST" style="margin:0;">
-                    <?= $request->csrfField() ?>
-                    <button type="submit" class="tag-badge-link" style="border:none; cursor:pointer; background:#cbd5e1; color:#334155!important; padding:4px 10px;">
-                        ✓ Прочитать все
-                    </button>
-                </form>
-            <?php endif; ?>
-        </div>
+<hr>
 
-        <div class="notif-stream-list">
-            <?php if (!empty($notifications)): ?>
-                <?php foreach ($notifications as $item): ?>
-                    <?php
-                    $unreadClass = ((int)$item['is_read'] === 0) ? 'notif-unread-card' : '';
-                    $severityClass = 'notif-type-' . htmlspecialchars($item['type']);
-                    ?>
-                    <div class="notif-alert-card <?= $unreadClass ?> <?= $severityClass ?>">
-                        <span><?= htmlspecialchars($item['message']) ?></span>
-                        <span class="notif-time-stamp"><?= htmlspecialchars(date('d.m H:i', strtotime($item['created_at']))) ?></span>
-                    </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <p class="comment-empty-text notif-empty-text">У вас нет системных уведомлений. Здесь будут появляться важные сообщения о безопасности вашего аккаунта.</p>
-            <?php endif; ?>
-        </div>
-    </div>
+<!-- СИСТЕМНЫЕ УВЕДОМЛЕНИЯ -->
+<h2>Системные уведомления</h2>
 
-    <h3>🛠️ Настройки моего профиля</h3>
-    <p class="field-sub-hint">Вы можете изменить личные контактные данные, рассказать о себе и загрузить графический аватар. 150 на 150px идеальный размер.</p>
+<?php
+$hasUnreadNotif = false;
+if (!empty($notifications)) {
+    foreach ($notifications as $n) {
+        if ((int)$n['is_read'] === 0) {
+            $hasUnreadNotif = true;
+            break;
+        }
+    }
+}
+?>
 
-    <form action="<?= route('account.settings.submit') ?>" method="POST" enctype="multipart/form-data" class="auth-form form-input-text">
-        <?= $request->csrfField() ?>
-
-        <!-- БЛОК ЗАГРУЗКИ АВАТАРА -->
-        <div class="form-group-field">
-            <label>Ваш текущий аватар:</label>
-            <div class="profile-avatar-row-layout">
-                <?php if (!empty($user['avatar'])): ?>
-                    <img src="/uploads/avatars/<?= substr($user['avatar'], 0, 2) ?>/<?= htmlspecialchars($user['avatar']) ?>" class="profile-avatar-render-img" alt="Avatar">
-                <?php else: ?>
-                    <div class="profile-avatar-placeholder form-avatar-wrapper">
-                        <?= htmlspecialchars(mb_substr($user['name'], 0, 1)) ?>
-                    </div>
-                <?php endif; ?>
-                <div>
-                    <input type="file" name="avatar_file" accept="image/jpeg,image/png,image/gif">
-                    <br>
-                    <small>Рекомендуется квадратное изображение JPG, PNG или GIF. Максимум 5 МБ.</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- БЛОК ЛОГИНА (ЗАБЛОКИРОВАН ДЛЯ РЕДАКТИРОВАНИЯ) -->
-        <div class="form-group-field">
-            <label>Имя пользователя (Логин):</label>
-            <input type="text" disabled value="<?= htmlspecialchars($user['name']) ?>"><br>
-            <small class="">Имя пользователя является уникальным идентификатором и не может быть изменено самостоятельно.</small>
-        </div>
-
-        <!-- БЛОК EMAIL -->
-        <div class="form-group-field">
-            <label>Email адрес:</label>
-            <input type="email" name="email" required value="<?= htmlspecialchars($user['email']) ?>">
-        </div>
-
-        <!-- БЛОК БИОГРАФИИ -->
-        <div class="form-group-field">
-            <label>О себе (Био):</label>
-            <textarea name="bio" placeholder="Расскажите немного о себе, ваших интересах или проектах..." class="comment-input-textarea form-textarea-bio"><?= htmlspecialchars($user['bio'] ?? '') ?></textarea>
-        </div>
-
-        <!-- КНОПКА ОТПРАВКИ -->
-        <button type="submit" class="btn btn-success">
-            💾 Сохранить изменения
-        </button>
-    </form>
-
-    <div class="settings-section-divider">
-        <h3 class="settings-section-title">🔒 Изменение пароля аккаунта</h3>
-        <p class="field-sub-hint">Для повышения безопасности вашего профиля рекомендуется использовать сложный пароль из букв, цифр и спецсимволов.</p>
-
-        <form action="<?= route('account.password.submit') ?>" method="POST" class="auth-form form-input-text">
+<?php if ($hasUnreadNotif): ?>
+    <p>
+        <form action="<?= route('account.notifications.read') ?>" method="POST" class="inline-form">
             <?= $request->csrfField() ?>
-
-            <div class="form-group-field">
-                <label>Текущий пароль:</label>
-                <input type="password" name="current_password" required placeholder="Введите ваш действующий пароль">
-            </div>
-
-            <div class="form-group-field">
-                <label>Новый пароль (минимум 6 символов):</label>
-                <input type="password" name="new_password" required placeholder="Придумайте надежный пароль">
-            </div>
-
-            <div class="form-group-field">
-                <label>Подтвердите новый пароль:</label>
-                <input type="password" name="confirm_password" required placeholder="Повторите новый пароль еще раз">
-            </div>
-
-            <button type="submit" class="btn btn-success">
-                🔑 Обновить пароль
-            </button>
+            <button type="submit">✓ Прочитать все уведомления</button>
         </form>
+    </p>
+<?php endif; ?>
+
+<?php if (!empty($notifications)): ?>
+    <table class="data">
+        <tbody>
+            <?php foreach ($notifications as $item): ?>
+                <tr class="<?= ((int)$item['is_read'] === 0) ? 'unread' : '' ?>">
+                    <td>
+                        <?= htmlspecialchars($item['message']) ?>
+                        <br>
+                        <span class="hint">
+                            <?= htmlspecialchars(date('d.m.Y H:i', strtotime($item['created_at']))) ?>
+                        </span>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php else: ?>
+    <p class="hint">
+        У вас нет системных уведомлений. Здесь будут появляться важные сообщения о безопасности вашего аккаунта.
+    </p>
+<?php endif; ?>
+
+<hr>
+
+<!-- НАСТРОЙКИ ПРОФИЛЯ -->
+<h2>Настройки профиля</h2>
+
+<p class="hint">
+    Вы можете изменить личные контактные данные, рассказать о себе и загрузить графический аватар.
+    <strong>150×150px</strong> — идеальный размер.
+</p>
+
+<form action="<?= route('account.settings.submit') ?>" method="POST" enctype="multipart/form-data">
+    <?= $request->csrfField() ?>
+
+    <div class="form-field-group">
+        <label><strong>Ваш аватар</strong></label>
+        <div class="avatar-upload-container">
+            <?php if (!empty($user['avatar'])): ?>
+                <img src="/uploads/avatars/<?= substr($user['avatar'], 0, 2) ?>/<?= htmlspecialchars($user['avatar']) ?>" 
+                     class="avatar-preview" alt="Avatar">
+            <?php else: ?>
+                <div class="avatar-placeholder">
+                    <?= htmlspecialchars(mb_substr($user['name'], 0, 1)) ?>
+                </div>
+            <?php endif; ?>
+            
+            <div>
+                <input type="file" name="avatar_file" accept="image/jpeg,image/png,image/gif" class="form-input-file">
+                <p class="hint">
+                    Рекомендуется квадратное изображение JPG, PNG или GIF. Максимум 5 МБ.
+                </p>
+            </div>
+        </div>
     </div>
 
+    <div class="form-field-group">
+        <label for="username"><strong>Имя пользователя</strong></label>
+        <input type="text" id="username" class="form-input-wide" value="<?= htmlspecialchars($user['name']) ?>" disabled>
+        <p class="hint">
+            Имя пользователя является уникальным идентификатором и не может быть изменено самостоятельно.
+        </p>
+    </div>
 
-</div>
+    <div class="form-field-group">
+        <label for="email"><strong>Email адрес</strong></label>
+        <input type="email" id="email" name="email" class="form-input-wide" value="<?= htmlspecialchars($user['email']) ?>" required>
+    </div>
+
+    <div class="form-field-group">
+        <label for="bio"><strong>О себе</strong></label>
+        <textarea id="bio" name="bio" rows="4" 
+                  placeholder="Расскажите немного о себе, ваших интересах или проектах..."><?= htmlspecialchars($user['bio'] ?? '') ?></textarea>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit">💾 Сохранить изменения</button>
+    </div>
+</form>
+
+<hr>
+
+<!-- ИЗМЕНЕНИЕ ПАРОЛЯ -->
+<h2>Изменение пароля</h2>
+
+<p class="hint">
+    Для повышения безопасности вашего профиля рекомендуется использовать сложный пароль из букв, цифр и спецсимволов.
+</p>
+
+<form action="<?= route('account.password.submit') ?>" method="POST">
+    <?= $request->csrfField() ?>
+
+    <div class="form-field-group">
+        <label for="current_password"><strong>Текущий пароль</strong></label>
+        <input type="password" id="current_password" name="current_password" class="form-input-wide" required placeholder="Введите ваш действующий пароль">
+    </div>
+
+    <div class="form-field-group">
+        <label for="new_password"><strong>Новый пароль</strong></label>
+        <input type="password" id="new_password" name="new_password" class="form-input-wide" required minlength="6" placeholder="Минимум 6 символов">
+    </div>
+
+    <div class="form-field-group">
+        <label for="confirm_password"><strong>Подтвердите новый пароль</strong></label>
+        <input type="password" id="confirm_password" name="confirm_password" class="form-input-wide" required minlength="6" placeholder="Повторите новый пароль">
+    </div>
+
+    <div class="form-actions">
+        <button type="submit">🔑 Обновить пароль</button>
+    </div>
+</form>

@@ -8,7 +8,13 @@ abstract class Model
 {
     protected string $table;
     protected string $primaryKey = 'id';
-    
+ 
+    /**
+     * Флаг мягкого удаления (soft delete)
+     * Установим в true в моделях, где есть колонка deleted_at
+     */
+    protected bool $softDeletes = false;
+ 
     // Flag to control whether to include soft-deleted records in queries
     protected bool $includeTrashed = false;
 

@@ -1,143 +1,195 @@
-document.addEventListener('DOMContentLoaded', function () {
-	
-	/**
-	 * Defensive Global Form Submission Guard & Double-Click Throttle
-	 */
-	document.addEventListener('submit', function (event) {
-		const form = event.target;
-		
-		// ИСКЛЮЧЕНИЕ: Если эта форма является асинхронным голосованием, пропускаем её защиту,
-		// так как её разблокировкой управляет сам AJAX-движок в voting.js
-		if (form.action && form.action.indexOf('/vote/') !== -1) {
-			return true;
-		}
-		
-		// 1. Skip if this form is already marked as processing
-		if (form.dataset.isSubmitting === 'true') {
-			event.preventDefault();
-			return false;
-		}
+/**
+ * Интерактивные функции комментариев в стиле Lobsters
+ * - Ответ на комментарий (Reply)
+ * - Редактирование комментария (Edit)
+ * - Защита от двойной отправки форм
+ */
+document.addEventListener('DOMContentLoaded', function() {
 
-		// 2. Safely apply native browser confirm prompts to comment deletion workflows
-		if (form.classList.contains('js-comment-delete-form')) {
-			const confirmed = confirm('Вы уверены, что хотите удалить этот комментарий?');
-			if (!confirmed) {
-				event.preventDefault();
-				return false;
-			}
-		}
+    // ============================================
+    // ЗАЩИТА ОТ ДВОЙНОЙ ОТПРАВКИ ФОРМ
+    // ============================================
+    document.addEventListener('submit', function(event) {
+        const form = event.target;
 
-		// 3. Mark the form as active to completely throttle secondary click requests
-		form.dataset.isSubmitting = 'true';
+        // Исключаем формы голосования (ими управляет voting.js)
+        if (form.action && form.action.indexOf('/vote/') !== -1) {
+            return true;
+        }
 
-		// 4. Find the button inside the submitted form and disable it visually
-		const submitBtn = form.querySelector('button[type="submit"]');
-		if (submitBtn) {
-			submitBtn.disabled = true;
-			submitBtn.classList.add('btn-processing-disabled');
-		}
-	});
-	
-	
+        // Защита от повторной отправки
+        if (form.dataset.isSubmitting === 'true') {
+            event.preventDefault();
+            return false;
+        }
+
+        // Подтверждение удаления комментария
+        if (form.classList.contains('js-comment-delete-form')) {
+            const confirmed = confirm('Вы уверены, что хотите удалить этот комментарий?');
+            if (!confirmed) {
+                event.preventDefault();
+                return false;
+            }
+        }
+
+        // Блокируем форму на время отправки
+        form.dataset.isSubmitting = 'true';
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+        }
+    });
+
+    // ============================================
+    // СЕЛЕКТОРЫ ЭЛЕМЕНТОВ
+    // ============================================
     const replyButtons = document.querySelectorAll('.comment-reply-link');
-    const editButtons  = document.querySelectorAll('.comment-edit-trigger');
-    
+    const editButtons = document.querySelectorAll('.comment-edit-trigger');
     const parentIdInput = document.getElementById('form-parent-id');
-    const formTitle     = document.getElementById('comment-form-title');
-    const cancelBtn     = document.getElementById('btn-cancel-reply');
-    const commentForm   = document.getElementById('main-comment-form');
-    const textarea      = document.getElementById('form-comment-textarea');
+    const cancelBtn = document.getElementById('btn-cancel-reply');
+    const commentForm = document.getElementById('main-comment-form');
+    const textarea = document.getElementById('form-comment-textarea');
+    const formContainer = document.getElementById('comment-form-container');
 
-    // 1. ИНТЕРАКТИВНЫЙ ОТВЕТ НА КОММЕНТАРИЙ (REPLY)
-    if (commentForm) {
+    // ============================================
+    // 1. ОТВЕТ НА КОММЕНТАРИЙ (REPLY)
+    // ============================================
+    if (commentForm && replyButtons.length > 0) {
+
         replyButtons.forEach(button => {
-            button.addEventListener('click', function (e) {
+            button.addEventListener('click', function(e) {
                 e.preventDefault();
-                
-                // Закрываем открытые формы редактирования, если они есть
+
+                // Закрываем все открытые формы редактирования
                 document.querySelectorAll('.comment-dynamic-edit-form').forEach(f => f.remove());
-                document.querySelectorAll('.comment-text').forEach(t => t.style.display = 'block');
+                document.querySelectorAll('.comment_text').forEach(t => t.style.display = 'block');
 
+                // Извлекаем ID комментария из href (#reply-to-{id})
                 const commentId = this.getAttribute('href').replace('#reply-to-', '');
-                const authorName = this.closest('.comment-wrapper').querySelector('.comment-meta strong').innerText;
 
-                parentIdInput.value = commentId;
-                formTitle.innerText = `Ответ пользователю ${authorName}`;
-                cancelBtn.style.display = 'inline-block';
+                // Находим родительский комментарий (li.comment)
+                const parentComment = this.closest('li.comment');
+                if (!parentComment) return;
 
-                this.closest('.comment-node').insertBefore(commentForm, this.nextSibling);
-                textarea.focus();
+                // Извлекаем имя автора из comment_meta
+                const authorLink = parentComment.querySelector('.comment_meta a');
+                const authorName = authorLink ? authorLink.innerText : '';
+
+                // Устанавливаем parent_id
+                if (parentIdInput) {
+                    parentIdInput.value = commentId;
+                }
+
+                // Показываем кнопку отмены
+                if (cancelBtn) {
+                    cancelBtn.style.display = 'inline-block';
+                }
+
+                // Перемещаем форму под комментарий
+                parentComment.parentNode.insertBefore(commentForm, parentComment.nextSibling);
+
+                // Фокус на textarea
+                if (textarea) {
+                    textarea.focus();
+                }
             });
         });
 
-        cancelBtn.addEventListener('click', function () {
-            parentIdInput.value = '';
-            formTitle.innerText = 'Оставить комментарий';
-            cancelBtn.style.display = 'none';
-            document.querySelector('.comments-section').appendChild(commentForm);
-            textarea.value = '';
-        });
+        // Обработка кнопки "Отмена" для ответа
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                // Сбрасываем parent_id
+                if (parentIdInput) {
+                    parentIdInput.value = '';
+                }
+
+                // Скрываем кнопку отмены
+                cancelBtn.style.display = 'none';
+
+                // Возвращаем форму в исходный контейнер
+                if (formContainer) {
+                    formContainer.appendChild(commentForm);
+                }
+
+                // Очищаем textarea
+                if (textarea) {
+                    textarea.value = '';
+                }
+            });
+        }
     }
 
+    // ============================================
     // 2. ДИНАМИЧЕСКОЕ РЕДАКТИРОВАНИЕ КОММЕНТАРИЯ (EDIT)
+    // ============================================
     editButtons.forEach(button => {
-        button.addEventListener('click', function (e) {
+        button.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             const commentId = this.getAttribute('data-id');
-            const wrapper = this.closest('.comment-wrapper');
+
+            // Находим родительский комментарий (li.comment)
+            const commentLi = this.closest('li.comment');
+            if (!commentLi) return;
+
+            // Находим блок текста комментария
             const textBlock = document.getElementById(`comment-text-content-${commentId}`);
-            
-            // Если форма редактирования для этого коммента уже открыта — выходим
-            if (wrapper.querySelector('.comment-dynamic-edit-form')) return;
+            if (!textBlock) return;
+
+            // Если форма редактирования уже открыта — выходим
+            if (commentLi.querySelector('.comment-dynamic-edit-form')) return;
 
             // Скрываем текущий текст
             textBlock.style.display = 'none';
 
-            // Извлекаем чистый текст для формы
-            const currentText = textBlock.innerHTML.replace(/<br\s*\/?>/mg, "\n").trim();
+            // Извлекаем исходный Markdown из data-raw
+            const currentText = textBlock.getAttribute('data-raw') || '';
 
             // Извлекаем CSRF токен из основной формы
-            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+            const csrfInput = document.querySelector('input[name="csrf_token"]');
+            const csrfToken = csrfInput ? csrfInput.value : '';
 
-            // Создаем динамическую форму редактирования
+            // Создаём динамическую форму редактирования
             const editForm = document.createElement('form');
             editForm.action = `/comments/${commentId}/edit`;
             editForm.method = 'POST';
-            editForm.className = 'comment-dynamic-edit-form comment-edit-form-node';
+            editForm.className = 'comment-dynamic-edit-form';
 
             editForm.innerHTML = `
-                <input type="hidden" name="csrf_token" value="${csrfToken}">
-                <textarea name="comment_text" required class="comment-input-textarea" style="min-height:70px; margin-bottom:5px;">${currentText}</textarea>
-                <div style="display:flex; gap:10px;">
-                    <button type="submit" class="btn-submit-comment" style="padding:5px 10px; font-size:12px;">Сохранить</button>
-                    <button type="button" class="btn-cancel-reply-node comment-edit-cancel" style="padding:5px 10px; font-size:12px;">Отмена</button>
+                <input type="hidden" name="csrf_token" value="${escapeHtml(csrfToken)}">
+                <textarea name="comment_text" required>${escapeHtml(currentText)}</textarea>
+                <div class="comment_actions">
+                    <button type="submit">Сохранить</button>
+                    <span class="divider">|</span>
+                    <button type="button" class="comment-edit-cancel btn-link">Отмена</button>
                 </div>
             `;
 
-            // Вставляем форму прямо под скрытый блок текста
+            // Вставляем форму после блока текста
             textBlock.parentNode.insertBefore(editForm, textBlock.nextSibling);
 
-            // Обработка кнопки "Отмена" внутри формы редактирования
+            // Фокус на textarea
+            const editTextarea = editForm.querySelector('textarea');
+            if (editTextarea) {
+                editTextarea.focus();
+            }
+
+            // Обработка кнопки "Отмена"
             editForm.querySelector('.comment-edit-cancel').addEventListener('click', function() {
                 editForm.remove();
                 textBlock.style.display = 'block';
             });
         });
     });
-	
-	
-    // 3. SECURE CSP CONFIRMATION INTERCEPTORS
-    document.addEventListener('submit', function (event) {
-        // Intercept comment soft-deletion form triggers safely
-        if (event.target && event.target.classList.contains('js-comment-delete-form')) {
-            const confirmed = confirm('Вы уверены, что хотите удалить этот комментарий?');
-            if (!confirmed) {
-                event.preventDefault(); // Halt the submission process if the user cancels
-            }
-        }
-    });
-	
-});
 
- 
+    // ============================================
+    // ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: Экранирование HTML
+    // ============================================
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+});

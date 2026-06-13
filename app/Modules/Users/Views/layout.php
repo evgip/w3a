@@ -87,16 +87,7 @@
 		</div>
 	</header>
 
-	<?php if (\App\Core\Session::hasFlash('success')): ?>
-		<div class="alert alert-success">
-			<strong>Успех!</strong> <?= htmlspecialchars(\App\Core\Session::getFlash('success')) ?>
-		</div>
-	<?php endif; ?>
-	<?php if (\App\Core\Session::hasFlash('error')): ?>
-		<div class="alert alert-danger">
-			<strong>Ошибка!</strong> <?= htmlspecialchars(\App\Core\Session::getFlash('error')) ?>
-		</div>
-	<?php endif; ?>
+	<?= render_flashes() ?>
 
 	<main>
 		<?= $content ?>

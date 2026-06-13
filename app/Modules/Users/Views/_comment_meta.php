@@ -1,0 +1,37 @@
+<?php
+/**
+ * @var array $comment       - данные комментария
+ * @var int   $currentUserId - ID текущего пользователя
+ * @var bool  $isAdmin       - является ли текущий пользователь админом
+ */
+$isDeleted = !empty($comment['deleted_at']);
+$isOwner = ((int)$comment['user_id'] === $currentUserId);
+?>
+<div class="comment_meta">
+    <?php if (!$isDeleted): ?>
+        <?php if (!empty($comment['author_avatar'])): ?>
+            <img src="/uploads/avatars/<?= substr($comment['author_avatar'], 0, 2) ?>/<?= htmlspecialchars($comment['author_avatar']) ?>" class="avatar" alt="">
+        <?php endif; ?>
+
+        <a href="<?= route('user.profile', ['username' => $comment['author_name']]) ?>" <?= $isOwner ? 'class="user_is_author"' : '' ?>>
+            <?= htmlspecialchars($comment['author_name']) ?>
+        </a>
+
+        <span class="divider">|</span>
+        <span title="<?= htmlspecialchars(date('d.m.Y H:i:s', strtotime($comment['created_at']))) ?>">
+            <?= htmlspecialchars(date('d.m.Y H:i', strtotime($comment['created_at']))) ?>
+        </span>
+
+        <?php if (!empty($comment['updated_at']) && $comment['updated_at'] !== $comment['created_at']): ?>
+            <span class="hint">(изменен)</span>
+        <?php endif; ?>
+    <?php else: ?>
+        <em>[Комментарий удален]</em>
+        <?php if ($isOwner || $isAdmin): ?>
+            <form action="/comments/<?= (int)$comment['id'] ?>/restore" method="POST" class="inline-form">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn-link">[Восстановить]</button>
+            </form>
+        <?php endif; ?>
+    <?php endif; ?>
+</div>
