@@ -4,8 +4,7 @@ $voteModel = new \App\Modules\Votes\Models\Vote();
 $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
 $isAdmin = \App\Core\Auth::isAdmin();
 
-$config = require dirname(__DIR__, 3) . '/Config/config.php';
-$minKarmaForDownvote = (int)($config['app']['min_karma_for_downvote'] ?? 10);
+$minKarmaForDownvote = config_int('config.app.min_karma_for_downvote', 10);
 
 $canUserDownvote = false;
 if ($currentUserId > 0) {

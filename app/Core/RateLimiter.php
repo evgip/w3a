@@ -26,9 +26,10 @@ class RateLimiter
         $rateLimitModel = new RateLimit();
 
         // 1. Garbage Collection: Prune database rows with a 5% lottery probability
-        if (random_int(1, 100) <= 5) {
-            $rateLimitModel->clearStaleLogs($window);
-        }
+		$gcProbability = config_int('rate_limit.gc_probability', 5);
+		if (random_int(1, 100) <= $gcProbability) {
+			$rateLimitModel->clearStaleLogs($window);
+		}
 
         // 2. Fetch current hit counters from our clean model layer
         $currentRequests = $rateLimitModel->getRequestCount($ip, $action, $window);
@@ -64,8 +65,10 @@ class RateLimiter
         ]);
 		
         http_response_code(429); // Too Many Requests
-        header('Retry-After: 60');
-        
+		
+		$retryAfter = config_int('rate_limit.retry_after', 60);
+		header("Retry-After: {$retryAfter}");
+		
         // 100% CSP compliant template framework - zero style="..." parameters used
         echo '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>429 Too Many Requests</title>';
         echo '<link rel="stylesheet" href="/css/app.min.css"></head><body class="blocked-error-body">';

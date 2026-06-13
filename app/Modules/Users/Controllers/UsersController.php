@@ -104,7 +104,8 @@ class UsersController extends Controller
         if ($user && password_verify($password, $user['password'])) {
 			
             // CRITICAL STATUS ENFORCEMENT CHECK: Block inactive user logins
-            if ((int)$user['is_active'] !== 1) {
+            $activeStatus = config_int('user.status_active', 1);
+			if ((int)$user['is_active'] !== $activeStatus) {
                 \App\Core\Session::setFlash('error', 'Ваш аккаунт еще не активирован. Пожалуйста, перейдите по ссылке из приветственного письма на Email.');
                 header('Location: /login');
                 exit;
@@ -178,12 +179,15 @@ class UsersController extends Controller
 		}
 		// --- КОНЕЦ БЛОКА ЗАЩИТЫ ---
 		
-		// 2. Валидация входных данных (ИСПРАВЛЕНО: 'name' → 'username')
+		// 2. Валидация входных данных
 		$validator = new Validator();
+		$minNameLength = config_int('validation.name_min_length', 2);
+		$minPasswordLength = config_int('validation.password_min_length', 6);
+
 		$isValid = $validator->validate($_POST, [
-			'username' => 'required|min:2',
+			'name' => "required|min:{$minNameLength}",
 			'email' => 'required|email|unique:users,email',
-			'password' => 'required|min:6'
+			'password' => "required|min:{$minPasswordLength}"
 		]);
 		
 		if (!$isValid) {
@@ -234,12 +238,10 @@ class UsersController extends Controller
 			$activationModel = new \App\Modules\Users\Models\EmailActivation();
 			$token = $activationModel->createActivationToken($newUserId);
 			
-			$config = require dirname(__DIR__, 3) . '/Config/config.php';
-			$baseUrl = rtrim($config['app']['url'] ?? 'http://soc.local', '/');
-			$activationLink = $baseUrl . "/register/activate/" . $token;
+			$activationLink = config('config.app.url') . "/register/activate/" . $token;
 			
 			// Формирование письма
-			$subject = \App\Core\Lang::format('email_activation_subject', [$config['app']['name']]);
+			$subject = \App\Core\Lang::format('email_activation_subject', [htmlspecialchars(app_name())]);
 			$htmlBody = \App\Core\Lang::format('email_activation_body', [
 				htmlspecialchars($username),
 				$activationLink
@@ -359,11 +361,14 @@ class UsersController extends Controller
                 exit;
             }
 
-            if ($_FILES['avatar_file']['size'] > 5242880) { // Увеличим лимит до 5 МБ, так как PHP сам сожмет картинку
-                \App\Core\Session::setFlash('error', 'Размер загружаемого файла не должен превышать 5 МБ.');
-                header('Location: ' . route('account.settings'));
-                exit;
-            }
+			$maxAvatarSize = config_int('uploads.avatar_max_size', 5242880);
+			$maxAvatarSizeMb = config_int('uploads.avatar_max_size_mb', 5);
+
+			if ($_FILES['avatar_file']['size'] > $maxAvatarSize) {
+				\App\CoreSession::setFlash('error', "Размер загружаемого файла не должен превышать {$maxAvatarSizeMb} МБ.");
+				header('Location: ' . route('account.settings'));
+				exit;
+			}
 
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mimeType = finfo_file($finfo, $fileTmpPath);
@@ -579,12 +584,10 @@ class UsersController extends Controller
             $token = bin2hex(random_bytes(32));
             (new \App\Modules\Users\Models\PasswordReset())->createToken($email, $token);
 
-            $config = require dirname(__DIR__, 3) . '/Config/config.php';
-            $baseUrl = rtrim($config['app']['url'] ?? 'http://soc.local', '/');
-            $resetLink = $baseUrl . "/password/reset/" . $token;
+            $resetLink = config('config.app.url') . "/password/reset/" . $token;
 
             // --- CLEAN ARCHITECTURE REFACTOR: FETCH LOCALIZED RECOVERY CONTENT ---
-            $subject  = \App\Core\Lang::get('email_recovery_subject', [$config['app']['name']]);
+            $subject  = \App\Core\Lang::get('email_recovery_subject', [htmlspecialchars(app_name())]);
             $htmlBody = \App\Core\Lang::format('email_recovery_body', [
                 htmlspecialchars($user['name']), 
                 $resetLink

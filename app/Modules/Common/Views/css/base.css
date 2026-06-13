@@ -12,15 +12,15 @@
     --base-fg: 51 51 51;
 
     /* Контрастность текста */
-    --opacity-fg: 100%;
-    --opacity-fg-contrast-10: 84%;
-    --opacity-fg-contrast-7-5: 75%;
-    --opacity-fg-contrast-6: 67%;
-    --opacity-fg-contrast-5: 63%;
-    --opacity-fg-contrast-4-5: 59%;
+    --opacity-fg: rgb(var(--base-fg) / 100%);
+    --opacity-fg-contrast-10: rgb(var(--base-fg) / 84%);
+    --opacity-fg-contrast-7-5: rgb(var(--base-fg) / 75%);
+    --opacity-fg-contrast-6: rgb(var(--base-fg) / 67%);
+    --opacity-fg-contrast-5: rgb(var(--base-fg) / 63%);
+    --opacity-fg-contrast-4-5: rgb(var(--base-fg) / 59%);
 
     /* Акцентные цвета */
-    --color-bg-accent: rgb(172 19 13);        /* фирменный красный Lobsters */
+    --color-bg-accent: rgb(172 19 13);        /* красный  */
     --color-fg-link: rgb(28 89 209);          /* синий для ссылок */
     --color-fg-link-visited: rgb(95 134 212);
     --color-fg-accent: rgb(172 19 13);        /* красный для акцентов */
@@ -107,6 +107,7 @@ html {
     overflow-y: scroll;
     -moz-text-size-adjust: none;
     -webkit-text-size-adjust: none;
+	scroll-behavior: smooth; /* Плавная прокрутка для всех якорей */
 }
 
 body, textarea, input, button {
@@ -296,6 +297,7 @@ div.voters {
 
 .upvoter:hover {
     color: var(--color-fg-accent);
+	background: none;
 }
 
 /* Активное состояние (когда проголосовали) */
@@ -606,6 +608,26 @@ div.comment_actions .divider {
     font-style: italic;
     color: var(--opacity-fg-contrast-4-5);
 }
+
+/* Подсветка комментария при переходе по якорю */
+.comment:target {
+    background-color: #fff3cd;
+    animation: highlight-fade 3s ease-in-out;
+    scroll-margin-top: 80px;
+}
+
+@keyframes highlight-fade {
+    0% { 
+        background-color: #fff3cd;
+        box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+    }
+    100% { 
+        background-color: transparent;
+        box-shadow: none;
+    }
+}
+
+
 
 /* ---------- Голосование в комментариях ---------- */
 .comment_votes {

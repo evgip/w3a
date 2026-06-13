@@ -41,8 +41,7 @@ class VotesController extends Controller
 
         // --- ЛОБСТЕР-ЗАЩИТА КАРМЫ ДЛЯ ДИЗЛАЙКОВ ---
         if ($direction === 'down') {
-            $config = require dirname(__DIR__, 3) . '/Config/config.php';
-            $minKarma = (int)($config['app']['min_karma_for_downvote'] ?? 10);
+            $minKarma = config_int('config.app.min_karma_for_downvote', 10);
 
             $userModel = new \App\Modules\Users\Models\User();
             $userKarma = $userModel->getUserKarma($userId);

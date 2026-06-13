@@ -23,7 +23,7 @@ class StoriesController extends Controller
 		$currentPage = (int)$request->getParams('page', 1);
 		if ($currentPage < 1) $currentPage = 1;
 
-		$perPage = 15;
+		$perPage = config_int('constants.pagination.stories_per_page', 15);
 		$offset = ($currentPage - 1) * $perPage;
 
 		$storyModel = new Story();
@@ -88,7 +88,8 @@ class StoriesController extends Controller
         $request->validateCsrf();
 
         $validator = new Validator();
-        $isValid = $validator->validate($_POST, ['title' => 'required|min:5']);
+		$minTitleLength = config_int('validation.title_min_length', 5);
+		$isValid = $validator->validate($_POST, ['title' => "required|min:{$minTitleLength}"]);
 
         $title = $request->getParams('title');
         $url = $request->getParams('url') ?: null;
@@ -280,60 +281,64 @@ class StoriesController extends Controller
         exit;
     }	
 	
- /**
+	/**
      * Process new comment submissions (POST /comments/create)
      */
-    public function addComment(): void
-    {
-        // 1. Enforce active authentication
-        if (!\App\Core\Auth::check()) {
-            \App\Core\Session::setFlash('error', 'Пожалуйста, войдите в систему, чтобы оставить комментарий.');
-            header('Location: /login');
-            exit;
-        }
-
-        $request = new Request();
-        $request->validateCsrf(); // Anti-CSRF security check
-
-        // 2. Clean incoming tracking parameters
-        $storyId  = (int)$request->getParams('story_id');
-        $parentId = $request->getParams('parent_id') !== '' ? (int)$request->getParams('parent_id') : null;
-        $commentText = $request->getParams('comment_text');
-
-        // 3. Perform server-side field length validation checks
-        $validator = new Validator();
-        $isValid = $validator->validate(['comment_text' => $commentText], [
-            'comment_text' => 'required|min:2'
-        ]);
-
-        if (!$isValid) {
-            \App\Core\Session::setFlash('error', 'Текст комментария должен содержать не менее 2 символов.');
-            header('Location: /story/' . $storyId);
-            exit;
-        }
-
-        // 4. Trigger database storage transaction operations through the Comment model
-        $commentModel = new \App\Modules\Stories\Models\Comment();
-        $success = $commentModel->saveComment([
-            'story_id'  => $storyId,
-            'user_id'   => (int)$_SESSION['user_id'],
-            'parent_id' => $parentId,
-            'comment'   => trim($commentText)
-        ]);
-
-        if ($success) {
-            \App\Core\Audit::log('comment.created', 'Пользователь оставил комментарий к истории', [
-                'story_id' => $storyId,
-                'parent_id' => $parentId
-            ]);
-            \App\Core\Session::setFlash('success', 'Ваш комментарий успешно опубликован!');
-        } else {
-            \App\Core\Session::setFlash('error', 'Произошла непредвиденная ошибка при публикации комментария.');
-        }
-
-        header('Location: /story/' . $storyId);
-        exit;
-    }
+	public function addComment(): void
+	{
+		// 1. Enforce active authentication
+		if (!\App\Core\Auth::check()) {
+			AppCoreSession::setFlash('error', 'Пожалуйста, войдите в систему, чтобы оставить комментарий.');
+			header('Location: /login');
+			exit;
+		}
+		
+		$request = new Request();
+		$request->validateCsrf();
+		
+		// 2. Clean incoming tracking parameters
+		$storyId = (int)$request->getParams('story_id');
+		$parentId = $request->getParams('parent_id') !== '' ? (int)$request->getParams('parent_id') : null;
+		$commentText = $request->getParams('comment_text');
+		
+		// 3. Perform server-side field length validation checks
+		$validator = new Validator();
+		$minCommentLength = config_int('constants.validation.comment_min_length', 2);
+		$isValid = $validator->validate(['comment_text' => $commentText], [
+			'comment_text' => "required|min:{$minCommentLength}"
+		]);
+		
+		if (!$isValid) {
+			AppCoreSession::setFlash('error', "Текст комментария должен содержать не менее {$minCommentLength} символов.");
+			header('Location: /story/' . $storyId);
+			exit;
+		}
+		
+		// 4. Trigger database storage transaction operations through the Comment model
+		$commentModel = new \App\Modules\Stories\Models\Comment();
+		$commentId = $commentModel->saveComment([
+			'story_id' => $storyId,
+			'user_id' => (int)$_SESSION['user_id'],
+			'parent_id' => $parentId,
+			'comment' => trim($commentText)
+		]);
+		
+		if ($commentId > 0) {
+			\App\Core\Audit::log('comment.created', 'Пользователь оставил комментарий к истории', [
+				'story_id' => $storyId,
+				'parent_id' => $parentId
+			]);
+			\App\Core\Session::setFlash('success', 'Ваш комментарий успешно опубликован!');
+			
+			// Редирект к созданному комментарию с якорем
+			header('Location: ' . comment_url($storyId, $commentId));
+		} else {
+			\App\Core\Session::setFlash('error', 'Произошла непредвиденная ошибка при публикации комментария.');
+			header('Location: /story/' . $storyId);
+		}
+		
+		exit;
+	}
 	
     /**
      * Редактирование текста комментария (POST /comments/{id}/edit)

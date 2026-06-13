@@ -62,7 +62,7 @@ class MessagesController extends Controller
             $currentPage = 1;
         }
 
-        $perPage = 15; // Load messages in batches of 15 rows
+        $perPage = config_int('pagination.messages_per_page', 15);; // Load messages in batches of 15 rows
         $totalMessages = $msgModel->getTotalMessageCount($conversationId);
         $totalPages = (int)ceil($totalMessages / $perPage);
         if ($totalPages < 1) {
