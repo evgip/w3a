@@ -30,7 +30,7 @@
                 <tr class="<?= $isArchived ? 'tr-archived' : '' ?>">
                     <td><?= (int)$user['id'] ?></td>
                     <td>
-                        <strong><?= htmlspecialchars($user['name'] ?? 'Unknown') ?></strong>
+                        <strong><?= e($user['name'] ?? 'Unknown') ?></strong>
                         <?php if ($isSelf): ?>
                             <small class="self-account-badge">(Вы)</small>
                         <?php endif; ?>
@@ -38,7 +38,7 @@
                             <span class="archive-date-meta">[В АРХИВЕ]</span>
                         <?php endif; ?>
                     </td>
-                    <td><?= htmlspecialchars($user['email'] ?? '') ?></td>
+                    <td><?= e($user['email'] ?? '') ?></td>
                     <td>
                         <?php if ($isArchived): ?>
                             <span class="badge">Архивирован</span>
@@ -50,10 +50,10 @@
                     </td>
                     <td>
                         <small class="text-muted">
-                            <?= htmlspecialchars($user['created_at'] ?? '') ?>
+                            <?= e($user['created_at'] ?? '') ?>
                         </small>
                         <?php if ($isArchived): ?>
-                            <br><small class="archive-date-meta">Архив: <?= htmlspecialchars(date('d.m.Y H:i', strtotime($user['deleted_at']))) ?></small>
+                            <br><small class="archive-date-meta">Архив: <?= e(date('d.m.Y H:i', strtotime($user['deleted_at']))) ?></small>
                         <?php endif; ?>
                     </td>
 					

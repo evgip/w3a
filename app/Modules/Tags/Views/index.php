@@ -1,4 +1,4 @@
-<h1><?= htmlspecialchars($title) ?></h1>
+<h1><?= e($title) ?></h1>
 
 <?php if (empty($tags)): ?>
     <p class="hint">Теги ещё не созданы.</p>
@@ -18,16 +18,16 @@
 
     <?php foreach ($groupedTags as $category => $categoryTags): ?>
         
-        <h2><?= htmlspecialchars($category) ?></h2>
+        <h2><?= e($category) ?></h2>
         
         <ul>
             <?php foreach ($categoryTags as $tag): ?>
                 <li>
                     <a href="<?= route('tags.filter', ['tagname' => $tag['tag']]) ?>" class="tag">
-                        <?= htmlspecialchars($tag['tag']) ?>
+                        <?= e($tag['tag']) ?>
                     </a>
                     <?php if (!empty($tag['description'])): ?>
-                        — <?= htmlspecialchars($tag['description']) ?>
+                        — <?= e($tag['description']) ?>
                     <?php endif; ?>
                 </li>
             <?php endforeach; ?>

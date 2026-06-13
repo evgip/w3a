@@ -5,7 +5,7 @@
 <div class="admin-edit-panel-card">
     <h3>📝 Корректировка параметров тега</h3>
     <p class="admin-subtitle-desc">
-        Изменение настроек тега <strong># <?= htmlspecialchars($tagItem['tag']) ?></strong>. 
+        Изменение настроек тега <strong># <?= e($tagItem['tag']) ?></strong>. 
         Перенос в другую категорию мгновенно перестроит его положение на странице каталога.
     </p>
     
@@ -14,7 +14,7 @@
 
         <div class="admin-form-group">
             <label>Имя тега (Слуг):</label>
-            <input type="text" name="tag" required value="<?= htmlspecialchars($tagItem['tag']) ?>">
+            <input type="text" name="tag" required value="<?= e($tagItem['tag']) ?>">
             <small class="text-muted">Только латиница в нижнем регистре, без пробелов (например: php).</small>
         </div>
 
@@ -35,7 +35,7 @@
 
         <div class="admin-form-group">
             <label>Описание назначения:</label>
-            <input type="text" name="description" value="<?= htmlspecialchars($tagItem['description'] ?? '') ?>" placeholder="Короткое описание темы...">
+            <input type="text" name="description" value="<?= e($tagItem['description'] ?? '') ?>" placeholder="Короткое описание темы...">
         </div>
 
         <!-- CLEAN CLASS-DRIVEN CHECKBOX ROW -->

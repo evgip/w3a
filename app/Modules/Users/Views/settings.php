@@ -36,10 +36,10 @@ if (!empty($notifications)) {
             <?php foreach ($notifications as $item): ?>
                 <tr class="<?= ((int)$item['is_read'] === 0) ? 'unread' : '' ?>">
                     <td>
-                        <?= htmlspecialchars($item['message']) ?>
+                        <?= e($item['message']) ?>
                         <br>
                         <span class="hint">
-                            <?= htmlspecialchars(date('d.m.Y H:i', strtotime($item['created_at']))) ?>
+                            <?= e(date('d.m.Y H:i', strtotime($item['created_at']))) ?>
                         </span>
                     </td>
                 </tr>
@@ -69,11 +69,11 @@ if (!empty($notifications)) {
         <label><strong>Ваш аватар</strong></label>
         <div class="avatar-upload-container">
             <?php if (!empty($user['avatar'])): ?>
-                <img src="/uploads/avatars/<?= substr($user['avatar'], 0, 2) ?>/<?= htmlspecialchars($user['avatar']) ?>" 
+                <img src="/uploads/avatars/<?= substr($user['avatar'], 0, 2) ?>/<?= e($user['avatar']) ?>" 
                      class="avatar-preview" alt="Avatar">
             <?php else: ?>
                 <div class="avatar-placeholder">
-                    <?= htmlspecialchars(mb_substr($user['name'], 0, 1)) ?>
+                    <?= e(mb_substr($user['name'], 0, 1)) ?>
                 </div>
             <?php endif; ?>
             
@@ -88,7 +88,7 @@ if (!empty($notifications)) {
 
     <div class="form-field-group">
         <label for="username"><strong>Имя пользователя</strong></label>
-        <input type="text" id="username" class="form-input-wide" value="<?= htmlspecialchars($user['name']) ?>" disabled>
+        <input type="text" id="username" class="form-input-wide" value="<?= e($user['name']) ?>" disabled>
         <p class="hint">
             Имя пользователя является уникальным идентификатором и не может быть изменено самостоятельно.
         </p>
@@ -96,13 +96,13 @@ if (!empty($notifications)) {
 
     <div class="form-field-group">
         <label for="email"><strong>Email адрес</strong></label>
-        <input type="email" id="email" name="email" class="form-input-wide" value="<?= htmlspecialchars($user['email']) ?>" required>
+        <input type="email" id="email" name="email" class="form-input-wide" value="<?= e($user['email']) ?>" required>
     </div>
 
     <div class="form-field-group">
         <label for="bio"><strong>О себе</strong></label>
         <textarea id="bio" name="bio" rows="4" 
-                  placeholder="Расскажите немного о себе, ваших интересах или проектах..."><?= htmlspecialchars($user['bio'] ?? '') ?></textarea>
+                  placeholder="Расскажите немного о себе, ваших интересах или проектах..."><?= e($user['bio'] ?? '') ?></textarea>
     </div>
 
     <div class="form-actions">

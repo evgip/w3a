@@ -10,16 +10,16 @@ $isOwner = ((int)$comment['user_id'] === $currentUserId);
 <div class="comment_meta">
     <?php if (!$isDeleted): ?>
         <?php if (!empty($comment['author_avatar'])): ?>
-            <img src="/uploads/avatars/<?= substr($comment['author_avatar'], 0, 2) ?>/<?= htmlspecialchars($comment['author_avatar']) ?>" class="avatar" alt="">
+            <img src="/uploads/avatars/<?= substr($comment['author_avatar'], 0, 2) ?>/<?= e($comment['author_avatar']) ?>" class="avatar" alt="">
         <?php endif; ?>
 
         <a href="<?= route('user.profile', ['username' => $comment['author_name']]) ?>" <?= $isOwner ? 'class="user_is_author"' : '' ?>>
-            <?= htmlspecialchars($comment['author_name']) ?>
+            <?= e($comment['author_name']) ?>
         </a>
 
         <span class="divider">|</span>
-        <span title="<?= htmlspecialchars(date('d.m.Y H:i:s', strtotime($comment['created_at']))) ?>">
-            <?= htmlspecialchars(date('d.m.Y H:i', strtotime($comment['created_at']))) ?>
+        <span title="<?= e(date('d.m.Y H:i:s', strtotime($comment['created_at']))) ?>">
+            <?= e(date('d.m.Y H:i', strtotime($comment['created_at']))) ?>
         </span>
 
         <?php if (!empty($comment['updated_at']) && $comment['updated_at'] !== $comment['created_at']): ?>

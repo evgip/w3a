@@ -328,7 +328,6 @@ li .link {
 
 li .link a {
     text-decoration: none;
-    color: var(--color-fg);
 }
 
 li .link a:hover {
@@ -356,7 +355,7 @@ div.story_content {
 }
 
 /* ---------- Теги ---------- */
-a.tag {
+.tag {
     background-color: var(--color-tag-bg);
     border: 1px solid var(--color-tag-border);
     border-radius: 5px;
@@ -368,11 +367,15 @@ a.tag {
     white-space: nowrap;
     display: inline-block;
     vertical-align: middle;
+	line-height: 1.2em;
+	font-weight: normal;
 }
 
-a.tag:hover {
+.tag:hover {
     opacity: 0.8;
 }
+
+.tag:visited { color: var(--opacity-fg-contrast-10); }
 
 /* ---------- Метаданные (byline) ---------- */
 li .byline {
@@ -415,56 +418,6 @@ img.avatar {
     max-width: 600px;
     display: block;
 }
-
-.tag-checkbox-inline {
-    display: inline-block;
-    margin-right: 1em;
-    margin-top: 0.5em;
-    cursor: pointer;
-}
-
-.tag-checkbox-inline input[type="checkbox"] {
-    margin-right: 0.3em;
-    cursor: pointer;
-}
-
-/* ---------- Чекбоксы тегов (как в оригинале) ---------- */
-.tag-checkbox-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3em;
-    padding: 0.2em 0.6em;
-    margin-right: 0.5em;
-    margin-top: 0.3em;
-    background-color: var(--color-box-bg-shaded);
-    border: 1px solid var(--color-box-border);
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    user-select: none;
-    font-size: 0.9em;
-}
-
-.tag-checkbox-item:hover {
-    background-color: var(--color-button-bg-shaded);
-    border-color: var(--color-box-border-focus);
-}
-
-.tag-checkbox-item:has(input:checked) {
-    background-color: var(--color-fg-accent);
-    border-color: var(--color-fg-accent);
-    color: white;
-}
-
-.tag-checkbox-item input[type="checkbox"] {
-    margin: 0;
-    cursor: pointer;
-}
-
-.tag-checkbox-item span {
-    font-size: 0.9em;
-}
-
 
 .form-actions {
     margin-top: 1em;

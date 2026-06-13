@@ -45,7 +45,7 @@ class Lang
     public static function loadModuleLang(string $moduleName): void
     {
         $moduleLangPath = dirname(__DIR__) . "/Modules/{$moduleName}/Lang/" . self::$currentLang . ".php";
-        
+
         if (file_exists($moduleLangPath)) {
             $moduleTrans = require $moduleLangPath;
             // Сливаем массивы перевода, сохраняя ключи
@@ -80,7 +80,7 @@ class Lang
 
         return $text;
     }
-	
+
     /**
      * Fetch a localized string and format it with dynamic parameters safely
      * 
@@ -92,7 +92,7 @@ class Lang
     {
         // Fall back to your core get method logic to pull the template text base
         $template = self::get($key);
-        
+
         if (empty($args)) {
             return $template;
         }

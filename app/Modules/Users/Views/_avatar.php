@@ -10,10 +10,10 @@
 $sizeClass = $sizeClass ?? '';
 
 if (!empty($filename)): ?>
-    <img src="/uploads/avatars/<?= substr($filename, 0, 2) ?>/<?= htmlspecialchars($filename) ?>" 
+    <img src="/uploads/avatars/<?= substr($filename, 0, 2) ?>/<?= e($filename) ?>" 
          class="avatar <?= $sizeClass ?>" alt="">
 <?php else: ?>
     <span class="avatar avatar-placeholder <?= $sizeClass ?>">
-        <?= htmlspecialchars(mb_substr($name ?? '?', 0, 1)) ?>
+        <?= e(mb_substr($name ?? '?', 0, 1)) ?>
     </span>
 <?php endif; ?>

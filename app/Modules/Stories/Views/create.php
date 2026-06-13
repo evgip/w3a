@@ -10,7 +10,7 @@ $request = new \App\Core\Request();
 
 <?php if (!empty($error)): ?>
     <div class="flash-error">
-        <?= htmlspecialchars($error) ?>
+        <?= e($error) ?>
     </div>
 <?php endif; ?>
 
@@ -20,7 +20,7 @@ $request = new \App\Core\Request();
     <div class="form-field-group">
         <label for="story-title"><strong>Заголовок</strong></label>
         <input type="text" id="story-title" name="title" 
-               value="<?= htmlspecialchars($old['title'] ?? '') ?>" 
+               value="<?= e($old['title'] ?? '') ?>" 
                required placeholder="Введите заголовок публикации"
                class="form-input-wide">
     </div>
@@ -31,7 +31,7 @@ $request = new \App\Core\Request();
             <span class="form-field-hint-inline">— необязательно</span>
         </label>
         <input type="url" id="story-url" name="url" 
-               value="<?= htmlspecialchars($old['url'] ?? '') ?>"
+               value="<?= e($old['url'] ?? '') ?>"
                placeholder="https://example.com/article"
                class="form-input-wide">
     </div>
@@ -39,7 +39,7 @@ $request = new \App\Core\Request();
     <div class="form-field-group">
         <label><strong>Теги</strong></label>
         <p class="hint">Выберите один или несколько тегов, соответствующих теме публикации:</p>
-        
+	
         <?php foreach ($availableTags as $tagItem): ?>
             <?php 
             $isBound = isset($old['tags']) && in_array((int)$tagItem['id'], $old['tags']); 
@@ -47,7 +47,7 @@ $request = new \App\Core\Request();
             <label class="tag-checkbox-item">
                 <input type="checkbox" name="tags[]" value="<?= (int)$tagItem['id'] ?>" 
                        <?= $isBound ? 'checked' : '' ?>>
-                <span><?= htmlspecialchars($tagItem['tag']) ?></span>
+                <span><?= e($tagItem['tag']) ?></span>
             </label>
         <?php endforeach; ?>
     </div>
@@ -56,7 +56,7 @@ $request = new \App\Core\Request();
         <label for="story-description"><strong>Текст обсуждения</strong></label>
         <p class="hint">Поддерживается Markdown-разметка: **жирный**, *курсив*, [ссылки](url), `код`</p>
         <textarea id="story-description" name="description" rows="8" 
-                  placeholder="Сопроводительный текст, комментарии или дополнительный контекст..."><?= htmlspecialchars($old['description'] ?? '') ?></textarea>
+                  placeholder="Сопроводительный текст, комментарии или дополнительный контекст..."><?= e($old['description'] ?? '') ?></textarea>
     </div>
 
     <div class="form-actions">

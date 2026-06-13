@@ -1,20 +1,20 @@
 <div class="admin-edit-panel-card">
-    <h3>🔧 Панель модерации пользователя # <?= htmlspecialchars($userItem['name']) ?></h3>
+    <h3>🔧 Панель модерации пользователя # <?= e($userItem['name']) ?></h3>
     
     <!-- AVATAR MODERATION INTERACTION CONTROL CARD -->
     <div class="admin-avatar-moderation-row">
         <div class="admin-avatar-meta-group">
             <?php if (!empty($userItem['avatar'])): ?>
 			
-				<img src="/uploads/avatars/<?= substr($user['avatar'], 0, 2) ?>/<?= htmlspecialchars($user['avatar']) ?>" class="profile-avatar-render-img" alt="Avatar">
+				<img src="/uploads/avatars/<?= substr($user['avatar'], 0, 2) ?>/<?= e($user['avatar']) ?>" class="profile-avatar-render-img" alt="Avatar">
 				
                 <div class="admin-avatar-text-block">
                     <strong>Пользовательский аватар установлен</strong>
-                    <small>Файл: <?= htmlspecialchars($userItem['avatar']) ?></small>
+                    <small>Файл: <?= e($userItem['avatar']) ?></small>
                 </div>
             <?php else: ?>
                 <div class="profile-avatar-placeholder">
-                    <?= htmlspecialchars(mb_substr($userItem['name'], 0, 1)) ?>
+                    <?= e(mb_substr($userItem['name'], 0, 1)) ?>
                 </div>
                 <div class="admin-avatar-text-block">
                     <strong>Стандартный аватар-заглушка</strong>
@@ -39,7 +39,7 @@
 
         <div class="admin-form-group">
             <label>Email адрес пользователя:</label>
-            <input type="email" name="email" required value="<?= htmlspecialchars($userItem['email']) ?>">
+            <input type="email" name="email" required value="<?= e($userItem['email']) ?>">
         </div>
 
         <div class="admin-form-group">
@@ -52,7 +52,7 @@
 
         <div class="admin-form-group">
             <label>Биография пользователя (О себе):</label>
-            <textarea name="bio"><?= htmlspecialchars($userItem['bio'] ?? '') ?></textarea>
+            <textarea name="bio"><?= e($userItem['bio'] ?? '') ?></textarea>
         </div>
 
         <div class="admin-form-actions">

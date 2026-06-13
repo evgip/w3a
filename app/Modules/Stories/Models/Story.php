@@ -14,7 +14,7 @@ class Story extends Model
         'title',
         'url',
         'text',
-        // 'score' // Если разрешено менять рейтинг напрямую (обычно нет, но для примера)
+		'description'
     ];
 
     /**

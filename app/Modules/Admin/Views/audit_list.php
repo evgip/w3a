@@ -10,7 +10,7 @@
         <div class="filter-group">
             <label class="filter-label">ID Пользователя:</label>
             <input type="number" name="filter_user_id" 
-                   value="<?= htmlspecialchars((string)($currentFilters['user_id'] ?? '')) ?>" 
+                   value="<?= e((string)($currentFilters['user_id'] ?? '')) ?>" 
                    placeholder="Например: 1" 
                    class="filter-input input-w-120">
         </div>
@@ -20,8 +20,8 @@
             <select name="filter_action" class="filter-select select-min-w-200">
                 <option value="">-- Все события --</option>
                 <?php foreach ($uniqueActions as $act): ?>
-                    <option value="<?= htmlspecialchars($act) ?>" <?= ($currentFilters['action'] === $act) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($act) ?>
+                    <option value="<?= e($act) ?>" <?= ($currentFilters['action'] === $act) ? 'selected' : '' ?>>
+                        <?= e($act) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -30,7 +30,7 @@
         <div class="filter-group flex-fill-200">
             <label class="filter-label">Поиск по тексту:</label>
             <input type="text" name="search" 
-                   value="<?= htmlspecialchars($currentFilters['search'] ?? '') ?>" 
+                   value="<?= e($currentFilters['search'] ?? '') ?>" 
                    placeholder="Имя, описание или контекст..." 
                    class="filter-input">
         </div>
@@ -65,30 +65,30 @@
         <?php if (!empty($logs)): ?>
             <?php foreach ($logs as $log): ?>
                 <tr>
-                    <td><small class="audit-timestamp"><?= htmlspecialchars($log['created_at']) ?></small></td>
+                    <td><small class="audit-timestamp"><?= e($log['created_at']) ?></small></td>
                     <td>
-                        <strong><?= htmlspecialchars($log['username'] ?? 'Guest') ?></strong> 
+                        <strong><?= e($log['username'] ?? 'Guest') ?></strong> 
                         <?php if (!empty($log['user_id'])): ?>
                             <small class="audit-user-id">(ID: <?= (int)$log['user_id'] ?>)</small>
                         <?php endif; ?>
                     </td>
                     <td>
                         <span class="badge badge-<?= ($log['role'] === 'admin') ? 'admin' : 'user' ?>">
-                            <?= htmlspecialchars($log['role']) ?>
+                            <?= e($log['role']) ?>
                         </span>
                     </td>
-                    <td><code><?= htmlspecialchars($log['ip_address']) ?></code></td>
+                    <td><code><?= e($log['ip_address']) ?></code></td>
                     <td>
                         <span class="audit-action-badge">
-                            <?= htmlspecialchars($log['action']) ?>
+                            <?= e($log['action']) ?>
                         </span>
                     </td>
                     <td>
-                        <div><?= htmlspecialchars($log['description']) ?></div>
+                        <div><?= e($log['description']) ?></div>
                         <!-- Если у лога есть полезный контекст, выведем его мелким шрифтом -->
                         <?php if (!empty($log['payload'])): ?>
                             <div class="audit-payload-box">
-                                <?= htmlspecialchars(json_encode($log['payload'], JSON_UNESCAPED_UNICODE)) ?>
+                                <?= e(json_encode($log['payload'], JSON_UNESCAPED_UNICODE)) ?>
                             </div>
                         <?php endif; ?>
                     </td>

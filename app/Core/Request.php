@@ -52,7 +52,7 @@ class Request
 
     public function getCsrfToken(): string
     {
-		// Если сессия не запущена, принудительно стартуем её
+        // Если сессия не запущена, принудительно стартуем её
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -63,7 +63,7 @@ class Request
         }
 
         return $_SESSION['csrf_token'];
-	}
+    }
 
 
     /**
@@ -86,20 +86,19 @@ class Request
 
         // 2. Perform validation checks safely without breaking on PHP 8 strict types
         if (empty($sessionToken) || empty($submittedToken) || !hash_equals((string)$sessionToken, (string)$submittedToken)) {
-            
+
             // Log security exploit footprint tokens into your audit database logs natively
             \App\Core\Audit::log('security.csrf_failed', 'Обнаружена атака CSRF / Неверный проверочный токен формы', [
                 'ip'  => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
                 'url' => $_SERVER['REQUEST_URI'] ?? '/'
             ]);
-            
+
             // Clear out stale session parameters safely
             \App\Core\Session::setFlash('error', 'Срок действия сессии формы истек. Пожалуйста, попробуйте еще раз.');
-            
+
             // Bounce the attacker or expired form user back to the referrer source
             header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
             exit;
         }
     }
-	
 }

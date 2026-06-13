@@ -7,16 +7,16 @@ $request = new \App\Core\Request();
     <a href="<?= route('messages.index') ?>" class="dialog-back-link">← К списку</a>
     
     <?php if (!empty($recipient['avatar'])): ?>
-        <img src="/uploads/avatars/<?= substr($recipient['avatar'], 0, 2) ?>/<?= htmlspecialchars($recipient['avatar']) ?>" 
+        <img src="/uploads/avatars/<?= substr($recipient['avatar'], 0, 2) ?>/<?= e($recipient['avatar']) ?>" 
              class="dialog-avatar" alt="avatar">
     <?php else: ?>
         <div class="dialog-avatar-placeholder">
-            <?= htmlspecialchars(mb_substr($recipient['name'], 0, 1)) ?>
+            <?= e(mb_substr($recipient['name'], 0, 1)) ?>
         </div>
     <?php endif; ?>
     
     <span class="dialog-title">
-        Чат с пользователем <?= htmlspecialchars($recipient['name']) ?>
+        Чат с пользователем <?= e($recipient['name']) ?>
     </span>
 </div>
 
@@ -40,12 +40,12 @@ $request = new \App\Core\Request();
             <?php $isOutgoing = ((int)$msg['sender_id'] === (int)$_SESSION['user_id']); ?>
             
             <div class="dialog-message <?= $isOutgoing ? 'outgoing' : 'incoming' ?>" 
-                 title="<?= htmlspecialchars(date('d.m.Y H:i', strtotime($msg['created_at']))) ?>">
+                 title="<?= e(date('d.m.Y H:i', strtotime($msg['created_at']))) ?>">
                 <div class="dialog-message-text">
-                    <?= nl2br(htmlspecialchars($msg['message'])) ?>
+                    <?= nl2br(e($msg['message'])) ?>
                 </div>
                 <div class="dialog-message-time">
-                    <?= htmlspecialchars(date('d.m H:i', strtotime($msg['created_at']))) ?>
+                    <?= e(date('d.m H:i', strtotime($msg['created_at']))) ?>
                 </div>
             </div>
             

@@ -13,7 +13,7 @@ class RateLimiter
     {
         $configFile = dirname(__DIR__) . '/Config/ratelimit.php';
         $config = file_exists($configFile) ? require $configFile : [];
-        
+
         if (!($config['enabled'] ?? false) || !isset($config['rules'][$action])) {
             return true;
         }
@@ -26,10 +26,10 @@ class RateLimiter
         $rateLimitModel = new RateLimit();
 
         // 1. Garbage Collection: Prune database rows with a 5% lottery probability
-		$gcProbability = config_int('rate_limit.gc_probability', 5);
-		if (random_int(1, 100) <= $gcProbability) {
-			$rateLimitModel->clearStaleLogs($window);
-		}
+        $gcProbability = config_int('rate_limit.gc_probability', 5);
+        if (random_int(1, 100) <= $gcProbability) {
+            $rateLimitModel->clearStaleLogs($window);
+        }
 
         // 2. Fetch current hit counters from our clean model layer
         $currentRequests = $rateLimitModel->getRequestCount($ip, $action, $window);
@@ -38,7 +38,7 @@ class RateLimiter
         $rateLimitModel->logRequest($ip, $action);
 
         $remaining = max(0, $maxRequests - ($currentRequests + 1));
-        
+
         // Dispatch explicit standardized throttle metadata tracking headers
         header("RateLimit-Limit: {$maxRequests}");
         header("RateLimit-Remaining: {$remaining}");
@@ -57,18 +57,18 @@ class RateLimiter
     public static function block(): void
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-        
+
         // Log critical rate-limiting throttle breaches down to the database for administrative alerting
         \App\Core\Audit::log('security.rate_limited', "Превышен лимит частоты запросов. IP заблокирован.", [
             'ip_address' => $ip,
             'url'        => $_SERVER['REQUEST_URI'] ?? '/'
         ]);
-		
+
         http_response_code(429); // Too Many Requests
-		
-		$retryAfter = config_int('rate_limit.retry_after', 60);
-		header("Retry-After: {$retryAfter}");
-		
+
+        $retryAfter = config_int('rate_limit.retry_after', 60);
+        header("Retry-After: {$retryAfter}");
+
         // 100% CSP compliant template framework - zero style="..." parameters used
         echo '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>429 Too Many Requests</title>';
         echo '<link rel="stylesheet" href="/css/app.min.css"></head><body class="blocked-error-body">';
@@ -80,4 +80,3 @@ class RateLimiter
         exit;
     }
 }
-

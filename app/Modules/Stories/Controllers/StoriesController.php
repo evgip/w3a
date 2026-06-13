@@ -38,9 +38,9 @@ class StoriesController extends Controller
 
 		$title = 'Лента историй';
 		if ($tagname) {
-			$title = "Публикации с тегом # " . htmlspecialchars($tagname);
+			$title = "Публикации с тегом # " . e($tagname);
 		} elseif ($domain) {
-			$title = "Публикации с домена " . htmlspecialchars($domain);
+			$title = "Публикации с домена " . e($domain);
 		}
 
 		$this->render('index', [
@@ -71,7 +71,7 @@ class StoriesController extends Controller
 
         $this->render('create', [
             'title' => 'Поделиться интересным',
-            'tags'  => $availableTags,
+            'availableTags'  => $availableTags,
             'request' => $request
         ]);
     }
@@ -97,7 +97,7 @@ class StoriesController extends Controller
         // Capture checked item integers list securely: $_POST['tags'] -> [1, 3]
         $selectedTags = $_POST['tags'] ?? [];
 
-        if (!empty($url) && !filter_var($url, FILTER_VALIDATE_URL)) {
+        if (!empty($url) && !isValidUrl($url)) {
             \App\Core\Session::setFlash('error', 'Пожалуйста, укажите корректный URL-адрес.');
             header('Location: /stories/create');
             exit;
@@ -187,6 +187,8 @@ class StoriesController extends Controller
         $url = $request->getParams('url') ?: null;
         $description = $request->getParams('description') ?: null;
         $selectedTags = $_POST['tags'] ?? [];
+
+ 
 
         $storyModel->update($storyId, [
             'title' => $title,

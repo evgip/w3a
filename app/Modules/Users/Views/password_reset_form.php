@@ -4,7 +4,7 @@
 
     <form action="<?= route('password.reset.submit') ?>" method="POST" class="auth-form">
         <?= $request->csrfField() ?>
-        <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
+        <input type="hidden" name="token" value="<?= e($token) ?>">
 
         <div class="form-group form-group-field-spacing">
             <label>Придумайте новый пароль:</label>

@@ -30,8 +30,8 @@ class SvgChart
     public function lineChart(array $data, string $title = ''): string
     {
         if (empty($data)) {
-            return '<svg width="' . $this->width . '" height="' . $this->height . 
-                   '"><text x="50%" y="50%" text-anchor="middle" fill="var(--color-fg, #666)">Нет данных</text></svg>';
+            return '<svg width="' . $this->width . '" height="' . $this->height .
+                '"><text x="50%" y="50%" text-anchor="middle" fill="var(--color-fg, #666)">Нет данных</text></svg>';
         }
 
         $values = array_column($data, 'value');
@@ -50,17 +50,17 @@ class SvgChart
         foreach ($data as $index => $item) {
             // ЗАЩИТА ОТ ДЕЛЕНИЯ НА НОЛЬ
             $divisor = $dataCount > 1 ? ($dataCount - 1) : 1;
-            
+
             if ($dataCount === 1) {
                 // Если точка одна, размещаем её по центру
                 $x = $this->padding + ($chartWidth / 2);
             } else {
                 $x = $this->padding + ($index / $divisor) * $chartWidth;
             }
-            
+
             $y = $this->padding + $chartHeight - (($item['value'] - $minValue) / $range) * $chartHeight;
             $points[] = [$x, $y];
-            
+
             // Добавляем подписи для каждого 4-го элемента или последнего
             if ($index % 4 === 0 || $index === $dataCount - 1) {
                 $labels[] = ['x' => $x, 'label' => $item['label']];
@@ -81,14 +81,14 @@ class SvgChart
 
         // Генерируем SVG
         $svg = '<svg width="' . $this->width . '" height="' . $this->height . '" ' .
-               'viewBox="0 0 ' . $this->width . ' ' . $this->height . '" ' .
-               'xmlns="http://www.w3.org/2000/svg" ' .
-               'style="max-width: 100%; height: auto;">';
+            'viewBox="0 0 ' . $this->width . ' ' . $this->height . '" ' .
+            'xmlns="http://www.w3.org/2000/svg" ' .
+            'style="max-width: 100%; height: auto;">';
 
         if ($title) {
             $svg .= '<text x="' . ($this->width / 2) . '" y="20" text-anchor="middle" ' .
-                    'font-size="14" font-weight="bold" fill="var(--color-fg, #333)">' .
-                    htmlspecialchars($title) . '</text>';
+                'font-size="14" font-weight="bold" fill="var(--color-fg, #333)">' .
+                e($title) . '</text>';
         }
 
         // Сетка (горизонтальные линии)
@@ -96,16 +96,16 @@ class SvgChart
         for ($i = 1; $i <= 4; $i++) {
             $y = $this->padding + ($chartHeight * $i / 5);
             $svg .= '<line x1="' . $this->padding . '" y1="' . $y . '" ' .
-                    'x2="' . ($this->width - $this->padding) . '" y2="' . $y . '"/>';
+                'x2="' . ($this->width - $this->padding) . '" y2="' . $y . '"/>';
         }
         $svg .= '</g>';
 
         // Оси
         $svg .= '<g stroke="var(--color-fg, #333)" stroke-width="1.5">';
         $svg .= '<line x1="' . $this->padding . '" y1="' . $this->padding . '" ' .
-                'x2="' . $this->padding . '" y2="' . ($this->height - $this->padding) . '"/>';
+            'x2="' . $this->padding . '" y2="' . ($this->height - $this->padding) . '"/>';
         $svg .= '<line x1="' . $this->padding . '" y1="' . ($this->height - $this->padding) . '" ' .
-                'x2="' . ($this->width - $this->padding) . '" y2="' . ($this->height - $this->padding) . '"/>';
+            'x2="' . ($this->width - $this->padding) . '" y2="' . ($this->height - $this->padding) . '"/>';
         $svg .= '</g>';
 
         // Подписи оси Y
@@ -121,20 +121,20 @@ class SvgChart
         $svg .= '<path d="' . $areaPath . '" fill="' . $this->fillColor . '"/>';
 
         // Линия графика
-        $svg .= '<path d="' . $pathData . '" fill="none" stroke="' . $this->color . 
-                '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+        $svg .= '<path d="' . $pathData . '" fill="none" stroke="' . $this->color .
+            '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
 
         // Точки на графике
         foreach ($points as $point) {
             $svg .= '<circle cx="' . $point[0] . '" cy="' . $point[1] . '" r="3" ' .
-                    'fill="' . $this->color . '"/>';
+                'fill="' . $this->color . '"/>';
         }
 
         // Подписи оси X
         $svg .= '<g font-size="10" fill="var(--color-fg, #666)" text-anchor="middle">';
         foreach ($labels as $label) {
-            $svg .= '<text x="' . $label['x'] . '" y="' . ($this->height - 10) . '">' . 
-                    htmlspecialchars($label['label']) . '</text>';
+            $svg .= '<text x="' . $label['x'] . '" y="' . ($this->height - 10) . '">' .
+                e($label['label']) . '</text>';
         }
         $svg .= '</g>';
 
@@ -149,31 +149,31 @@ class SvgChart
     public function barChart(array $data, string $title = ''): string
     {
         if (empty($data)) {
-            return '<svg width="' . $this->width . '" height="' . $this->height . 
-                   '"><text x="50%" y="50%" text-anchor="middle" fill="var(--color-fg, #666)">Нет данных</text></svg>';
+            return '<svg width="' . $this->width . '" height="' . $this->height .
+                '"><text x="50%" y="50%" text-anchor="middle" fill="var(--color-fg, #666)">Нет данных</text></svg>';
         }
 
         $values = array_column($data, 'value');
         $maxValue = max($values) > 0 ? max($values) : 1; // Защита от нуля
-        
+
         $chartWidth = $this->width - (2 * $this->padding);
         $chartHeight = $this->height - (2 * $this->padding);
         $dataCount = count($data);
-        
+
         // Защита от деления на ноль, если данных нет (хотя empty выше ловит это)
         $divisor = $dataCount > 0 ? $dataCount : 1;
         $barWidth = ($chartWidth / $divisor) * 0.7;
         $barGap = ($chartWidth / $divisor) * 0.3;
 
         $svg = '<svg width="' . $this->width . '" height="' . $this->height . '" ' .
-               'viewBox="0 0 ' . $this->width . ' ' . $this->height . '" ' .
-               'xmlns="http://www.w3.org/2000/svg" ' .
-               'style="max-width: 100%; height: auto;">';
+            'viewBox="0 0 ' . $this->width . ' ' . $this->height . '" ' .
+            'xmlns="http://www.w3.org/2000/svg" ' .
+            'style="max-width: 100%; height: auto;">';
 
         if ($title) {
             $svg .= '<text x="' . ($this->width / 2) . '" y="20" text-anchor="middle" ' .
-                    'font-size="14" font-weight="bold" fill="var(--color-fg, #333)">' .
-                    htmlspecialchars($title) . '</text>';
+                'font-size="14" font-weight="bold" fill="var(--color-fg, #333)">' .
+                e($title) . '</text>';
         }
 
         // Сетка
@@ -181,16 +181,16 @@ class SvgChart
         for ($i = 1; $i <= 4; $i++) {
             $y = $this->padding + ($chartHeight * $i / 5);
             $svg .= '<line x1="' . $this->padding . '" y1="' . $y . '" ' .
-                    'x2="' . ($this->width - $this->padding) . '" y2="' . $y . '"/>';
+                'x2="' . ($this->width - $this->padding) . '" y2="' . $y . '"/>';
         }
         $svg .= '</g>';
 
         // Оси
         $svg .= '<g stroke="var(--color-fg, #333)" stroke-width="1.5">';
         $svg .= '<line x1="' . $this->padding . '" y1="' . $this->padding . '" ' .
-                'x2="' . $this->padding . '" y2="' . ($this->height - $this->padding) . '"/>';
+            'x2="' . $this->padding . '" y2="' . ($this->height - $this->padding) . '"/>';
         $svg .= '<line x1="' . $this->padding . '" y1="' . ($this->height - $this->padding) . '" ' .
-                'x2="' . ($this->width - $this->padding) . '" y2="' . ($this->height - $this->padding) . '"/>';
+            'x2="' . ($this->width - $this->padding) . '" y2="' . ($this->height - $this->padding) . '"/>';
         $svg .= '</g>';
 
         // Столбцы
@@ -199,14 +199,14 @@ class SvgChart
             $barHeight = ($item['value'] / $maxValue) * $chartHeight;
             $y = $this->height - $this->padding - $barHeight;
 
-            $svg .= '<rect x="' . $x . '" y="' . $y . '" width="' . $barWidth . 
-                    '" height="' . $barHeight . '" fill="' . $this->color . 
-                    '" rx="2"/>';
+            $svg .= '<rect x="' . $x . '" y="' . $y . '" width="' . $barWidth .
+                '" height="' . $barHeight . '" fill="' . $this->color .
+                '" rx="2"/>';
 
             if ($index % 4 === 0 || $index === $dataCount - 1) {
-                $svg .= '<text x="' . ($x + $barWidth / 2) . '" y="' . ($this->height - 5) . 
-                        '" font-size="10" fill="var(--color-fg, #666)" text-anchor="middle">' .
-                        htmlspecialchars($item['label']) . '</text>';
+                $svg .= '<text x="' . ($x + $barWidth / 2) . '" y="' . ($this->height - 5) .
+                    '" font-size="10" fill="var(--color-fg, #666)" text-anchor="middle">' .
+                    e($item['label']) . '</text>';
             }
         }
 

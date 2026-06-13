@@ -24,7 +24,7 @@ class Firewall
             echo '<div class="profile-container blocked-error-card">';
             echo '<h2 class="blocked-error-title">⛔ Ваш IP-адрес принудительно заблокирован</h2>';
             echo '<p class="admin-subtitle-desc">Доступ к платформе ограничен администрацией сайта.</p>';
-            echo '<div class="profile-bio-quote-box"><strong>Причина блокировки:</strong> ' . htmlspecialchars($reason) . '</div>';
+            echo '<div class="profile-bio-quote-box"><strong>Причина блокировки:</strong> ' . e($reason) . '</div>';
             echo '<p class="field-sub-hint">Если вы считаете, что это произошло по ошибке, свяжитесь с поддержкой.</p>';
             echo '</div></body></html>';
             exit;

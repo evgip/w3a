@@ -30,13 +30,13 @@ class Security
         }
 
         $nonce = self::getNonce();
-        
+
         // Load the detached infrastructure parameter array file safely
         $configFile = dirname(__DIR__) . '/Config/csp.php';
         $cspConfig = file_exists($configFile) ? require $configFile : [];
 
         // Helper closure to safely aggregate and sanitize config parameters into clean inline strings
-        $mergeOrigins = function (string $key, array $defaults = []) use ($cspConfig) : string {
+        $mergeOrigins = function (string $key, array $defaults = []) use ($cspConfig): string {
             $configured = $cspConfig[$key] ?? [];
             $allOrigins = array_unique(array_merge($defaults, $configured));
             return implode(' ', $allOrigins);
@@ -47,13 +47,13 @@ class Security
             "default-src 'self' "  . $mergeOrigins('default_src'), // Halt all communication vectors by default unless whitelisted explicitly
             "script-src 'self' 'nonce-{$nonce}' " . $mergeOrigins('script_src'),
 
-			// РАЗДЕЛЯЕМ ДИРЕКТИВУ СТИЛЕЙ НА ДВЕ:
+            // РАЗДЕЛЯЕМ ДИРЕКТИВУ СТИЛЕЙ НА ДВЕ:
             // 1. Для тегов <style> и файлов <link> (разрешаем 'unsafe-inline' Яндексу и Google без конфликта с nonce)
             "style-src-elem 'self' 'unsafe-inline' " . $mergeOrigins('style_src'),
             // 2. Для инлайновых атрибутов элементов style="..."
             "style-src-attr 'self' 'unsafe-inline'",
-			
-			
+
+
             "img-src 'self' data: " . $mergeOrigins('img_src'),
             "font-src 'self' " . $mergeOrigins('font_src'),
             "object-src 'none'",   // Turn off Flash, Java Applets, and unsafe legacy runtime environments
@@ -73,7 +73,7 @@ class Security
         header("Content-Security-Policy: " . implode("; ", $policy));
 
         // 3. AUTOMATED ADDED EXPLOIT GUARD PROTECTION TIERS
-        
+
         // Mitigation tool against MIME-Type spoofing attacks (Forces browser compliance with declared types)
         header("X-Content-Type-Options: nosniff");
 

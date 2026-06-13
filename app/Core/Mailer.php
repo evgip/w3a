@@ -31,19 +31,19 @@ class Mailer
         $mail = new PHPMailer(true);
 
         try {
-			
-			
-                // Server settings
-                // $mail->SMTPDebug = SMTP::DEBUG_SERVER;                   //Enable verbose debug output
-                $mail->isSMTP();                                            //Send using SMTP
-                $mail->Host       = $config['host'];        //Set the SMTP server to send through
-                $mail->SMTPAuth   = $config['auth'];                                   //Enable SMTP authentication
-                $mail->Username   = $config['username'];        //SMTP username
-                $mail->Password   = $config['password'];        //SMTP password
-                $mail->SMTPSecure = $config['encryption']; // PHPMailer::ENCRYPTION_SMTPS;  //Enable implicit TLS encryption
-                $mail->Port       = (int)$config['port'];        //TCP port to connect to; use 587 if you have set `SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS`
 
-                /* $mail->SMTPOptions = [
+
+            // Server settings
+            // $mail->SMTPDebug = SMTP::DEBUG_SERVER;                   //Enable verbose debug output
+            $mail->isSMTP();                                            //Send using SMTP
+            $mail->Host       = $config['host'];        //Set the SMTP server to send through
+            $mail->SMTPAuth   = $config['auth'];                                   //Enable SMTP authentication
+            $mail->Username   = $config['username'];        //SMTP username
+            $mail->Password   = $config['password'];        //SMTP password
+            $mail->SMTPSecure = $config['encryption']; // PHPMailer::ENCRYPTION_SMTPS;  //Enable implicit TLS encryption
+            $mail->Port       = (int)$config['port'];        //TCP port to connect to; use 587 if you have set `SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS`
+
+            /* $mail->SMTPOptions = [
                     'ssl' => [
                         'verify_peer' => false,
                         'verify_peer_name' => false,
@@ -51,19 +51,19 @@ class Mailer
                     ]
                 ]; */
 
-                $mail->CharSet = 'utf-8';
+            $mail->CharSet = 'utf-8';
 
-                //Recipients
-                $mail->setFrom($config['from_email'], $config['from_name']);
-                $mail->addAddress($to);                                  //Name is optional
+            //Recipients
+            $mail->setFrom($config['from_email'], $config['from_name']);
+            $mail->addAddress($to);                                  //Name is optional
 
-                //Content
-                $mail->isHTML(true);                                        //Set email format to HTML
-                $mail->Subject = $subject;
-                $mail->Body    = $htmlBody;
+            //Content
+            $mail->isHTML(true);                                        //Set email format to HTML
+            $mail->Subject = $subject;
+            $mail->Body    = $htmlBody;
 
-                $mail->send();
-                return true;
+            $mail->send();
+            return true;
         } catch (Exception $e) {
             Logger::error("PHPMailer Critical Delivery Exception: Mail to [{$to}] failed. Error info: " . $mail->ErrorInfo);
             return false;

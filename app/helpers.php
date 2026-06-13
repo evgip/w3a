@@ -4,7 +4,8 @@
  * Глобальный хелпер для генерации URL по имени маршрута
  */
 if (!function_exists('route')) {
-    function route(string $name, array $params = []): string {
+    function route(string $name, array $params = []): string
+    {
         global $router; // Используем глобальный объект роутера из index.php
         return $router->route($name, $params);
     }
@@ -14,74 +15,86 @@ if (!function_exists('route')) {
  * Глобальный хелпер для вывода локализованных строк перевода
  */
 if (!function_exists('__')) {
-    function __(string $key, array $replace = []): string {
+    function __(string $key, array $replace = []): string
+    {
         return \App\Core\Lang::get($key, $replace);
     }
 }
 
-function declension(int $number, array $forms): string
-{
-    $number = abs($number) % 100;
-    $n1 = $number % 10;
+if (!function_exists('declension')) {
+    function declension(int $number, array $forms): string
+    {
+        $number = abs($number) % 100;
+        $n1 = $number % 10;
 
-    if ($number > 10 && $number < 20) {
+        if ($number > 10 && $number < 20) {
+            return $forms[2];
+        }
+        if ($n1 > 1 && $n1 < 5) {
+            return $forms[1];
+        }
+        if ($n1 === 1) {
+            return $forms[0];
+        }
         return $forms[2];
     }
-    if ($n1 > 1 && $n1 < 5) {
-        return $forms[1];
+}
+
+
+if (!function_exists('partial')) {
+    /**
+     * Подключение partial-шаблона из модуля
+     * 
+     * @param string $path   - путь вида 'Votes::_voters' или 'Users::_avatar'
+     * @param array  $vars   - переменные для шаблона
+     */
+    function partial(string $path, array $vars = []): void
+    {
+        // Разбираем путь: "Votes::_voters" → модуль Votes, файл _voters.php
+        [$module, $file] = explode('::', $path);
+        $filePath = dirname(__DIR__) . "/app/Modules/{$module}/Views/{$file}.php";
+
+        if (!file_exists($filePath)) {
+            throw new \RuntimeException("Partial not found: {$filePath}");
+        }
+
+        // Извлекаем переменные в текущую область видимости
+        extract($vars);
+        include $filePath;
     }
-    if ($n1 === 1) {
-        return $forms[0];
+}
+
+if (!function_exists('e')) {
+    function e(?string $value): string
+    {
+        return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
     }
-    return $forms[2];
 }
 
-/**
- * Подключение partial-шаблона из модуля
- * 
- * @param string $path   - путь вида 'Votes::_voters' или 'Users::_avatar'
- * @param array  $vars   - переменные для шаблона
- */
-function partial(string $path, array $vars = []): void
-{
-    // Разбираем путь: "Votes::_voters" → модуль Votes, файл _voters.php
-    [$module, $file] = explode('::', $path);
-    $filePath = dirname(__DIR__) . "/app/Modules/{$module}/Views/{$file}.php";
-    
-    if (!file_exists($filePath)) {
-        throw new \RuntimeException("Partial not found: {$filePath}");
+if (!function_exists('dt')) {
+    /**
+     * Форматирование даты
+     */
+    function dt(?string $datetime, string $format = 'd.m.Y H:i'): string
+    {
+        if (!$datetime) return '';
+        return date($format, strtotime($datetime));
     }
-    
-    // Извлекаем переменные в текущую область видимости
-    extract($vars);
-    include $filePath;
 }
 
-function e(?string $value): string
-{
-    return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
-}
-
-/**
- * Форматирование даты
- */
-function dt(?string $datetime, string $format = 'd.m.Y H:i'): string
-{
-    if (!$datetime) return '';
-    return date($format, strtotime($datetime));
-}
-
-/**
- * Склонение числительных
- */
-function plural(int $n, array $forms): string
-{
-    $n = abs($n) % 100;
-    $n1 = $n % 10;
-    if ($n > 10 && $n < 20) return $forms[2];
-    if ($n1 > 1 && $n1 < 5) return $forms[1];
-    if ($n1 === 1) return $forms[0];
-    return $forms[2];
+if (!function_exists('plural')) {
+    /**
+     * Склонение числительных
+     */
+    function plural(int $n, array $forms): string
+    {
+        $n = abs($n) % 100;
+        $n1 = $n % 10;
+        if ($n > 10 && $n < 20) return $forms[2];
+        if ($n1 > 1 && $n1 < 5) return $forms[1];
+        if ($n1 === 1) return $forms[0];
+        return $forms[2];
+    }
 }
 
 if (!function_exists('csrf_field')) {
@@ -95,35 +108,30 @@ if (!function_exists('csrf_field')) {
     }
 }
 
-/**
- * Вывод flash-сообщений
- */
-function render_flashes(): void
-{
-    $types = [
-        'success' => 'alert-success',
-        'error'   => 'alert-danger',
-        'notice'  => 'alert-notice'
-    ];
+if (!function_exists('render_flashes')) {
+    /**
+     * Вывод flash-сообщений
+     */
+    function render_flashes(): void
+    {
+        $types = [
+            'success' => 'alert-success',
+            'error'   => 'alert-danger',
+            'notice'  => 'alert-notice'
+        ];
 
-    foreach ($types as $key => $class) {
-        if (\App\Core\Session::hasFlash($key)) {
-            $message = htmlspecialchars(\App\Core\Session::getFlash($key));
-            $title = $key === 'success' ? 'Успех' : ($key === 'error' ? 'Ошибка' : 'Информация');
-            
-            echo '<div class="alert ' . $class . '">';
-            echo '<strong>' . $title . '!</strong> ' . $message;
-            echo '</div>';
+        foreach ($types as $key => $class) {
+            if (\App\Core\Session::hasFlash($key)) {
+                $message = htmlspecialchars(\App\Core\Session::getFlash($key));
+                $title = $key === 'success' ? 'Успех' : ($key === 'error' ? 'Ошибка' : 'Информация');
+
+                echo '<div class="alert ' . $class . '">';
+                echo '<strong>' . $title . '!</strong> ' . $message;
+                echo '</div>';
+            }
         }
     }
 }
-
-/**
- * Глобальные функции-хелперы приложения
- * 
- * Эти функции доступны во всем приложении и предоставляют
- * удобный доступ к часто используемым компонентам.
- */
 
 if (!function_exists('config')) {
     /**
@@ -146,7 +154,7 @@ if (!function_exists('config')) {
         if ($key === null) {
             return \App\Core\Config::getFile('config');
         }
-        
+
         return \App\Core\Config::get($key, $default);
     }
 }
@@ -256,7 +264,37 @@ if (!function_exists('comment_url')) {
     {
         $baseUrl = "/story/{$storyId}";
         $anchor = "comment-block-{$commentId}";  // ← Изменено здесь!
-        
+
         return "{$baseUrl}#{$anchor}";
+    }
+}
+
+if (!function_exists('isValidUrl')) {
+    function isValidUrl(string $url): bool
+    {
+        // Базовая валидация формата
+        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+
+        $parsed = parse_url($url);
+
+        // Проверка схемы
+        $allowedSchemes = ['http', 'https'];
+        if (!in_array($parsed['scheme'] ?? '', $allowedSchemes, true)) {
+            return false;
+        }
+
+        // Дополнительная защита: блокировка подозрительных символов
+        if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+            return false;
+        }
+
+        // Проверка длины (защита от DoS)
+        if (strlen($url) > 2048) {
+            return false;
+        }
+
+        return true;
     }
 }

@@ -10,7 +10,7 @@ $request = new \App\Core\Request();
 
 <?php if (!empty($error)): ?>
     <div class="flash-error">
-        <?= htmlspecialchars($error) ?>
+        <?= e($error) ?>
     </div>
 <?php endif; ?>
 
@@ -20,7 +20,7 @@ $request = new \App\Core\Request();
     <div class="form-field-group">
         <label for="story-title"><strong>Заголовок</strong></label>
         <input type="text" id="story-title" name="title" 
-               value="<?= htmlspecialchars($story['title']) ?>" 
+               value="<?= e($story['title']) ?>" 
                required placeholder="Введите заголовок публикации"
                class="form-input-wide">
     </div>
@@ -31,7 +31,7 @@ $request = new \App\Core\Request();
             <span class="form-field-hint-inline">— необязательно</span>
         </label>
         <input type="url" id="story-url" name="url" 
-               value="<?= htmlspecialchars($story['url'] ?? '') ?>"
+               value="<?= e($story['url'] ?? '') ?>"
                placeholder="https://example.com/article"
                class="form-input-wide">
     </div>
@@ -44,11 +44,12 @@ $request = new \App\Core\Request();
             <?php 
             $isBound = in_array((int)$tagItem['id'], $activeTagIds); 
             ?>
-            <label class="tag-checkbox-item">
+            
+			<div class="tag">
                 <input type="checkbox" name="tags[]" value="<?= (int)$tagItem['id'] ?>" 
                        <?= $isBound ? 'checked' : '' ?>>
-                <span><?= htmlspecialchars($tagItem['tag']) ?></span>
-            </label>
+                <span><?= e($tagItem['tag']) ?></span>
+            </div>
         <?php endforeach; ?>
     </div>
 
@@ -56,7 +57,7 @@ $request = new \App\Core\Request();
         <label for="story-description"><strong>Текст обсуждения</strong></label>
         <p class="hint">Поддерживается Markdown-разметка: **жирный**, *курсив*, [ссылки](url), `код`</p>
         <textarea id="story-description" name="description" rows="8" 
-                  placeholder="Сопроводительный текст, комментарии или дополнительный контекст..."><?= htmlspecialchars($story['description'] ?? '') ?></textarea>
+                  placeholder="Сопроводительный текст, комментарии или дополнительный контекст..."><?= e($story['description'] ?? '') ?></textarea>
     </div>
 
     <div class="form-actions">

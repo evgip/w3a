@@ -183,7 +183,7 @@ class Router
         }
         call_user_func_array([$controllerInstance, $method], $params);
     }
-	
+
     protected function triggerError(int $code, string $message): void
     {
         http_response_code($code);

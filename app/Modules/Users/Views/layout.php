@@ -4,7 +4,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title><?= htmlspecialchars($title ?? 'Лента историй') ?> | <?= htmlspecialchars(app_name()); ?> форум</title>
+	<title><?= e($title ?? 'Лента историй') ?> | <?= e(app_name()); ?> форум</title>
 	<link rel="stylesheet" href="/css/app.min.css">
 </head>
 
@@ -12,7 +12,7 @@
 
 	<header>
 		<div class="navbar-container">
-			<a href="<?= route('home') ?>" class="navbar-logo">🌐 <?= htmlspecialchars(app_name()); ?></a>
+			<a href="<?= route('home') ?>" class="navbar-logo">🌐 <?= e(app_name()); ?></a>
 
 			<nav class="navbar-links">
 				<!-- Глобальные публичные ссылки, видимые всегда -->
@@ -31,9 +31,9 @@
 						<button class="dropdown-trigger-btn" id="user-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
 							<div class="dropdown-avatar-badge-wrapper">
 								<?php if (!empty($_SESSION['user_avatar'] ?? '')): ?>
-									<img src="/uploads/avatars/<?= substr($_SESSION['user_avatar'], 0, 2) ?>/<?= htmlspecialchars($_SESSION['user_avatar']) ?>" class="mini-avatar-img" alt="avatar">
+									<img src="/uploads/avatars/<?= substr($_SESSION['user_avatar'], 0, 2) ?>/<?= e($_SESSION['user_avatar']) ?>" class="mini-avatar-img" alt="avatar">
 								<?php else: ?>
-									<span class="mini-avatar-placeholder"><?= htmlspecialchars(mb_substr($_SESSION['user_name'], 0, 1)) ?></span>
+									<span class="mini-avatar-placeholder"><?= e(mb_substr($_SESSION['user_name'], 0, 1)) ?></span>
 								<?php endif; ?>
 
 								<!-- Display a micro warning red dot indicator over the avatar if any unread messages exist -->
@@ -41,7 +41,7 @@
 									<span class="nav-trigger-alert-dot"></span>
 								<?php endif; ?>
 							</div>
-							<span><?= htmlspecialchars($_SESSION['user_name']) ?></span>
+							<span><?= e($_SESSION['user_name']) ?></span>
 							<span class="dropdown-arrow-icon">▼</span>
 						</button>
 

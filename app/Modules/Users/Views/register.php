@@ -6,13 +6,13 @@ $request = new \App\Core\Request();
 
 <?php if (\App\Core\Session::hasFlash('error')): ?>
     <div class="flash-error">
-        <?= htmlspecialchars(\App\Core\Session::getFlash('error')) ?>
+        <?= e(\App\Core\Session::getFlash('error')) ?>
     </div>
 <?php endif; ?>
 
 <?php if (\App\Core\Session::hasFlash('success')): ?>
     <div class="flash-success">
-        <?= htmlspecialchars(\App\Core\Session::getFlash('success')) ?>
+        <?= e(\App\Core\Session::getFlash('success')) ?>
     </div>
 <?php endif; ?>
 
@@ -34,7 +34,7 @@ $request = new \App\Core\Request();
             pattern="[a-zA-Z0-9_]+" 
             class="form-input-wide" 
             placeholder="Например: john_doe"
-            value="<?= htmlspecialchars($old['username'] ?? '') ?>"
+            value="<?= e($old['username'] ?? '') ?>"
         >
         <p class="hint">Только латинские буквы, цифры и символ подчёркивания (3-20 символов).</p>
     </div>
@@ -48,7 +48,7 @@ $request = new \App\Core\Request();
             required 
             class="form-input-wide" 
             placeholder="name@example.com"
-            value="<?= htmlspecialchars($old['email'] ?? '') ?>"
+            value="<?= e($old['email'] ?? '') ?>"
         >
     </div>
 

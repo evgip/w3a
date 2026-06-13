@@ -8,7 +8,7 @@ $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
 
 <form action="/search" method="GET">
     <p>
-        <input type="text" name="q" value="<?= htmlspecialchars($query) ?>" 
+        <input type="text" name="q" value="<?= e($query) ?>" 
                placeholder="Поисковый запрос..." required autofocus
                style="width: 60%; padding: 4px 6px;">
         <button type="submit">Искать</button>
@@ -59,10 +59,10 @@ $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
                             <div class="link">
                                 <?php
                                 $isExternal = !empty($story['url']);
-                                $targetUrl = $isExternal ? htmlspecialchars($story['url']) : route('story.show', ['id' => $story['id']]);
+                                $targetUrl = $isExternal ? e($story['url']) : route('story.show', ['id' => $story['id']]);
                                 ?>
                                 <a href="<?= $targetUrl ?>" <?= $isExternal ? 'target="_blank" rel="noopener noreferrer"' : '' ?>>
-                                    <?= htmlspecialchars($story['title']) ?>
+                                    <?= e($story['title']) ?>
                                 </a>
                                 <?php if ($isExternal): ?>
                                     <?php 
@@ -70,7 +70,7 @@ $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
 									if ($domainHost): 
 									?>
 										<a href="<?= route('domains.show', ['domain' => $domainHost]) ?>" class="domain">
-											<?= htmlspecialchars($domainHost) ?>
+											<?= e($domainHost) ?>
 										</a>
 									<?php endif; ?>
                                 <?php endif; ?>
@@ -79,22 +79,22 @@ $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
                             <?php if (!empty($story['tags'])): ?>
                                 <span class="tags">
                                     <?php foreach ($story['tags'] as $tagName): ?>
-                                        <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= htmlspecialchars($tagName) ?></a>
+                                        <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= e($tagName) ?></a>
                                     <?php endforeach; ?>
                                 </span>
                             <?php endif; ?>
 
                             <div class="byline">
                                 <?php if (!empty($story['author_avatar'])): ?>
-                                    <img src="/uploads/avatars/<?= substr($story['author_avatar'], 0, 2) ?>/<?= htmlspecialchars($story['author_avatar']) ?>" class="avatar" alt="">
+                                    <img src="/uploads/avatars/<?= substr($story['author_avatar'], 0, 2) ?>/<?= e($story['author_avatar']) ?>" class="avatar" alt="">
                                 <?php endif; ?>
 
                                 <a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>">
-                                    <?= htmlspecialchars($story['author_name']) ?>
+                                    <?= e($story['author_name']) ?>
                                 </a>
 
                                 <span class="divider">|</span>
-                                <span><?= htmlspecialchars(date('d.m.Y H:i', strtotime($story['created_at']))) ?></span>
+                                <span><?= e(date('d.m.Y H:i', strtotime($story['created_at']))) ?></span>
 
                                 <span class="divider">|</span>
                                 <a href="<?= route('story.show', ['id' => $story['id']]) ?>">
@@ -123,7 +123,7 @@ $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
                         <div class="byline" style="margin-bottom: 0.3em;">
                             📌 В теме:
                             <a href="<?= route('story.show', ['id' => $comment['story_id']]) ?>#comment-block-<?= $comment['id'] ?>">
-                                <strong><?= htmlspecialchars($comment['story_title']) ?></strong>
+                                <strong><?= e($comment['story_title']) ?></strong>
                             </a>
                         </div>
 
@@ -133,18 +133,18 @@ $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
 
                         <div class="byline">
                             <?php if (!empty($comment['author_avatar'])): ?>
-                                <img src="/uploads/avatars/<?= substr($comment['author_avatar'], 0, 2) ?>/<?= htmlspecialchars($comment['author_avatar']) ?>" class="avatar" alt="">
+                                <img src="/uploads/avatars/<?= substr($comment['author_avatar'], 0, 2) ?>/<?= e($comment['author_avatar']) ?>" class="avatar" alt="">
                             <?php endif; ?>
 
                             <a href="<?= route('user.profile', ['username' => $comment['author_name']]) ?>">
-                                <?= htmlspecialchars($comment['author_name']) ?>
+                                <?= e($comment['author_name']) ?>
                             </a>
 
                             <span class="divider">|</span>
                             <span>оценка: <strong><?= (int)$comment['score'] ?></strong></span>
 
                             <span class="divider">|</span>
-                            <span><?= htmlspecialchars(date('d.m.Y H:i', strtotime($comment['created_at']))) ?></span>
+                            <span><?= e(date('d.m.Y H:i', strtotime($comment['created_at']))) ?></span>
 
                             <?php if (isset($comment['relevance'])): ?>
                                 <span class="divider">|</span>

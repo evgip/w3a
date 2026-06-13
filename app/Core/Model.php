@@ -8,15 +8,15 @@ abstract class Model
 {
     protected string $table;
     protected string $primaryKey = 'id';
-    
-	/**
+
+    /**
      * Белый список полей, разрешённых для массового назначения (Mass Assignment).
      * Должен быть переопределён в дочерних моделях.
      * 
      * @var array
      */
     protected array $fillable = [];
-	
+
     // Flag to control whether to include soft-deleted records in queries
     protected bool $includeTrashed = false;
 
@@ -42,7 +42,7 @@ abstract class Model
                 $sql .= " AND `deleted_at` IS NULL";
             }
         }
-        
+
         // Reset flag configuration for subsequent queries
         $this->includeTrashed = false;
         return $sql;
@@ -55,7 +55,7 @@ abstract class Model
     {
         $db = Database::getConnection();
         $sql = $this->applySoftDeleteConstraint("SELECT * FROM `{$this->table}`");
-        
+
         $stmt = $db->query($sql);
         return $stmt->fetchAll();
     }
@@ -65,18 +65,18 @@ abstract class Model
      */
     public function find($id): ?array
     {
-		if (!is_numeric($id)) {
-			throw new \InvalidArgumentException("Invalid ID");
-		}
-		
+        if (!is_numeric($id)) {
+            throw new \InvalidArgumentException("Invalid ID");
+        }
+
         $db = Database::getConnection();
-        
+
         // Сначала пишем базовый запрос БЕЗ LIMIT 1
         $sql = "SELECT * FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id";
-        
+
         // Применяем фильтр мягкого удаления (он безопасно допишет AND deleted_at IS NULL)
         $sql = $this->applySoftDeleteConstraint($sql);
-        
+
         // И только в самом конце приклеиваем LIMIT 1
         $sql .= " LIMIT 1";
 
@@ -92,13 +92,13 @@ abstract class Model
     public function findBy(string $column, $value): ?array
     {
         $db = Database::getConnection();
-        
+
         // Базовый запрос без лимита
         $sql = "SELECT * FROM `{$this->table}` WHERE `{$column}` = :value";
-        
+
         // Безопасно применяем фильтр мягкого удаления
         $sql = $this->applySoftDeleteConstraint($sql);
-        
+
         // Дописываем лимит в самый конец запроса
         $sql .= " LIMIT 1";
 
@@ -107,40 +107,40 @@ abstract class Model
         $result = $stmt->fetch();
         return $result ? $result : null;
     }
-	
-   /**
+
+    /**
      * Фильтрует входящие данные, оставляя только разрешённые поля.
-	 * + логирование в случае подбора
+     * + логирование в случае подбора
      * 
      * @param array $data Исходные данные
      * @return array Отфильтрованные данные
      * @throws \RuntimeException Если $fillable не определён в модели
      */
-	protected function filterFillable(array $data): array
-	{
-		if (empty($this->fillable)) {
-			throw new \RuntimeException("Модель '" . static::class . "' должна определять свойство \$fillable.");
-		}
+    protected function filterFillable(array $data): array
+    {
+        if (empty($this->fillable)) {
+            throw new \RuntimeException("Модель '" . static::class . "' должна определять свойство \$fillable.");
+        }
 
-		$allowedKeys = array_flip($this->fillable);
-		$filteredData = array_intersect_key($data, $allowedKeys);
-		
-		// Находим поля, которые были в запросе, но не разрешены
-		$rejectedKeys = array_diff_key($data, $allowedKeys);
-		
-		if (!empty($rejectedKeys)) {
-			// Логируем попытку массового назначения запрещённых полей
-			$keysString = implode(', ', array_keys($rejectedKeys));
-			\App\Core\Logger::error("Mass Assignment Attempt", [
-				'model' => static::class,
-				'rejected_fields' => $keysString,
-				'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
-			]);
-		}
+        $allowedKeys = array_flip($this->fillable);
+        $filteredData = array_intersect_key($data, $allowedKeys);
 
-		return $filteredData;
-	}
-	
+        // Находим поля, которые были в запросе, но не разрешены
+        $rejectedKeys = array_diff_key($data, $allowedKeys);
+
+        if (!empty($rejectedKeys)) {
+            // Логируем попытку массового назначения запрещённых полей
+            $keysString = implode(', ', array_keys($rejectedKeys));
+            \App\Core\Logger::error("Mass Assignment Attempt", [
+                'model' => static::class,
+                'rejected_fields' => $keysString,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+            ]);
+        }
+
+        return $filteredData;
+    }
+
     /**
      * Create a new record in the database
      * 
@@ -152,25 +152,25 @@ abstract class Model
     {
         // 1. Фильтрация по белому списку
         $data = $this->filterFillable($data);
-        
+
         if (empty($data)) {
             throw new \InvalidArgumentException("Нет разрешённых полей для создания записи.");
         }
-        
+
         $db = Database::getConnection();
-        
+
         // 2. Экранирование имён колонок обратными кавычками (защита в глубину)
         $columns = '`' . implode('`, `', array_keys($data)) . '`';
         $placeholders = ':' . implode(', :', array_keys($data));
-        
+
         $sql = "INSERT INTO `{$this->table}` ({$columns}) VALUES ({$placeholders})";
         $stmt = $db->prepare($sql);
         $stmt->execute($data);
-        
+
         return (int)$db->lastInsertId();
     }
 
-   /**
+    /**
      * Update an existing database record
      * 
      * @param int|string $id The ID of the record to update
@@ -182,22 +182,22 @@ abstract class Model
     {
         // 1. Фильтрация по белому списку
         $data = $this->filterFillable($data);
-        
+
         if (empty($data)) {
             throw new \InvalidArgumentException("Нет разрешённых полей для обновления записи.");
         }
-        
+
         $db = Database::getConnection();
-        
+
         $fields = '';
         foreach ($data as $key => $value) {
             $fields .= "`{$key}` = :{$key}, ";
         }
         $fields = rtrim($fields, ', ');
-        
+
         $sql = "UPDATE `{$this->table}` SET {$fields} WHERE `{$this->primaryKey}` = :_id";
         $stmt = $db->prepare($sql);
-        
+
         $data['_id'] = $id;
         return $stmt->execute($data);
     }
@@ -207,10 +207,10 @@ abstract class Model
      */
     public function delete($id): bool
     {
-		if (!is_numeric($id)) {
-			throw new \InvalidArgumentException("Invalid ID");
-		}
-				
+        if (!is_numeric($id)) {
+            throw new \InvalidArgumentException("Invalid ID");
+        }
+
         // Log auditing footprint automatically if required
         \App\Core\Audit::log('model.soft_delete', "Запись отправлена в архив", [
             'table' => $this->table,

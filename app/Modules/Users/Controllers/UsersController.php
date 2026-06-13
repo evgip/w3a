@@ -57,7 +57,7 @@ class UsersController extends Controller
 
         // 4. Рендерим шаблон, передавая туда чистые данные
         $this->render('profile', [
-            'title'         => 'Профиль пользователя ' . htmlspecialchars($user['name']),
+            'title'         => 'Профиль пользователя ' . e($user['name']),
             'profileUser'   => $user,
             'storiesCount'  => $stats['stories_count'],
             'commentsCount' => $stats['comments_count'],
@@ -120,7 +120,7 @@ class UsersController extends Controller
             session_regenerate_id(true);
 
             Audit::log('auth.login_success', 'Пользователь успешно авторизовался в системе', ['user_id' => $user['id']]);
-            Session::setFlash('success', 'Добро пожаловать обратно, ' . htmlspecialchars($user['name']) . '!');
+            Session::setFlash('success', 'Добро пожаловать обратно, ' . e($user['name']) . '!');
             
             header('Location: ' . route('home'));
             exit;
@@ -241,9 +241,9 @@ class UsersController extends Controller
 			$activationLink = config('config.app.url') . "/register/activate/" . $token;
 			
 			// Формирование письма
-			$subject = \App\Core\Lang::format('email_activation_subject', [htmlspecialchars(app_name())]);
+			$subject = \App\Core\Lang::format('email_activation_subject', [e(app_name())]);
 			$htmlBody = \App\Core\Lang::format('email_activation_body', [
-				htmlspecialchars($username),
+				e($username),
 				$activationLink
 			]);
 			
@@ -587,9 +587,9 @@ class UsersController extends Controller
             $resetLink = config('config.app.url') . "/password/reset/" . $token;
 
             // --- CLEAN ARCHITECTURE REFACTOR: FETCH LOCALIZED RECOVERY CONTENT ---
-            $subject  = \App\Core\Lang::get('email_recovery_subject', [htmlspecialchars(app_name())]);
+            $subject  = \App\Core\Lang::get('email_recovery_subject', [e(app_name())]);
             $htmlBody = \App\Core\Lang::format('email_recovery_body', [
-                htmlspecialchars($user['name']), 
+                e($user['name']), 
                 $resetLink
             ]);
 

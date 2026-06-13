@@ -45,11 +45,11 @@
                     <td><?= (int)$ban['id'] ?></td>
                     <td>
                         <code class="security-alert-toast-ip firewall-ip-badge">
-                            <?= htmlspecialchars($ban['ip_address']) ?>
+                            <?= e($ban['ip_address']) ?>
                         </code>
                     </td>
-                    <td><?= htmlspecialchars($ban['reason']) ?></td>
-                    <td><small class="text-muted"><?= htmlspecialchars($ban['created_at']) ?></small></td>
+                    <td><?= e($ban['reason']) ?></td>
+                    <td><small class="text-muted"><?= e($ban['created_at']) ?></small></td>
                     <td class="text-right">
                         <form action="<?= route('admin.firewall.unban', ['id' => $ban['id']]) ?>" method="POST" class="firewall-unban-form">
                             <?= $request->csrfField() ?>

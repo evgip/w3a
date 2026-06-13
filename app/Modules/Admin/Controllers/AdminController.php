@@ -342,7 +342,7 @@ class AdminController extends Controller
         }
 
         $this->render('tag_edit', [
-            'title' => 'Редактирование тега #' . htmlspecialchars($tag['tag']),
+            'title' => 'Редактирование тега #' . e($tag['tag']),
             'tagItem' => $tag,
             'request' => new \App\Core\Request()
         ]);
@@ -405,7 +405,7 @@ class AdminController extends Controller
         if (!$user) { header('Location: /admin/users'); exit; }
 
         $this->render('user_edit_panel', [
-            'title' => 'Модерация профиля: ' . htmlspecialchars($user['name']),
+            'title' => 'Модерация профиля: ' . e($user['name']),
             'userItem' => $user,
             'request' => new \App\Core\Request()
         ]);
@@ -690,7 +690,7 @@ class AdminController extends Controller
             // ------------------------------------------------------------------
 
 			if ($success) {
-				\App\Core\Session::setFlash('success', 'Тестовое письмо отправлено успешно на ' . htmlspecialchars($adminEmail));
+				\App\Core\Session::setFlash('success', 'Тестовое письмо отправлено успешно на ' . e($adminEmail));
 				\App\Core\Audit::log('admin.test_email_sent', "Администратор отправил тестовое письмо на {$adminEmail}");
 			} else {
 				\App\Core\Session::setFlash('error', 'Не удалось отправить тестовое письмо. Проверьте настройки PHP mail() или SMTP.');

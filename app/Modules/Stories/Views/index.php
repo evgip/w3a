@@ -39,11 +39,11 @@ if ($currentUserId > 0) {
 
                         <?php
                         $isExternal = !empty($story['url']);
-                        $targetUrl = $isExternal ? htmlspecialchars($story['url']) : route('story.show', ['id' => $story['id']]);
+                        $targetUrl = $isExternal ? e($story['url']) : route('story.show', ['id' => $story['id']]);
                         ?>
 
                         <a href="<?= $targetUrl ?>" <?= $isExternal ? 'target="_blank" rel="noopener noreferrer"' : '' ?>>
-                            <?= htmlspecialchars($story['title']) ?>
+                            <?= e($story['title']) ?>
                         </a>
 
                         <?php if ($isExternal): ?>
@@ -52,19 +52,19 @@ if ($currentUserId > 0) {
 							if ($domainHost): 
 							?>
 								<a href="<?= route('domains.show', ['domain' => $domainHost]) ?>" class="domain">
-									<?= htmlspecialchars($domainHost) ?>
+									<?= e($domainHost) ?>
 								</a>
 							<?php endif; ?>
                         <?php endif; ?>
+						
+						<?php if (!empty($story['tags'])): ?>
+							<span class="tags">
+								<?php foreach ($story['tags'] as $tagName): ?>
+									<a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= e($tagName) ?></a>
+								<?php endforeach; ?>
+							</span>
+						<?php endif; ?>
                     </div>
-
-                    <?php if (!empty($story['tags'])): ?>
-                        <span class="tags">
-                            <?php foreach ($story['tags'] as $tagName): ?>
-                                <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= htmlspecialchars($tagName) ?></a>
-                            <?php endforeach; ?>
-                        </span>
-                    <?php endif; ?>
 
                     <?php if (!empty($story['description'])): ?>
                         <div class="story_content">

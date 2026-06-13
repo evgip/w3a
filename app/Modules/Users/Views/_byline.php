@@ -18,11 +18,11 @@
     
     <a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>"
        <?= (int)$story['user_id'] === $currentUserId ? 'class="user_is_author"' : '' ?>>
-        <?= htmlspecialchars($story['author_name']) ?>
+        <?= e($story['author_name']) ?>
     </a>
     
     <span class="divider">|</span>
-    <span title="<?= htmlspecialchars(date('d.m.Y H:i:s', strtotime($story['created_at']))) ?>">
-        <?= htmlspecialchars(date('d.m.Y H:i', strtotime($story['created_at']))) ?>
+    <span title="<?= e(date('d.m.Y H:i:s', strtotime($story['created_at']))) ?>">
+        <?= e(date('d.m.Y H:i', strtotime($story['created_at']))) ?>
     </span>
 </div>

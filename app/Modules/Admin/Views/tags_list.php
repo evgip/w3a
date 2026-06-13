@@ -24,10 +24,10 @@
                     <td><?= (int)$tagItem['id'] ?></td>
                     <td>
                         <span class="tag-badge-link tag-badge-custom">
-                            <?= htmlspecialchars($tagItem['tag']) ?>
+                            <?= e($tagItem['tag']) ?>
                         </span>
                     </td>
-                    <td><?= htmlspecialchars($tagItem['description'] ?? 'Описание отсутствует.') ?></td>
+                    <td><?= e($tagItem['description'] ?? 'Описание отсутствует.') ?></td>
                     <td>
                         <?php if ((int)$tagItem['is_media'] === 1): ?>
                             <span class="badge badge-media">Медиа (Video/PDF)</span>

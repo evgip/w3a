@@ -41,11 +41,11 @@ if ($currentUserId > 0) {
 
                 <?php
                 $isExternal = !empty($story['url']);
-                $targetUrl = $isExternal ? htmlspecialchars($story['url']) : route('story.show', ['id' => $story['id']]);
+                $targetUrl = $isExternal ? e($story['url']) : route('story.show', ['id' => $story['id']]);
                 ?>
 
                 <a href="<?= $targetUrl ?>" <?= $isExternal ? 'target="_blank" rel="noopener noreferrer"' : '' ?>>
-                    <?= htmlspecialchars($story['title']) ?>
+                    <?= e($story['title']) ?>
                 </a>
 
                 <?php if ($isExternal): ?>
@@ -54,7 +54,7 @@ if ($currentUserId > 0) {
 					if ($domainHost): 
 					?>
 						<a href="<?= route('domains.show', ['domain' => $domainHost]) ?>" class="domain">
-							<?= htmlspecialchars($domainHost) ?>
+							<?= e($domainHost) ?>
 						</a>
 					<?php endif; ?>
                 <?php endif; ?>
@@ -64,7 +64,7 @@ if ($currentUserId > 0) {
             <?php if (!empty($story['tags'])): ?>
                 <span class="tags">
                     <?php foreach ($story['tags'] as $tagName): ?>
-                        <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= htmlspecialchars($tagName) ?></a>
+                        <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= e($tagName) ?></a>
                     <?php endforeach; ?>
                 </span>
             <?php endif; ?>
@@ -79,16 +79,16 @@ if ($currentUserId > 0) {
             <!-- Метаданные (byline) -->
             <div class="byline">
                 <?php if (!empty($story['author_avatar'])): ?>
-                    <img src="/uploads/avatars/<?= substr($story['author_avatar'], 0, 2) ?>/<?= htmlspecialchars($story['author_avatar']) ?>" class="avatar" alt="">
+                    <img src="/uploads/avatars/<?= substr($story['author_avatar'], 0, 2) ?>/<?= e($story['author_avatar']) ?>" class="avatar" alt="">
                 <?php endif; ?>
 
                 <a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>" <?= (int)$story['user_id'] === $currentUserId ? 'class="user_is_author"' : '' ?>>
-                    <?= htmlspecialchars($story['user_name']) ?>
+                    <?= e($story['user_name']) ?>
                </a>
 
                 <span class="divider">|</span>
-                <span title="<?= htmlspecialchars(date('d.m.Y H:i:s', strtotime($story['created_at']))) ?>">
-                    <?= htmlspecialchars(date('d.m.Y H:i', strtotime($story['created_at']))) ?>
+                <span title="<?= e(date('d.m.Y H:i:s', strtotime($story['created_at']))) ?>">
+                    <?= e(date('d.m.Y H:i', strtotime($story['created_at']))) ?>
                 </span>
 
                 <span class="divider">|</span>
@@ -173,7 +173,7 @@ if ($currentUserId > 0) {
                 <li class="comment <?= $isCommentDeleted ? 'deleted' : '' ?>" id="comment-block-<?= $commentId ?>">
 
                     <!-- Голосование -->
-                    <?php if (!$isCommentDeleted && $currentUserId > 0): ?>
+                    <?php if (!$isCommentDeleted): ?>
                         <div class="comment_votes">
                             <?php partial('Votes::_voters', [
                                 'type' => 'comment',
@@ -204,7 +204,7 @@ if ($currentUserId > 0) {
                         <!-- Тело комментария -->
                         <?php if (!$isCommentDeleted): ?>
                             <div class="comment_text" id="comment-text-content-<?= $commentId ?>"
-                                 data-raw="<?= htmlspecialchars($comment['comment'], ENT_QUOTES, 'UTF-8') ?>">
+                                 data-raw="<?= e($comment['comment'], ENT_QUOTES, 'UTF-8') ?>">
                                 <?= \App\Core\Markdown::parse($comment['comment']) ?>
                             </div>
 

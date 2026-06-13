@@ -6,7 +6,7 @@
 <?php if ($trace): ?>
     <details>
         <summary>Детали ошибки (для разработчиков)</summary>
-        <pre><?= htmlspecialchars($trace) ?></pre>
+        <pre><?= e($trace) ?></pre>
     </details>
 <?php endif; ?>
 

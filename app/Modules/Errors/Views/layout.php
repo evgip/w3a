@@ -2,14 +2,14 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars($title) ?></title>
+    <title><?= e($title) ?></title>
     <link rel="stylesheet" href="/css/app.min.css">
 </head>
 <body>
     <main>
 	  <div class="card">
         <h1>⚠️ Ошибка</h1>
-        <p><?= htmlspecialchars($message) ?></p>
+        <p><?= e($message) ?></p>
         <hr>
         <a href="/">Вернуться на главную страницу</a>
 		</div>

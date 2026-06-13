@@ -11,6 +11,7 @@ class Comment extends Model
 
     // Белый список полей для массового назначения
     protected array $fillable = [
+		'deleted_at',
         'story_id',
         'user_id',
         'parent_id',

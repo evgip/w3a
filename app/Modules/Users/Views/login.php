@@ -6,13 +6,13 @@ $request = new \App\Core\Request();
 
 <?php if (\App\Core\Session::hasFlash('error')): ?>
     <div class="flash-error">
-        <?= htmlspecialchars(\App\Core\Session::getFlash('error')) ?>
+        <?= e(\App\Core\Session::getFlash('error')) ?>
     </div>
 <?php endif; ?>
 
 <?php if (\App\Core\Session::hasFlash('success')): ?>
     <div class="flash-success">
-        <?= htmlspecialchars(\App\Core\Session::getFlash('success')) ?>
+        <?= e(\App\Core\Session::getFlash('success')) ?>
     </div>
 <?php endif; ?>
 

@@ -13,19 +13,19 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
     
     <!-- Аватар -->
     <?php if (!empty($profileUser['avatar'])): ?>
-        <img src="/uploads/avatars/<?= substr($profileUser['avatar'], 0, 2) ?>/<?= htmlspecialchars($profileUser['avatar']) ?>" 
+        <img src="/uploads/avatars/<?= substr($profileUser['avatar'], 0, 2) ?>/<?= e($profileUser['avatar']) ?>" 
              class="profile-avatar-large" 
-             alt="<?= htmlspecialchars(mb_substr($profileUser['name'], 0, 1)) ?>">
+             alt="<?= e(mb_substr($profileUser['name'], 0, 1)) ?>">
     <?php else: ?>
         <div class="profile-avatar-placeholder-large">
-            <?= htmlspecialchars(mb_substr($profileUser['name'], 0, 1)) ?>
+            <?= e(mb_substr($profileUser['name'], 0, 1)) ?>
         </div>
     <?php endif; ?>
 
     <!-- Информация -->
     <div class="profile-info">
         <h2 class="profile-username">
-            # <?= htmlspecialchars($profileUser['name']) ?>
+            # <?= e($profileUser['name']) ?>
         </h2>
         
         <span class="profile-status">Активный пользователь</span>
@@ -45,7 +45,7 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
 <!-- БИОГРАФИЯ -->
 <?php if (!empty($profileUser['bio'])): ?>
     <div class="profile-bio">
-        <?= nl2br(htmlspecialchars($profileUser['bio'])) ?>
+        <?= nl2br(e($profileUser['bio'])) ?>
     </div>
 <?php endif; ?>
 
@@ -55,7 +55,7 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
         <tr>
             <td>Аккаунт создан:</td>
             <td>
-                <?= htmlspecialchars(date('d.m.Y', strtotime($profileUser['created_at']))) ?>
+                <?= e(date('d.m.Y', strtotime($profileUser['created_at']))) ?>
                 <span class="profile-id-subtext">(ID: <?= (int)$profileUser['id'] ?>)</span>
             </td>
         </tr>
@@ -77,7 +77,7 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
         <tr>
             <td>Роль на сайте:</td>
             <td>
-                <strong><?= htmlspecialchars($profileUser['role']) ?></strong>
+                <strong><?= e($profileUser['role']) ?></strong>
             </td>
         </tr>
 
@@ -100,7 +100,7 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
         <tr>
             <td>Контактный Email:</td>
             <td>
-                <code><?= htmlspecialchars($profileUser['email']) ?></code>
+                <code><?= e($profileUser['email']) ?></code>
             </td>
         </tr>
     </tbody>

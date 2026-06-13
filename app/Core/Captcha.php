@@ -25,7 +25,7 @@ class Captcha
         }
 
         $driverConfig = $config['drivers'][$driver];
-        $siteKey = htmlspecialchars($driverConfig['site_key'], ENT_QUOTES, 'UTF-8');
+        $siteKey = e($driverConfig['site_key'], ENT_QUOTES, 'UTF-8');
         $nonce = \App\Core\Security::getNonce();
 
         if ($driver === 'yandex') {
