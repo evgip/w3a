@@ -9,6 +9,14 @@ class Story extends Model
 {
     protected string $table = 'stories';
 
+    protected array $fillable = [
+        'user_id',
+        'title',
+        'url',
+        'text',
+        // 'score' // Если разрешено менять рейтинг напрямую (обычно нет, но для примера)
+    ];
+
     /**
      * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
      */

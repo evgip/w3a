@@ -9,6 +9,11 @@ class Tag extends Model
 {
     protected string $table = 'tags';
 
+	protected array $fillable = [
+		'name',
+		'slug'
+	];
+
     /**
      * Получить все теги, отсортированные по категориям Lobsters
      */

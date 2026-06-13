@@ -9,6 +9,13 @@ class RateLimit extends Model
 {
     protected string $table = 'rate_limits';
 
+	protected array $fillable = [
+		'ip_address',
+		'endpoint_action', // <-- Добавили это поле
+		'request_count',
+		'window_start'
+	];
+
     /**
      * Delete stale rows older than the specified sliding time window
      */

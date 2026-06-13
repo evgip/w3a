@@ -9,6 +9,15 @@ class Comment extends Model
 {
     protected string $table = 'comments';
 
+    // Белый список полей для массового назначения
+    protected array $fillable = [
+        'story_id',
+        'user_id',
+        'parent_id',
+        'comment',
+        'score'     // ← Нужен, так как устанавливается в 1 при создании
+    ];
+
 	public function saveComment(array $data): int
 	{
 		$db = Database::getConnection();

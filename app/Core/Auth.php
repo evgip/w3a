@@ -118,6 +118,40 @@ class Auth
         return isset($_SESSION['user_id']);
     }
 
+	/**
+	 * Получить ID текущего авторизованного пользователя
+	 * 
+	 * @return int|null ID пользователя или null, если не авторизован
+	 */
+	public static function id(): ?int
+	{
+		self::initSession();
+		return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+	}
+
+	/**
+	 * Получить имя текущего авторизованного пользователя
+	 * 
+	 * @return string|null Имя пользователя или null, если не авторизован
+	 */
+	public static function name(): ?string
+	{
+		self::initSession();
+		return $_SESSION['user_name'] ?? null;
+	}
+
+	/**
+	 * Получить роль текущего авторизованного пользователя
+	 * 
+	 * @return string|null Роль пользователя или null, если не авторизован
+	 */
+	public static function role(): ?string
+	{
+		self::initSession();
+		return $_SESSION['user_role'] ?? null;
+	}
+
+
     public static function isAdmin(): bool
     {
         self::initSession();

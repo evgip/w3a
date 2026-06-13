@@ -51,8 +51,7 @@ class StoriesController extends Controller
 		]);
 	}
 	
-	
-	
+
     /**
      * Display the submission form (GET /stories/create)
      */

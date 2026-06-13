@@ -110,7 +110,6 @@ class Router
         }
     }
 
-    // ... (Методы route(), dispatch(), executeAction() и triggerError() остаются без изменений)
     public function route(string $name, array $params = []): string
     {
         if (!isset($this->namedRoutes[$name])) {

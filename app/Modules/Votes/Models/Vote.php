@@ -9,6 +9,13 @@ class Vote extends Model
 {
     protected string $table = 'votes';
 
+	protected array $fillable = [
+		'user_id',
+		'story_id',
+		'comment_id',
+		'score'
+	];
+
     /**
      * Проверить, голосовал ли пользователь за конкретный объект
      */

@@ -4,6 +4,16 @@ $voteModel = new \App\Modules\Votes\Models\Vote();
 $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
 
 $commentsTree = $commentsTree ?? [];
+
+$minKarmaForDownvote = config_int('config.app.min_karma_for_downvote', 10);
+
+$canUserDownvote = false;
+if ($currentUserId > 0) {
+    $userModel = new \App\Modules\Users\Models\User();
+    $viewerKarma = $userModel->getUserKarma($currentUserId);
+    $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
+}
+
 ?>
 
 <!-- КАРТОЧКА ПУБЛИКАЦИИ -->
@@ -174,6 +184,7 @@ $commentsTree = $commentsTree ?? [];
                                 'isLoggedIn' => true,
                             ]); ?>
                         </div>
+
                     <?php elseif (!$isCommentDeleted): ?>
                         <div class="comment_votes">
                             <span class="score"><?= (int)$comment['score'] ?></span>

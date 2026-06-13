@@ -541,3 +541,8 @@ ALTER TABLE `votes`
 
 ALTER TABLE `conversations` 
 ADD COLUMN `deleted_at` timestamp NULL DEFAULT NULL AFTER `updated_at`;
+
+CREATE INDEX idx_stories_created_at ON stories(created_at DESC);
+CREATE INDEX idx_taggings_story_id ON taggings(story_id);
+CREATE INDEX idx_taggings_tag_id ON taggings(tag_id);
+CREATE INDEX idx_votes_votable ON votes(votable_type, votable_id);

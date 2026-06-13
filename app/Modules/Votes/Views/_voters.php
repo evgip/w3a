@@ -22,7 +22,7 @@ $request = new \App\Core\Request();
         </form>
         
         <div class="score"><?= $score ?></div>
-        
+
         <?php if ($canDownvote): ?>
             <form action="<?= route('votes.toggle', ['type' => $type, 'id' => $id, 'direction' => 'down']) ?>" method="POST">
                 <?= $request->csrfField() ?>

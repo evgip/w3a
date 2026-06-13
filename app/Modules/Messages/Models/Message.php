@@ -9,6 +9,14 @@ class Message extends Model
 {
     protected string $table = 'messages';
 
+	protected array $fillable = [
+		'sender_id',
+		'recipient_id',
+		'subject',
+		'body',
+		'is_read'
+	];
+
     /**
      * Fetch a paginated chunk of messages for a chat room, sorted chronologically
      */

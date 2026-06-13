@@ -9,6 +9,18 @@ class User extends Model
 {
     protected string $table = 'users';
 
+    // Разрешаем изменять только эти поля при регистрации/редактировании
+    // Поля 'id',  'karma', 'created_at' защищены от изменения через массив $data
+	protected array $fillable = [
+		'name',
+		'email',
+		'password',
+		'avatar',
+		'bio',
+		'role' // Будем осторожны с role, лучше менять его через отдельный метод, но для полноты оставим
+	];
+
+
     /**
      * Получить полную статистику активности пользователя по его ID
      * 

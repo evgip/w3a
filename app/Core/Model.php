@@ -9,6 +9,14 @@ abstract class Model
     protected string $table;
     protected string $primaryKey = 'id';
     
+	/**
+     * Белый список полей, разрешённых для массового назначения (Mass Assignment).
+     * Должен быть переопределён в дочерних моделях.
+     * 
+     * @var array
+     */
+    protected array $fillable = [];
+	
     // Flag to control whether to include soft-deleted records in queries
     protected bool $includeTrashed = false;
 
@@ -57,6 +65,10 @@ abstract class Model
      */
     public function find($id): ?array
     {
+		if (!is_numeric($id)) {
+			throw new \InvalidArgumentException("Invalid ID");
+		}
+		
         $db = Database::getConnection();
         
         // Сначала пишем базовый запрос БЕЗ LIMIT 1
@@ -96,15 +108,59 @@ abstract class Model
         return $result ? $result : null;
     }
 	
+   /**
+     * Фильтрует входящие данные, оставляя только разрешённые поля.
+	 * + логирование в случае подбора
+     * 
+     * @param array $data Исходные данные
+     * @return array Отфильтрованные данные
+     * @throws \RuntimeException Если $fillable не определён в модели
+     */
+	protected function filterFillable(array $data): array
+	{
+		if (empty($this->fillable)) {
+			throw new \RuntimeException("Модель '" . static::class . "' должна определять свойство \$fillable.");
+		}
+
+		$allowedKeys = array_flip($this->fillable);
+		$filteredData = array_intersect_key($data, $allowedKeys);
+		
+		// Находим поля, которые были в запросе, но не разрешены
+		$rejectedKeys = array_diff_key($data, $allowedKeys);
+		
+		if (!empty($rejectedKeys)) {
+			// Логируем попытку массового назначения запрещённых полей
+			$keysString = implode(', ', array_keys($rejectedKeys));
+			\App\Core\Logger::error("Mass Assignment Attempt", [
+				'model' => static::class,
+				'rejected_fields' => $keysString,
+				'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+			]);
+		}
+
+		return $filteredData;
+	}
 	
     /**
      * Create a new record in the database
+     * 
+     * @param array $data Associative array of column => value pairs
+     * @return int The ID of the newly created record
+     * @throws \InvalidArgumentException If no valid data is provided
      */
     public function create(array $data): int
     {
+        // 1. Фильтрация по белому списку
+        $data = $this->filterFillable($data);
+        
+        if (empty($data)) {
+            throw new \InvalidArgumentException("Нет разрешённых полей для создания записи.");
+        }
+        
         $db = Database::getConnection();
         
-        $columns = implode(', ', array_keys($data));
+        // 2. Экранирование имён колонок обратными кавычками (защита в глубину)
+        $columns = '`' . implode('`, `', array_keys($data)) . '`';
         $placeholders = ':' . implode(', :', array_keys($data));
         
         $sql = "INSERT INTO `{$this->table}` ({$columns}) VALUES ({$placeholders})";
@@ -114,11 +170,23 @@ abstract class Model
         return (int)$db->lastInsertId();
     }
 
-    /**
+   /**
      * Update an existing database record
+     * 
+     * @param int|string $id The ID of the record to update
+     * @param array $data Associative array of column => value pairs to update
+     * @return bool True on success, false on failure
+     * @throws \InvalidArgumentException If no valid data is provided
      */
     public function update($id, array $data): bool
     {
+        // 1. Фильтрация по белому списку
+        $data = $this->filterFillable($data);
+        
+        if (empty($data)) {
+            throw new \InvalidArgumentException("Нет разрешённых полей для обновления записи.");
+        }
+        
         $db = Database::getConnection();
         
         $fields = '';
@@ -139,6 +207,10 @@ abstract class Model
      */
     public function delete($id): bool
     {
+		if (!is_numeric($id)) {
+			throw new \InvalidArgumentException("Invalid ID");
+		}
+				
         // Log auditing footprint automatically if required
         \App\Core\Audit::log('model.soft_delete', "Запись отправлена в архив", [
             'table' => $this->table,
