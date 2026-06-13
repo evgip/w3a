@@ -2,19 +2,6 @@
 $request = new \App\Core\Request();
 $voteModel = new \App\Modules\Votes\Models\Vote();
 $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
-$isAdmin = \App\Core\Auth::isAdmin();
-
-$isStoryDeleted = !empty($story['deleted_at']);
-
-$config = require dirname(__DIR__, 3) . '/Config/config.php';
-$minKarmaForDownvote = (int)($config['app']['min_karma_for_downvote'] ?? 10);
-
-$canUserDownvote = false;
-if ($currentUserId > 0) {
-    $userModel = new \App\Modules\Users\Models\User();
-    $viewerKarma = $userModel->getUserKarma($currentUserId);
-    $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
-}
 
 $commentsTree = $commentsTree ?? [];
 ?>
@@ -81,8 +68,8 @@ $commentsTree = $commentsTree ?? [];
                 <?php endif; ?>
 
                 <a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>" <?= (int)$story['user_id'] === $currentUserId ? 'class="user_is_author"' : '' ?>>
-                    <?= htmlspecialchars($story['author_name']) ?>
-                </a>
+                    <?= htmlspecialchars($story['user_name']) ?>
+               </a>
 
                 <span class="divider">|</span>
                 <span title="<?= htmlspecialchars(date('d.m.Y H:i:s', strtotime($story['created_at']))) ?>">
@@ -124,8 +111,6 @@ $commentsTree = $commentsTree ?? [];
         </div>
     </li>
 </ol>
-
-<hr>
 
 <!-- ФОРМА КОРНЕВОГО КОММЕНТАРИЯ -->
 <div class="comment_form_container" id="comment-form-container">
@@ -172,8 +157,7 @@ $commentsTree = $commentsTree ?? [];
                 ?>
                 <li class="comment <?= $isCommentDeleted ? 'deleted' : '' ?>" id="comment-block-<?= $commentId ?>">
 
- 
-                    <!-- Голосование комментария (1 строка) -->
+                    <!-- Голосование -->
                     <?php if (!$isCommentDeleted && $currentUserId > 0): ?>
                         <div class="comment_votes">
                             <?php partial('Votes::_voters', [
@@ -191,39 +175,42 @@ $commentsTree = $commentsTree ?? [];
                         </div>
                     <?php endif; ?>
 
-                    <!-- Метаданные комментария (1 строка) -->
-                    <?php partial('Users::_comment_meta', [
-                        'comment' => $comment,
-                        'currentUserId' => $currentUserId,
-                        'isAdmin' => $isAdmin,
-                    ]); ?>
-					
-					</div>
+                    <!-- Обёртка для метаданных, текста и действий -->
+                    <div class="comment_body">
 
-                    <!-- Тело комментария -->
-                    <?php if (!$isCommentDeleted): ?>
-                        <div class="comment_text" id="comment-text-content-<?= $commentId ?>"
-                             data-raw="<?= htmlspecialchars($comment['comment'], ENT_QUOTES, 'UTF-8') ?>">
-                            <?= \App\Core\Markdown::parse($comment['comment']) ?>
-                        </div>
+                        <!-- Метаданные комментария -->
+                        <?php partial('Users::_comment_meta', [
+                            'comment' => $comment,
+                            'currentUserId' => $currentUserId,
+                            'isAdmin' => $isAdmin,
+                        ]); ?>
 
-                        <!-- Действия -->
-                        <div class="comment_actions">
-                            <?php if ($currentUserId > 0): ?>
-                                <a href="#reply-to-<?= $commentId ?>" class="comment-reply-link" data-id="<?= $commentId ?>">Ответить</a>
-                            <?php endif; ?>
+                        <!-- Тело комментария -->
+                        <?php if (!$isCommentDeleted): ?>
+                            <div class="comment_text" id="comment-text-content-<?= $commentId ?>"
+                                 data-raw="<?= htmlspecialchars($comment['comment'], ENT_QUOTES, 'UTF-8') ?>">
+                                <?= \App\Core\Markdown::parse($comment['comment']) ?>
+                            </div>
 
-                            <?php if (((int)$comment['user_id'] === $currentUserId) || $isAdmin): ?>
-                                <span class="divider">|</span>
-                                <a class="comment-edit-trigger" data-id="<?= $commentId ?>">Редактировать</a>
-                                <span class="divider">|</span>
-                                <form action="/comments/<?= $commentId ?>/delete" method="POST" class="inline-form">
-                                    <?= $request->csrfField() ?>
-                                    <button type="submit" onclick="return confirm('Удалить комментарий?')">Удалить</button>
-                                </form>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
+                            <!-- Действия -->
+                            <div class="comment_actions">
+                                <?php if ($currentUserId > 0): ?>
+                                    <a href="#reply-to-<?= $commentId ?>" class="comment-reply-link" data-id="<?= $commentId ?>">Ответить</a>
+                                <?php endif; ?>
+
+                                <?php if (((int)$comment['user_id'] === $currentUserId) || $isAdmin): ?>
+                                    <span class="divider">|</span>
+                                    <a class="comment-edit-trigger" data-id="<?= $commentId ?>">Редактировать</a>
+                                    <span class="divider">|</span>
+                                    <form action="/comments/<?= $commentId ?>/delete" method="POST" class="inline-form js-confirm-delete" data-confirm-message="Удалить комментарий?">
+										<?= $request->csrfField() ?>
+										<button type="submit">Удалить</button>
+									</form>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
+                    </div>
 
                     <!-- Рекурсия ветки -->
                     <?php $renderTree($commentId); ?>

@@ -997,13 +997,11 @@ table.data.zebra tr:nth-child(odd) td {
     color: var(--color-fg);
 }
 
-
 .btn-primary {
     background-color: #ac130d;
     border-color: #8a0f0a;
     color: #fff;
 }
-
 
 /* ---------- Кнопка регистрации ---------- */
 .btn-nav-create {
@@ -1312,4 +1310,67 @@ table.data.zebra tr:nth-child(odd) td {
 
 .alert strong {
     font-weight: bold;
+}
+
+
+/* ------------------- Layout комментариев ----------------- */
+
+/* Переопределяем базовые стили для li.comment */
+li.comment {
+    display: block;
+    clear: none; /* Убираем clear: both из base.css */
+    overflow: hidden; /* Создаёт BFC для очистки float */
+    margin-bottom: 0.5em;
+    padding: 0.5em 0;
+}
+
+/* Голосование слева (float уже есть в base.css для div.voters) */
+li.comment > .comment_votes {
+    float: left;
+    margin-right: 0.75em;
+}
+
+/* Убираем float для вложенных voters */
+li.comment .comment_votes .voters {
+    float: none;
+    margin-right: 0;
+}
+
+/* Контент справа (BFC занимает оставшееся пространство) */
+li.comment > .comment_body {
+    overflow: hidden; /* Создаёт BFC */
+    min-height: 1px; /* Гарантирует, что блок виден */
+}
+
+/* Вложенные комментарии */
+li.comment > ol.comments {
+    clear: both; /* Опускается ниже floated элементов */
+    margin-left: 1.5em;
+    margin-top: 0.5em;
+    padding-left: 1em;
+    border-left: 2px solid var(--color-fg-shape, #e0e0e0);
+}
+
+/* Убираем отступы у первого уровня комментариев */
+ol.comments {
+    list-style: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 600px) {
+    li.comment > .comment_votes {
+        float: none;
+        margin-bottom: 0.5em;
+    }
+    
+    li.comment > .comment_body {
+        overflow: visible;
+    }
+    
+    li.comment > ol.comments {
+        margin-left: 0.5em;
+        padding-left: 0.5em;
+    }
 }

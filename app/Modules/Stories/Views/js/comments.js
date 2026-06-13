@@ -192,4 +192,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
+	// Обработка форм с подтверждением удаления
+		document.querySelectorAll('.js-confirm-delete').forEach(function(form) {
+			form.addEventListener('submit', function(e) {
+				const message = this.getAttribute('data-confirm-message') || 'Вы уверены?';
+				if (!confirm(message)) {
+					e.preventDefault();
+					return false;
+				}
+			});
+		});
+
 });
