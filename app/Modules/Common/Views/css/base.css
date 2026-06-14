@@ -1073,16 +1073,45 @@ table.data.zebra tr:nth-child(odd) td {
     font-weight: bold;
 }
 
-/* ---------- Красная точка уведомления ---------- */
-.nav-trigger-alert-dot {
+/* Контейнер ссылки */
+.header-notification-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #212529; /* Аналог text-dark */
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
+}
+
+.header-notification-link:hover {
+    color: #0d6efd; /* Цвет при наведении (синий, можно изменить под ваш дизайн) */
+}
+
+/* SVG иконка колокольчика */
+.header-notification-icon {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor; /* Наследует цвет текста */
+}
+
+/* Бейдж с количеством уведомлений */
+.header-notification-badge {
     position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 8px;
-    height: 8px;
-    background-color: var(--color-fg-negative);
-    border-radius: 50%;
-    border: 1px solid var(--color-bg);
+    top: -4px;
+    right: -4px;
+    display: none; /* Скрыт по умолчанию, управляется через JS */
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.25em 0.4em;
+    border-radius: 9999px; /* Аналог rounded-pill */
+    background-color: #dc3545; /* Аналог bg-danger */
+    color: #ffffff;
+    text-align: center;
+    min-width: 16px;
+    white-space: nowrap;
+    box-shadow: 0 0 0 2px #ffffff; /* Белая обводка для красивого контраста с фоном шапки */
 }
 
 /* ---------- Стрелка dropdown ---------- */

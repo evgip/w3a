@@ -145,7 +145,7 @@ class Notification extends Model
     /**
      * Получить все уведомления пользователя с пагинацией
      */
-    public function getUserNotifications(int $userId, int $limit = 25, int $offset = 0): array
+    public function getUserNotifications(int $userId, ?string $type = null, int $limit = 50): array
     {
         $db = Database::getConnection();
         $sql = "
@@ -220,6 +220,25 @@ class Notification extends Model
         $stmt->execute(['user_id' => $userId]);
         return (int)$stmt->fetchColumn();
     }
+
+	/**
+	 * Получить количество непрочитанных уведомлений по типам
+	 * 
+	 * @param int $userId ID пользователя
+	 * @return array Массив вида [['type' => 'reply', 'count' => 5], ...]
+	 */
+	public function getUnreadCountByType(int $userId): array
+	{
+		$db = Database::getConnection();
+		$stmt = $db->prepare("
+			SELECT type, COUNT(*) as count 
+			FROM `{$this->table}` 
+			WHERE user_id = :user_id AND is_read = 0 
+			GROUP BY type
+		");
+		$stmt->execute(['user_id' => $userId]);
+		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+	}
 
     /**
      * Пометить одно уведомление как прочитанное

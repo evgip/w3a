@@ -1,37 +1,56 @@
-// Автоматическое обновление счётчика уведомлений каждые 60 секунд
-function updateNotificationBadge() {
-    fetch('/api/notifications/count')
+/**
+ * Обновляет счетчик уведомлений в шапке
+ */
+function updateHeaderNotificationCount() {
+    fetch('/notifications/count') // Убедитесь, что маршрут совпадает с getCountAction в контроллере
         .then(response => response.json())
         .then(data => {
-            const badge = document.getElementById('notification-badge');
+            const badge = document.getElementById('header-notification-badge');
+            if (!badge) return;
+            
             if (data.count > 0) {
-                if (badge) {
-                    badge.textContent = data.count;
-                    badge.style.display = 'inline-block';
-                } else {
-                    // Создаём бейдж, если его нет
-                    const bellIcon = document.querySelector('a[href="/notifications"] i.bi-bell');
-                    if (bellIcon) {
-                        const newBadge = document.createElement('span');
-                        newBadge.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
-                        newBadge.id = 'notification-badge';
-                        newBadge.textContent = data.count;
-                        bellIcon.parentElement.appendChild(newBadge);
-                    }
-                }
+                badge.textContent = data.count > 99 ? '99+' : data.count;
+                badge.style.display = 'block';
             } else {
-                if (badge) {
-                    badge.style.display = 'none';
-                }
+                badge.style.display = 'none';
             }
         })
-        .catch(error => console.error('Error fetching notifications:', error));
+        .catch(error => console.error('Ошибка получения счетчика уведомлений:', error));
 }
 
-// Запускаем обновление при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    updateNotificationBadge();
+// Запускаем при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    updateHeaderNotificationCount();
     
-    // Обновляем каждые 60 секунд
-    setInterval(updateNotificationBadge, 60000);
+    // Опционально: обновлять каждые 60 секунд (вместо 15, так как теперь это единый центр)
+    setInterval(updateHeaderNotificationCount, 60000);
+});
+
+
+// Помечаем уведомление как прочитанное при клике (без перезагрузки, для UX)
+function markAsRead(notificationId) {
+    fetch('/notifications/mark-as-read', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            // Добавьте ваш CSRF-токен здесь, если он используется
+            // 'X-CSRF-Token': 'your_token'
+        },
+        body: 'id=' + notificationId
+    }).then(() => {
+        // Обновляем счетчик в шапке
+        updateHeaderNotificationCount();
+    });
+}
+
+// Кнопка "Отметить все как прочитанные"
+document.getElementById('mark-all-read-btn')?.addEventListener('click', function() {
+    fetch('/notifications/mark-all-as-read', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+    }).then(() => {
+        location.reload();
+    });
 });

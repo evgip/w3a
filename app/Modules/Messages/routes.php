@@ -8,4 +8,5 @@ $router->add('POST', 'messages/send', 'MessagesController@sendMessage', 'message
 // Global trigger to start or look up an conversation straight using a profile button parameter
 $router->add('POST', 'messages/start/{userId}', 'MessagesController@startConversation', 'messages.start');
 
-$router->add('GET', 'api/messages/unread-count', 'MessagesController@getUnreadApiCount', 'api.messages.unread_count');
+
+ 

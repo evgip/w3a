@@ -28,25 +28,20 @@
     ?>
     
     
-        <a class="nav-link position-relative" href="/notifications" title="Уведомления">
-            dd
-            <?php if ($unreadCount > 0): ?>
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" 
-                      id="notification-badge">
-                    <?= $unreadCount ?>
-                    <span class="visually-hidden">непрочитанных уведомлений</span>
-                </span>
-            <?php endif; ?>
-        </a>
+    <a href="/notifications" class="header-notification-link" id="header-notifications-link" aria-label="Уведомления">
+    <!-- SVG иконка колокольчика -->
+    <svg class="header-notification-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+    </svg>
+    
+    <!-- Бейдж с количеством -->
+    <span id="header-notification-badge" class="header-notification-badge">0</span>
+</a>
     
 <?php endif; ?>-
 
 				<?php if (\App\Core\Auth::check()): ?>
-					<?php
-					// Instantiating the model on the fly to count unread indicators
-					$convModel = new \App\Modules\Messages\Models\Conversation();
-					$unreadCount = $convModel->getUnreadCount((int)$_SESSION['user_id']);
-					?>
 					<div class="navbar-user-dropdown-container" id="user-dropdown-wrapper">
 
 						<button class="dropdown-trigger-btn" id="user-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
@@ -72,19 +67,6 @@
 
 							<a href="<?= route('messages.index') ?>" class="dropdown-menu-item">
 								<span>✉️ Сообщения</span>
-								<!-- Append a red numerical bubble counter inside the dropdown item layout -->
-								<?php if ($unreadCount > 0): ?>
-									<span class="nav-badge-counter"><?= $unreadCount ?></span>
-								<?php endif; ?>
-
-
-								<?php
-								// Initial page-load count optimization to prevent interface flickers
-								$initialUnreadCount = (new \App\Modules\Messages\Models\Message())->getUnreadCount((int)$_SESSION['user_id']);
-								?>
-								<span id="unread-messages-badge" class="nav-notification-badge <?= $initialUnreadCount === 0 ? 'badge-hidden' : '' ?>">
-									<?= $initialUnreadCount ?>
-								</span>
 							</a>
 
 							<a href="<?= route('account.settings') ?>" class="dropdown-menu-item">⚙️ Настройки</a>

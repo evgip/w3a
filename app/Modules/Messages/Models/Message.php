@@ -82,24 +82,4 @@ class Message extends Model
         $stmt->execute(['cid' => $conversationId, 'rid' => $readerId]);
     }
 	
-    /**
-     * Atomically counts the total number of unread incoming messages for a specific user
-     */
-    public function getUnreadCount(int $userId): int
-    {
-        $db = Database::getConnection();
-        
-        // Count any unread messages from conversations where the user is a participant but not the sender
-        $sql = "SELECT COUNT(*) 
-                FROM `messages` m
-                JOIN `conversations` c ON m.conversation_id = c.id
-                WHERE m.is_read = 0 
-                  AND m.sender_id != :uid1
-                  AND (c.user_one = :uid2 OR c.user_two = :uid3)";
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute(['uid1' => $userId, 'uid2' => $userId, 'uid3' => $userId]);
-        
-        return (int)$stmt->fetchColumn();
-    }
 }

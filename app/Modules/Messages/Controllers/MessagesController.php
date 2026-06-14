@@ -156,30 +156,6 @@ class MessagesController extends Controller
         header('Location: /messages/chat/' . $roomId);
         exit;
     }
-	
-  /**
-     * Responds with raw JSON containing unread counts for the active user session (GET /api/messages/unread-count)
-     */
-    public function getUnreadApiCount(): void
-    {
-        // Set proper content-type header for API validation loops
-        header('Content-Type: application/json');
-
-        if (!Auth::check()) {
-            echo json_encode(['status' => 'error', 'count' => 0]);
-            exit;
-        }
-
-        $userId = (int)$_SESSION['user_id'];
-        $msgModel = new Message();
-        $unreadCount = $msgModel->getUnreadCount($userId);
-
-        echo json_encode([
-            'status' => 'success', 
-            'count' => $unreadCount
-        ]);
-        exit;
-    }
 }
 
 

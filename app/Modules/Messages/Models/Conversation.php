@@ -171,24 +171,4 @@ class Conversation extends Model
         ]);
     }
 	
-    /**
-     * Count the total number of unread conversations for the current user
-     */
-    public function getUnreadCount(int $userId): int
-    {
-        $db = Database::getConnection();
-        
-        // Counts messages where the user is a participant but NOT the sender, and is_read is 0
-        $sql = "SELECT COUNT(DISTINCT conversation_id) 
-                FROM `messages` m
-                JOIN `conversations` c ON m.conversation_id = c.id
-                WHERE (c.user_one = :uid1 OR c.user_two = :uid2)
-                  AND m.sender_id != :uid3 
-                  AND m.is_read = 0 
-                  AND m.deleted_at IS NULL";
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute(['uid1' => $userId, 'uid2' => $userId, 'uid3' => $userId]);
-        return (int)$stmt->fetchColumn();
-    }
 }
