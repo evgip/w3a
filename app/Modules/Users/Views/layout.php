@@ -21,7 +21,7 @@
 				<a href="/search">🔍 Поиск</a>
 
 
--<?php if (\App\Core\Auth::check()): ?>
+<?php if (\App\Core\Auth::check()): ?>
     <?php
     $notifModel = new \App\Modules\Notifications\Models\Notification();
     $unreadCount = $notifModel->getUnreadCount((int)$_SESSION['user_id']);
@@ -39,7 +39,7 @@
     <span id="header-notification-badge" class="header-notification-badge">0</span>
 </a>
     
-<?php endif; ?>-
+<?php endif; ?>
 
 				<?php if (\App\Core\Auth::check()): ?>
 					<div class="navbar-user-dropdown-container" id="user-dropdown-wrapper">

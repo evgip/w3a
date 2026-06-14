@@ -14,7 +14,9 @@ class Story extends Model
         'title',
         'url',
         'text',
-		'description'
+		'description',
+		'rejected_fields',
+		'deleted_at'
     ];
 
     /**
@@ -203,5 +205,67 @@ class Story extends Model
             return false;
         }
     }
+	
+	/**
+	 * Подписаться на историю (получать уведомления о комментариях)
+	 */
+	public function follow(int $storyId, int $userId): bool
+	{
+		$db = \App\Core\Database::getConnection();
+		$stmt = $db->prepare(
+			"UPDATE stories SET user_is_following = 1 WHERE id = :id AND user_id = :user_id"
+		);
+		return $stmt->execute([
+			'id' => $storyId,
+			'user_id' => $userId
+		]);
+	}
+
+	/**
+	 * Отписаться от истории
+	 */
+	public function unfollow(int $storyId, int $userId): bool
+	{
+		$db = \App\Core\Database::getConnection();
+		$stmt = $db->prepare(
+			"UPDATE stories SET user_is_following = 0 WHERE id = :id AND user_id = :user_id"
+		);
+		return $stmt->execute([
+			'id' => $storyId,
+			'user_id' => $userId
+		]);
+	}
+
+	/**
+	 * Переключить подписку
+	 */
+	public function toggleFollow(int $storyId, int $userId): bool
+	{
+		$db = \App\Core\Database::getConnection();
+		$stmt = $db->prepare(
+			"UPDATE stories SET user_is_following = NOT user_is_following 
+			 WHERE id = :id AND user_id = :user_id"
+		);
+		return $stmt->execute([
+			'id' => $storyId,
+			'user_id' => $userId
+		]);
+	}
+
+	/**
+	 * Проверить, подписан ли пользователь на историю
+	 */
+	public function isFollowing(int $storyId, int $userId): bool
+	{
+		$db = \App\Core\Database::getConnection();
+		$stmt = $db->prepare(
+			"SELECT user_is_following FROM stories WHERE id = :id AND user_id = :user_id"
+		);
+		$stmt->execute([
+			'id' => $storyId,
+			'user_id' => $userId
+		]);
+		return (bool)$stmt->fetchColumn();
+	}
 }
 

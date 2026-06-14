@@ -87,8 +87,7 @@
                 <li class="notification-item <?=$notif['is_read'] ? '' : 'notification-unread'?>">
                     <a href="<?=$link?>"
                        class="notification-link"
-                       data-notification-id="<?=$notif['id']?>"
-                       onclick="markAsRead(<?=$notif['id']?>)">
+                       data-notification-id="<?=$notif['id']?>">
 
                         <div class="notification-icon">
                             <?=$icon?>

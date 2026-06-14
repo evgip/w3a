@@ -56,6 +56,18 @@
                   placeholder="Сопроводительный текст, комментарии или дополнительный контекст..."><?= e($story['description'] ?? '') ?></textarea>
     </div>
 
+	<div class="form-group">
+		<label>
+			<input type="checkbox" name="user_is_following" value="1" 
+				<?= !empty($story['user_is_following']) ? 'checked' : '' ?>>
+			Получать уведомления о новых комментариях к этой истории.
+		</label><br>
+		<small class="form-text text-muted">
+			Вы будете получать уведомления о всех новых комментариях в этой истории.
+		</small>
+	</div>
+
+
     <div class="form-actions">
         <button type="submit">Сохранить изменения</button>
         <a href="<?= route('story.show', ['id' => $story['id']]) ?>">Отмена</a>

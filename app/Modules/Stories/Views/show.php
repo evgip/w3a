@@ -12,6 +12,10 @@ if ($currentUserId > 0) {
     $viewerKarma = $userModel->getUserKarma($currentUserId);
     $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
 }
+
+$isAuthor = (int)$story['user_id'] === (int)$_SESSION['user_id'];
+$isStoryDeleted = !empty($story['deleted_at']); 
+$isAdmin = \App\Core\Auth::isAdmin();
 ?>
 
 <!-- КАРТОЧКА ПУБЛИКАЦИИ -->
@@ -81,7 +85,7 @@ if ($currentUserId > 0) {
                 <?php endif; ?>
 
                 <a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>" <?= (int)$story['user_id'] === $currentUserId ? 'class="user_is_author"' : '' ?>>
-                    <?= e($story['user_name']) ?>
+                    <?= e($story['author_name']) ?>
                </a>
 
                 <span class="divider">|</span>
@@ -119,6 +123,15 @@ if ($currentUserId > 0) {
                         </form>
                     <?php endif; ?>
                 <?php endif; ?>
+				
+				<?php if ($isAuthor): ?>
+					<form method="POST" action="/story/<?= $story['id'] ?>/follow" class="d-inline">
+						 <?= csrf_field() ?> 
+						<button type="submit" class="btn btn-sm <?= $story['user_is_following'] ? 'btn-primary' : 'btn-outline-primary' ?>">
+							<?= $story['user_is_following'] ? '🔔 Вы подписаны' : '🔕 Подписаться на ответы' ?>
+						</button>
+					</form>
+				<?php endif; ?>
             </div>
 
         </div>
@@ -157,7 +170,7 @@ if ($currentUserId > 0) {
 <?php else: ?>
 
     <?php
-    $renderTree = function(int $parentId) use (&$renderTree, $commentsTree, $request, $voteModel, $currentUserId, $isAdmin, $canUserDownvote) {
+    $renderTree = function(int $parentId) use (&$renderTree, $commentsTree,  $voteModel, $currentUserId, $isAdmin, $canUserDownvote) {
         if (!isset($commentsTree[$parentId])) {
             return;
         }

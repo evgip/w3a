@@ -67,4 +67,7 @@ class User extends Model
         // Итоговая карма — это сумма двух показателей
         return $storyKarma + $commentKarma;
     }
+	
+
+	
 }

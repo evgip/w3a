@@ -116,7 +116,8 @@ class StoriesController extends Controller
             'url' => $url,
             'description' => $description,
             'score' => 1,
-            'comments_count' => 0
+            'comments_count' => 0,
+			'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
         ]);
 
         // Intercept and map chosen checkboxes into the pivot database partition
@@ -193,7 +194,8 @@ class StoriesController extends Controller
         $storyModel->update($storyId, [
             'title' => $title,
             'url' => $url,
-            'description' => $description
+            'description' => $description,
+			'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
         ]);
 
         // Sync the edited set of checkboxes into MySQL
@@ -315,6 +317,9 @@ class StoriesController extends Controller
 			exit;
 		}
 		
+  
+		
+		
 		// 4. Trigger database storage transaction operations through the Comment model
 		$commentModel = new \App\Modules\Stories\Models\Comment();
 		$commentId = $commentModel->saveComment([
@@ -325,6 +330,15 @@ class StoriesController extends Controller
 		]);
 		
 		if ($commentId > 0) {
+			
+			/*
+			$notificationModel = new \App\Modules\Notifications\Models\Notification();
+			$notificationModel->createForComment(
+				$data['story_id'],
+				$commentId,
+				$data['user_id']
+			); */
+			
 			// Отправляем уведомления
 			$notificationService = new \App\Modules\Notifications\Services\NotificationService();
 			$notificationService->notifyCommentCreated($commentId);
@@ -444,5 +458,32 @@ class StoriesController extends Controller
         header('Location: /');
     }
 	
+	/**
+	 * Переключить подписку на историю
+	 */
+	public function toggleFollow(string $id): void
+	{
+		if (!\App\Core\Auth::check()) { header('Location: /login'); exit; }
+		
+		$storyId = (int)$id;
+		$userId = (int)$_SESSION['user_id'];
+		
+		$storyModel = new Story();
+		$storyModel->toggleFollow($storyId, $userId);
+		
+		// Для AJAX-запросов
+		if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+			$isFollowing = $storyModel->isFollowing($storyId, $userId);
+			$this->json([
+				'success' => true,
+				'is_following' => $isFollowing,
+			]);
+			return;
+		}
+		
+		// Для обычных форм — редирект обратно
+		header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? "/story/{$storyId}"));
+		exit;
+	}
 }
 

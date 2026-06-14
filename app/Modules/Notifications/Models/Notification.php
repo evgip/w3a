@@ -20,14 +20,19 @@ class Notification extends Model
 	];
 
     // Типы уведомлений (как в Lobsters)
-    public const TYPE_REPLY = 'reply';
-    public const TYPE_MENTION = 'mention';
+    public const TYPE_REPLY = 'reply';  // Ответ на ваш комментарий
+    public const TYPE_MENTION = 'mention';  // Упоминание @username
     public const TYPE_MESSAGE = 'message';
 
     // Типы сущностей для полиморфной связи
     public const ENTITY_COMMENT = 'Comment';
     public const ENTITY_MESSAGE = 'Message';
     public const ENTITY_STORY = 'Story';
+
+ 
+	
+    const TYPE_STORY_COMMENT = 'story_comment'; // Новый комментарий в истории, на которую подписаны
+    const TYPE_STORY_REPLY = 'story_reply';  // Ответ в ветке вашей истории
 
     /**
      * Создать уведомление об ответе на комментарий
@@ -145,38 +150,54 @@ class Notification extends Model
     /**
      * Получить все уведомления пользователя с пагинацией
      */
-    public function getUserNotifications(int $userId, ?string $type = null, int $limit = 50): array
-    {
-        $db = Database::getConnection();
-        $sql = "
-            SELECT 
-                n.*,
-                u.username as actor_name,
-                u.avatar as actor_avatar,
-                c.comment as comment_text,
-                c.story_id,
-                s.title as story_title,
-                m.message,
-                m.conversation_id
-            FROM `{$this->table}` n
-            LEFT JOIN users u ON n.actor_id = u.id
-            LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
-            LEFT JOIN stories s ON c.story_id = s.id
-            LEFT JOIN messages m ON n.notifiable_type = 'Message' AND n.notifiable_id = m.id
-            WHERE n.user_id = :user_id
-            ORDER BY n.created_at DESC
-            LIMIT :limit OFFSET :offset
-        ";
+	public function getUserNotifications(int $userId, ?string $type = null, int $limit = 50, int $page = 1): array
+	{
+		$db = Database::getConnection();
+		
+		// Вычисляем смещение
+		$offset = ($page - 1) * $limit;
+		
+		$sql = "
+			SELECT 
+				n.*,
+				u.username as actor_name,
+				u.avatar as actor_avatar,
+				c.comment as comment_text,
+				c.story_id,
+				s.title as story_title,
+				m.message,
+				m.conversation_id
+			FROM `{$this->table}` n
+			LEFT JOIN users u ON n.actor_id = u.id
+			LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
+			LEFT JOIN stories s ON c.story_id = s.id
+			LEFT JOIN messages m ON n.notifiable_type = 'Message' AND n.notifiable_id = m.id
+			WHERE n.user_id = :user_id
+		";
+		
+		// Фильтрация по типу (если передан)
+		if ($type !== null) {
+			$sql .= " AND n.notifiable_type = :type";
+		}
+		
+		$sql .= " ORDER BY n.created_at DESC
+				  LIMIT :limit OFFSET :offset";
 
-        $stmt = $db->prepare($sql);
-        $stmt->execute([
-            'user_id' => $userId,
-            'limit' => $limit,
-            'offset' => $offset
-        ]);
+		$stmt = $db->prepare($sql);
+		
+		// Привязываем параметры (для LIMIT и OFFSET нужно явно указать тип INT)
+		$stmt->bindValue(':user_id', $userId, \PDO::PARAM_INT);
+		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+		$stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+		
+		if ($type !== null) {
+			$stmt->bindValue(':type', $type, \PDO::PARAM_STR);
+		}
+		
+		$stmt->execute();
 
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
+		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+	}
 
     /**
      * Получить только непрочитанные уведомления
@@ -279,4 +300,82 @@ class Notification extends Model
         $stmt->execute(['days' => $daysOld]);
         return $stmt->rowCount();
     }
+	
+	/**
+	 * Получить список пользователей, которых нужно уведомить о новом комментарии
+	 */
+	public function getUsersToNotify(int $storyId, int $commentId, int $commentAuthorId): array
+	{
+		
+		// Проверяем настройки пользователя перед добавлением в список
+		$stmt = $this->db->prepare(
+			"SELECT notify_on_reply, notify_on_story_comment FROM users WHERE id = ?"
+		);
+		$stmt->execute($userId);
+		$settings = $stmt->fetch();
+
+		if ($type === self::TYPE_REPLY && !$settings['notify_on_reply']) {
+			return []; // Пропускаем
+		}
+		
+		
+		$usersToNotify = [];
+		
+		// 1. Уведомить автора родительского комментария (если это ответ)
+		$stmt = $this->db->prepare(
+			"SELECT user_id FROM comments WHERE id = (
+				SELECT parent_comment_id FROM comments WHERE id = ?
+			)"
+		);
+		$stmt->execute([$commentId]);
+		$parentAuthorId = $stmt->fetchColumn();
+		
+		if ($parentAuthorId && $parentAuthorId != $commentAuthorId) {
+			$usersToNotify[] = [
+				'user_id' => $parentAuthorId,
+				'type' => self::TYPE_REPLY,
+			];
+		}
+		
+		// 2. Уведомить автора истории, если он подписан и не является автором комментария
+		$stmt = $this->db->prepare(
+			"SELECT user_id, user_is_following FROM stories WHERE id = ?"
+		);
+		$stmt->execute([$storyId]);
+		$story = $stmt->fetch();
+		
+		if ($story && $story['user_is_following'] && $story['user_id'] != $commentAuthorId) {
+			// Не дублируем, если автор истории уже получил уведомление как автор родительского коммента
+			$alreadyNotified = array_column($usersToNotify, 'user_id');
+			if (!in_array($story['user_id'], $alreadyNotified)) {
+				$usersToNotify[] = [
+					'user_id' => $story['user_id'],
+					'type' => self::TYPE_STORY_COMMENT,
+				];
+			}
+		}
+		
+		// 3. TODO: Обработка @упоминаний в тексте комментария
+		// $mentionedUsers = $this->extractMentions($commentText);
+		
+		return $usersToNotify;
+	}
+
+	/**
+	 * Создать уведомления для всех заинтересованных пользователей
+	 */
+	public function createForComment(int $storyId, int $commentId, int $commentAuthorId): void
+	{
+		$usersToNotify = $this->getUsersToNotify($storyId, $commentId, $commentAuthorId);
+		
+		foreach ($usersToNotify as $notify) {
+			$this->create(
+				$notify['user_id'],
+				$notify['type'],
+				$commentAuthorId,
+				$storyId,
+				$commentId
+			);
+		}
+	}
 }

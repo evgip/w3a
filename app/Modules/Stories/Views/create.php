@@ -40,11 +40,11 @@
             <?php 
             $isBound = isset($old['tags']) && in_array((int)$tagItem['id'], $old['tags']); 
             ?>
-            <label class="tag-checkbox-item">
+            <div class="tag">
                 <input type="checkbox" name="tags[]" value="<?= (int)$tagItem['id'] ?>" 
                        <?= $isBound ? 'checked' : '' ?>>
                 <span><?= e($tagItem['tag']) ?></span>
-            </label>
+            </div>
         <?php endforeach; ?>
     </div>
 
@@ -54,6 +54,17 @@
         <textarea id="story-description" name="description" rows="8" 
                   placeholder="Сопроводительный текст, комментарии или дополнительный контекст..."><?= e($old['description'] ?? '') ?></textarea>
     </div>
+
+	<div class="form-group">
+		<label>
+			<input type="checkbox" name="user_is_following" value="1" 
+				<?= !empty($story['user_is_following']) ? 'checked' : '' ?>>
+			Получать уведомления о новых комментариях к этой истории.
+		</label><br>
+		<small class="form-text text-muted">
+			Вы будете получать уведомления о всех новых комментариях в этой истории.
+		</small>
+	</div>
 
     <div class="form-actions">
         <button type="submit">Опубликовать</button>

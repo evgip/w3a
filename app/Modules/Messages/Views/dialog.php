@@ -7,12 +7,12 @@
              class="dialog-avatar" alt="avatar">
     <?php else: ?>
         <div class="dialog-avatar-placeholder">
-            <?= e(mb_substr($recipient['name'], 0, 1)) ?>
+            <?= e(mb_substr($recipient['username'], 0, 1)) ?>
         </div>
     <?php endif; ?>
     
     <span class="dialog-title">
-        Чат с пользователем <?= e($recipient['name']) ?>
+        Чат с пользователем <?= e($recipient['username']) ?>
     </span>
 </div>
 

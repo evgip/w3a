@@ -14,17 +14,17 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
     <?php if (!empty($profileUser['avatar'])): ?>
         <img src="/uploads/avatars/<?= substr($profileUser['avatar'], 0, 2) ?>/<?= e($profileUser['avatar']) ?>" 
              class="profile-avatar-large" 
-             alt="<?= e(mb_substr($profileUser['name'], 0, 1)) ?>">
+             alt="<?= e(mb_substr($profileUser['username'], 0, 1)) ?>">
     <?php else: ?>
         <div class="profile-avatar-placeholder-large">
-            <?= e(mb_substr($profileUser['name'], 0, 1)) ?>
+            <?= e(mb_substr($profileUser['username'], 0, 1)) ?>
         </div>
     <?php endif; ?>
 
     <!-- Информация -->
     <div class="profile-info">
         <h2 class="profile-username">
-            # <?= e($profileUser['name']) ?>
+            # <?= e($profileUser['username']) ?>
         </h2>
         
         <span class="profile-status">Активный пользователь</span>
@@ -83,7 +83,7 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
         <tr>
             <td>Размещено историй:</td>
             <td>
-                <a href="/?author=<?= urlencode($profileUser['name']) ?>">
+                <a href="/?author=<?= urlencode($profileUser['username']) ?>">
                     <?= (int)$storiesCount ?> публикаций
                 </a>
             </td>

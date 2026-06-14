@@ -30,9 +30,17 @@ class NotificationsController extends Controller
             $type = 'all';
         }
         
+		 $page = (int)($_GET['page'] ?? 1);
+		 $limit = 50;
+		
         // Получаем уведомления с учетом фильтра
-        $notifications = $notificationModel->getUserNotifications($userId, $type, 50);
-        
+		$notifications = $notificationModel->getUserNotifications(
+			$_SESSION['user_id'],
+			$type,
+			$limit,
+			$page
+		);
+		
         // Получаем количество непрочитанных по типам для бейджей на вкладках
         $unreadCounts = $notificationModel->getUnreadCountByType($userId);
         $counts = ['reply' => 0, 'mention' => 0, 'message' => 0];
@@ -53,19 +61,19 @@ class NotificationsController extends Controller
         ]);
     }
     
-    public function markAsRead(): void
-    {
-        $userId = (int)$_SESSION['user_id'];
-        $notificationId = $_POST['id'] ?? null;
-        
-        if ($notificationId) {
-            $notificationModel = new Notification();
-            $notificationModel->markAsRead($notificationId, $userId);
-        }
-        
-        $this->json(['success' => true]);
-    }
-    
+	public function markAsRead(int $id): void
+	{
+		$userId = (int)$_SESSION['user_id'];
+		$notificationId = $id;  // ← Берем из URL, а не из POST
+		
+		if ($notificationId) {
+			$notificationModel = new Notification();
+			$notificationModel->markAsRead($notificationId, $userId);
+		}
+		
+		$this->json(['success' => true]);
+	}
+	
     public function markAllAsRead(): void
     {
         $userId = (int)$_SESSION['user_id'];
