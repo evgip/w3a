@@ -26,19 +26,18 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateHeaderNotificationCount, 60000);
 });
 
-
 // Помечаем уведомление как прочитанное при клике (без перезагрузки, для UX)
 function markAsRead(notificationId) {
-    fetch('/notifications/mark-as-read', {
+    // Получаем токен из мета-тега или скрытого input на странице
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content; 
+    
+    fetch(`/notifications/${notificationId}/read`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            // Добавьте ваш CSRF-токен здесь, если он используется
-            // 'X-CSRF-Token': 'your_token'
-        },
-        body: 'id=' + notificationId
+            'X-CSRF-Token': csrfToken // Передаем токен
+        }
     }).then(() => {
-        // Обновляем счетчик в шапке
         updateHeaderNotificationCount();
     });
 }
@@ -54,3 +53,4 @@ document.getElementById('mark-all-read-btn')?.addEventListener('click', function
         location.reload();
     });
 });
+

@@ -51,6 +51,8 @@
         </a>
     </nav>
 
+    <?= csrf_field() ?>
+
     <!-- Список уведомлений -->
     <?php if (empty($notifications)): ?>
 
