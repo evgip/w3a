@@ -20,6 +20,27 @@
 				<a href="<?= route('tags.index') ?>">🏷️ Теги</a>
 				<a href="/search">🔍 Поиск</a>
 
+
+-<?php if (\App\Core\Auth::check()): ?>
+    <?php
+    $notifModel = new \App\Modules\Notifications\Models\Notification();
+    $unreadCount = $notifModel->getUnreadCount((int)$_SESSION['user_id']);
+    ?>
+    
+    
+        <a class="nav-link position-relative" href="/notifications" title="Уведомления">
+            dd
+            <?php if ($unreadCount > 0): ?>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" 
+                      id="notification-badge">
+                    <?= $unreadCount ?>
+                    <span class="visually-hidden">непрочитанных уведомлений</span>
+                </span>
+            <?php endif; ?>
+        </a>
+    
+<?php endif; ?>-
+
 				<?php if (\App\Core\Auth::check()): ?>
 					<?php
 					// Instantiating the model on the fly to count unread indicators

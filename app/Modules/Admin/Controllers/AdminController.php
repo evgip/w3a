@@ -405,7 +405,7 @@ class AdminController extends Controller
         if (!$user) { header('Location: /admin/users'); exit; }
 
         $this->render('user_edit_panel', [
-            'title' => 'Модерация профиля: ' . e($user['name']),
+            'title' => 'Модерация профиля: ' . e($user['username']),
             'userItem' => $user,
             'request' => new \App\Core\Request()
         ]);
@@ -647,8 +647,8 @@ class AdminController extends Controller
                 'message' => 'Ваша учетная запись была временно деактивирована администратором из-за нарушения правил сообщества.'
             ]);
             
-            \App\Core\Audit::log('admin.user_suspended', "Администратор принудительно ЗАБЛОКИРОВАЛ аккаунт: {$user['name']} (ID: {$targetUid})");
-            \App\Core\Session::setFlash('success', "Пользователь {$user['name']} успешно заблокирован.");
+            \App\Core\Audit::log('admin.user_suspended', "Администратор принудительно ЗАБЛОКИРОВАЛ аккаунт: {$user['username']} (ID: {$targetUid})");
+            \App\Core\Session::setFlash('success', "Пользователь {$user['username']} успешно заблокирован.");
         } else {
             $notifModel->create([
                 'user_id' => $targetUid,
@@ -656,8 +656,8 @@ class AdminController extends Controller
                 'message' => 'Приветствуем снова! Доступ к вашей учетной записи полностью восстановлен администратором.'
             ]);
             
-            \App\Core\Audit::log('admin.user_unsuspended', "Администратор СНЯЛ блокировку с аккаунта: {$user['name']} (ID: {$targetUid})");
-            \App\Core\Session::setFlash('success', "Доступ для пользователя {$user['name']} успешно восстановлен.");
+            \App\Core\Audit::log('admin.user_unsuspended', "Администратор СНЯЛ блокировку с аккаунта: {$user['username']} (ID: {$targetUid})");
+            \App\Core\Session::setFlash('success', "Доступ для пользователя {$user['username']} успешно восстановлен.");
         }
 
         header('Location: /admin/users');

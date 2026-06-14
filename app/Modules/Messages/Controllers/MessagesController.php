@@ -109,15 +109,26 @@ class MessagesController extends Controller
         }
 
         $msgModel = new Message();
-        $msgModel->create([
+        $messageId = $msgModel->create([
             'conversation_id' => $conversationId,
             'sender_id'       => $userId,
             'message'         => $messageText
         ]);
 
-        // Touch the parent conversation row column updated_at attribute to bump position sorting rankings
-        $convModel = new Conversation();
-        $convModel->update($conversationId, ['updated_at' => date('Y-m-d H:i:s')]);
+	   // Touch the parent conversation row column updated_at attribute to bump position sorting rankings
+		$convModel = new Conversation();
+		$convModel->update($conversationId, ['updated_at' => date('Y-m-d H:i:s')]);
+
+		// Отправляем уведомление получателю
+		if ($messageId > 0) {
+			// Получаем recipient_id через метод модели
+			$recipientId = $convModel->getRecipientId($conversationId, $userId);
+			
+			if ($recipientId > 0) {
+				$notificationService = new \App\Modules\Notifications\Services\NotificationService();
+				$notificationService->notifyMessageSent($messageId, $recipientId, $userId);
+			}
+		}
 
         header('Location: /messages/chat/' . $conversationId);
         exit;

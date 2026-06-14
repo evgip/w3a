@@ -11,9 +11,8 @@ class Message extends Model
 
 	protected array $fillable = [
 		'sender_id',
-		'recipient_id',
-		'subject',
-		'body',
+		'conversation_id',
+		'message',
 		'is_read'
 	];
 
@@ -26,7 +25,7 @@ class Message extends Model
         
         // Strategy: Select the most recent chunk using a subquery, then re-sort them chronologically for the view
         $sql = "SELECT * FROM (
-                    SELECT m.*, u.name as sender_name, u.avatar as sender_avatar 
+                    SELECT m.*, u.username as sender_name, u.avatar as sender_avatar 
                     FROM `messages` m
                     JOIN `users` u ON m.sender_id = u.id
                     WHERE m.conversation_id = :cid AND m.deleted_at IS NULL
@@ -63,7 +62,7 @@ class Message extends Model
     {
         $db = Database::getConnection();
         $stmt = $db->prepare("
-            SELECT m.*, u.name as sender_name, u.avatar as sender_avatar 
+            SELECT m.*, u.username as sender_name, u.avatar as sender_avatar 
             FROM `messages` m
             JOIN `users` u ON m.sender_id = u.id
             WHERE m.conversation_id = :cid AND m.deleted_at IS NULL

@@ -901,6 +901,32 @@ nav.morelink a:hover {
 }
 
 /* ---------- Таблицы ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 20px 0;
+  color: #333;
+}
+
+table th,
+table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0; /* Тонкая светлая линия */
+}
+
+table thead th {
+  font-weight: 600;
+  background-color: transparent;
+  border-bottom: 2px solid #d0d0d0; /* Чуть толще для шапки */
+}
+
+table tbody tr:hover {
+  background-color: #f9f9f9; /* Лёгкий фон при наведении */
+}
+
+
 table.data {
     width: 100%;
     border-collapse: collapse;
@@ -1220,18 +1246,6 @@ table.data.zebra tr:nth-child(odd) td {
         width: 100%;
     }
 
-    ol.stories li.story div.voters {
-        display: table-cell;
-        width: 30px;
-        vertical-align: top;
-    }
-
-    ol.stories li.story div.story_liner {
-        display: table-cell;
-        width: 100%;
-        padding-left: 0.5em;
-    }
-
     div.comment_form_container form {
         margin-left: 0;
     }
@@ -1285,6 +1299,32 @@ table.data.zebra tr:nth-child(odd) td {
 
 .alert strong {
     font-weight: bold;
+}
+
+/* ------------------- Более плавное раскрытие постов на центальной ----------------- */
+.story_content details {
+    border: none;
+    background: none;
+}
+
+.story_content summary {
+    cursor: pointer;
+    padding: 0.5em 0;
+    color: #666;
+    font-style: italic;
+}
+
+.story_content summary:hover {
+    color: #333;
+}
+
+.story_content details[open] summary {
+    margin-bottom: 1em;
+    border-bottom: 1px solid #eee;
+}
+
+.story_content .full-content {
+    padding: 1em 0;
 }
 
 

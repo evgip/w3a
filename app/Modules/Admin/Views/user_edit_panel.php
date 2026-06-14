@@ -1,5 +1,5 @@
 <div class="admin-edit-panel-card">
-    <h3>🔧 Панель модерации пользователя # <?= e($userItem['name']) ?></h3>
+    <h3>🔧 Панель модерации пользователя # <?= e($userItem['username']) ?></h3>
     
     <!-- AVATAR MODERATION INTERACTION CONTROL CARD -->
     <div class="admin-avatar-moderation-row">
@@ -14,7 +14,7 @@
                 </div>
             <?php else: ?>
                 <div class="profile-avatar-placeholder">
-                    <?= e(mb_substr($userItem['name'], 0, 1)) ?>
+                    <?= e(mb_substr($userItem['username'], 0, 1)) ?>
                 </div>
                 <div class="admin-avatar-text-block">
                     <strong>Стандартный аватар-заглушка</strong>

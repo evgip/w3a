@@ -23,7 +23,7 @@ class Story extends Model
 	public function getFeed(int $limit, int $offset, ?string $tagname = null, bool $showDeleted = false, ?string $domain = null): array
 	{
 		$db = Database::getConnection();
-		$sql = "SELECT s.*, u.name as author_name, u.avatar as author_avatar,
+		$sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
 				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
 				FROM `stories` s
 				JOIN `users` u ON s.user_id = u.id
@@ -118,7 +118,7 @@ class Story extends Model
     {
         $db = Database::getConnection();
         
-        $sql = "SELECT s.*, u.name as author_name, u.avatar as author_avatar,
+        $sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
                        GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
                 FROM `stories` s
                 JOIN `users` u ON s.user_id = u.id
@@ -149,7 +149,7 @@ class Story extends Model
     {
         $db = Database::getConnection();
         // Мы НЕ фильтруем тут deleted_at IS NULL, чтобы не ломать дерево (обработаем в шаблоне)
-        $sql = "SELECT c.*, u.name as author_name, u.avatar as author_avatar  
+        $sql = "SELECT c.*, u.username as author_name, u.avatar as author_avatar  
                 FROM `comments` c 
                 JOIN `users` u ON c.user_id = u.id 
                 WHERE c.story_id = :story_id 

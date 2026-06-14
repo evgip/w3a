@@ -13,7 +13,7 @@ class SearchResult extends Model
     public function searchStories(string $keywords, string $sortBy = 'relevance'): array
     {
         $db = Database::getConnection();
-        $sql = "SELECT s.*, u.name as author_name, u.avatar as author_avatar,
+        $sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
                        GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
                        MATCH(s.title, s.description) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
                 FROM `stories` s
@@ -47,7 +47,7 @@ class SearchResult extends Model
         $db = Database::getConnection();
 
         // Pull comment contents joined with comment authors and their respective parent stories
-        $sql = "SELECT c.*, u.name as author_name, u.avatar as author_avatar,
+        $sql = "SELECT c.*, u.username as author_name, u.avatar as author_avatar,
                        s.title as story_title,
                        MATCH(c.comment) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
                 FROM `comments` c

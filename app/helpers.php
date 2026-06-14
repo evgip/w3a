@@ -298,3 +298,38 @@ if (!function_exists('isValidUrl')) {
         return true;
     }
 }
+
+
+/**
+ * Для статей на главной
+ */
+
+
+ if (!function_exists('truncateDescription')) {
+	/**
+	 * Обрезает HTML текст
+	 */
+	function truncateDescription(string $html, int $length = 300): string {
+		$text = strip_tags($html);
+		$text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		
+		if (mb_strlen($text) > $length) {
+			$text = mb_substr($text, 0, $length);
+			$text = preg_replace('/ [^ ]*$/u', '', $text);
+			$text .= '…';
+		}
+		
+		return $text;
+	}
+}
+ 
+if (!function_exists('needsTruncation')) {
+	/**
+	 * Проверяет, нужно ли сворачивать текст
+	 */
+	function needsTruncation(string $html, int $length = 300): bool {
+		$text = strip_tags($html);
+		$text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		return mb_strlen($text) > $length;
+	}
+}

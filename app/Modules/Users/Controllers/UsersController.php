@@ -36,7 +36,7 @@ class UsersController extends Controller
         $userModel = new \App\Modules\Users\Models\User();
 
         // 1. Находим пользователя по его имени через базовый метод findBy ядра
-        $user = $userModel->findBy('name', trim($username));
+        $user = $userModel->findBy('username', trim($username));
 
         // Если пользователь не найден в БД — отдаем 404 страницу
         if (!$user) {
@@ -57,7 +57,7 @@ class UsersController extends Controller
 
         // 4. Рендерим шаблон, передавая туда чистые данные
         $this->render('profile', [
-            'title'         => 'Профиль пользователя ' . e($user['name']),
+            'title'         => 'Профиль пользователя ' . e($user['username']),
             'profileUser'   => $user,
             'storiesCount'  => $stats['stories_count'],
             'commentsCount' => $stats['comments_count'],
@@ -112,7 +112,7 @@ class UsersController extends Controller
             }
             
             $_SESSION['user_id']     = $user['id'];
-            $_SESSION['user_name']   = $user['name'];
+            $_SESSION['user_name']   = $user['username'];
             $_SESSION['user_avatar'] = $user['avatar']; 
             $_SESSION['user_role']   = $user['role'] ?? 'user';
             $_SESSION['last_activity_time'] = time();
@@ -120,7 +120,7 @@ class UsersController extends Controller
             session_regenerate_id(true);
 
             Audit::log('auth.login_success', 'Пользователь успешно авторизовался в системе', ['user_id' => $user['id']]);
-            Session::setFlash('success', 'Добро пожаловать обратно, ' . e($user['name']) . '!');
+            Session::setFlash('success', 'Добро пожаловать обратно, ' . e($user['username']) . '!');
             
             header('Location: ' . route('home'));
             exit;
@@ -185,7 +185,7 @@ class UsersController extends Controller
 		$minPasswordLength = config_int('validation.password_min_length', 6);
 
 		$isValid = $validator->validate($_POST, [
-			'name' => "required|min:{$minNameLength}",
+			'username' => "required|min:{$minNameLength}",
 			'email' => 'required|email|unique:users,email',
 			'password' => "required|min:{$minPasswordLength}"
 		]);
@@ -208,7 +208,7 @@ class UsersController extends Controller
 			exit;
 		}
 		
-		// 3. Извлечение проверенных данных (ИСПРАВЛЕНО: 'name' → 'username')
+		// 3. Извлечение проверенных данных
 		$username = $request->getParams('username');
 		$email = $request->getParams('email');
 		$rawPassword = $request->getParams('password');
@@ -219,7 +219,7 @@ class UsersController extends Controller
 		$userModel = new User();
 		
 		// Дополнительная проверка уникальности имени (на случай гонки данных)
-		if ($userModel->findBy('name', $username)) {
+		if ($userModel->findBy('username', $username)) {
 			\App\Core\Session::setFlash('error', 'Это имя пользователя уже занято.');
 			header('Location: /register');
 			exit;
@@ -227,7 +227,7 @@ class UsersController extends Controller
 		
 		// 5. Создание пользователя
 		$newUserId = $userModel->create([
-			'name' => $username,
+			'username' => $username,
 			'email' => $email,
 			'password' => $hashedPassword,
 			'role' => 'user'
@@ -589,7 +589,7 @@ class UsersController extends Controller
             // --- CLEAN ARCHITECTURE REFACTOR: FETCH LOCALIZED RECOVERY CONTENT ---
             $subject  = \App\Core\Lang::get('email_recovery_subject', [e(app_name())]);
             $htmlBody = \App\Core\Lang::format('email_recovery_body', [
-                e($user['name']), 
+                e($user['username']), 
                 $resetLink
             ]);
 

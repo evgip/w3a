@@ -9,6 +9,12 @@ class EmailActivation extends Model
 {
     protected string $table = 'email_activations';
 
+	protected array $fillable = [
+		'user_id',
+		'email_activations',
+		'token'
+	];
+
     /**
      * Allocate and persist a unique activation token token for a user
      */

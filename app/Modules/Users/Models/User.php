@@ -12,7 +12,7 @@ class User extends Model
     // Разрешаем изменять только эти поля при регистрации/редактировании
     // Поля 'id',  'karma', 'created_at' защищены от изменения через массив $data
 	protected array $fillable = [
-		'name',
+		'username',
 		'email',
 		'password',
 		'avatar',

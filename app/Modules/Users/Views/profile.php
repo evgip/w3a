@@ -97,11 +97,5 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
             </td>
         </tr>
 
-        <tr>
-            <td>Контактный Email:</td>
-            <td>
-                <code><?= e($profileUser['email']) ?></code>
-            </td>
-        </tr>
     </tbody>
 </table>

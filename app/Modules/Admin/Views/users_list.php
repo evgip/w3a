@@ -30,7 +30,7 @@
                 <tr class="<?= $isArchived ? 'tr-archived' : '' ?>">
                     <td><?= (int)$user['id'] ?></td>
                     <td>
-                        <strong><?= e($user['name'] ?? 'Unknown') ?></strong>
+                        <strong><?= e($user['username'] ?? 'Unknown') ?></strong>
                         <?php if ($isSelf): ?>
                             <small class="self-account-badge">(Вы)</small>
                         <?php endif; ?>

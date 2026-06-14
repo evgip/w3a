@@ -13,7 +13,7 @@ $request = new \App\Core\Request();
             ?>
             
             <li>
-                <a href="<?= route('messages.dialog', ['id' => $chat['conversation_id']]) ?>" 
+                <a href="<?= route('messages.dialog', ['id' => $chat['id']]) ?>" 
                    class="message-item <?= $isUnread ? 'unread' : '' ?>">
                     <div class="message-item-inner">
                         

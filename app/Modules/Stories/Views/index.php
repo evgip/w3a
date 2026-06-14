@@ -12,12 +12,20 @@ if ($currentUserId > 0) {
     $viewerKarma = $userModel->getUserKarma($currentUserId);
     $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
 }
+
+ 
+
 ?>
 
 <?php if (!empty($stories)): ?>
     <ol class="stories">
         <?php foreach ($stories as $story): ?>
-            <?php $isStoryDeleted = !empty($story['deleted_at']); ?>
+            <?php 
+				$isStoryDeleted = !empty($story['deleted_at']); 
+				
+				$fullHtml = \App\Core\Markdown::parse($story['description']);
+				$needsTruncation = needsTruncation($fullHtml, 300);
+			?>
 
             <li class="story <?= $isStoryDeleted ? 'deleted' : '' ?>">
 
@@ -66,11 +74,20 @@ if ($currentUserId > 0) {
 						<?php endif; ?>
                     </div>
 
-                    <?php if (!empty($story['description'])): ?>
-                        <div class="story_content">
-                            <?= \App\Core\Markdown::parse($story['description']) ?>
-                        </div>
-                    <?php endif; ?>
+					<div class="story_content">
+						<?php if ($needsTruncation): ?>
+							<details>
+								<summary>
+									<?= truncateDescription($fullHtml, 300) ?>
+								</summary>
+								<div class="full-content">
+									<?= $fullHtml ?>
+								</div>
+							</details>
+						<?php else: ?>
+							<?= $fullHtml ?>
+						<?php endif; ?>
+					</div>
 
                     <!-- Метаданные (1 строка вместо 30) -->
                     <?php partial('Users::_story_meta', [

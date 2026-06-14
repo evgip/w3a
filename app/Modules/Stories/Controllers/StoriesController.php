@@ -325,6 +325,10 @@ class StoriesController extends Controller
 		]);
 		
 		if ($commentId > 0) {
+			// Отправляем уведомления
+			$notificationService = new \App\Modules\Notifications\Services\NotificationService();
+			$notificationService->notifyCommentCreated($commentId);
+			
 			\App\Core\Audit::log('comment.created', 'Пользователь оставил комментарий к истории', [
 				'story_id' => $storyId,
 				'parent_id' => $parentId

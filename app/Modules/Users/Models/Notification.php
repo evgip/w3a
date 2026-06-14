@@ -9,6 +9,11 @@ class Notification extends Model
 {
     protected string $table = 'user_notifications';
 
+	protected array $fillable = [
+		'user_id',
+		'is_read'
+	];
+
     /**
      * Fetch unarchived notifications bound to a specific account user
      */
