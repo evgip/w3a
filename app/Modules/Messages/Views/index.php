@@ -1,7 +1,3 @@
-<?php
-$request = new \App\Core\Request();
-?>
-
 <h1>Личные сообщения</h1>
 
 <?php if (!empty($chats)): ?>

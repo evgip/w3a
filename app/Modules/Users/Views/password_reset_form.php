@@ -3,7 +3,7 @@
     <p class="field-sub-hint">Введите надежный пароль из букв и цифр длиной не менее 6 символов.</p>
 
     <form action="<?= route('password.reset.submit') ?>" method="POST" class="auth-form">
-        <?= $request->csrfField() ?>
+        <?= csrf_field() ?>
         <input type="hidden" name="token" value="<?= e($token) ?>">
 
         <div class="form-group form-group-field-spacing">

@@ -7,7 +7,7 @@
     <h4>➕ Внести новый IP-адрес в черный список</h4>
     
     <form action="<?= route('admin.firewall.ban') ?>" method="POST" class="firewall-inline-form">
-        <?= $request->csrfField() ?>
+        <?= csrf_field() ?>
         
         <div class="admin-form-group firewall-form-ip-group">
             <label>IP-адрес (IPv4 / IPv6):</label>
@@ -52,7 +52,7 @@
                     <td><small class="text-muted"><?= e($ban['created_at']) ?></small></td>
                     <td class="text-right">
                         <form action="<?= route('admin.firewall.unban', ['id' => $ban['id']]) ?>" method="POST" class="firewall-unban-form">
-                            <?= $request->csrfField() ?>
+                            <?= csrf_field() ?>
                             <button type="submit" class="btn-action btn-restore btn-firewall-unban">
                                 🔓 Разблокировать
                             </button>

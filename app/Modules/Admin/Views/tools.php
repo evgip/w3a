@@ -1,6 +1,5 @@
-<?php $request = new \App\Core\Request(); ?>
-
 <h3 class="dev-tools-title">🛠️ Инструменты разработчика фреймворка</h3>
+
 <p class="dev-tools-desc">
     Управление состоянием, оптимизацией и логами ядра без необходимости использовать терминал CLI или сторонние утилиты.
 </p>
@@ -16,7 +15,7 @@
             </span>
         </div>
         <form action="/admin/tools/compile-assets" method="POST" class="card-form">
-            <?= $request->csrfField() ?>
+            <?= csrf_field() ?>
             <button type="submit" class="btn btn-blue">
                 Скомпилировать ассеты (CSS + JS)
             </button>
@@ -34,7 +33,7 @@
             </span>
         </div>
         <form action="/admin/tools/clear-file-logs" method="POST" class="card-form">
-            <?= $request->csrfField() ?>
+            <?= csrf_field() ?>
             <button type="submit" onclick="return confirm('Вы уверены, что хотите полностью очистить файлы логов на диске?');" class="btn btn-orange">
                 🗑️ Очистить логи на диске
             </button>
@@ -52,7 +51,7 @@
             </span>
         </div>
         <form action="/admin/tools/clear-db-audit" method="POST" class="card-form">
-            <?= $request->csrfField() ?>
+            <?= csrf_field() ?>
             <button type="submit" onclick="return confirm('ВНИМАНИЕ! Вы уверены, что хотите БЕЗВОЗВРАТНО удалить все логи аудита из Базы Данных?');" class="btn btn-red">
                 🚨 Очистить аудит в БД
             </button>
@@ -72,14 +71,14 @@
 			
 			<div class="btn-group">
 				<form action="<?= route('admin.tools.cache_routes') ?>" method="POST" class="card-form">
-					<?= $request->csrfField() ?>
+					<?= csrf_field() ?>
 					<button type="submit" class="btn btn-blue">
 						🚀 Включить кэш роутов
 					</button>
 				</form>
 
 				<form action="<?= route('admin.tools.clear_cache_routes') ?>" method="POST" class="card-form">
-					<?= $request->csrfField() ?>
+					<?= csrf_field() ?>
 					<button type="submit" class="btn btn-red">
 						🗑️ Сбросить кэш
 					</button>
@@ -95,9 +94,8 @@
 				<strong class="card-title">Тестовой письмо. Добавьте Email:</strong>
 				<span class="card-text">
 				  <form action="<?= route('admin.tools.send_test_email') ?>" method="POST" class="admin-form-group ">
-					<?= $request->csrfField() ?>
+					<?= csrf_field() ?>
 				
-					        
             <input type="email" name="email" required value="">
 				</span>
 			</div>

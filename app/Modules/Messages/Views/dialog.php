@@ -1,7 +1,3 @@
-<?php
-$request = new \App\Core\Request();
-?>
-
 <!-- Шапка диалога -->
 <div class="dialog-header">
     <a href="<?= route('messages.index') ?>" class="dialog-back-link">← К списку</a>
@@ -58,7 +54,7 @@ $request = new \App\Core\Request();
 <!-- Форма отправки сообщения -->
 <div class="dialog-form">
     <form action="<?= route('messages.send.submit') ?>" method="POST" class="dialog-form-row">
-        <?= $request->csrfField() ?>
+        <?= csrf_field() ?>
         <input type="hidden" name="conversation_id" value="<?= (int)$conversationId ?>">
         
         <input type="text" name="message_text" required autocomplete="off" 

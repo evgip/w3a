@@ -25,7 +25,7 @@ $request = new \App\Core\Request();
 
         <?php if ($canDownvote): ?>
             <form action="<?= route('votes.toggle', ['type' => $type, 'id' => $id, 'direction' => 'down']) ?>" method="POST">
-                <?= $request->csrfField() ?>
+                <?= csrf_field() ?>
                 <button type="submit" class="upvoter <?= $currentVoteState === -1 ? 'upvoted' : '' ?>" title="Не интересно">▼</button>
             </form>
         <?php endif; ?>

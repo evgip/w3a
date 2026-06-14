@@ -1,13 +1,9 @@
-<?php 
-    $request = new \App\Core\Request(); 
-?>
-
 <div class="admin-edit-panel-card">
     <h3>✨ Добавление новой темы/тега</h3>
     <p class="admin-subtitle-desc">Создание нового тега для классификации обсуждений. Укажите имя тега в нижнем регистре и выберите подходящую категорию.</p>
     
     <form action="<?= route('admin.tags.create.submit') ?>" method="POST" class="admin-form-container">
-        <?= $request->csrfField() ?>
+        <?= csrf_field() ?>
 
         <div class="admin-form-group">
             <label>Имя тега (Слуг):</label>

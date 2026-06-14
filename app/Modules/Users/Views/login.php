@@ -1,7 +1,3 @@
-<?php
-$request = new \App\Core\Request();
-?>
-
 <h1>Вход в систему</h1>
 
 <?php if (\App\Core\Session::hasFlash('error')): ?>
@@ -19,7 +15,7 @@ $request = new \App\Core\Request();
 <p class="hint">Пожалуйста, укажите ваши данные для авторизации.</p>
 
 <form action="/login" method="POST">
-    <?= $request->csrfField() ?>
+    <?= csrf_field() ?>
 
     <div class="form-field-group">
         <label for="login-email"><strong>Email</strong></label>

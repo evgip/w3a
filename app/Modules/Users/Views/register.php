@@ -1,7 +1,3 @@
-<?php
-$request = new \App\Core\Request();
-?>
-
 <h1>Регистрация</h1>
 
 <?php if (\App\Core\Session::hasFlash('error')): ?>
@@ -19,7 +15,7 @@ $request = new \App\Core\Request();
 <p class="hint">Создайте аккаунт, чтобы присоединиться к сообществу.</p>
 
 <form action="/register" method="POST">
-    <?= $request->csrfField() ?>
+    <?= csrf_field() ?>
 
     <div class="form-field-group">
         <label for="register-username"><strong>Имя пользователя</strong></label>

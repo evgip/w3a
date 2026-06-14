@@ -1,7 +1,3 @@
-<?php
-$request = new \App\Core\Request();
-?>
-
 <h1>Создание публикации</h1>
 
 <p class="hint">
@@ -15,7 +11,7 @@ $request = new \App\Core\Request();
 <?php endif; ?>
 
 <form action="/stories/create" method="POST">
-    <?= $request->csrfField() ?>
+    <?= csrf_field() ?>
 
     <div class="form-field-group">
         <label for="story-title"><strong>Заголовок</strong></label>

@@ -1,5 +1,4 @@
 <?php
-$request = new \App\Core\Request();
 $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
 $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
 ?>
@@ -33,7 +32,7 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
         <?php if (!$isOwnProfile && $currentUserId > 0): ?>
             <div class="profile-message-btn">
                 <form action="<?= route('messages.start', ['userId' => $profileUser['id']]) ?>" method="POST">
-                    <?= $request->csrfField() ?>
+                    <?= csrf_field() ?>
                     <button type="submit">✉️ Написать сообщение</button>
                 </form>
             </div>

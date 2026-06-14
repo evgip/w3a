@@ -25,7 +25,7 @@
 
         <?php if (!empty($userItem['avatar'])): ?>
             <form action="<?= route('admin.users.avatar.delete', ['id' => $userItem['id']]) ?>" method="POST" class="js-comment-delete-form">
-                <?= $request->csrfField() ?>
+                <?= csrf_field() ?>
                 <button type="submit" class="btn-action btn-action-danger">
                     🗑️ Удалить аватар
                 </button>
@@ -35,7 +35,7 @@
 
     <!-- FIELD METADATA RE-PERSISTENCE FORM OVERRIDES -->
     <form action="<?= route('admin.users.edit.submit', ['id' => $userItem['id']]) ?>" method="POST" class="admin-form-container">
-        <?= $request->csrfField() ?>
+        <?= csrf_field() ?>
 
         <div class="admin-form-group">
             <label>Email адрес пользователя:</label>

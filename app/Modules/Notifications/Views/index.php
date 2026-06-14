@@ -1,8 +1,3 @@
-<?php
-$request = new \App\Core\Request();
-?>
-
-
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>
@@ -14,7 +9,7 @@ $request = new \App\Core\Request();
         
         <?php if (!empty($notifications)): ?>
             <form method="POST" action="/notifications/mark-all-read" class="d-inline">
-                <?= $request->csrfField() ?>
+                <?= csrf_field() ?>
                 <button type="submit" class="btn btn-outline-primary btn-sm">
                     иконка Отметить все как прочитанные
                 </button>
@@ -92,7 +87,7 @@ $request = new \App\Core\Request();
                         <div class="ms-3">
                             <?php if (!$notif['is_read']): ?>
                                 <form method="POST" action="/notifications/<?= $notif['id'] ?>/read" class="d-inline">
-                                    <?= $request->csrfField() ?>
+                                    <?= csrf_field() ?>
                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Отметить как прочитанное">
                                         иконка
                                     </button>

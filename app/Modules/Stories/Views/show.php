@@ -1,5 +1,4 @@
 <?php
-$request = new \App\Core\Request();
 $voteModel = new \App\Modules\Votes\Models\Vote();
 $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
 
@@ -13,7 +12,6 @@ if ($currentUserId > 0) {
     $viewerKarma = $userModel->getUserKarma($currentUserId);
     $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
 }
-
 ?>
 
 <!-- КАРТОЧКА ПУБЛИКАЦИИ -->
@@ -111,12 +109,12 @@ if ($currentUserId > 0) {
                     <span class="divider">|</span>
                     <?php if ($isStoryDeleted): ?>
                         <form action="/admin/stories/<?= (int)$story['id'] ?>/restore" method="POST" class="inline-form">
-                            <?= $request->csrfField() ?>
+                            <?= csrf_field() ?>
                             <button type="submit" class="btn-link">восстановить</button>
                         </form>
                     <?php else: ?>
                         <form action="/admin/stories/<?= (int)$story['id'] ?>/delete" method="POST" class="inline-form">
-                            <?= $request->csrfField() ?>
+                            <?= csrf_field() ?>
                             <button type="submit" class="btn-link" style="color: var(--color-fg-negative);">удалить</button>
                         </form>
                     <?php endif; ?>
@@ -132,7 +130,7 @@ if ($currentUserId > 0) {
     <?php if ($currentUserId > 0 && !$isStoryDeleted): ?>
         <h3>Оставить комментарий</h3>
         <form action="/comments/create" method="POST" id="main-comment-form">
-            <?= $request->csrfField() ?>
+            <?= csrf_field() ?>
             <input type="hidden" name="story_id" value="<?= (int)$story['id'] ?>">
             <input type="hidden" name="parent_id" id="form-parent-id" value="">
 
@@ -219,7 +217,7 @@ if ($currentUserId > 0) {
                                     <a class="comment-edit-trigger" data-id="<?= $commentId ?>">Редактировать</a>
                                     <span class="divider">|</span>
                                     <form action="/comments/<?= $commentId ?>/delete" method="POST" class="inline-form js-confirm-delete" data-confirm-message="Удалить комментарий?">
-										<?= $request->csrfField() ?>
+										<?= csrf_field() ?>
 										<button type="submit">Удалить</button>
 									</form>
                                 <?php endif; ?>

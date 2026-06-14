@@ -1,7 +1,3 @@
-<?php 
-    $request = new \App\Core\Request(); 
-?>
-
 <div class="admin-header-row">
     <h3>👥 Управление пользователями системы</h3>
 </div>
@@ -60,7 +56,7 @@
 					
     <td class="text-right">
                         <form action="<?= route('admin.users.toggle_status', ['id' => $user['id']]) ?>" method="POST">
-                            <?= $request->csrfField() ?>
+                            <?= csrf_field() ?>
                             
                             <?php if ((int)$user['is_active'] === 1): ?>
                                 <button type="submit" class="btn-status-toggle-ban">
@@ -85,12 +81,12 @@
                                 </a>
                                 <?php if ($isArchived): ?>
                                     <form action="/admin/users/<?= (int)$user['id'] ?>/restore" method="POST" class="admin-action-form">
-                                        <?= $request->csrfField() ?>
+                                        <?= csrf_field() ?>
                                         <button type="submit" class="btn-action btn-restore">♻️ Восстановить</button>
                                     </form>
                                 <?php else: ?>
                                     <form action="/admin/users/<?= (int)$user['id'] ?>/archive" method="POST" class="admin-action-form">
-                                        <?= $request->csrfField() ?>
+                                        <?= csrf_field() ?>
                                         <button type="submit" class="btn-action btn-archive">📦 В архив</button>
                                     </form>
                                 <?php endif; ?>

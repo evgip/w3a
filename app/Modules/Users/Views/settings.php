@@ -1,7 +1,3 @@
-<?php
-$request = new \App\Core\Request();
-?>
-
 <h1>Настройки аккаунта</h1>
 
 <hr>
@@ -24,7 +20,7 @@ if (!empty($notifications)) {
 <?php if ($hasUnreadNotif): ?>
     <p>
         <form action="<?= route('account.notifications.read') ?>" method="POST" class="inline-form">
-            <?= $request->csrfField() ?>
+            <?= csrf_field() ?>
             <button type="submit">✓ Прочитать все уведомления</button>
         </form>
     </p>
@@ -63,7 +59,7 @@ if (!empty($notifications)) {
 </p>
 
 <form action="<?= route('account.settings.submit') ?>" method="POST" enctype="multipart/form-data">
-    <?= $request->csrfField() ?>
+    <?= csrf_field() ?>
 
     <div class="form-field-group">
         <label><strong>Ваш аватар</strong></label>
@@ -120,7 +116,7 @@ if (!empty($notifications)) {
 </p>
 
 <form action="<?= route('account.password.submit') ?>" method="POST">
-    <?= $request->csrfField() ?>
+    <?= csrf_field() ?>
 
     <div class="form-field-group">
         <label for="current_password"><strong>Текущий пароль</strong></label>

@@ -1,7 +1,3 @@
-<?php 
-    $request = new \App\Core\Request(); 
-?>
-
 <div class="admin-edit-panel-card">
     <h3>📝 Корректировка параметров тега</h3>
     <p class="admin-subtitle-desc">
@@ -10,7 +6,7 @@
     </p>
     
     <form action="<?= route('admin.tags.edit.submit', ['id' => $tagItem['id']]) ?>" method="POST" class="admin-form-container">
-        <?= $request->csrfField() ?>
+        <?= csrf_field() ?>
 
         <div class="admin-form-group">
             <label>Имя тега (Слуг):</label>
