@@ -105,7 +105,7 @@
 			</nav>
 			<hr>
 			<?= \App\Core\Benchmark::renderStats() ?>
-			<div>
+		</div>
 	</footer>
 
 	<script src="<?= \App\Core\Asset::js() ?>"></script>

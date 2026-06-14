@@ -2,7 +2,7 @@
  * Обновляет счетчик уведомлений в шапке
  */
 function updateHeaderNotificationCount() {
-    fetch('/notifications/count') // Убедитесь, что маршрут совпадает с getCountAction в контроллере
+    fetch('/api/notifications/count') // Убедитесь, что маршрут совпадает с getCountAction в контроллере
         .then(response => response.json())
         .then(data => {
             const badge = document.getElementById('header-notification-badge');

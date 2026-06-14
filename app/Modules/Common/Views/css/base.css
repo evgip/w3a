@@ -1095,6 +1095,170 @@ table.data.zebra tr:nth-child(odd) td {
     stroke: currentColor; /* Наследует цвет текста */
 }
 
+/* ============================================
+   Страница уведомлений (Notifications)
+   ============================================ */
+
+/* ------------------- Контейнер страницы ---------- */
+.notifications-page {
+    margin-top: 1em;
+}
+
+/* ------------------- Шапка: заголовок + действия ---------- */
+.notifications-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1em;
+}
+
+.notifications-header h2 {
+    margin: 0;
+}
+
+/* ------------------- Панель фильтров ---------- */
+.notification-filters {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    padding: 0.5em 0;
+    margin-bottom: 1em;
+    border-bottom: 1px solid var(--color-fg-shape);
+    flex-wrap: wrap;
+}
+
+.notification-filters a {
+    color: var(--opacity-fg-contrast-6);
+    font-weight: bold;
+    text-decoration: none;
+    padding: 0.25em 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    position: relative;
+}
+
+.notification-filters a:hover {
+    color: var(--color-fg);
+}
+
+.notification-filters a.current_page {
+    border-bottom: 0.25em solid var(--color-fg-accent);
+    padding-bottom: 0;
+    color: var(--color-fg);
+}
+
+/* ------------------- Список уведомлений ---------- */
+ol.notification-list {
+    padding: 0;
+    list-style: none;
+    margin: 0;
+}
+
+.notification-item {
+    border-bottom: 1px solid var(--color-box-bg-shaded);
+}
+
+.notification-item:first-child {
+    border-top: 1px solid var(--color-box-bg-shaded);
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+/* ------------------- Ссылка-элемент уведомления ---------- */
+.notification-link {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75em;
+    padding: 0.6em 0.25em;
+    text-decoration: none;
+    color: var(--color-fg);
+}
+
+.notification-link:hover {
+    background-color: var(--color-box-bg-shaded);
+}
+
+.notification-link:visited {
+    color: var(--color-fg);
+}
+
+/* ------------------- Иконка уведомления (круг) ---------- */
+.notification-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background-color: var(--color-box-bg-shaded);
+    font-size: 1.2em;
+    line-height: 1;
+}
+
+/* ------------------- Контент уведомления ---------- */
+.notification-body {
+    flex-grow: 1;
+    min-width: 0;
+    word-break: break-word;
+}
+
+.notification-sender {
+    font-weight: bold;
+    margin-right: 0.3em;
+}
+
+.notification-action {
+    color: var(--opacity-fg-contrast-6);
+    font-size: 0.9em;
+}
+
+.notification-quote {
+    margin: 0.3em 0 0 0;
+    font-size: 0.9em;
+}
+
+.notification-time {
+    color: var(--opacity-fg-contrast-4-5);
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+/* ------------------- Непрочитанное уведомление ---------- */
+.notification-unread {
+    background-color: var(--color-flash-bg-notice);
+}
+
+.notification-unread .notification-link {
+    font-weight: bold;
+}
+
+.notification-unread .notification-icon {
+    background-color: var(--color-fg-accent);
+    color: white;
+}
+
+/* ------------------- Адаптивность уведомлений ---------- */
+@media only screen and (max-width: 480px) {
+    .notification-filters {
+        gap: 0.5em;
+    }
+
+    .notification-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 1em;
+    }
+
+    .notification-link {
+        gap: 0.5em;
+        padding: 0.5em 0.1em;
+    }
+}
+
 /* Бейдж с количеством уведомлений */
 .header-notification-badge {
     position: absolute;
@@ -1392,7 +1556,7 @@ li.comment > ol.comments {
     margin-left: 1.5em;
     margin-top: 0.5em;
     padding-left: 1em;
-    border-left: 2px solid var(--color-fg-shape, #e0e0e0);
+    border-left: 1px dashed var(--color-fg-shape, #e0e0e0);
 }
 
 /* Убираем отступы у первого уровня комментариев */
