@@ -46,7 +46,8 @@
             <label>Уровень прав доступа (Роль):</label>
             <select name="role">
                 <option value="user" <?= $userItem['role'] === 'user' ? 'selected' : '' ?>>user (Обычный пользователь)</option>
-                <option value="admin" <?= $userItem['role'] === 'admin' ? 'selected' : '' ?>>admin (Администратор системы)</option>
+                <option value="moderator" <?= $userItem['role'] === 'moderator' ? 'selected' : '' ?>>moderator (Модератор системы)</option>
+				<option value="admin" <?= $userItem['role'] === 'admin' ? 'selected' : '' ?>>admin (Администратор системы)</option>
             </select>
         </div>
 

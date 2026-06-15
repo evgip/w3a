@@ -111,6 +111,7 @@ body {
 }
 .badge-admin { background: var(--color-fg-negative); color: white; }
 .badge-user { background: var(--color-fg-link); color: white; }
+.badge-moderator { background: green; color: white; }
 
 /* Архивные записи и мета */
 .tr-archived { opacity: 0.6; background-color: var(--color-box-bg-shaded) !important; }

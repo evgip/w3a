@@ -6,6 +6,7 @@
  */
 $isDeleted = !empty($comment['deleted_at']);
 $isOwner = ((int)$comment['user_id'] === $currentUserId);
+$isModerator =  \App\Core\Auth::isModerator();
 ?>
 <div class="comment_meta">
     <?php if (!$isDeleted): ?>
@@ -27,7 +28,7 @@ $isOwner = ((int)$comment['user_id'] === $currentUserId);
         <?php endif; ?>
     <?php else: ?>
         <em>[Комментарий удален]</em>
-        <?php if ($isOwner || $isAdmin): ?>
+        <?php if ($isOwner || $isAdmin || $isModerator): ?>
             <form action="/comments/<?= (int)$comment['id'] ?>/restore" method="POST" class="inline-form">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn-link">[Восстановить]</button>

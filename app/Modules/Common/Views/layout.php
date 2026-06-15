@@ -16,27 +16,23 @@
 			<a href="<?= route('home') ?>" class="navbar-logo">🌐 <?= e(app_name()); ?></a>
 
 			<nav class="navbar-links">
-				<!-- Глобальные публичные ссылки, видимые всегда -->
 				<a href="<?= route('home') ?>">📋 Лента</a>
 				<a href="<?= route('tags.index') ?>">🏷️ Теги</a>
 				<a href="/search">🔍 Поиск</a>
-
 
 <?php if (\App\Core\Auth::check()): ?>
     <?php
     $notifModel = new \App\Modules\Notifications\Models\Notification();
     $unreadCount = $notifModel->getUnreadCount((int)$_SESSION['user_id']);
     ?>
-    
-    
+
     <a href="/notifications" class="header-notification-link" id="header-notifications-link" aria-label="Уведомления">
-    <!-- SVG иконка колокольчика -->
+
     <svg class="header-notification-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
         <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
     </svg>
     
-    <!-- Бейдж с количеством -->
     <span id="header-notification-badge" class="header-notification-badge">0</span>
 </a>
     
@@ -53,7 +49,6 @@
 									<span class="mini-avatar-placeholder"><?= e(mb_substr($_SESSION['user_name'], 0, 1)) ?></span>
 								<?php endif; ?>
 
-								<!-- Display a micro warning red dot indicator over the avatar if any unread messages exist -->
 								<?php if ($unreadCount > 0): ?>
 									<span class="nav-trigger-alert-dot"></span>
 								<?php endif; ?>
@@ -62,7 +57,6 @@
 							<span class="dropdown-arrow-icon">▼</span>
 						</button>
 
-						<!-- Dropdown Interactive Links List Menu Stack Box -->
 						<div class="navbar-dropdown-menu" id="user-dropdown-menu">
 							<a href="<?= route('story.create') ?>" class="dropdown-menu-item">➕ Поделиться</a>
 
@@ -75,6 +69,13 @@
 							<?php if (\App\Core\Auth::isAdmin()): ?>
 								<div class="dropdown-divider"></div>
 								<a href="/admin" class="dropdown-menu-item dropdown-item-admin">📊 Админка</a>
+							<?php endif; ?>
+
+							<?php if (\App\Core\Auth::isModerator()): ?>
+								<div class="dropdown-divider"></div>
+								<a href="/mod/log" class="dropdown-menu-item dropdown-item-mod">📋 Лог модерации</a>
+								<a href="/mod/notes" class="dropdown-menu-item dropdown-item-mod">🔒 Заметки</a>
+								<a href="/mod/stats" class="dropdown-menu-item dropdown-item-mod">📈 Активность</a>
 							<?php endif; ?>
 
 							<div class="dropdown-divider"></div>

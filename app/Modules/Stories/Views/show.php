@@ -16,6 +16,8 @@ if ($currentUserId > 0) {
 $isAuthor = (int)$story['user_id'] === (int)$_SESSION['user_id'];
 $isStoryDeleted = !empty($story['deleted_at']); 
 $isAdmin = \App\Core\Auth::isAdmin();
+$isModerator =  \App\Core\Auth::isModerator();
+
 ?>
 
 <!-- КАРТОЧКА ПУБЛИКАЦИИ -->
@@ -170,7 +172,7 @@ $isAdmin = \App\Core\Auth::isAdmin();
 <?php else: ?>
 
     <?php
-    $renderTree = function(int $parentId) use (&$renderTree, $commentsTree,  $voteModel, $currentUserId, $isAdmin, $canUserDownvote) {
+    $renderTree = function(int $parentId) use (&$renderTree, $commentsTree,  $voteModel, $currentUserId, $isAdmin, $isModerator, $canUserDownvote) {
         if (!isset($commentsTree[$parentId])) {
             return;
         }
@@ -225,7 +227,8 @@ $isAdmin = \App\Core\Auth::isAdmin();
                                     <a href="#reply-to-<?= $commentId ?>" class="comment-reply-link" data-id="<?= $commentId ?>">Ответить</a>
                                 <?php endif; ?>
 
-                                <?php if (((int)$comment['user_id'] === $currentUserId) || $isAdmin): ?>
+                                <!--?php if (((int)$comment['user_id'] === $currentUserId) || $isAdmin): ? -->
+								<?php if ((int)$comment['user_id'] === $currentUserId || $isAdmin || $isModerator): ?>
                                     <span class="divider">|</span>
                                     <a class="comment-edit-trigger" data-id="<?= $commentId ?>">Редактировать</a>
                                     <span class="divider">|</span>

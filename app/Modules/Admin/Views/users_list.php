@@ -40,6 +40,9 @@
                             <span class="badge">Архивирован</span>
                         <?php elseif (($user['role'] ?? 'user') === 'admin'): ?>
                             <span class="badge badge-admin">admin</span>
+							
+						<?php elseif (($user['role'] ?? 'user') === 'moderator'): ?>
+						    <span class="badge badge-moderator">moderator</span>
                         <?php else: ?>
                             <span class="badge badge-user">user</span>
                         <?php endif; ?>

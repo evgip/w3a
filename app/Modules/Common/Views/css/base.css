@@ -1117,7 +1117,7 @@ table.data.zebra tr:nth-child(odd) td {
 }
 
 /* ------------------- Панель фильтров ---------- */
-.notification-filters {
+.nav {
     display: flex;
     align-items: center;
     gap: 1em;
@@ -1127,7 +1127,7 @@ table.data.zebra tr:nth-child(odd) td {
     flex-wrap: wrap;
 }
 
-.notification-filters a {
+.nav a {
     color: var(--opacity-fg-contrast-6);
     font-weight: bold;
     text-decoration: none;
@@ -1138,11 +1138,11 @@ table.data.zebra tr:nth-child(odd) td {
     position: relative;
 }
 
-.notification-filters a:hover {
+.nav a:hover {
     color: var(--color-fg);
 }
 
-.notification-filters a.current_page {
+.nav a.active {
     border-bottom: 0.25em solid var(--color-fg-accent);
     padding-bottom: 0;
     color: var(--color-fg);

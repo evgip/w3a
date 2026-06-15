@@ -158,6 +158,8 @@ class Auth
         return self::check() && $_SESSION['user_role'] === 'admin';
     }
 
+ 
+
     public static function middlewareAdmin(): void
     {
         if (!self::isAdmin()) {
@@ -177,5 +179,48 @@ class Auth
         }
     }
 
+	// ============================================
+	// ФАЙЛ: app/Core/Auth.php (добавить методы)
+	// ============================================
 
+	/**
+	 * Проверка: текущий пользователь — модератор (или админ)
+	 */
+	public static function isModerator(): bool
+	{
+		self::initSession();
+		if (!self::check()) {
+			return false;
+		}
+		return in_array($_SESSION['user_role'], ['moderator', 'admin'], true);
+	}
+
+	/**
+	 * Проверка: текущий пользователь — член команды модерации (staff)
+	 * Админ тоже считается staff
+	 */
+	public static function isStaff(): bool
+	{
+		return self::isModerator();
+	}
+
+	/**
+	 * Middleware: доступ только для модераторов и админов
+	 */
+	public static function middlewareModerator(): void
+	{
+		if (!self::isModerator()) {
+			http_response_code(403);
+			Audit::log('security.unauthorized_access', "Блокировка попытки входа в панель модерации", [
+				'requested_url' => $_SERVER['REQUEST_URI'] ?? '/mod',
+				'user_id' => $_SESSION['user_id'] ?? null,
+			]);
+			$errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
+			if (class_exists($errorController)) {
+				(new $errorController())->notFound("Доступ запрещен. Требуются права модератора.");
+				exit;
+			}
+			die("<h1>403 Forbidden</h1>");
+		}
+	}
 }

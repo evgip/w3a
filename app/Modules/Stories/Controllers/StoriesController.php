@@ -324,9 +324,6 @@ class StoriesController extends Controller
 			exit;
 		}
 		
-  
-		
-		
 		// 4. Trigger database storage transaction operations through the Comment model
 		$commentModel = new \App\Modules\Stories\Models\Comment();
 		$commentId = $commentModel->saveComment([
@@ -337,15 +334,7 @@ class StoriesController extends Controller
 		]);
 		
 		if ($commentId > 0) {
-			
-			/*
-			$notificationModel = new \App\Modules\Notifications\Models\Notification();
-			$notificationModel->createForComment(
-				$data['story_id'],
-				$commentId,
-				$data['user_id']
-			); */
-			
+
 			// Отправляем уведомления
 			$notificationService = new \App\Modules\Notifications\Services\NotificationService();
 			$notificationService->notifyCommentCreated($commentId);
@@ -386,8 +375,9 @@ class StoriesController extends Controller
         // ПРАВА: Изменять коммент может только автор или админ
         $isAuthor = (int)$comment['user_id'] === (int)$_SESSION['user_id'];
         $isAdmin = \App\Core\Auth::isAdmin();
-        
-        if (!$isAuthor && !$isAdmin) {
+        $isModerator =  \App\Core\Auth::isModerator();
+		
+        if (!$isAuthor && !$isAdmin && !$isModerator) {
             \App\Core\Session::setFlash('error', 'У вас нет прав для изменения этого комментария.');
             header('Location: /story/' . $comment['story_id']);
             exit;
@@ -403,9 +393,12 @@ class StoriesController extends Controller
             $commentModel->update($commentId, ['comment' => trim($newText)]);
             \App\Core\Audit::log('comment.updated', 'Пользователь отредактировал свой комментарий', ['comment_id' => $commentId]);
             \App\Core\Session::setFlash('success', 'Комментарий успешно обновлен.');
+			
+			\App\Modules\Moderations\Models\Moderation::logCommentModeratorAction('Изменён', $isAuthor, $comment);
+
         }
 
-        header('Location: /story/' . $comment['story_id']);
+		header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
         exit;
     }
 
@@ -425,13 +418,18 @@ class StoriesController extends Controller
 
         if ($comment) {
             $isAuthor = (int)$comment['user_id'] === (int)$_SESSION['user_id'];
-            if ($isAuthor || \App\Core\Auth::isAdmin()) {
+
+			if ($isAuthor || \App\Core\Auth::isAdmin() || \App\Core\Auth::isModerator()) {
                 $commentModel->softDeleteComment($commentId, (int)$comment['story_id']);
                 \App\Core\Session::setFlash('success', 'Комментарий успешно удален.');
+				
+				\App\Modules\Moderations\Models\Moderation::logCommentModeratorAction('Удален', $isAuthor, $comment);
+				
             } else {
                 \App\Core\Session::setFlash('error', 'Недостаточно прав для удаления.');
             }
-            header('Location: /story/' . $comment['story_id']);
+			
+			header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
             exit;
         }
         header('Location: /');
@@ -453,13 +451,19 @@ class StoriesController extends Controller
 
         if ($comment && !empty($comment['deleted_at'])) {
             $isAuthor = (int)$comment['user_id'] === (int)$_SESSION['user_id'];
-            if ($isAuthor || \App\Core\Auth::isAdmin()) {
+
+			if ($isAuthor || \App\Core\Auth::isAdmin() || \App\Core\Auth::isModerator()) {
+				
                 $commentModel->restoreComment($commentId, (int)$comment['story_id']);
                 \App\Core\Session::setFlash('success', 'Комментарий успешно восстановлен из архива.');
+				
+				\App\Modules\Moderations\Models\Moderation::logCommentModeratorAction('Восстановлен', $isAuthor, $comment);
+				
             } else {
                 \App\Core\Session::setFlash('error', 'Недостаточно прав для восстановления.');
             }
-            header('Location: /story/' . $comment['story_id']);
+			
+			header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
             exit;
         }
         header('Location: /');

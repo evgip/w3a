@@ -4,26 +4,24 @@
 <div class="container mt-4">
     <h1>📨 Запросы приглашений</h1>
 
-    <ul class="nav nav-tabs mb-3">
-        <li class="nav-item">
+    <nav class="nav">
+
             <a class="nav-link <?= $currentStatus === 'pending' ? 'active' : '' ?>"
                href="?status=pending">
                 Ожидают (<?= count(array_filter($requests, fn($r) => $r['status'] === 'pending')) ?>)
             </a>
-        </li>
-        <li class="nav-item">
+  
             <a class="nav-link <?= $currentStatus === 'approved' ? 'active' : '' ?>"
                href="?status=approved">
                 Одобренные
             </a>
-        </li>
-        <li class="nav-item">
+  
             <a class="nav-link <?= $currentStatus === 'rejected' ? 'active' : '' ?>"
                href="?status=rejected">
                 Отклонённые
             </a>
-        </li>
-    </ul>
+       
+    </nav>
 
     <?php if (empty($requests)): ?>
         <div class="alert alert-info">Нет запросов в этой категории.</div>

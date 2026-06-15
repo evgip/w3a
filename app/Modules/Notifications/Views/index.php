@@ -17,9 +17,9 @@
     </div>
 
     <!-- Панель фильтров -->
-    <nav class="notification-filters">
+    <nav class="nav">
         <a href="/notifications?type=all"
-           class="<?=$currentType === 'all' ? 'current_page' : ''?>">
+           class="<?=$currentType === 'all' ? 'active' : ''?>">
             Все
             <?php if ($totalUnread > 0): ?>
                 <span class="nav-notification-badge"><?=$totalUnread?></span>
@@ -27,7 +27,7 @@
         </a>
 
         <a href="/notifications?type=reply"
-           class="<?=$currentType === 'reply' ? 'current_page' : ''?>">
+           class="<?=$currentType === 'reply' ? 'active' : ''?>">
             💬 Ответы
             <?php if ($counts['reply'] > 0): ?>
                 <span class="nav-notification-badge"><?=$counts['reply']?></span>
@@ -35,7 +35,7 @@
         </a>
 
         <a href="/notifications?type=mention"
-           class="<?=$currentType === 'mention' ? 'current_page' : ''?>">
+           class="<?=$currentType === 'mention' ? 'active' : ''?>">
             @ Упоминания
             <?php if ($counts['mention'] > 0): ?>
                 <span class="nav-notification-badge"><?=$counts['mention']?></span>
@@ -43,7 +43,7 @@
         </a>
 
         <a href="/notifications?type=message"
-           class="<?=$currentType === 'message' ? 'current_page' : ''?>">
+           class="<?=$currentType === 'message' ? 'active' : ''?>">
             ✉️ Сообщения
             <?php if ($counts['message'] > 0): ?>
                 <span class="nav-notification-badge"><?=$counts['message']?></span>

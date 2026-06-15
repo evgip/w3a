@@ -672,3 +672,64 @@ CREATE TABLE IF NOT EXISTS `invitation_requests` (
     KEY `idx_status` (`status`),
     KEY `idx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================
+-- ФАЙЛ: db/migrations/001_add_moderation.sql
+-- ============================================
+
+-- 1. Расширяем enum role в таблице users
+ALTER TABLE `users` 
+MODIFY COLUMN `role` ENUM('user','moderator','admin') 
+CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user';
+
+-- 2. Таблица модераторских заметок о пользователях
+CREATE TABLE `mod_notes` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id` INT UNSIGNED NOT NULL COMMENT 'Пользователь, к которому относится заметка',
+    `moderator_id` INT UNSIGNED NOT NULL COMMENT 'Автор заметки',
+    `note` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `is_private` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1=видна только модераторам, 0=публичная',
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_moderator_id` (`moderator_id`),
+    INDEX `idx_is_private` (`is_private`),
+    CONSTRAINT `fk_mod_notes_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_mod_notes_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Таблица лога модераторских действий
+CREATE TABLE `moderations` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `moderator_id` INT UNSIGNED NOT NULL,
+    `action` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL 
+        COMMENT 'Тип: ban, unban, delete_story, warn, mute и т.д.',
+    `target_type` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL 
+        COMMENT 'Тип объекта: user, story, comment',
+    `target_id` INT UNSIGNED NOT NULL COMMENT 'ID объекта воздействия',
+    `reason` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_moderator_id` (`moderator_id`),
+    INDEX `idx_action` (`action`),
+    INDEX `idx_target` (`target_type`, `target_id`),
+    INDEX `idx_created_at` (`created_at`),
+    CONSTRAINT `fk_moderations_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Таблица статистики активности модераторов
+CREATE TABLE `mod_activity` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `moderator_id` INT UNSIGNED NOT NULL,
+    `action` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `date` DATE NOT NULL,
+    `count` INT UNSIGNED NOT NULL DEFAULT 1,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_mod_action_date` (`moderator_id`, `action`, `date`),
+    INDEX `idx_date` (`date`),
+    CONSTRAINT `fk_mod_activity_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

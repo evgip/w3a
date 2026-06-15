@@ -37,6 +37,18 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
                 </form>
             </div>
         <?php endif; ?>
+		
+		<?php if (\App\Core\Auth::isModerator() && $profileUser['id'] !== (int)$_SESSION['user_id']): ?>
+			<div class="mod-actions">
+				<h3>Действия модератора</h3>
+				<a href="/mod/notes?user_id=<?= $profileUser['id'] ?>" class="btn btn-sm">
+					📝 Добавить заметку
+				</a>
+				<a href="/mod/ban/<?= $profileUser['id'] ?>" class="btn btn-sm btn-danger">
+					🚫 Забанить
+				</a>
+			</div>
+		<?php endif; ?>
     </div>
 
 </div>

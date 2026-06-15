@@ -333,3 +333,26 @@ if (!function_exists('needsTruncation')) {
 		return mb_strlen($text) > $length;
 	}
 }
+
+
+if (!function_exists('safeLink')) {
+	/**
+	 * Удаляем все атрибуты кроме href
+	 */
+	function safeLink(?string $text): string
+	{
+		if ($text === null || $text === '') return '—';
+		
+		// Разрешаем только <a href="...">
+		$clean = strip_tags($text, '<a>');
+
+		$clean = preg_replace_callback('/<a\s+([^>]*)>/i', function($m) {
+			if (preg_match('/href\s*=\s*["\']([^"\']+)["\']/i', $m[1], $href)) {
+				return '<a href="' . htmlspecialchars($href[1], ENT_QUOTES) . '">';
+			}
+			return '<a>';
+		}, $clean);
+		
+		return $clean;
+	}
+}
