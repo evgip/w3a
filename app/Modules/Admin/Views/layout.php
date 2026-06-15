@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Админ-панель | <?= e($title ?? '') ?></title>
 	
+	<link rel="stylesheet" href="/css/app.min.css">
 	<link rel="stylesheet" href="/css/admin.min.css">
 	<script src="<?= \App\Core\Asset::js() ?>"></script>
 

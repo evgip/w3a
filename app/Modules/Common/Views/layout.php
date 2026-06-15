@@ -4,10 +4,9 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= e($csrf_token ?? '') ?>">
 	<title><?= e($title ?? 'Лента историй') ?> | <?= e(app_name()); ?> форум</title>
 	<link rel="stylesheet" href="/css/app.min.css">
-
-	<meta name="csrf-token" content="<?= (new \App\Core\Request())->getCsrfToken(); ?>">
 </head>
 
 <body>

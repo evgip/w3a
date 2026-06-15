@@ -80,7 +80,7 @@ class MessagesController extends Controller
         $recipient = $userModel->find($targetUid);
 
         $this->render('dialog', [
-            'title'          => 'Чат с ' . e($recipient['name']),
+            'title'          => 'Чат с ' . e($recipient['username']),
             'messages'       => $messages,
             'recipient'      => $recipient,
             'conversationId' => $conversationId,

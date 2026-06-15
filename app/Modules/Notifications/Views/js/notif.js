@@ -3,8 +3,24 @@
  */
 function updateHeaderNotificationCount() {
     fetch('/api/notifications/count')
-        .then(response => response.json())
+        .then(response => {
+            // Для 401 (неавторизован) — это нормальная ситуация, не ошибка
+            if (response.status === 401) {
+                const badge = document.getElementById('header-notification-badge');
+                if (badge) badge.style.display = 'none';
+                return null; // Прерываем цепочку
+            }
+            
+            // Для других ошибок — выбрасываем исключение
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            
+            return response.json();
+        })
         .then(data => {
+            if (!data) return; // Был ответ 401
+            
             const badge = document.getElementById('header-notification-badge');
             if (!badge) return;
             
@@ -15,7 +31,10 @@ function updateHeaderNotificationCount() {
                 badge.style.display = 'none';
             }
         })
-        .catch(error => console.error('Ошибка получения счетчика уведомлений:', error));
+        .catch(error => {
+            // Не спамим в консоль для штатных ситуаций
+            console.error('Ошибка получения счетчика уведомлений:', error);
+        });
 }
 
 // Запускаем при загрузке страницы
@@ -82,7 +101,7 @@ document.getElementById('mark-all-read-btn')?.addEventListener('click', function
         || document.querySelector('input[name="csrf_token"]')?.value 
         || '';
     
-    fetch('/notifications/mark-all-as-read', {
+    fetch('/notifications/mark-all-read', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

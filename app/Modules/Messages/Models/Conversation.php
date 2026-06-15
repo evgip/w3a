@@ -85,41 +85,44 @@ class Conversation extends Model
     }
 
 
-   /**
-     * Получить список бесед пользователя с последним сообщением
-     */
+	/**
+	 * Получить список бесед пользователя с последним сообщением
+	 */
 	public function getUserConversations(int $userId): array
 	{
 		$db = \App\Core\Database::getConnection();
 		
-		// Даем уникальные имена параметрам: user_id_1, user_id_2, user_id_3
-		$sql = "SELECT 
-					c.*,
-					u.username as participant_name,
-					u.avatar as participant_avatar,
-					m.message as last_message,
-					m.created_at as last_message_time,
-					m.sender_id as last_sender_id
-				FROM {$this->table} c
-				LEFT JOIN users u ON (
-					CASE 
-						WHEN c.user_one = :user_id_1 THEN c.user_two 
-						ELSE c.user_one 
-					END
-				) = u.id
-				LEFT JOIN messages m ON m.id = (
-					SELECT MAX(id) FROM messages WHERE conversation_id = c.id
-				)
-				WHERE c.user_one = :user_id_2 OR c.user_two = :user_id_3
-				ORDER BY c.updated_at DESC";
+		$sql = "SELECT
+			c.*, 
+			u.username as participant_name,
+			u.avatar as participant_avatar,
+			m.message as last_message,
+			m.created_at as last_message_time,
+			m.sender_id as last_sender_id,
+			(SELECT COUNT(*) FROM messages 
+			 WHERE conversation_id = c.id 
+			 AND sender_id != :user_id_4 
+			 AND is_read = 0) as unread_count
+		FROM {$this->table} c
+		LEFT JOIN users u ON (
+			CASE 
+				WHEN c.user_one = :user_id_1 THEN c.user_two 
+				ELSE c.user_one 
+			END
+		) = u.id
+		LEFT JOIN messages m ON m.id = (
+			SELECT MAX(id) FROM messages WHERE conversation_id = c.id
+		)
+		WHERE c.user_one = :user_id_2 OR c.user_two = :user_id_3
+		ORDER BY c.updated_at DESC";
 		
 		$stmt = $db->prepare($sql);
 		
-		// Передаем значение $userId для каждого уникального параметра
 		$stmt->execute([
 			'user_id_1' => $userId,
 			'user_id_2' => $userId,
 			'user_id_3' => $userId,
+			'user_id_4' => $userId
 		]);
 		
 		return $stmt->fetchAll(\PDO::FETCH_ASSOC);

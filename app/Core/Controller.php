@@ -6,6 +6,10 @@ abstract class Controller
 {
     protected function render(string $viewName, array $data = []): void
     {
+		
+		// Добавляем CSRF токен во все представления
+		$data['csrf_token'] = (new \App\Core\Request())->getCsrfToken();
+		
         extract($data);
 
         $calledClass = get_called_class();
@@ -37,12 +41,12 @@ abstract class Controller
         include $viewFile;
         $content = ob_get_clean();
 
-        // Умный поиск лэйаута (Перенаправлен на модуль Users)
+        // Умный поиск лэйаута (Перенаправлен на модуль Common)
         if (file_exists($layoutFile)) {
             include $layoutFile;
         } else {
             // ФОЛБЭК: Если локального лэйаута нет, берем главный каркас из модуля НАСТРОЕК ПОЛЬЗОВАТЕЛЕЙ
-            $fallbackLayout = dirname(__DIR__) . '/Modules/Users/Views/layout.php';
+            $fallbackLayout = dirname(__DIR__) . '/Modules/Common/Views/layout.php';
             
             if (file_exists($fallbackLayout)) {
                 include $fallbackLayout;
@@ -50,8 +54,7 @@ abstract class Controller
                 echo $content;
             }
         }
-		
-		
+	
     }
 
     protected function json(array $data, int $statusCode = 200): void

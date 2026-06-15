@@ -8,15 +8,19 @@ use App\Modules\Notifications\Models\Notification;
 
 class NotificationsController extends Controller
 {
-    public function __construct()
-    {
-        // Проверка авторизации (как в MessagesController)
-        if (!Auth::check()) {
-            header('Location: /login');
-            exit;
-        }
-    }
-    
+	public function __construct()
+	{
+		// Проверка авторизации только для НЕ-API запросов
+		$requestUri = $_SERVER['REQUEST_URI'] ?? '';
+		$isApi = strpos($requestUri, '/api/') === 0;
+		
+		if (!$isApi && !Auth::check()) {
+			header('Location: /login');
+			exit;
+		}
+		// Для API-запросов проверку НЕ делаем — она будет в самих методах
+	}
+	
     public function index(): void
     {
         $userId = (int)$_SESSION['user_id'];
@@ -84,32 +88,33 @@ class NotificationsController extends Controller
         $this->json(['success' => true]);
     }
     
-    /**
-     * Получить количество непрочитанных уведомлений (AJAX)
-     */
-    public function getCount(): void
-    {
-        header('Content-Type: application/json; charset=utf-8');
-        
-        // Если пользователь не авторизован - возвращаем 0
-        if (!Auth::check()) {
-            echo json_encode([
-                'success' => true,
-                'count' => 0,
-                'authenticated' => false
-            ]);
-            exit;
-        }
+	// API endpoint для получения общего количества непрочитанных (для шапки)
+	public function getCount(): void
+	{
+		// Для неавторизованных возвращаем 0 без ошибок
+		if (!Auth::check()) {
+			$this->json(['count' => 0]);
+			return;
+		}
+		
+		$userId = (int)$_SESSION['user_id'];
+		$notificationModel = new Notification();
+		$count = $notificationModel->getUnreadCount($userId);
+		$this->json(['count' => $count]);
+	}
 
-        $userId = (int)$_SESSION['user_id'];
-        $notificationModel = new Notification();
-        $count = $notificationModel->countUnread($userId);
-
-        echo json_encode([
-            'success' => true,
-            'count' => $count,
-            'authenticated' => true
-        ]);
-        exit;
-    }
+	// API endpoint для получения списка непрочитанных
+	public function getUnread(): void
+	{
+		// Для неавторизованных возвращаем пустой список
+		if (!Auth::check()) {
+			$this->json(['notifications' => []]);
+			return;
+		}
+		
+		$userId = (int)$_SESSION['user_id'];
+		$notificationModel = new Notification();
+		$notifications = $notificationModel->getUnread($userId, 10);
+		$this->json(['notifications' => $notifications]);
+	}
 }
