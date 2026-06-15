@@ -26,6 +26,13 @@ $isDeleted = !empty($story['deleted_at']);
             обсудить
         <?php else: ?>
             <?= (int)$story['comments_count'] ?> <?= plural((int)$story['comments_count'], ['комментарий', 'комментария', 'комментариев']) ?>
+			
+				<?php if ($newCount > 0): ?>
+                    <span class="new-comments-badge" title="Новых комментариев с последнего посещения">
+                        +<?= $newCount ?> новых
+                    </span>
+                <?php endif; ?>
+			
         <?php endif; ?>
     </a>
 

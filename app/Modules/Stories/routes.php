@@ -36,3 +36,5 @@ $router->add('POST', 'admin/stories/{id}/restore', 'StoriesController@adminResto
 $router->add('GET', 'domain/{domain}', 'StoriesController@index', 'domains.show');
 
 $router->add('POST', 'story/{id}/follow', 'StoriesController@toggleFollow', 'story.toggle.follow');
+
+$router->add('POST', 'story/{id}/mark-read', 'StoriesController@markRead', 'story.markRead');

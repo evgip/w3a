@@ -18,6 +18,9 @@ $isStoryDeleted = !empty($story['deleted_at']);
 $isAdmin = \App\Core\Auth::isAdmin();
 $isModerator =  \App\Core\Auth::isModerator();
 
+$hasNewComments = false;
+
+$showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
 ?>
 
 <!-- КАРТОЧКА ПУБЛИКАЦИИ -->
@@ -131,6 +134,15 @@ $isModerator =  \App\Core\Auth::isModerator();
 						 <?= csrf_field() ?> 
 						<button type="submit" class="btn btn-sm <?= $story['user_is_following'] ? 'btn-primary' : 'btn-outline-primary' ?>">
 							<?= $story['user_is_following'] ? '🔔 Вы подписаны' : '🔕 Подписаться на ответы' ?>
+						</button>
+					</form>
+				<?php endif; ?>
+				
+				<?php if ($showMarkReadButton): ?> <br><br>
+					<form action="/story/<?= (int)$story['id'] ?>/mark-read" method="POST" style="display:inline">
+						<?= csrf_field() ?>
+						<button type="submit" class="btn btn-sm btn-outline-secondary" title="Сбросить счётчик новых комментариев">
+							✓ Отметить прочитанным
 						</button>
 					</form>
 				<?php endif; ?>

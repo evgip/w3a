@@ -1523,6 +1523,31 @@ ol.notification-list {
 
 /* ------------------- Layout комментариев ----------------- */
 
+
+/* Карточка истории с новыми комментариями */
+.story-card--has-new {
+    border-left: 3px solid #0d6efd;
+    background-color: #f8f9ff;
+}
+
+/* Бейдж "+N новых" */
+.new-comments-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background-color: #dc3545;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.8em;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.new-comments-badge:hover {
+    background-color: #bb2d3b;
+}
+
+
 /* Переопределяем базовые стили для li.comment */
 li.comment {
     display: block;

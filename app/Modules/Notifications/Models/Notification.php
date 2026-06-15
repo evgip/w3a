@@ -16,8 +16,10 @@ class Notification extends Model
 		'notifiable_type',
 		'actor_id',
 		'message',
-		'is_read'
+		'is_read',
+		'read_at'
 	];
+ 
 
     // Типы уведомлений (как в Lobsters)
     public const TYPE_REPLY = 'reply';  // Ответ на ваш комментарий

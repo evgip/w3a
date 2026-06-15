@@ -50,11 +50,24 @@ class StoriesController extends Controller
 			$title = "Публикации с домена " . e($domain);
 		}
 
+	   // === НОВОЕ: Подсчёт новых комментариев для каждой истории ===
+		$newCommentsMap = [];
+		if (\App\Core\Auth::check() && !empty($stories)) {
+			$storyIds = array_column($stories, 'id');
+			$readRibbon = new \App\Modules\Stories\Models\ReadRibbon();
+			$newCommentsMap = $readRibbon->getNewCommentsCounts(
+				(int)$_SESSION['user_id'],
+				array_map('intval', $storyIds)
+			);
+		}
+		// ===========================================================
+
 		$this->render('index', [
 			'title' => $title,
 			'stories' => $stories,
 			'currentPage' => $currentPage,
-			'totalPages' => $totalPages
+			'totalPages' => $totalPages,
+			'newCommentsMap'   => $newCommentsMap,
 		]);
 	}
 	
@@ -238,10 +251,55 @@ class StoriesController extends Controller
             $commentsTree[$parentId][] = $comment;
         }
 
+
+	 // ==========================================
+    // НОВОЕ: Отметка прочитанного (ReadRibbon)
+    // ==========================================
+	if (\App\Core\Auth::check()) {
+		$readRibbon = new \App\Modules\Stories\Models\ReadRibbon();
+		
+		// 1. Получаем количество новых
+		$newCount = $readRibbon->getNewCommentsCount(
+			(int)$_SESSION['user_id'], 
+			$storyId
+		);
+		
+		// 2. === АВТОСИНХРОНИЗАЦИЯ ===
+		// Если счётчик показывает новые, но в реальности их нет — сбрасываем
+		if ($newCount > 0) {
+			$realNewCount = $this->countRealNewComments($storyId, (int)$_SESSION['user_id']);
+			
+			if ($realNewCount === 0) {
+				// Рассинхрон! Синхронизируем отметку
+				$readRibbon->syncForUserAndStory((int)$_SESSION['user_id'], $storyId);
+				$newCount = 0; // Обнуляем для flash-сообщения
+			}
+		}
+		// ===========================
+		
+		// 3. Показываем flash
+		if ($newCount > 0) {
+			$word = $this->pluralizeComment($newCount);
+			\App\Core\Session::setFlash('info', "Вы пропустили {$newCount} {$word}.");
+		}
+		
+		// 4. Отмечаем как прочитанное
+		$lastCommentId = 0;
+		if (!empty($flatComments)) {
+			$lastComment = end($flatComments);
+			$lastCommentId = (int)$lastComment['id'];
+		}
+		
+		$readRibbon->markAsRead((int)$_SESSION['user_id'], $storyId, $lastCommentId);
+	}
+    // ==========================================
+
+
         $this->render('show', [
             'title' => $story['title'],
             'story' => $story,
-            'commentsTree' => $commentsTree
+            'commentsTree' => $commentsTree,
+			'newCount'     => $newCount,
         ]);
     }
 	
@@ -495,6 +553,81 @@ class StoriesController extends Controller
 		// Для обычных форм — редирект обратно
 		header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? "/story/{$storyId}"));
 		exit;
+	}
+	
+	/**
+	 * Склонение слова "комментарий" для русского языка
+	 * 
+	 * @param int $count Количество
+	 * @return string Правильная форма слова
+	 */
+	private function pluralizeComment(int $count): string
+	{
+		$abs = abs($count) % 100;
+		$lastDigit = $abs % 10;
+		
+		if ($abs > 10 && $abs < 20) {
+			return 'комментариев';
+		}
+		if ($lastDigit > 1 && $lastDigit < 5) {
+			return 'комментария';
+		}
+		if ($lastDigit === 1) {
+			return 'комментарий';
+		}
+		return 'комментариев';
+	}
+	
+	/**
+	 * POST /story/{id}/mark-read — принудительно отметить историю как прочитанную
+	 */
+	public function markRead(string $id): void
+	{
+		if (!\App\Core\Auth::check()) {
+			header('Location: /login');
+			exit;
+		}
+
+		$request = new \App\Core\Request();
+		$request->validateCsrf();
+
+		$storyId = (int)$id;
+		$readRibbon = new \App\Modules\Stories\Models\ReadRibbon();
+		$readRibbon->syncForUserAndStory((int)$_SESSION['user_id'], $storyId);
+
+		\App\Core\Session::setFlash('success', 'История отмечена как прочитанная.');
+		
+		$referer = $_SERVER['HTTP_REFERER'] ?? '/story/' . $storyId;
+		header('Location: ' . $referer);
+		exit;
+	}
+	
+	/**
+	 * Реальный подсчёт новых комментариев (без использования read_ribbons)
+	 * Для проверки рассинхронизации
+	 */
+	private function countRealNewComments(int $storyId, int $userId): int
+	{
+		$db = \App\Core\Database::getConnection();
+		
+		// Получаем last_read_comment_id
+		$stmt = $db->prepare(
+			"SELECT `last_read_comment_id` FROM `read_ribbons` 
+			 WHERE `user_id` = ? AND `story_id` = ?"
+		);
+		$stmt->execute([$userId, $storyId]);
+		$lastReadId = (int) $stmt->fetchColumn();
+		
+		// Считаем реальные новые (неудалённые) комментарии
+		$stmt = $db->prepare(
+			"SELECT COUNT(*) FROM `comments` 
+			 WHERE `story_id` = ? 
+			   AND `id` > ? 
+			   AND `deleted_at` IS NULL"
+		);
+		$stmt->execute([$storyId, $lastReadId]);
+		
+		return (int) $stmt->fetchColumn();
 	}
 }
 

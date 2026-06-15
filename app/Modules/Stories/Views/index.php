@@ -25,6 +25,8 @@ if ($currentUserId > 0) {
 				
 				$fullHtml = \App\Core\Markdown::parse($story['description']);
 				$needsTruncation = needsTruncation($fullHtml, 300);
+				
+				$newCount = $newCommentsMap[$story['id']] ?? 0;
 			?>
 
             <li class="story <?= $isStoryDeleted ? 'deleted' : '' ?>">
@@ -94,6 +96,7 @@ if ($currentUserId > 0) {
                         'story' => $story,
                         'currentUserId' => $currentUserId,
                         'isAdmin' => $isAdmin,
+						'newCount' => $newCount,
                     ]); ?>
                 </div>
             </li>

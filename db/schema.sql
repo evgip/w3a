@@ -733,3 +733,19 @@ CREATE TABLE `mod_activity` (
     INDEX `idx_date` (`date`),
     CONSTRAINT `fk_mod_activity_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE `read_ribbons` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id` INT UNSIGNED NOT NULL,
+    `story_id` INT UNSIGNED NOT NULL,
+    `last_read_comment_id` INT UNSIGNED NOT NULL DEFAULT 0 
+        COMMENT 'ID последнего прочитанного комментария (0 = история открыта, но комментариев не было)',
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_story` (`user_id`, `story_id`),
+    INDEX `idx_user_updated` (`user_id`, `updated_at`),
+    CONSTRAINT `fk_rr_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_rr_story` FOREIGN KEY (`story_id`) REFERENCES `stories`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Отметки прочитанных историй для индикации новых комментариев';
