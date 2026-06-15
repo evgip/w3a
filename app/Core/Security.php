@@ -8,6 +8,7 @@ class Security
 
     /**
      * Generates a single cryptographically secure token per request
+	 * <script nonce="<?= \App\Core\Security::getNonce(); ?>">
      */
     public static function getNonce(): string
     {

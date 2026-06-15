@@ -7,7 +7,7 @@
 	<title><?= e($title ?? 'Лента историй') ?> | <?= e(app_name()); ?> форум</title>
 	<link rel="stylesheet" href="/css/app.min.css">
 
-	<meta name="csrf-token" content="<?= \App\Core\Security::getNonce(); ?>">
+	<meta name="csrf-token" content="<?= (new \App\Core\Request())->getCsrfToken(); ?>">
 </head>
 
 <body>
@@ -85,7 +85,17 @@
 					</div>
 				<?php else: ?>
 					<a href="<?= route('auth.login') ?>">Войти</a>
-					<a href="<?= route('auth.register') ?>" class="btn-nav-create">Регистрация</a>
+					<?php if (config_bool('config.app.invitations_enabled', false)): ?>
+						<?php if (!\App\Core\Auth::check()): ?>
+							<a class="nav-link" href="<?= route('home') ?>invite/request">Запросить приглашение</a>
+						<?php else: ?>
+							<a class="nav-link" href="<?= route('invitations.index') ?>">🎟️ Приглашения</a>
+						<?php endif; ?>
+					<?php else: ?>
+						<?php if (!\App\Core\Auth::check()): ?>
+							<a class="btn-nav-create" href="<?= route('auth.register') ?>">Регистрация</a>
+						<?php endif; ?>
+					<?php endif; ?>
 				<?php endif; ?>
 			</nav>
 		</div>
@@ -104,6 +114,9 @@
 				<a href="<?= route('home') ?>">Главная</a>
 				<a href="<?= route('page.about') ?>">О проекте</a>
 				<a href="<?= route('stats.index') ?>">Статистика</a>
+				<?php if (\App\Core\Auth::check()): ?>
+				  <a href="<?= route('tags.filters') ?>">Фильтры</a>
+				<?php endif; ?>
 			</nav>
 			<hr>
 			<?= \App\Core\Benchmark::renderStats() ?>

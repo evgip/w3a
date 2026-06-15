@@ -166,6 +166,13 @@ class UsersController extends Controller
      */
 	public function register(): void
 	{
+		// Если включена система инвайтов - обычная регистрация закрыта
+		if (config_bool('config.app.invitations_enabled', false)) {
+			Session::setFlash('error', 'Регистрация доступна только по приглашениям. <a href="/invite/request">Запросить приглашение</a>');
+			header('Location: /');
+			exit;
+		}
+		
 		$request = new Request();
 		
 		// 1. Обязательная проверка CSRF-токена

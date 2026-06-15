@@ -84,13 +84,32 @@ class NotificationsController extends Controller
         $this->json(['success' => true]);
     }
     
-    // API endpoint для получения общего количества непрочитанных (для шапки)
+    /**
+     * Получить количество непрочитанных уведомлений (AJAX)
+     */
     public function getCount(): void
     {
+        header('Content-Type: application/json; charset=utf-8');
+        
+        // Если пользователь не авторизован - возвращаем 0
+        if (!Auth::check()) {
+            echo json_encode([
+                'success' => true,
+                'count' => 0,
+                'authenticated' => false
+            ]);
+            exit;
+        }
+
         $userId = (int)$_SESSION['user_id'];
         $notificationModel = new Notification();
-        $count = $notificationModel->getUnreadCount($userId);
-        
-        $this->json(['count' => $count]);
+        $count = $notificationModel->countUnread($userId);
+
+        echo json_encode([
+            'success' => true,
+            'count' => $count,
+            'authenticated' => true
+        ]);
+        exit;
     }
 }

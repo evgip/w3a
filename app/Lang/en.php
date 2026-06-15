@@ -24,5 +24,34 @@ return [
                                     <p>To create a new secure password, please follow this secure link:</p>
                                     <p><a href="%s"><strong>Create a new password and log in</strong></a></p>
                                     <br>
-                                    <p><strong>Warning:</strong> This link is valid for 1 hour. If you did not request a password reset, delete this email immediately.</p>'
+                                    <p><strong>Warning:</strong> This link is valid for 1 hour. If you did not request a password reset, delete this email immediately.</p>',
+									
+									
+    // === INVITATION SYSTEM ===
+
+    'email_invitation_subject' => '🎟️ You\'ve been invited to join %s',
+    'email_invitation_body' => '<h2>You\'ve been invited to a private community!</h2>
+								<p>Hello!</p>
+								<p>A community member has invited you to register on <strong>%s</strong>.</p>
+								<p>To register, please follow the link below:</p>
+								<p><a href="%s"><strong>👉 Register via Invitation</strong></a></p>
+								<br>
+								<p><strong>⏰ Expiration:</strong> This link is valid until %s</p>
+								<p><em>If you don\'t know who invited you or don\'t plan to register, simply ignore this email.</em></p>',
+
+	'email_invitation_request_approved_subject' => '✅ Your invitation request has been approved — %s',
+	'email_invitation_request_approved_body' => '<h2>Great news!</h2>
+								<p>Hello!</p>
+								<p>Your request to join <strong>%s</strong> has been approved.</p>
+								<p>To register, please follow the link below:</p>
+								<p><a href="%s"><strong>👉 Register Now</strong></a></p>
+								<br>
+								<p><strong>⏰ Expiration:</strong> This link is valid until %s</p>
+								<p>Welcome to the community!</p>',
+
+	'email_invitation_request_rejected_subject' => '❌ Your invitation request — %s',
+	'email_invitation_request_rejected_body' => '<h2>Application Review Result</h2>
+								<p>Hello!</p>
+								<p>Unfortunately, your request to join <strong>%s</strong> was not approved.</p>
+								<p>If you have any questions, please contact the administration.</p>',
 ];

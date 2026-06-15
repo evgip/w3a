@@ -621,8 +621,6 @@ ALTER TABLE users
     ADD COLUMN email_notifications TINYINT(1) NOT NULL DEFAULT 0 
         COMMENT 'Дублировать уведомления на email';	
 	
-	--- НОВОЕ
-
 CREATE TABLE IF NOT EXISTS tag_filters (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id     INT UNSIGNED NOT NULL,
@@ -639,3 +637,38 @@ CREATE TABLE IF NOT EXISTS tag_filters (
         REFERENCES tags(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;	
 	
+-- Таблица приглашений
+CREATE TABLE IF NOT EXISTS `invitations` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `code` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `inviter_id` INT UNSIGNED NOT NULL COMMENT 'ID пользователя, который пригласил',
+    `invitee_email` VARCHAR(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Email получателя (опционально)',
+    `invitee_id` INT UNSIGNED DEFAULT NULL COMMENT 'ID зарегистрировавшегося пользователя',
+    `status` ENUM('pending', 'accepted', 'expired', 'revoked') NOT NULL DEFAULT 'pending',
+    `expires_at` TIMESTAMP NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `unique_code` (`code`),
+    KEY `idx_inviter` (`inviter_id`),
+    KEY `idx_invitee` (`invitee_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_expires` (`expires_at`),
+    CONSTRAINT `fk_invitations_inviter` FOREIGN KEY (`inviter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_invitations_invitee` FOREIGN KEY (`invitee_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Таблица запросов приглашений
+CREATE TABLE IF NOT EXISTS `invitation_requests` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `email` VARCHAR(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `reason` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Причина запроса',
+    `status` ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+    `ip_address` VARCHAR(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_email` (`email`),
+    KEY `idx_status` (`status`),
+    KEY `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
