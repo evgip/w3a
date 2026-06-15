@@ -21,20 +21,12 @@ class Tag extends Model
     /**
      * Получить все теги, отсортированные по категориям Lobsters
      */
-   /* public function getAllTags(): array
-    {
-        $db = \App\Core\Database::getConnection();
-        // Сортируем сначала по категориям, затем по имени тега
-        $stmt = $db->query("SELECT * FROM `tags` WHERE `deleted_at` IS NULL ORDER BY `category` ASC, `tag` ASC");
-        return $stmt->fetchAll();
-    } */
-
    public function getAllTags(): array
     {
         $db = Database::getConnection();
         
         // LEFT JOIN гарантирует, что даже теги с 0 историй будут в списке
-        $sql = "SELECT t.id, t.tag, t.description, t.category, 
+        $sql = "SELECT t.id, t.tag, t.description, t.category, t.is_media, 
                        COUNT(tg.story_id) as stories_count
                 FROM {$this->table} t
                 LEFT JOIN taggings tg ON t.id = tg.tag_id

@@ -49,3 +49,10 @@ $router->add('GET', 'api/admin/security-alerts', 'AdminController@getSecurityAle
 $router->add('GET', 'admin/firewall', 'AdminController@firewallIndex', 'admin.firewall');
 $router->add('POST', 'admin/firewall/ban', 'AdminController@banIp', 'admin.firewall.ban');
 $router->add('POST', 'admin/firewall/{id}/unban', 'AdminController@unbanIp', 'admin.firewall.unban');
+
+
+// ==================== INVITATION REQUESTS MANAGEMENT ====================
+
+$router->add('GET', 'admin/invitations', 'AdminController@invitationsIndex', 'admin.invitations');
+$router->add('POST', 'admin/invitations/{id}/approve', 'AdminController@approveInvitation', 'admin.invitations.approve');
+$router->add('POST', 'admin/invitations/{id}/reject', 'AdminController@rejectInvitation', 'admin.invitations.reject');

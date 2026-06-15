@@ -17,6 +17,7 @@
             <a href="/admin">📊 Главная панель</a>
             <a href="/admin/users">👥 Пользователи</a>
 			<a href="/admin/tags">🏷️ Управление тегами</a>
+			<a href="/admin/invitations">📨 Запросы приглашений</a> 
 			<a href="/admin/audit">🔒 Журнал аудита</a>
 			<a href="/admin/firewall">🧱 Сетевой экран (Firewall)</a>
 			<a href="/admin/tools">🛠️ Инструменты</a>
@@ -38,14 +39,14 @@
 		
 		        <!-- Success Alerts Container Notification Layout -->
         <?php if (\App\Core\Session::hasFlash('success')): ?>
-            <div class="ui-alert-banner ui-alert-success">
+            <div class="alert alert-success">
                 <strong>Успех:</strong> <?= e(\App\Core\Session::getFlash('success')) ?>
             </div>
         <?php endif; ?>
 
         <!-- Error Alerts Container Notification Layout -->
         <?php if (\App\Core\Session::hasFlash('error')): ?>
-            <div class="ui-alert-banner ui-alert-error">
+            <div class="alert alert-danger">
                 <strong>Ошибка:</strong> <?= e(\App\Core\Session::getFlash('error')) ?>
             </div>
         <?php endif; ?>

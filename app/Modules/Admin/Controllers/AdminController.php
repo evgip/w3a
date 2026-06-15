@@ -702,4 +702,83 @@ class AdminController extends Controller
 		header('Location: /admin/tools');
 		exit;
 	}
+	
+	// ==================== INVITATION REQUESTS MANAGEMENT ====================
+
+	/**
+	 * Список запросов на приглашение (GET /admin/invitations)
+	 */
+	public function invitationsIndex(): void
+	{
+        if (!\App\Core\Auth::isAdmin()) { 
+            header('Location: /'); 
+            exit; 
+        }
+		
+		$status = $_GET['status'] ?? 'pending';
+		$allowedStatuses = ['pending', 'approved', 'rejected'];
+		
+		if (!in_array($status, $allowedStatuses)) {
+			$status = 'pending';
+		}
+		
+		$requestModel = new \App\Modules\Invitations\Models\InvitationRequest();
+		$requests = $requestModel->getAllRequests($status);
+		
+		$this->render('invitations', [
+			'title' => 'Запросы приглашений',
+			'requests' => $requests,
+			'currentStatus' => $status
+		], 'Invitations');
+	}
+
+	/**
+	 * Одобрить запрос на приглашение (POST /admin/invitations/{id}/approve)
+	 */
+	public function approveInvitation(int $id): void
+	{
+        if (!\App\Core\Auth::isAdmin()) { 
+            header('Location: /'); 
+            exit; 
+        }
+		
+		$request = new \App\Core\Request();
+		$request->validateCsrf();
+		
+		$requestModel = new \App\Modules\Invitations\Models\InvitationRequest();
+		
+		if ($requestModel->approveRequest($id)) {
+			\App\Core\Session::setFlash('success', 'Запрос одобрен.');
+		} else {
+			\App\Core\Session::setFlash('error', 'Не удалось одобрить запрос.');
+		}
+		
+		header('Location: /admin/invitations?status=pending');
+		exit;
+	}
+
+	/**
+	 * Отклонить запрос на приглашение (POST /admin/invitations/{id}/reject)
+	 */
+	public function rejectInvitation(int $id): void
+	{
+        if (!\App\Core\Auth::isAdmin()) { 
+            header('Location: /'); 
+            exit; 
+        }
+		
+		$request = new \App\Core\Request();
+		$request->validateCsrf();
+		
+		$requestModel = new \App\Modules\Invitations\Models\InvitationRequest();
+		
+		if ($requestModel->rejectRequest($id)) {
+			\App\Core\Session::setFlash('success', 'Запрос отклонён.');
+		} else {
+			\App\Core\Session::setFlash('error', 'Не удалось отклонить запрос.');
+		}
+		
+		header('Location: /admin/invitations?status=pending');
+		exit;
+	}
 }
