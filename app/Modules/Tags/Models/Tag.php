@@ -11,17 +11,37 @@ class Tag extends Model
 
 	protected array $fillable = [
 		'name',
-		'slug'
+		'slug',
+		'tag',
+		'description',
+		'is_media',
+		'category'
 	];
 
     /**
      * Получить все теги, отсортированные по категориям Lobsters
      */
-    public function getAllTags(): array
+   /* public function getAllTags(): array
     {
         $db = \App\Core\Database::getConnection();
         // Сортируем сначала по категориям, затем по имени тега
         $stmt = $db->query("SELECT * FROM `tags` WHERE `deleted_at` IS NULL ORDER BY `category` ASC, `tag` ASC");
+        return $stmt->fetchAll();
+    } */
+
+   public function getAllTags(): array
+    {
+        $db = Database::getConnection();
+        
+        // LEFT JOIN гарантирует, что даже теги с 0 историй будут в списке
+        $sql = "SELECT t.id, t.tag, t.description, t.category, 
+                       COUNT(tg.story_id) as stories_count
+                FROM {$this->table} t
+                LEFT JOIN taggings tg ON t.id = tg.tag_id
+                GROUP BY t.id, t.tag, t.description, t.category
+                ORDER BY t.tag ASC";
+                
+        $stmt = $db->query($sql);
         return $stmt->fetchAll();
     }
 

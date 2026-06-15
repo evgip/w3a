@@ -84,7 +84,7 @@ if (!empty($notifications)) {
 
     <div class="form-field-group">
         <label for="username"><strong>Имя пользователя</strong></label>
-        <input type="text" id="username" class="form-input-wide" value="<?= e($user['name']) ?>" disabled>
+        <input type="text" id="username" class="form-input-wide" value="<?= e($user['username']) ?>" disabled>
         <p class="hint">
             Имя пользователя является уникальным идентификатором и не может быть изменено самостоятельно.
         </p>
@@ -113,6 +113,12 @@ if (!empty($notifications)) {
 
 <p class="hint">
     Для повышения безопасности вашего профиля рекомендуется использовать сложный пароль из букв, цифр и спецсимволов.
+ 
+ <br>
+<a href="/password/recovery" class="form-field-hint-inline">
+	Не помните текущий пароль?
+</a>
+
 </p>
 
 <form action="<?= route('account.password.submit') ?>" method="POST">

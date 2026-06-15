@@ -29,11 +29,18 @@ class StoriesController extends Controller
 		$storyModel = new Story();
 		$showDeleted = \App\Core\Auth::isAdmin();
 		
-		// Передаем $domain в модель для фильтрации
-		$stories = $storyModel->getFeed($perPage, $offset, $tagname, $showDeleted, $domain);
+		// НОВОЕ: Получаем отфильтрованные теги пользователя
+		$excludeTagIds = [];
+		if (\App\Core\Auth::check()) {
+			$filterModel = new \App\Modules\Tags\Models\TagFilter();
+			$excludeTagIds = $filterModel->getFilteredTagIds(\App\Core\Auth::id());
+		}
 		
-		// Получаем корректное количество записей с учетом фильтра (исправляет баг пагинации)
-		$totalStories = $storyModel->getTotalCount($tagname, $domain);
+		// Передаем $excludeTagIds в модель для фильтрации
+		$stories = $storyModel->getFeed($perPage, $offset, $tagname, $showDeleted, $domain, $excludeTagIds);
+		
+		// Получаем корректное количество записей с учетом фильтров
+		$totalStories = $storyModel->getTotalCount($tagname, $domain, $excludeTagIds);
 		$totalPages = (int)ceil($totalStories / $perPage);
 
 		$title = 'Лента историй';

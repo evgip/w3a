@@ -124,7 +124,7 @@ $isAdmin = \App\Core\Auth::isAdmin();
                     <?php endif; ?>
                 <?php endif; ?>
 				
-				<?php if ($isAuthor): ?>
+				<?php if ($isAuthor): ?> <br><br>
 					<form method="POST" action="/story/<?= $story['id'] ?>/follow" class="d-inline">
 						 <?= csrf_field() ?> 
 						<button type="submit" class="btn btn-sm <?= $story['user_is_following'] ? 'btn-primary' : 'btn-outline-primary' ?>">

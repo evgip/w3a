@@ -2,7 +2,7 @@
     <h3>🔑 Восстановление доступа</h3>
     <p class="field-sub-hint">Укажите ваш Email, зарегистрированный в системе. Мы вышлем вам временную защищенную ссылку для сброса пароля.</p>
 
-    <form action="<?= route('password.request.submit') ?>" method="POST" class="auth-form">
+    <form action="" method="POST" class="auth-form">
         <?= csrf_field() ?>
 
         <div class="form-group form-group-field-spacing">

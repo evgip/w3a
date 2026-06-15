@@ -572,7 +572,7 @@ class UsersController extends Controller
         // Enforce Captcha verification check to prevent bot flooding
         if (!\App\Core\Captcha::verify()) {
             \App\Core\Session::setFlash('error', 'Капча не пройдена.');
-            header('Location: /password/reset');
+            header('Location: ' . $this->getRecoveryUrl());
             exit;
         }
 
@@ -602,7 +602,7 @@ class UsersController extends Controller
             \App\Core\Session::setFlash('error', 'Пользователь с таким Email адресом не зарегистрирован.');
         }
 
-        header('Location: /password/reset');
+        header('Location: ' . $this->getRecoveryUrl());
         exit;
     }
 
@@ -613,7 +613,7 @@ class UsersController extends Controller
 
         if (!$email) {
             \App\Core\Session::setFlash('error', 'Ссылка восстановления недействительна или срок её действия (1 час) истёк.');
-            header('Location: /password/reset');
+            header('Location: ' . $this->getRecoveryUrl());
             exit;
         }
 
@@ -623,6 +623,19 @@ class UsersController extends Controller
             'request' => new \App\Core\Request()
         ]);
     }
+
+	/**
+	 * Определяет URL страницы восстановления по Referer
+	 * (поддерживает оба маршрута: /password/recovery и /password/reset)
+	 */
+	private function getRecoveryUrl(): string
+	{
+		$referer = $_SERVER['HTTP_REFERER'] ?? '';
+		if (str_contains($referer, '/password/recovery')) {
+			return '/password/recovery';
+		}
+		return '/password/reset';
+	}
 
     public function executePasswordReset(): void
     {

@@ -22,55 +22,79 @@ class Story extends Model
     /**
      * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
      */
-	public function getFeed(int $limit, int $offset, ?string $tagname = null, bool $showDeleted = false, ?string $domain = null): array
-	{
-		$db = Database::getConnection();
-		$sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
-				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
-				FROM `stories` s
-				JOIN `users` u ON s.user_id = u.id
-				LEFT JOIN `taggings` tg ON s.id = tg.story_id
-				LEFT JOIN `tags` t ON tg.tag_id = t.id";
-		
-		$bindings = [];
-		$where = [];
+/**
+ * Получить ленту историй с пагинацией
+ */
+/**
+ * Получить ленту историй с пагинацией и учетом фильтров
+ */
+public function getFeed(int $limit, int $offset, string $tagname = '', bool $showDeleted = false, string $domain = '', array $excludeTagIds = []): array
+{
+    $db = Database::getConnection();
+    
+    $sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
+            GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
+            FROM `stories` s
+            JOIN `users` u ON s.user_id = u.id
+            LEFT JOIN `taggings` tg ON s.id = tg.story_id
+            LEFT JOIN `tags` t ON tg.tag_id = t.id";
 
-		if (!$showDeleted) {
-			$where[] = "s.deleted_at IS NULL";
-		}
+    $where = [];
+    $bindings = [];
 
-		if ($tagname) {
-			$where[] = "t.tag = :tag";
-			$bindings['tag'] = $tagname;
-		}
+    if (!$showDeleted) {
+        $where[] = "s.deleted_at IS NULL";
+    }
 
-		// Добавляем условие для домена
-		if ($domain) {
-			$where[] = "s.url LIKE :domain";
-			$bindings['domain'] = '%' . $domain . '%';
-		}
+    if ($tagname) {
+        $where[] = "t.tag = :tag";
+        $bindings[':tag'] = $tagname;
+    }
 
-		if (!empty($where)) {
-			$sql .= " WHERE " . implode(" AND ", $where);
-		}
+    if ($domain) {
+        $where[] = "s.domain = :domain";
+        $bindings[':domain'] = $domain;
+    }
 
-		$sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
+    // ✅ ИСПРАВЛЕНИЕ: Генерируем именованные параметры для каждого исключаемого тега
+    if (!empty($excludeTagIds)) {
+        $namedPlaceholders = [];
+        foreach ($excludeTagIds as $index => $tagId) {
+            $paramName = ":exclude_tag_{$index}";
+            $namedPlaceholders[] = $paramName;
+            $bindings[$paramName] = (int)$tagId;
+        }
+        
+        $placeholdersStr = implode(',', $namedPlaceholders);
+        $where[] = "s.id NOT IN (
+            SELECT DISTINCT story_id FROM taggings 
+            WHERE tag_id IN ($placeholdersStr)
+        )";
+    }
 
-		$stmt = $db->prepare($sql);
-		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-		$stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
-		if (isset($bindings['tag'])) $stmt->bindValue(':tag', $bindings['tag']);
-		if (isset($bindings['domain'])) $stmt->bindValue(':domain', $bindings['domain']);
+    if (!empty($where)) {
+        $sql .= " WHERE " . implode(" AND ", $where);
+    }
 
-		$stmt->execute();
-		$stories = $stmt->fetchAll();
+    $sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
+    
+    // Добавляем limit и offset в bindings
+    $bindings[':limit'] = $limit;
+    $bindings[':offset'] = $offset;
 
-		foreach ($stories as &$story) {
-			$story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
-		}
-		return $stories;
-	}
+    $stmt = $db->prepare($sql);
+    
+    // ✅ Передаем весь массив bindings сразу (это чище и безопаснее)
+    $stmt->execute($bindings);
+    $stories = $stmt->fetchAll();
 
+    // Парсим теги
+    foreach ($stories as &$story) {
+        $story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
+    }
+
+    return $stories;
+}
     /**
      * Get all platform tags with description fields
      */
@@ -81,36 +105,53 @@ class Story extends Model
         return $stmt->fetchAll();
     }
 
-    /**
-     * Получить общее количество активных постов для расчета страниц
-     */
-	public function getTotalCount(?string $tagname = null, ?string $domain = null): int
-	{
-		$db = Database::getConnection();
-		
-		// Используем COUNT(DISTINCT s.id), чтобы избежать дублирования при LEFT JOIN тегов
-		$sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s 
-				LEFT JOIN `taggings` tg ON s.id = tg.story_id
-				LEFT JOIN `tags` t ON tg.tag_id = t.id
-				WHERE s.deleted_at IS NULL";
-		
-		$bindings = [];
-		if ($tagname) {
-			$sql .= " AND t.tag = :tag";
-			$bindings['tag'] = $tagname;
-		}
-		if ($domain) {
-			$sql .= " AND s.url LIKE :domain";
-			$bindings['domain'] = '%' . $domain . '%';
-		}
-		
-		$stmt = $db->prepare($sql);
-		if (isset($bindings['tag'])) $stmt->bindValue(':tag', $bindings['tag']);
-		if (isset($bindings['domain'])) $stmt->bindValue(':domain', $bindings['domain']);
-		
-		$stmt->execute();
-		return (int)$stmt->fetchColumn();
-	}
+/**
+ * Получить общее количество историй с учетом фильтров
+ */
+public function getTotalCount(string $tagname = '', string $domain = '', array $excludeTagIds = []): int
+{
+    $db = Database::getConnection();
+    
+    $sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
+            LEFT JOIN `taggings` tg ON s.id = tg.story_id
+            LEFT JOIN `tags` t ON tg.tag_id = t.id";
+
+    $where = ["s.deleted_at IS NULL"];
+    $bindings = [];
+
+    if ($tagname) {
+        $where[] = "t.tag = :tag";
+        $bindings[':tag'] = $tagname;
+    }
+
+    if ($domain) {
+        $where[] = "s.domain = :domain";
+        $bindings[':domain'] = $domain;
+    }
+
+    // ✅ ИСПРАВЛЕНИЕ: Генерируем именованные параметры для каждого исключаемого тега
+    if (!empty($excludeTagIds)) {
+        $namedPlaceholders = [];
+        foreach ($excludeTagIds as $index => $tagId) {
+            $paramName = ":exclude_tag_{$index}";
+            $namedPlaceholders[] = $paramName;
+            $bindings[$paramName] = (int)$tagId;
+        }
+        
+        $placeholdersStr = implode(',', $namedPlaceholders);
+        $where[] = "s.id NOT IN (
+            SELECT DISTINCT story_id FROM taggings 
+            WHERE tag_id IN ($placeholdersStr)
+        )";
+    }
+
+    $sql .= " WHERE " . implode(" AND ", $where);
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($bindings);
+
+    return (int)$stmt->fetchColumn();
+}
 
    /**
      * Получить одну конкретную историю с именем автора и списком тегов
@@ -266,6 +307,111 @@ class Story extends Model
 			'user_id' => $userId
 		]);
 		return (bool)$stmt->fetchColumn();
+	}
+	
+	
+	/**
+	 * Получить ленту историй с учётом фильтров тегов
+	 */
+	public function getFeedWithFilters(int $limit, int $offset, array $excludeTagIds = [], ?string $tagname = null): array
+	{
+		$db = Database::getConnection();
+		
+		$sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
+				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
+				FROM `stories` s
+				JOIN `users` u ON s.user_id = u.id
+				LEFT JOIN `taggings` tg ON s.id = tg.story_id
+				LEFT JOIN `tags` t ON tg.tag_id = t.id";
+
+		$bindings = [];
+		$where = ["s.deleted_at IS NULL"];
+
+		// Исключаем истории с отфильтрованными тегами
+		if (!empty($excludeTagIds)) {
+			$placeholders = implode(',', array_fill(0, count($excludeTagIds), '?'));
+			$where[] = "s.id NOT IN (
+				SELECT DISTINCT story_id FROM taggings 
+				WHERE tag_id IN ($placeholders)
+			)";
+			$bindings = array_merge($bindings, $excludeTagIds);
+		}
+
+		if ($tagname) {
+			$where[] = "t.tag = :tag";
+			$bindings['tag'] = $tagname;
+		}
+
+		$sql .= " WHERE " . implode(" AND ", $where);
+		$sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
+
+		$stmt = $db->prepare($sql);
+		
+		// Привязываем параметры
+		$paramIndex = 1;
+		foreach ($excludeTagIds as $tagId) {
+			$stmt->bindValue($paramIndex++, $tagId, \PDO::PARAM_INT);
+		}
+		
+		if (isset($bindings['tag'])) {
+			$stmt->bindValue(':tag', $bindings['tag']);
+		}
+		
+		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+		$stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+
+		$stmt->execute();
+		$stories = $stmt->fetchAll();
+
+		foreach ($stories as &$story) {
+			$story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
+		}
+
+		return $stories;
+	}
+
+	/**
+	 * Получить общее количество историй с учётом фильтров
+	 */
+	public function getTotalCountWithFilters(array $excludeTagIds = [], ?string $tagname = null): int
+	{
+		$db = Database::getConnection();
+		
+		$sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
+				LEFT JOIN `taggings` tg ON s.id = tg.story_id
+				LEFT JOIN `tags` t ON tg.tag_id = t.id
+				WHERE s.deleted_at IS NULL";
+
+		$bindings = [];
+
+		if (!empty($excludeTagIds)) {
+			$placeholders = implode(',', array_fill(0, count($excludeTagIds), '?'));
+			$sql .= " AND s.id NOT IN (
+				SELECT DISTINCT story_id FROM taggings 
+				WHERE tag_id IN ($placeholders)
+			)";
+			$bindings = array_merge($bindings, $excludeTagIds);
+		}
+
+		if ($tagname) {
+			$sql .= " AND t.tag = :tag";
+			$bindings['tag'] = $tagname;
+		}
+
+		$stmt = $db->prepare($sql);
+		
+		$paramIndex = 1;
+		foreach ($excludeTagIds as $tagId) {
+			$stmt->bindValue($paramIndex++, $tagId, \PDO::PARAM_INT);
+		}
+		
+		if (isset($bindings['tag'])) {
+			$stmt->bindValue(':tag', $bindings['tag']);
+		}
+
+		$stmt->execute();
+
+		return (int)$stmt->fetchColumn();
 	}
 }
 

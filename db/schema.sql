@@ -609,3 +609,33 @@ ALTER TABLE `user_notifications`
 ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
+ALTER TABLE stories ADD COLUMN user_is_following TINYINT(1) NOT NULL DEFAULT 0 
+    COMMENT 'Подписан ли автор на уведомления о новых комментариях';
+	
+	
+ALTER TABLE users 
+    ADD COLUMN notify_on_reply TINYINT(1) NOT NULL DEFAULT 1 
+        COMMENT 'Уведомлять об ответах на мои комментарии',
+    ADD COLUMN notify_on_story_comment TINYINT(1) NOT NULL DEFAULT 1 
+        COMMENT 'Уведомлять о комментариях в историях, на которые я подписан',
+    ADD COLUMN email_notifications TINYINT(1) NOT NULL DEFAULT 0 
+        COMMENT 'Дублировать уведомления на email';	
+	
+	--- НОВОЕ
+
+CREATE TABLE IF NOT EXISTS tag_filters (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT UNSIGNED NOT NULL,
+    tag_id      INT UNSIGNED NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uq_user_tag (user_id, tag_id),
+    KEY idx_user_id (user_id),
+    KEY idx_tag_id (tag_id),
+    
+    CONSTRAINT fk_tag_filters_user FOREIGN KEY (user_id) 
+        REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_tag_filters_tag FOREIGN KEY (tag_id) 
+        REFERENCES tags(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;	
+	

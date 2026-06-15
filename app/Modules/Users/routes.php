@@ -32,5 +32,9 @@ $router->add('GET', 'password/reset/{token}', 'UsersController@showResetPassword
 $router->add('POST', 'password/reset/submit', 'UsersController@executePasswordReset', 'password.reset.submit');
 
 
+// Маршруты восстановления пароля (основной URL /password/recovery)
+$router->add('GET',  'password/recovery',        'UsersController@showRequestResetForm', 'password.recovery');
+$router->add('POST', 'password/recovery',        'UsersController@sendResetLink',        'password.recovery.submit');
+
 // Named route handling incoming activation tokens links
 $router->add('GET', 'register/activate/{token}', 'UsersController@activateAccount', 'auth.activate');

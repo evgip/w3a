@@ -147,58 +147,54 @@ class Notification extends Model
         return $result ?: null;
     }
 
-    /**
-     * Получить все уведомления пользователя с пагинацией
-     */
-	public function getUserNotifications(int $userId, ?string $type = null, int $limit = 50, int $page = 1): array
+	/**
+	 * Получить уведомления пользователя с пагинацией и фильтрацией по типу
+	 */
+	public function getUserNotifications(int $userId, ?string $type = null, int $limit = 25, int $page = 1): array
 	{
 		$db = Database::getConnection();
 		
-		// Вычисляем смещение
-		$offset = ($page - 1) * $limit;
-		
-		$sql = "
-			SELECT 
-				n.*,
-				u.username as actor_name,
-				u.avatar as actor_avatar,
-				c.comment as comment_text,
-				c.story_id,
-				s.title as story_title,
-				m.message,
-				m.conversation_id
-			FROM `{$this->table}` n
-			LEFT JOIN users u ON n.actor_id = u.id
-			LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
-			LEFT JOIN stories s ON c.story_id = s.id
-			LEFT JOIN messages m ON n.notifiable_type = 'Message' AND n.notifiable_id = m.id
-			WHERE n.user_id = :user_id
-		";
-		
-		// Фильтрация по типу (если передан)
-		if ($type !== null) {
-			$sql .= " AND n.notifiable_type = :type";
+		$where = "n.user_id = :user_id";
+		$params = [
+			'user_id' => $userId,
+			'limit'   => $limit,
+			'offset'  => ($page - 1) * $limit // Автоматически считаем OFFSET от номера страницы
+		];
+
+		// Если передан конкретный тип (и это не 'all'), добавляем фильтр по полю type
+		if ($type && $type !== 'all') {
+			$where .= " AND n.type = :type";
+			$params['type'] = $type;
 		}
-		
-		$sql .= " ORDER BY n.created_at DESC
-				  LIMIT :limit OFFSET :offset";
+
+		$sql = "
+		SELECT
+			n.*,
+			u.username as actor_name,
+			u.avatar as actor_avatar,
+			c.comment as comment_text,
+			c.story_id,
+			s.title as story_title,
+			m.message,
+			m.conversation_id
+		FROM `{$this->table}` n
+		LEFT JOIN users u ON n.actor_id = u.id
+		LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
+		LEFT JOIN stories s ON c.story_id = s.id
+		LEFT JOIN messages m ON n.notifiable_type = 'Message' AND n.notifiable_id = m.id
+		WHERE {$where}
+		ORDER BY n.created_at DESC
+		LIMIT :limit OFFSET :offset
+		";
 
 		$stmt = $db->prepare($sql);
-		
-		// Привязываем параметры (для LIMIT и OFFSET нужно явно указать тип INT)
-		$stmt->bindValue(':user_id', $userId, \PDO::PARAM_INT);
-		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-		$stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
-		
-		if ($type !== null) {
-			$stmt->bindValue(':type', $type, \PDO::PARAM_STR);
-		}
-		
-		$stmt->execute();
+		$stmt->execute($params);
 
 		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
 	}
-
+	
+ 
+	
     /**
      * Получить только непрочитанные уведомления
      */

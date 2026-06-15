@@ -101,4 +101,21 @@ class Request
             exit;
         }
     }
+	
+	/**
+	 * Проверяет CSRF-токен без редиректа (для AJAX-запросов)
+	 * 
+	 * @return bool true если токен валиден, false если нет
+	 */
+	public function isCsrfValid(): bool
+	{
+		$sessionToken = $_SESSION['csrf_token'] ?? '';
+		$submittedToken = $this->getParams('csrf_token') ?? '';
+
+		if (empty($sessionToken) || empty($submittedToken)) {
+			return false;
+		}
+
+		return hash_equals((string)$sessionToken, (string)$submittedToken);
+	}
 }
