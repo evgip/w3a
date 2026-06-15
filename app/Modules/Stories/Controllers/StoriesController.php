@@ -284,13 +284,7 @@ class StoriesController extends Controller
 		}
 		
 		// 4. Отмечаем как прочитанное
-		$lastCommentId = 0;
-		if (!empty($flatComments)) {
-			$lastComment = end($flatComments);
-			$lastCommentId = (int)$lastComment['id'];
-		}
-		
-		$readRibbon->markAsRead((int)$_SESSION['user_id'], $storyId, $lastCommentId);
+		$readRibbon->syncForUserAndStory((int)$_SESSION['user_id'], $storyId);
 	}
     // ==========================================
 

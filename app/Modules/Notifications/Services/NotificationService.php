@@ -17,8 +17,9 @@ class NotificationService
     /**
      * Обработка создания нового комментария (аналог NotifyCommentJob из Lobsters)
      */
-    public function notifyCommentCreated(int $commentId): void
-    {
+	public function notifyCommentCreated(int $commentId): void
+	{
+		// Получаем комментарий и данные поста одним запросом
         $db = Database::getConnection();
 
         // Получаем полную информацию о комментарии
@@ -38,55 +39,61 @@ class NotificationService
         $stmt->execute(['comment_id' => $commentId]);
         $comment = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-        if (!$comment) {
-            return;
-        }
+		if (!$comment) {
+			return;
+		}
 
-        $authorId = (int)$comment['author_id'];
-        $notifiedUserIds = [];
+		$authorId        = (int)$comment['author_id'];
+		$storyAuthorId   = (int)$comment['story_author_id'];
+		$parentCommentId = $comment['parent_id'] ? (int)$comment['parent_id'] : null;
+		
+		// Инициализируем список уже уведомлённых, чтобы исключить дубли
+		$notifiedUserIds = [$authorId];
 
-        // 1. Уведомление автору родительского комментария (ОТВЕТ)
-        if (!empty($comment['parent_id'])) {
-            $parentStmt = $db->prepare("
-                SELECT user_id FROM comments WHERE id = :parent_id
-            ");
-            $parentStmt->execute(['parent_id' => $comment['parent_id']]);
-            $parentComment = $parentStmt->fetch(\PDO::FETCH_ASSOC);
+		// 1. Уведомление автору поста ТОЛЬКО если он подписан на свой пост
+		if ($storyAuthorId !== $authorId && !in_array($storyAuthorId, $notifiedUserIds)) {
+			// Проверяем флаг подписки из результата запроса
+			if ((bool)$comment['user_is_following']) {
+				$this->notificationModel->createReplyNotification(
+					$storyAuthorId,
+					$comment['comment_id'],
+					$authorId,
+					'Прокомментировал вашу публикацию'
+				);
+				$notifiedUserIds[] = $storyAuthorId;
+			}
+		}
 
-            if ($parentComment && (int)$parentComment['user_id'] !== $authorId) {
-                $parentAuthorId = (int)$parentComment['user_id'];
-                
-                $this->notificationModel->createReplyNotification(
-                    $parentAuthorId,
-                    $commentId,
-                    $authorId,
-                    'Ответил на ваш комментарий'
-                );
-                
-                $notifiedUserIds[] = $parentAuthorId;
-            }
-        }
+		// 2. Уведомление автору родительского комментария (ответ на комментарий)
+		if ($parentCommentId) {
+			$stmt = $this->db->prepare("SELECT author_id FROM comments WHERE id = ?");
+			$stmt->execute([$parentCommentId]);
+			$parentComment = $stmt->fetch();
 
-        // 2. Уведомление автору истории (если это не тот же, кто ответил)
-        $storyAuthorId = (int)$comment['story_author_id'];
-        if ($storyAuthorId !== $authorId && !in_array($storyAuthorId, $notifiedUserIds)) {
-            $this->notificationModel->createReplyNotification(
-                $storyAuthorId,
-                $commentId,
-                $authorId,
-                'Прокомментировал вашу публикацию'
-            );
-            $notifiedUserIds[] = $storyAuthorId;
-        }
+			if ($parentComment) {
+				$parentAuthorId = (int)$parentComment['author_id'];
+				
+				if ($parentAuthorId !== $authorId && !in_array($parentAuthorId, $notifiedUserIds)) {
+					$this->notificationModel->createReplyNotification(
+						$parentAuthorId,
+						$comment['comment_id'],
+						$authorId,
+						'Ответил на ваш комментарий'
+					);
+					$notifiedUserIds[] = $parentAuthorId;
+				}
+			}
+		}
 
-        // 3. Обработка упоминаний @username
-        $this->processMentions(
-            $comment['comment'],
-            $commentId,
-            $authorId,
-            $notifiedUserIds
-        );
-    }
+			// 3. Обработка упоминаний @username
+			$this->processMentions(
+				$comment['comment'],
+				$commentId,
+				$authorId,
+				$notifiedUserIds
+			);
+	}
+		
 
     /**
      * Обработка упоминаний @username в тексте (как в Lobsters)
