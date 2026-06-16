@@ -20,6 +20,17 @@ abstract class Model
     // Flag to control whether to include soft-deleted records in queries
     protected bool $includeTrashed = false;
 
+
+    protected static ?\PDO $db = null;
+
+    protected static function db(): \PDO
+    {
+        if (self::$db === null) {
+            self::$db = Database::getConnection();
+        }
+        return self::$db;
+    }
+
     /**
      * Chainable method to include soft-deleted records in the next query execution
      */

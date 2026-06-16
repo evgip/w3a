@@ -77,12 +77,8 @@ class StoriesController extends Controller
      */
     public function showCreateForm(): void
     {
-        if (!\App\Core\Auth::check()) {
-            \App\Core\Session::setFlash('error', 'Пожалуйста, войдите в систему, чтобы поделиться историей.');
-            header('Location: /login');
-            exit;
-        }
-
+        $this->requireAuth();
+		
         $request = new Request();
         
         // Pull master available checkboxes catalog from the cross-module Tag class model
@@ -101,7 +97,7 @@ class StoriesController extends Controller
      */
     public function create(): void
     {
-        if (!\App\Core\Auth::check()) { header('Location: /login'); exit; }
+        $this->requireAuth(); 
 
         $request = new Request();
         $request->validateCsrf();
@@ -156,7 +152,7 @@ class StoriesController extends Controller
      */
     public function showEditForm(string $id): void
     {
-        if (!\App\Core\Auth::check()) { header('Location: /login'); exit; }
+        $this->requireAuth();
 
         $storyId = (int)$id;
         $storyModel = new Story();
@@ -188,7 +184,7 @@ class StoriesController extends Controller
      */
     public function update(string $id): void
     {
-        if (!\App\Core\Auth::check()) { header('Location: /login'); exit; }
+         $userId = $this->currentUserId();
 
         $request = new Request();
         $request->validateCsrf();
@@ -267,7 +263,7 @@ class StoriesController extends Controller
 		// 2. === АВТОСИНХРОНИЗАЦИЯ ===
 		// Если счётчик показывает новые, но в реальности их нет — сбрасываем
 		if ($newCount > 0) {
-			$realNewCount = $this->countRealNewComments($storyId, (int)$_SESSION['user_id']);
+			$realNewCount = $readRibbon->countRealNewComments($storyId, (int)$_SESSION['user_id']);
 			
 			if ($realNewCount === 0) {
 				// Рассинхрон! Синхронизируем отметку
@@ -348,12 +344,7 @@ class StoriesController extends Controller
      */
 	public function addComment(): void
 	{
-		// 1. Enforce active authentication
-		if (!\App\Core\Auth::check()) {
-			AppCoreSession::setFlash('error', 'Пожалуйста, войдите в систему, чтобы оставить комментарий.');
-			header('Location: /login');
-			exit;
-		}
+		$this->requireAuth();
 		
 		$request = new Request();
 		$request->validateCsrf();
@@ -412,7 +403,7 @@ class StoriesController extends Controller
      */
     public function editComment(string $id): void
     {
-        if (!\App\Core\Auth::check()) { header('Location: /login'); exit; }
+        $this->requireAuth();
 
         $request = new Request();
         $request->validateCsrf();
@@ -459,7 +450,7 @@ class StoriesController extends Controller
      */
     public function deleteComment(string $id): void
     {
-        if (!\App\Core\Auth::check()) { header('Location: /login'); exit; }
+        $this->requireAuth();
 
         $request = new Request();
         $request->validateCsrf();
@@ -492,7 +483,7 @@ class StoriesController extends Controller
      */
     public function restoreComment(string $id): void
     {
-        if (!\App\Core\Auth::check()) { header('Location: /login'); exit; }
+        $this->requireAuth();
 
         $request = new Request();
         $request->validateCsrf();
@@ -526,7 +517,7 @@ class StoriesController extends Controller
 	 */
 	public function toggleFollow(string $id): void
 	{
-		if (!\App\Core\Auth::check()) { header('Location: /login'); exit; }
+		$this->requireAuth();
 		
 		$storyId = (int)$id;
 		$userId = (int)$_SESSION['user_id'];
@@ -577,10 +568,7 @@ class StoriesController extends Controller
 	 */
 	public function markRead(string $id): void
 	{
-		if (!\App\Core\Auth::check()) {
-			header('Location: /login');
-			exit;
-		}
+		$this->requireAuth();
 
 		$request = new \App\Core\Request();
 		$request->validateCsrf();
@@ -596,32 +584,6 @@ class StoriesController extends Controller
 		exit;
 	}
 	
-	/**
-	 * Реальный подсчёт новых комментариев (без использования read_ribbons)
-	 * Для проверки рассинхронизации
-	 */
-	private function countRealNewComments(int $storyId, int $userId): int
-	{
-		$db = \App\Core\Database::getConnection();
-		
-		// Получаем last_read_comment_id
-		$stmt = $db->prepare(
-			"SELECT `last_read_comment_id` FROM `read_ribbons` 
-			 WHERE `user_id` = ? AND `story_id` = ?"
-		);
-		$stmt->execute([$userId, $storyId]);
-		$lastReadId = (int) $stmt->fetchColumn();
-		
-		// Считаем реальные новые (неудалённые) комментарии
-		$stmt = $db->prepare(
-			"SELECT COUNT(*) FROM `comments` 
-			 WHERE `story_id` = ? 
-			   AND `id` > ? 
-			   AND `deleted_at` IS NULL"
-		);
-		$stmt->execute([$storyId, $lastReadId]);
-		
-		return (int) $stmt->fetchColumn();
-	}
+
 }
 

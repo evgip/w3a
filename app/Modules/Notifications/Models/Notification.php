@@ -3,7 +3,6 @@
 namespace App\Modules\Notifications\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class Notification extends Model
 {
@@ -132,7 +131,6 @@ class Notification extends Model
      */
     private function findFirst(array $conditions): ?array
     {
-        $db = Database::getConnection();
         $where = [];
         $params = [];
 
@@ -142,7 +140,7 @@ class Notification extends Model
         }
 
         $sql = "SELECT * FROM `{$this->table}` WHERE " . implode(' AND ', $where) . " LIMIT 1";
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute($params);
         $result = $stmt->fetch(\PDO::FETCH_ASSOC);
 
@@ -154,8 +152,6 @@ class Notification extends Model
 	 */
 	public function getUserNotifications(int $userId, ?string $type = null, int $limit = 25, int $page = 1): array
 	{
-		$db = Database::getConnection();
-		
 		$where = "n.user_id = :user_id";
 		$params = [
 			'user_id' => $userId,
@@ -189,7 +185,7 @@ class Notification extends Model
 		LIMIT :limit OFFSET :offset
 		";
 
-		$stmt = $db->prepare($sql);
+		$stmt = static::db()->prepare($sql);
 		$stmt->execute($params);
 
 		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -202,7 +198,6 @@ class Notification extends Model
      */
     public function getUnreadNotifications(int $userId, int $limit = 50): array
     {
-        $db = Database::getConnection();
         $sql = "
             SELECT 
                 n.*,
@@ -220,7 +215,7 @@ class Notification extends Model
             LIMIT :limit
         ";
 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute(['user_id' => $userId, 'limit' => $limit]);
 
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -231,8 +226,7 @@ class Notification extends Model
      */
     public function getUnreadCount(int $userId): int
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             SELECT COUNT(*) FROM `{$this->table}` 
             WHERE user_id = :user_id AND is_read = 0
         ");
@@ -248,8 +242,7 @@ class Notification extends Model
 	 */
 	public function getUnreadCountByType(int $userId): array
 	{
-		$db = Database::getConnection();
-		$stmt = $db->prepare("
+		$stmt = static::db()->prepare("
 			SELECT type, COUNT(*) as count 
 			FROM `{$this->table}` 
 			WHERE user_id = :user_id AND is_read = 0 
@@ -275,8 +268,7 @@ class Notification extends Model
      */
     public function markAllAsRead(int $userId): bool
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             UPDATE `{$this->table}` 
             SET is_read = 1, read_at = NOW() 
             WHERE user_id = :user_id AND is_read = 0
@@ -289,8 +281,7 @@ class Notification extends Model
      */
     public function cleanupOldNotifications(int $daysOld = 30): int
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             DELETE FROM `{$this->table}` 
             WHERE created_at < DATE_SUB(NOW(), INTERVAL :days DAY)
             AND is_read = 1

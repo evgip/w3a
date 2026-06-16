@@ -3,7 +3,6 @@
 namespace App\Modules\Stories\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class Comment extends Model
 {
@@ -21,10 +20,8 @@ class Comment extends Model
 
 	public function saveComment(array $data): int
 	{
-		$db = Database::getConnection();
-		
 		try {
-			$db->beginTransaction();
+			static::db()->beginTransaction();
 			
 			// Создаем комментарий и получаем его ID
 			$commentId = $this->create([
@@ -35,16 +32,16 @@ class Comment extends Model
 				'score' => 1
 			]);
 			
-			$stmt = $db->prepare("UPDATE `stories` SET `comments_count` = `comments_count` + 1 WHERE `id` = :story_id");
+			$stmt = static::db()->prepare("UPDATE `stories` SET `comments_count` = `comments_count` + 1 WHERE `id` = :story_id");
 			$stmt->execute(['story_id' => $data['story_id']]);
 			
-			$db->commit();
+			static::db()->commit();
 			
 			// Возвращаем ID созданного комментария (0 при ошибке)
 			return $commentId;
 			
 		} catch (Exception $e) {
-			$db->rollBack();
+			static::db()->rollBack();
 			return 0;
 		}
 	}
@@ -54,21 +51,20 @@ class Comment extends Model
      */
     public function softDeleteComment(int $id, int $storyId): bool
     {
-        $db = Database::getConnection();
         try {
-            $db->beginTransaction();
+            static::db()->beginTransaction();
             
             // Вызываем стандартное мягкое удаление из Core/Model
             $this->delete($id);
 
             // Уменьшаем счетчик комментариев у истории
-            $stmt = $db->prepare("UPDATE `stories` SET `comments_count` = `comments_count` - 1 WHERE `id` = :story_id AND `comments_count` > 0");
+            $stmt = static::db()->prepare("UPDATE `stories` SET `comments_count` = `comments_count` - 1 WHERE `id` = :story_id AND `comments_count` > 0");
             $stmt->execute(['story_id' => $storyId]);
 
-            $db->commit();
+            static::db()->commit();
             return true;
         } catch (\Exception $e) {
-            $db->rollBack();
+            static::db()->rollBack();
             return false;
         }
     }
@@ -78,21 +74,20 @@ class Comment extends Model
      */
     public function restoreComment(int $id, int $storyId): bool
     {
-        $db = Database::getConnection();
         try {
-            $db->beginTransaction();
+            static::db()->beginTransaction();
             
             // Вызываем восстановление из Core/Model
             $this->restore($id);
 
             // Увеличиваем счетчик комментариев обратно
-            $stmt = $db->prepare("UPDATE `stories` SET `comments_count` = `comments_count` + 1 WHERE `id` = :story_id");
+            $stmt = static::db()->prepare("UPDATE `stories` SET `comments_count` = `comments_count` + 1 WHERE `id` = :story_id");
             $stmt->execute(['story_id' => $storyId]);
 
-            $db->commit();
+            static::db()->commit();
             return true;
         } catch (\Exception $e) {
-            $db->rollBack();
+            static::db()->rollBack();
             return false;
         }
     }

@@ -3,7 +3,6 @@
 namespace App\Modules\Invitations\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class Invitation extends Model
 {
@@ -79,8 +78,7 @@ class Invitation extends Model
      */
     public function getUserInvitations(int $userId): array
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             SELECT i.*, u.username as invitee_username
             FROM invitations i
             LEFT JOIN users u ON i.invitee_id = u.id
@@ -96,8 +94,7 @@ class Invitation extends Model
      */
     public function getActiveInvitations(int $userId): array
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             SELECT * FROM invitations
             WHERE inviter_id = :user_id
             AND status = 'pending'
@@ -130,8 +127,7 @@ class Invitation extends Model
      */
     public function countActiveInvitations(int $userId): int
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             SELECT COUNT(*) FROM invitations
             WHERE inviter_id = :user_id
             AND status = 'pending'
@@ -146,8 +142,7 @@ class Invitation extends Model
      */
     public function cleanupExpired(): int
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             UPDATE invitations
             SET status = 'expired'
             WHERE status = 'pending'

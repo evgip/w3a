@@ -67,4 +67,77 @@ abstract class Controller
         echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         exit;
     }
+	
+   /**
+     * Требовать авторизацию пользователя.
+     * Если не авторизован — перенаправляет на страницу входа.
+     */
+    protected function requireAuth(): void
+    {
+        if (!Auth::check()) {
+            Session::setFlash('error', 'Пожалуйста, авторизуйтесь для доступа к этой странице.');
+            $this->redirect('/login');
+        }
+    }
+
+    /**
+     * Требовать права администратора.
+     */
+    protected function requireAdmin(): void
+    {
+        $this->requireAuth();
+        
+        if (!Auth::isAdmin()) {
+            http_response_code(403);
+            die('<h1>403 Forbidden</h1><p>Доступ запрещён. Требуются права администратора.</p>');
+        }
+    }
+
+    /**
+     * Получить ID текущего авторизованного пользователя.
+     * Автоматически вызывает requireAuth().
+     * 
+     * @return int
+     */
+    protected function currentUserId(): int
+    {
+        $this->requireAuth();
+        return Auth::id();
+    }
+
+    /**
+     * Редирект с flash-сообщением об ошибке.
+     */
+    protected function redirectWithError(string $url, string $message): void
+    {
+        Session::setFlash('error', $message);
+        $this->redirect($url);
+    }
+
+    /**
+     * Редирект с flash-сообщением об успехе.
+     */
+    protected function redirectWithSuccess(string $url, string $message): void
+    {
+        Session::setFlash('success', $message);
+        $this->redirect($url);
+    }
+
+    /**
+     * Редирект на предыдущую страницу с ошибкой.
+     */
+    protected function backWithError(string $message): void
+    {
+        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
+        $this->redirectWithError($referer, $message);
+    }
+
+    /**
+     * Редирект на предыдущую страницу с сообщением об успехе.
+     */
+    protected function backWithSuccess(string $message): void
+    {
+        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
+        $this->redirectWithSuccess($referer, $message);
+    }
 }

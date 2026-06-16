@@ -3,7 +3,6 @@
 namespace App\Modules\Users\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class EmailActivation extends Model
 {
@@ -20,10 +19,8 @@ class EmailActivation extends Model
      */
     public function createActivationToken(int $userId): string
     {
-        $db = Database::getConnection();
-        
-        // Wipe any stale pending activation rows for this user id
-        $stmt = $db->prepare("DELETE FROM `email_activations` WHERE `user_id` = :uid");
+		// Wipe any stale pending activation rows for this user id
+        $stmt = static::db()->prepare("DELETE FROM `email_activations` WHERE `user_id` = :uid");
         $stmt->execute(['uid' => $userId]);
 
         $token = bin2hex(random_bytes(32));
@@ -41,10 +38,8 @@ class EmailActivation extends Model
      */
     public function verifyToken(string $token): ?int
     {
-        $db = Database::getConnection();
-        
         // Optional: Enforce a 24-hour expiration window on activation sequences
-        $stmt = $db->prepare("SELECT `user_id` FROM `email_activations` WHERE `token` = :token LIMIT 1");
+        $stmt = static::db()->prepare("SELECT `user_id` FROM `email_activations` WHERE `token` = :token LIMIT 1");
         $stmt->execute(['token' => $token]);
         $userId = $stmt->fetchColumn();
 
@@ -56,8 +51,7 @@ class EmailActivation extends Model
      */
     public function clearToken(string $token): void
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("DELETE FROM `email_activations` WHERE `token` = :token");
+        $stmt = static::db()->prepare("DELETE FROM `email_activations` WHERE `token` = :token");
         $stmt->execute(['token' => $token]);
     }
 }

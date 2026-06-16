@@ -3,7 +3,6 @@
 namespace App\Modules\Admin\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class AuditLog extends Model
 {
@@ -15,8 +14,6 @@ class AuditLog extends Model
      */
     public function getFilteredLogs(int $limit, int $offset, ?int $userId, ?string $action, ?string $search): array
     {
-        $db = Database::getConnection();
-        
         $sql = "SELECT * FROM `audit_logs` WHERE 1=1";
         $bindings = [];
 
@@ -40,7 +37,7 @@ class AuditLog extends Model
 
         $sql .= " ORDER BY `id` DESC LIMIT :limit OFFSET :offset";
 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         
         // Привязываем параметры пагинации жестко как INT
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
@@ -60,7 +57,6 @@ class AuditLog extends Model
      */
     public function getFilteredCount(?int $userId, ?string $action, ?string $search): int
     {
-        $db = Database::getConnection();
         $sql = "SELECT COUNT(*) FROM `audit_logs` WHERE 1=1";
         $bindings = [];
 
@@ -80,7 +76,7 @@ class AuditLog extends Model
             $bindings['search_action'] = '%' . $search . '%';
         }
 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute($bindings);
         return (int)$stmt->fetchColumn();
     }
@@ -90,8 +86,7 @@ class AuditLog extends Model
      */
     public function getUniqueActions(): array
     {
-        $db = Database::getConnection();
-        $stmt = $db->query("SELECT DISTINCT `action` FROM `audit_logs` ORDER BY `action` ASC");
+        $stmt = static::db()->query("SELECT DISTINCT `action` FROM `audit_logs` ORDER BY `action` ASC");
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 }

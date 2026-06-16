@@ -3,7 +3,6 @@
 namespace App\Modules\Users\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class RateLimit extends Model
 {
@@ -21,8 +20,7 @@ class RateLimit extends Model
      */
     public function clearStaleLogs(int $windowSeconds): void
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("DELETE FROM `rate_limits` WHERE `created_at` < NOW() - INTERVAL :win SECOND");
+        $stmt = static::db()->prepare("DELETE FROM `rate_limits` WHERE `created_at` < NOW() - INTERVAL :win SECOND");
         $stmt->bindValue(':win', $windowSeconds, \PDO::PARAM_INT);
         $stmt->execute();
     }
@@ -32,14 +30,12 @@ class RateLimit extends Model
      */
     public function getRequestCount(string $ip, string $action, int $windowSeconds): int
     {
-        $db = Database::getConnection();
-        
         $sql = "SELECT COUNT(*) FROM `rate_limits` 
                 WHERE `ip_address` = :ip 
                   AND `endpoint_action` = :action 
                   AND `created_at` >= NOW() - INTERVAL :win SECOND";
                   
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':ip', $ip, \PDO::PARAM_STR);
         $stmt->bindValue(':action', $action, \PDO::PARAM_STR);
         $stmt->bindValue(':win', $windowSeconds, \PDO::PARAM_INT);

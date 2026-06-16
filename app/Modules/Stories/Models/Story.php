@@ -3,7 +3,6 @@
 namespace App\Modules\Stories\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class Story extends Model
 {
@@ -30,8 +29,6 @@ class Story extends Model
  */
 public function getFeed(int $limit, int $offset, string $tagname = '', bool $showDeleted = false, string $domain = '', array $excludeTagIds = []): array
 {
-    $db = Database::getConnection();
-    
     $sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
             GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
             FROM `stories` s
@@ -82,9 +79,8 @@ public function getFeed(int $limit, int $offset, string $tagname = '', bool $sho
     $bindings[':limit'] = $limit;
     $bindings[':offset'] = $offset;
 
-    $stmt = $db->prepare($sql);
+    $stmt = static::db()->prepare($sql);
     
-    // ✅ Передаем весь массив bindings сразу (это чище и безопаснее)
     $stmt->execute($bindings);
     $stories = $stmt->fetchAll();
 
@@ -100,8 +96,7 @@ public function getFeed(int $limit, int $offset, string $tagname = '', bool $sho
      */
     public function getAllTags(): array
     {
-        $db = Database::getConnection();
-        $stmt = $db->query("SELECT * FROM `tags` ORDER BY `tag` ASC");
+        $stmt = static::db()->query("SELECT * FROM `tags` ORDER BY `tag` ASC");
         return $stmt->fetchAll();
     }
 
@@ -110,8 +105,6 @@ public function getFeed(int $limit, int $offset, string $tagname = '', bool $sho
  */
 public function getTotalCount(string $tagname = '', string $domain = '', array $excludeTagIds = []): int
 {
-    $db = Database::getConnection();
-    
     $sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
             LEFT JOIN `taggings` tg ON s.id = tg.story_id
             LEFT JOIN `tags` t ON tg.tag_id = t.id";
@@ -147,7 +140,7 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 
     $sql .= " WHERE " . implode(" AND ", $where);
 
-    $stmt = $db->prepare($sql);
+    $stmt = static::db()->prepare($sql);
     $stmt->execute($bindings);
 
     return (int)$stmt->fetchColumn();
@@ -159,8 +152,6 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
      */
  public function getSingleWithAuthor(int $id, bool $showDeleted = false): ?array
     {
-        $db = Database::getConnection();
-        
         $sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
                        GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
                 FROM `stories` s
@@ -175,7 +166,7 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 
         $sql .= " GROUP BY s.id LIMIT 1";
 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute(['id' => $id]);
         $story = $stmt->fetch();
 
@@ -190,14 +181,13 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
      */
     public function getCommentsForStory(int $storyId): array
     {
-        $db = Database::getConnection();
         // Мы НЕ фильтруем тут deleted_at IS NULL, чтобы не ломать дерево (обработаем в шаблоне)
         $sql = "SELECT c.*, u.username as author_name, u.avatar as author_avatar  
                 FROM `comments` c 
                 JOIN `users` u ON c.user_id = u.id 
                 WHERE c.story_id = :story_id 
                 ORDER BY c.parent_id ASC, c.id ASC";
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute(['story_id' => $storyId]);
         return $stmt->fetchAll();
     }
@@ -207,8 +197,7 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
      */
     public function getStoryTagIds(int $storyId): array
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("SELECT `tag_id` FROM `taggings` WHERE `story_id` = :id");
+        $stmt = static::db()->prepare("SELECT `tag_id` FROM `taggings` WHERE `story_id` = :id");
         $stmt->execute(['id' => $storyId]);
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
@@ -218,18 +207,16 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
      */
     public function syncTags(int $storyId, array $tagIds): bool
     {
-        $db = Database::getConnection();
-
         try {
-            $db->beginTransaction();
+            static::db()->beginTransaction();
 
             // 1. Flush any stale existing tags bound to this story row
-            $stmt = $db->prepare("DELETE FROM `taggings` WHERE `story_id` = :id");
+            $stmt = static::db()->prepare("DELETE FROM `taggings` WHERE `story_id` = :id");
             $stmt->execute(['id' => $storyId]);
 
             // 2. Insert the new checkbox parameters mapping safely
             if (!empty($tagIds)) {
-                $stmt = $db->prepare("INSERT INTO `taggings` (`story_id`, `tag_id`) VALUES (:sid, :tid)");
+                $stmt = static::db()->prepare("INSERT INTO `taggings` (`story_id`, `tag_id`) VALUES (:sid, :tid)");
                 foreach ($tagIds as $tagId) {
                     $stmt->execute([
                         'sid' => $storyId,
@@ -238,10 +225,10 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
                 }
             }
 
-            $db->commit();
+            static::db()->commit();
             return true;
         } catch (\Exception $e) {
-            $db->rollBack();
+            static::db()->rollBack();
             \App\Core\Logger::error("Failed to execute tag synchronization mapping transaction: " . $e->getMessage());
             return false;
         }
@@ -252,8 +239,7 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 	 */
 	public function follow(int $storyId, int $userId): bool
 	{
-		$db = \App\Core\Database::getConnection();
-		$stmt = $db->prepare(
+		$stmt = static::db()->prepare(
 			"UPDATE stories SET user_is_following = 1 WHERE id = :id AND user_id = :user_id"
 		);
 		return $stmt->execute([
@@ -267,8 +253,7 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 	 */
 	public function unfollow(int $storyId, int $userId): bool
 	{
-		$db = \App\Core\Database::getConnection();
-		$stmt = $db->prepare(
+		$stmt = static::db()->prepare(
 			"UPDATE stories SET user_is_following = 0 WHERE id = :id AND user_id = :user_id"
 		);
 		return $stmt->execute([
@@ -282,8 +267,7 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 	 */
 	public function toggleFollow(int $storyId, int $userId): bool
 	{
-		$db = \App\Core\Database::getConnection();
-		$stmt = $db->prepare(
+		$stmt = static::db()->prepare(
 			"UPDATE stories SET user_is_following = NOT user_is_following 
 			 WHERE id = :id AND user_id = :user_id"
 		);
@@ -298,8 +282,7 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 	 */
 	public function isFollowing(int $storyId, int $userId): bool
 	{
-		$db = \App\Core\Database::getConnection();
-		$stmt = $db->prepare(
+		$stmt = static::db()->prepare(
 			"SELECT user_is_following FROM stories WHERE id = :id AND user_id = :user_id"
 		);
 		$stmt->execute([
@@ -315,8 +298,6 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 	 */
 	public function getFeedWithFilters(int $limit, int $offset, array $excludeTagIds = [], ?string $tagname = null): array
 	{
-		$db = Database::getConnection();
-		
 		$sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
 				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
 				FROM `stories` s
@@ -345,7 +326,7 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 		$sql .= " WHERE " . implode(" AND ", $where);
 		$sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
 
-		$stmt = $db->prepare($sql);
+		$stmt = static::db()->prepare($sql);
 		
 		// Привязываем параметры
 		$paramIndex = 1;
@@ -375,8 +356,6 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 	 */
 	public function getTotalCountWithFilters(array $excludeTagIds = [], ?string $tagname = null): int
 	{
-		$db = Database::getConnection();
-		
 		$sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
 				LEFT JOIN `taggings` tg ON s.id = tg.story_id
 				LEFT JOIN `tags` t ON tg.tag_id = t.id
@@ -398,7 +377,7 @@ public function getTotalCount(string $tagname = '', string $domain = '', array $
 			$bindings['tag'] = $tagname;
 		}
 
-		$stmt = $db->prepare($sql);
+		$stmt = static::db()->prepare($sql);
 		
 		$paramIndex = 1;
 		foreach ($excludeTagIds as $tagId) {

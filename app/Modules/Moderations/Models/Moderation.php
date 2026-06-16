@@ -3,7 +3,6 @@
 namespace App\Modules\Moderations\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class Moderation extends Model
 {
@@ -33,7 +32,6 @@ class Moderation extends Model
      */
     public function getPublicLog(int $page = 1, int $perPage = 30): array
     {
-        $db = Database::getConnection();
         $offset = ($page - 1) * $perPage;
 
         // Получаем записи
@@ -42,7 +40,7 @@ class Moderation extends Model
                 LEFT JOIN `users` u ON u.id = m.moderator_id
                 ORDER BY m.`created_at` DESC
                 LIMIT :limit OFFSET :offset";
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
         $stmt->execute();
@@ -50,7 +48,7 @@ class Moderation extends Model
 
         // Получаем общее количество
         $countSql = "SELECT COUNT(*) FROM `moderations`";
-        $total = (int) $db->query($countSql)->fetchColumn();
+        $total = (int) static::db()->query($countSql)->fetchColumn();
 
         return [
             'items' => $items,

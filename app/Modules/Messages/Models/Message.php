@@ -3,7 +3,6 @@
 namespace App\Modules\Messages\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class Message extends Model
 {
@@ -21,8 +20,6 @@ class Message extends Model
      */
     public function getPaginatedChatHistory(int $conversationId, int $limit = 15, int $offset = 0): array
     {
-        $db = Database::getConnection();
-        
         // Strategy: Select the most recent chunk using a subquery, then re-sort them chronologically for the view
         $sql = "SELECT * FROM (
                     SELECT m.*, u.username as sender_name, u.avatar as sender_avatar 
@@ -34,7 +31,7 @@ class Message extends Model
                 ) sub 
                 ORDER BY id ASC";
                 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':cid', $conversationId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
@@ -48,8 +45,7 @@ class Message extends Model
      */
     public function getTotalMessageCount(int $conversationId): int
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("SELECT COUNT(*) FROM `messages` WHERE `conversation_id` = :cid AND `deleted_at` IS NULL");
+        $stmt = static::db()->prepare("SELECT COUNT(*) FROM `messages` WHERE `conversation_id` = :cid AND `deleted_at` IS NULL");
         $stmt->execute(['cid' => $conversationId]);
         return (int)$stmt->fetchColumn();
     }
@@ -60,8 +56,7 @@ class Message extends Model
      */
     public function getChatHistory(int $conversationId): array
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             SELECT m.*, u.username as sender_name, u.avatar as sender_avatar 
             FROM `messages` m
             JOIN `users` u ON m.sender_id = u.id
@@ -77,8 +72,7 @@ class Message extends Model
      */
     public function markAsRead(int $conversationId, int $readerId): void
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("UPDATE `messages` SET `is_read` = 1 WHERE `conversation_id` = :cid AND `sender_id` != :rid AND `is_read` = 0");
+        $stmt = static::db()->prepare("UPDATE `messages` SET `is_read` = 1 WHERE `conversation_id` = :cid AND `sender_id` != :rid AND `is_read` = 0");
         $stmt->execute(['cid' => $conversationId, 'rid' => $readerId]);
     }
 	

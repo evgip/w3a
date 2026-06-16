@@ -3,7 +3,6 @@
 namespace App\Modules\Users\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class PasswordReset extends Model
 {
@@ -14,10 +13,8 @@ class PasswordReset extends Model
      */
     public function createToken(string $email, string $token): void
     {
-        $db = Database::getConnection();
-        
         // Clear out any old pending reset records for this specific email address
-        $stmt = $db->prepare("DELETE FROM `password_resets` WHERE `email` = :email");
+        $stmt = static::db()->prepare("DELETE FROM `password_resets` WHERE `email` = :email");
         $stmt->execute(['email' => $email]);
 
         // Persist the clean new token
@@ -32,14 +29,12 @@ class PasswordReset extends Model
      */
     public function validateToken(string $token): ?string
     {
-        $db = Database::getConnection();
-        
         // Auto-cleanup stale rows older than 1 hour with a 10% lottery chance
         if (random_int(1, 100) <= 10) {
-            $db->query("DELETE FROM `password_resets` WHERE `created_at` < NOW() - INTERVAL 1 HOUR");
+            static::db()->query("DELETE FROM `password_resets` WHERE `created_at` < NOW() - INTERVAL 1 HOUR");
         }
 
-        $stmt = $db->prepare("SELECT `email` FROM `password_resets` WHERE `token` = :token AND `created_at` >= NOW() - INTERVAL 1 HOUR LIMIT 1");
+        $stmt = static::db()->prepare("SELECT `email` FROM `password_resets` WHERE `token` = :token AND `created_at` >= NOW() - INTERVAL 1 HOUR LIMIT 1");
         $stmt->execute(['token' => $token]);
         $email = $stmt->fetchColumn();
 
@@ -51,8 +46,7 @@ class PasswordReset extends Model
      */
     public function clearToken(string $token): void
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("DELETE FROM `password_resets` WHERE `token` = :token");
+        $stmt = static::db()->prepare("DELETE FROM `password_resets` WHERE `token` = :token");
         $stmt->execute(['token' => $token]);
     }
 }

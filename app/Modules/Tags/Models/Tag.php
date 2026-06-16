@@ -3,7 +3,6 @@
 namespace App\Modules\Tags\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class Tag extends Model
 {
@@ -23,8 +22,6 @@ class Tag extends Model
      */
    public function getAllTags(): array
     {
-        $db = Database::getConnection();
-        
         // LEFT JOIN гарантирует, что даже теги с 0 историй будут в списке
         $sql = "SELECT t.id, t.tag, t.description, t.category, t.is_media, 
                        COUNT(tg.story_id) as stories_count
@@ -33,7 +30,7 @@ class Tag extends Model
                 GROUP BY t.id, t.tag, t.description, t.category
                 ORDER BY t.tag ASC";
                 
-        $stmt = $db->query($sql);
+        $stmt = static::db()->query($sql);
         return $stmt->fetchAll();
     }
 
@@ -42,7 +39,6 @@ class Tag extends Model
      */
     public function exists(string $tagName, ?int $excludeId = null): bool
     {
-        $db = Database::getConnection();
         $sql = "SELECT COUNT(*) FROM `tags` WHERE `tag` = :tag";
         $params = ['tag' => trim($tagName)];
 
@@ -51,7 +47,7 @@ class Tag extends Model
             $params['id'] = $excludeId;
         }
 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute($params);
         return (int)$stmt->fetchColumn() > 0;
     }

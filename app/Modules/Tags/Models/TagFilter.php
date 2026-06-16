@@ -3,7 +3,6 @@
 namespace App\Modules\Tags\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class TagFilter extends Model
 {
@@ -19,15 +18,13 @@ class TagFilter extends Model
      */
     public function getUserFilters(int $userId): array
     {
-        $db = Database::getConnection();
-        
         $sql = "SELECT tf.*, t.tag, t.description, t.category
                 FROM {$this->table} tf
                 JOIN tags t ON t.id = tf.tag_id
                 WHERE tf.user_id = :user_id
                 ORDER BY t.tag ASC";
         
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute(['user_id' => $userId]);
         
         return $stmt->fetchAll();
@@ -58,12 +55,10 @@ class TagFilter extends Model
      */
     public function removeFilter(int $userId, int $tagId): bool
     {
-        $db = Database::getConnection();
-        
         $sql = "DELETE FROM {$this->table} 
                 WHERE user_id = :user_id AND tag_id = :tag_id";
         
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         return $stmt->execute([
             'user_id' => $userId,
             'tag_id'  => $tagId
@@ -84,11 +79,9 @@ class TagFilter extends Model
      */
     public function getFilteredTagIds(int $userId): array
     {
-        $db = Database::getConnection();
-        
         $sql = "SELECT tag_id FROM {$this->table} WHERE user_id = :user_id";
         
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute(['user_id' => $userId]);
         
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
@@ -99,11 +92,9 @@ class TagFilter extends Model
      */
     public function getUserFilterCount(int $userId): int
     {
-        $db = Database::getConnection();
-        
         $sql = "SELECT COUNT(*) FROM {$this->table} WHERE user_id = :user_id";
         
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute(['user_id' => $userId]);
         
         return (int)$stmt->fetchColumn();
@@ -114,13 +105,11 @@ class TagFilter extends Model
      */
     private function findByUserAndTag(int $userId, int $tagId): ?array
     {
-        $db = Database::getConnection();
-        
         $sql = "SELECT * FROM {$this->table} 
                 WHERE user_id = :user_id AND tag_id = :tag_id 
                 LIMIT 1";
         
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute([
             'user_id' => $userId,
             'tag_id'  => $tagId

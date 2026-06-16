@@ -3,7 +3,6 @@
 namespace App\Modules\Notifications\Services;
 
 use App\Modules\Notifications\Models\Notification;
-use App\Core\Database;
 
 class NotificationService
 {
@@ -19,11 +18,8 @@ class NotificationService
      */
 	public function notifyCommentCreated(int $commentId): void
 	{
-		// Получаем комментарий и данные поста одним запросом
-        $db = Database::getConnection();
-
         // Получаем полную информацию о комментарии
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             SELECT 
                 c.id,
                 c.user_id as author_id,
@@ -112,11 +108,10 @@ class NotificationService
         }
 
         $usernames = array_unique($matches[1]);
-        $db = Database::getConnection();
 
         foreach ($usernames as $username) {
             // Находим пользователя по имени
-            $stmt = $db->prepare("
+            $stmt = static::db()->prepare("
                 SELECT id FROM users 
                 WHERE name = :username AND deleted_at IS NULL
             ");

@@ -3,7 +3,6 @@
 namespace App\Modules\Stories\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class ReadRibbon extends Model
 {
@@ -48,7 +47,6 @@ class ReadRibbon extends Model
 		}
 
 		try {
-			$db = Database::getConnection();
 			$sql = "INSERT INTO `read_ribbons` 
 						(`user_id`, `story_id`, `last_read_comment_id`, `updated_at`) 
 					VALUES 
@@ -57,7 +55,7 @@ class ReadRibbon extends Model
 						`last_read_comment_id` = GREATEST(`last_read_comment_id`, VALUES(`last_read_comment_id`)),
 						`updated_at` = NOW()";
 			
-			$stmt = $db->prepare($sql);
+			$stmt = static::db()->prepare($sql);
 			$stmt->execute([
 				'user_id'         => $userId,
 				'story_id'        => $storyId,
@@ -83,14 +81,13 @@ class ReadRibbon extends Model
             return [];
         }
 
-        $db = Database::getConnection();
         $placeholders = implode(',', array_fill(0, count($storyIds), '?'));
         
         $sql = "SELECT `story_id`, `last_read_comment_id` 
                 FROM `read_ribbons` 
                 WHERE `user_id` = ? AND `story_id` IN ($placeholders)";
         
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute(array_merge([$userId], $storyIds));
         
         $result = [];
@@ -100,6 +97,33 @@ class ReadRibbon extends Model
         
         return $result;
     }
+
+	/**
+	 * Реальный подсчёт новых комментариев (без использования read_ribbons)
+	 * Для проверки рассинхронизации
+	 */
+	public function countRealNewComments(int $storyId, int $userId): int
+	{
+		// Получаем last_read_comment_id
+		$stmt = static::db()->prepare(
+			"SELECT `last_read_comment_id` FROM `read_ribbons` 
+			 WHERE `user_id` = ? AND `story_id` = ?"
+		);
+		$stmt->execute([$userId, $storyId]);
+		$lastReadId = (int) $stmt->fetchColumn();
+		
+		// Считаем реальные новые (неудалённые) комментарии
+		$stmt = static::db()->prepare(
+			"SELECT COUNT(*) FROM `comments` 
+			 WHERE `story_id` = ? 
+			   AND `id` > ? 
+			   AND `deleted_at` IS NULL"
+		);
+		$stmt->execute([$storyId, $lastReadId]);
+		
+		return (int) $stmt->fetchColumn();
+	}
+
 
     /**
      * Пакетный подсчёт количества новых комментариев для списка историй
@@ -115,7 +139,6 @@ class ReadRibbon extends Model
             return [];
         }
 
-        $db = Database::getConnection();
         $placeholders = implode(',', array_fill(0, count($storyIds), '?'));
 
         // LEFT JOIN с read_ribbons, чтобы учесть истории, которые пользователь ещё не открывал
@@ -133,7 +156,7 @@ class ReadRibbon extends Model
                 WHERE s.id IN ($placeholders)
                 GROUP BY s.id";
 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute(array_merge([$userId], $storyIds));
 
         $result = [];
@@ -159,8 +182,7 @@ class ReadRibbon extends Model
      */
     public function clearForStory(int $storyId): void
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("DELETE FROM `read_ribbons` WHERE `story_id` = ?");
+        $stmt = static::db()->prepare("DELETE FROM `read_ribbons` WHERE `story_id` = ?");
         $stmt->execute([$storyId]);
     }
 	
@@ -174,10 +196,8 @@ class ReadRibbon extends Model
 			return 0;
 		}
 
-		$db = Database::getConnection();
-
 		// Находим ID последнего НЕУДАЛЁННОГО комментария
-		$stmt = $db->prepare(
+		$stmt = static::db()->prepare(
 			"SELECT COALESCE(MAX(id), 0) AS last_id 
 			 FROM `comments` 
 			 WHERE `story_id` = ? AND `deleted_at` IS NULL"
@@ -200,10 +220,8 @@ class ReadRibbon extends Model
 			return 0;
 		}
 
-		$db = Database::getConnection();
-
 		// Получаем список историй пользователя
-		$stmt = $db->prepare(
+		$stmt = static::db()->prepare(
 			"SELECT DISTINCT `story_id` FROM `read_ribbons` WHERE `user_id` = ?"
 		);
 		$stmt->execute([$userId]);
@@ -223,8 +241,7 @@ class ReadRibbon extends Model
 	 */
 	public function forgetForUserAndStory(int $userId, int $storyId): void
 	{
-		$db = Database::getConnection();
-		$stmt = $db->prepare(
+		$stmt = static::db()->prepare(
 			"DELETE FROM `read_ribbons` WHERE `user_id` = ? AND `story_id` = ?"
 		);
 		$stmt->execute([$userId, $storyId]);

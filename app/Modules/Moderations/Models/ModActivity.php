@@ -3,7 +3,6 @@
 namespace App\Modules\Moderations\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class ModActivity extends Model
 {
@@ -29,13 +28,12 @@ class ModActivity extends Model
      */
     public function incrementToday(int $moderatorId, string $action): void
     {
-        $db = Database::getConnection();
         $today = date('Y-m-d');
 
         $sql = "INSERT INTO `mod_activity` (`moderator_id`, `action`, `date`, `count`) 
                 VALUES (:mod_id, :action, :date, 1)
                 ON DUPLICATE KEY UPDATE `count` = `count` + 1";
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute([
             'mod_id' => $moderatorId,
             'action' => $action,
@@ -48,14 +46,13 @@ class ModActivity extends Model
      */
     public function getStats(int $days = 30): array
     {
-        $db = Database::getConnection();
         $sql = "SELECT u.username AS moderator_name, ma.action, SUM(ma.count) AS total, ma.date
                 FROM `mod_activity` ma
                 LEFT JOIN `users` u ON u.id = ma.moderator_id
                 WHERE ma.`date` >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
                 GROUP BY ma.moderator_id, ma.action, ma.date
                 ORDER BY ma.date DESC, total DESC";
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':days', $days, \PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
@@ -66,14 +63,13 @@ class ModActivity extends Model
      */
     public function getLeaderboard(int $days = 30): array
     {
-        $db = Database::getConnection();
         $sql = "SELECT u.username AS moderator_name, SUM(ma.count) AS total_actions
                 FROM `mod_activity` ma
                 LEFT JOIN `users` u ON u.id = ma.moderator_id
                 WHERE ma.`date` >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
                 GROUP BY ma.moderator_id
                 ORDER BY total_actions DESC";
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':days', $days, \PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();

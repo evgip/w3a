@@ -3,7 +3,6 @@
 namespace App\Modules\Admin\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class Audit extends Model
 {
@@ -16,8 +15,6 @@ class Audit extends Model
      */
     public function getRecentSecurityAlerts(): array
     {
-        $db = Database::getConnection();
-        
         // Highly optimized index scan locating specific operational severity markers
         $sql = "SELECT id, user_id, action, description, ip_address, created_at 
                 FROM `audit_logs` 
@@ -25,7 +22,7 @@ class Audit extends Model
                   AND `created_at` >= NOW() - INTERVAL 5 MINUTE
                 ORDER BY id DESC LIMIT 10";
 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll();
     }

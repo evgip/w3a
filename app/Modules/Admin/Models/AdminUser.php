@@ -3,7 +3,6 @@
 namespace App\Modules\Admin\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class AdminUser extends Model
 {
@@ -18,8 +17,7 @@ class AdminUser extends Model
      */
     public function getAdminUsersList(int $limit = 100): array
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("SELECT id, name, email, role, is_active, created_at FROM `users` ORDER BY id DESC LIMIT :limit");
+        $stmt = static::db()->prepare("SELECT id, name, email, role, is_active, created_at FROM `users` ORDER BY id DESC LIMIT :limit");
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();

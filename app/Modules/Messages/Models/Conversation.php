@@ -3,7 +3,6 @@
 namespace App\Modules\Messages\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class Conversation extends Model
 {
@@ -20,8 +19,6 @@ class Conversation extends Model
      */
 	public function getRecipientId(int $conversationId, int $senderId): int
 	{
-		$db = \App\Core\Database::getConnection();
-		
 		// Даем уникальные имена параметрам: sender_id_1, sender_id_2, sender_id_3
 		$sql = "SELECT 
 					CASE 
@@ -33,7 +30,7 @@ class Conversation extends Model
 				AND (user_one = :sender_id_2 OR user_two = :sender_id_3)
 				LIMIT 1";
 		
-		$stmt = $db->prepare($sql);
+		$stmt = static::db()->prepare($sql);
 		
 		// Передаем значение $senderId для каждого уникального параметра
 		$stmt->execute([
@@ -90,8 +87,6 @@ class Conversation extends Model
 	 */
 	public function getUserConversations(int $userId): array
 	{
-		$db = \App\Core\Database::getConnection();
-		
 		$sql = "SELECT
 			c.*, 
 			u.username as participant_name,
@@ -116,7 +111,7 @@ class Conversation extends Model
 		WHERE c.user_one = :user_id_2 OR c.user_two = :user_id_3
 		ORDER BY c.updated_at DESC";
 		
-		$stmt = $db->prepare($sql);
+		$stmt = static::db()->prepare($sql);
 		
 		$stmt->execute([
 			'user_id_1' => $userId,
@@ -133,15 +128,13 @@ class Conversation extends Model
      */
     public function markAsRead(int $conversationId, int $userId): bool
     {
-        $db = \App\Core\Database::getConnection();
-        
         $sql = "UPDATE messages 
                 SET is_read = 1 
                 WHERE conversation_id = :conversation_id 
                 AND sender_id != :user_id 
                 AND is_read = 0";
         
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         return $stmt->execute([
             'conversation_id' => $conversationId,
             'user_id' => $userId
@@ -153,13 +146,11 @@ class Conversation extends Model
      */
     public function firstOrCreate(int $userOne, int $userTwo): int
     {
-        $db = Database::getConnection();
-
         // Enforce chronological sorting properties to avoid structural duplication bugs (Low ID always fits user_one slot)
         $first  = min($userOne, $userTwo);
         $second = max($userOne, $userTwo);
 
-        $stmt = $db->prepare("SELECT `id` FROM `conversations` WHERE `user_one` = :u1 AND `user_two` = :u2 LIMIT 1");
+        $stmt = static::db()->prepare("SELECT `id` FROM `conversations` WHERE `user_one` = :u1 AND `user_two` = :u2 LIMIT 1");
         $stmt->execute(['u1' => $first, 'u2' => $second]);
         $id = $stmt->fetchColumn();
 

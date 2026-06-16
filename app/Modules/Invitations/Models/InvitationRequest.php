@@ -3,7 +3,6 @@
 namespace App\Modules\Invitations\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class InvitationRequest extends Model
 {
@@ -27,8 +26,7 @@ class InvitationRequest extends Model
      */
     public function hasPendingRequest(string $email): bool
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             SELECT COUNT(*) FROM invitation_requests
             WHERE email = :email AND status = 'pending'
         ");
@@ -41,8 +39,7 @@ class InvitationRequest extends Model
      */
     public function getAllRequests(string $status = 'pending'): array
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+        $stmt = static::db()->prepare("
             SELECT * FROM invitation_requests
             WHERE status = :status
             ORDER BY created_at DESC

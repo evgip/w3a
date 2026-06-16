@@ -3,7 +3,6 @@
 namespace App\Modules\Search\Models;
 
 use App\Core\Model;
-use App\Core\Database;
 
 class SearchResult extends Model
 {
@@ -12,7 +11,6 @@ class SearchResult extends Model
      */
     public function searchStories(string $keywords, string $sortBy = 'relevance'): array
     {
-        $db = Database::getConnection();
         $sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
                        GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
                        MATCH(s.title, s.description) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
@@ -27,7 +25,7 @@ class SearchResult extends Model
         $sql .= ($sortBy === 'date') ? " ORDER BY s.id DESC" : " ORDER BY relevance DESC, s.score DESC";
         $sql .= " LIMIT 50";
 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':query1', $keywords, \PDO::PARAM_STR);
         $stmt->bindValue(':query2', $keywords, \PDO::PARAM_STR);
         $stmt->execute();
@@ -44,8 +42,6 @@ class SearchResult extends Model
      */
     public function searchComments(string $keywords, string $sortBy = 'relevance'): array
     {
-        $db = Database::getConnection();
-
         // Pull comment contents joined with comment authors and their respective parent stories
         $sql = "SELECT c.*, u.username as author_name, u.avatar as author_avatar,
                        s.title as story_title,
@@ -64,7 +60,7 @@ class SearchResult extends Model
 
         $sql .= " LIMIT 50";
 
-        $stmt = $db->prepare($sql);
+        $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':query1', $keywords, \PDO::PARAM_STR);
         $stmt->bindValue(':query2', $keywords, \PDO::PARAM_STR);
         $stmt->execute();

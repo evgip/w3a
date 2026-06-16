@@ -1531,20 +1531,13 @@ ol.notification-list {
 }
 
 /* Бейдж "+N новых" */
-.new-comments-badge {
+.new-comments {
     display: inline-block;
-    margin-left: 8px;
-    padding: 2px 8px;
-    background-color: #dc3545;
-    color: #fff;
-    border-radius: 10px;
-    font-size: 0.8em;
-    font-weight: 600;
-    vertical-align: middle;
+    color: #dc3545;
 }
 
-.new-comments-badge:hover {
-    background-color: #bb2d3b;
+.new-comments:hover {
+    color: #bb2d3b;
 }
 
 
