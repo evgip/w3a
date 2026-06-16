@@ -76,7 +76,7 @@ abstract class Controller
     {
         if (!Auth::check()) {
             Session::setFlash('error', 'Пожалуйста, авторизуйтесь для доступа к этой странице.');
-            $this->redirect('/login');
+            redirect('/login');
         }
     }
 
@@ -111,7 +111,7 @@ abstract class Controller
     protected function redirectWithError(string $url, string $message): void
     {
         Session::setFlash('error', $message);
-        $this->redirect($url);
+        redirect($url);
     }
 
     /**
@@ -120,7 +120,7 @@ abstract class Controller
     protected function redirectWithSuccess(string $url, string $message): void
     {
         Session::setFlash('success', $message);
-        $this->redirect($url);
+        redirect($url);
     }
 
     /**

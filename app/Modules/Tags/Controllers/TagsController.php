@@ -27,12 +27,8 @@ class TagsController extends Controller
 	 */
 	public function filters(): void
 	{
-		if (!\App\Core\Auth::check()) {
-			\App\Core\Session::setFlash('error', 'Пожалуйста, войдите в систему для управления фильтрами.');
-			header('Location: /login');
-			exit;
-		}
-		
+		$this->redirectWithError('/login', 'Пожалуйста, войдите в систему для управления фильтрами.');
+
 		$userId = (int)$_SESSION['user_id'];
 		$filterModel = new \App\Modules\Tags\Models\TagFilter();
 		$tagModel = new \App\Modules\Tags\Models\Tag();

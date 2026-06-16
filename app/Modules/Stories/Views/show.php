@@ -103,7 +103,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                     <?php if ((int)$story['comments_count'] === 0): ?>
                         обсудить
                     <?php else: ?>
-                        <?= (int)$story['comments_count'] ?> <?= declension((int)$story['comments_count'], ['комментарий', 'комментария', 'комментариев']) ?>
+                        <?= (int)$story['comments_count'] ?> <?= plural((int)$story['comments_count'], ['комментарий', 'комментария', 'комментариев']) ?>
                     <?php endif; ?>
                 </a>
 

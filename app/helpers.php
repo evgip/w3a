@@ -1,17 +1,20 @@
 <?php
 
 /**
+ * Global helper to generate URLs by route name
  * Глобальный хелпер для генерации URL по имени маршрута
  */
 if (!function_exists('route')) {
     function route(string $name, array $params = []): string
     {
-        global $router; // Используем глобальный объект роутера из index.php
+        global $router; // Uses global $router from index.php
+        // Использует глобальный объект $router из index.php
         return $router->route($name, $params);
     }
 }
 
 /**
+ * Global helper to output localized translation strings
  * Глобальный хелпер для вывода локализованных строк перевода
  */
 if (!function_exists('__')) {
@@ -21,36 +24,20 @@ if (!function_exists('__')) {
     }
 }
 
-if (!function_exists('declension')) {
-    function declension(int $number, array $forms): string
-    {
-        $number = abs($number) % 100;
-        $n1 = $number % 10;
-
-        if ($number > 10 && $number < 20) {
-            return $forms[2];
-        }
-        if ($n1 > 1 && $n1 < 5) {
-            return $forms[1];
-        }
-        if ($n1 === 1) {
-            return $forms[0];
-        }
-        return $forms[2];
-    }
-}
-
-
+/**
+ * Include a partial template from a module
+ * Подключение partial-шаблона из модуля
+ *
+ * @param string $path   - Path in format 'Votes::_voters' or 'Users::_avatar'
+ *                       - Путь в формате 'Votes::_voters' или 'Users::_avatar'
+ * @param array  $vars   - Variables to pass to the template
+ *                       - Переменные для передачи в шаблон
+ */
 if (!function_exists('partial')) {
-    /**
-     * Подключение partial-шаблона из модуля
-     * 
-     * @param string $path   - путь вида 'Votes::_voters' или 'Users::_avatar'
-     * @param array  $vars   - переменные для шаблона
-     */
     function partial(string $path, array $vars = []): void
     {
-        // Разбираем путь: "Votes::_voters" → модуль Votes, файл _voters.php
+        // Parse path: "Votes::_voters" → module Votes, file _voters.php
+        // Разбор пути: "Votes::_voters" → модуль Votes, файл _voters.php
         [$module, $file] = explode('::', $path);
         $filePath = dirname(__DIR__) . "/app/Modules/{$module}/Views/{$file}.php";
 
@@ -58,12 +45,17 @@ if (!function_exists('partial')) {
             throw new \RuntimeException("Partial not found: {$filePath}");
         }
 
-        // Извлекаем переменные в текущую область видимости
+        // Extract variables into local scope
+        // Извлечение переменных в локальную область видимости
         extract($vars);
         include $filePath;
     }
 }
 
+/**
+ * HTML-escape a string (null-safe)
+ * HTML-экранирование строки (безопасно при null)
+ */
 if (!function_exists('e')) {
     function e(?string $value): string
     {
@@ -71,10 +63,11 @@ if (!function_exists('e')) {
     }
 }
 
+/**
+ * Format a datetime string (nullable input)
+ * Форматирование даты и времени (допускается null)
+ */
 if (!function_exists('dt')) {
-    /**
-     * Форматирование даты
-     */
     function dt(?string $datetime, string $format = 'd.m.Y H:i'): string
     {
         if (!$datetime) return '';
@@ -82,10 +75,11 @@ if (!function_exists('dt')) {
     }
 }
 
+/**
+ * Decline numerals in Russian (0, 1, 2-4, 5-20+ forms)
+ * Склонение числительных на русском (формы: 1, 2-4, 5-20+)
+ */
 if (!function_exists('plural')) {
-    /**
-     * Склонение числительных
-     */
     function plural(int $n, array $forms): string
     {
         $n = abs($n) % 100;
@@ -97,10 +91,11 @@ if (!function_exists('plural')) {
     }
 }
 
+/**
+ * Generate a hidden CSRF token field
+ * Генерация скрытого поля с CSRF-токеном
+ */
 if (!function_exists('csrf_field')) {
-    /**
-     * Генерирует скрытое поле с CSRF-токеном
-     */
     function csrf_field(): string
     {
         $request = new \App\Core\Request();
@@ -108,10 +103,11 @@ if (!function_exists('csrf_field')) {
     }
 }
 
+/**
+ * Render flash messages by type (success, error, notice)
+ * Вывод flash-сообщений по типу (успех, ошибка, информационное)
+ */
 if (!function_exists('render_flashes')) {
-    /**
-     * Вывод flash-сообщений
-     */
     function render_flashes(): void
     {
         $types = [
@@ -133,24 +129,33 @@ if (!function_exists('render_flashes')) {
     }
 }
 
+/**
+ * Retrieve configuration value(s)
+ * Получение значений из конфигурации
+ *
+ * @param string|null $key    - Key in format 'file.group.key' or null for full file
+ *                            - Ключ в формате 'файл.группа.ключ' или null для всего файла
+ * @param mixed $default      - Default value if key not found
+ *                            - Значение по умолчанию при отсутствии ключа
+ * @return mixed
+ *
+ * Examples:
+ *   config('config.app.name')                    // 'w3a'
+ *   config('config.app.min_karma_for_downvote')  // 10
+ *   config('constants.pagination.stories_per_page') // 15
+ *   config('database.host', 'localhost')         // 'localhost'
+ *   config('config')                             // entire config.php file
+ *
+ *   Примеры:
+ *     config('config.app.name')                    // 'w3a'
+ *     config('config.app.min_karma_for_downvote')  // 10
+ *     config('constants.pagination.stories_per_page') // 15
+ *     config('database.host', 'localhost')         // 'localhost'
+ *     config('config')                             // весь файл config.php
+ */
 if (!function_exists('config')) {
-    /**
-     * Получить значение из конфигурации
-     * 
-     * @param string|null $key Ключ в формате 'file.group.key' или null для получения всего файла
-     * @param mixed $default Значение по умолчанию
-     * @return mixed
-     * 
-     * Примеры:
-     *   config('config.app.name')                    // 'w3a'
-     *   config('config.app.min_karma_for_downvote')  // 10
-     *   config('constants.pagination.stories_per_page') // 15
-     *   config('database.host', 'localhost')         // 'localhost'
-     *   config('config')                             // весь файл config.php
-     */
     function config(?string $key = null, mixed $default = null): mixed
     {
-        // Если ключ не указан, возвращаем весь файл конфигурации
         if ($key === null) {
             return \App\Core\Config::getFile('config');
         }
@@ -159,119 +164,145 @@ if (!function_exists('config')) {
     }
 }
 
+/**
+ * Retrieve integer configuration value
+ * Получение целочисленного значения из конфигурации
+ *
+ * @param string $key     - Configuration key
+ *                        - Ключ конфигурации
+ * @param int    $default - Default value
+ *                        - Значение по умолчанию
+ * @return int
+ */
 if (!function_exists('config_int')) {
-    /**
-     * Получить целое число из конфигурации
-     * 
-     * @param string $key Ключ конфигурации
-     * @param int $default Значение по умолчанию
-     * @return int
-     */
     function config_int(string $key, int $default = 0): int
     {
         return \App\Core\Config::getInt($key, $default);
     }
 }
 
+/**
+ * Retrieve string configuration value
+ * Получение строкового значения из конфигурации
+ *
+ * @param string $key     - Configuration key
+ *                        - Ключ конфигурации
+ * @param string $default - Default value
+ *                        - Значение по умолчанию
+ * @return string
+ */
 if (!function_exists('config_string')) {
-    /**
-     * Получить строку из конфигурации
-     * 
-     * @param string $key Ключ конфигурации
-     * @param string $default Значение по умолчанию
-     * @return string
-     */
     function config_string(string $key, string $default = ''): string
     {
         return \App\Core\Config::getString($key, $default);
     }
 }
 
+/**
+ * Retrieve boolean configuration value
+ * Получение булевого значения из конфигурации
+ *
+ * @param string $key     - Configuration key
+ *                        - Ключ конфигурации
+ * @param bool   $default - Default value
+ *                        - Значение по умолчанию
+ * @return bool
+ */
 if (!function_exists('config_bool')) {
-    /**
-     * Получить булево значение из конфигурации
-     * 
-     * @param string $key Ключ конфигурации
-     * @param bool $default Значение по умолчанию
-     * @return bool
-     */
     function config_bool(string $key, bool $default = false): bool
     {
         return \App\Core\Config::getBool($key, $default);
     }
 }
 
+/**
+ * Retrieve array configuration value
+ * Получение массива из конфигурации
+ *
+ * @param string $key     - Configuration key
+ *                        - Ключ конфигурации
+ * @param array  $default - Default value
+ *                        - Значение по умолчанию
+ * @return array
+ */
 if (!function_exists('config_array')) {
-    /**
-     * Получить массив из конфигурации
-     * 
-     * @param string $key Ключ конфигурации
-     * @param array $default Значение по умолчанию
-     * @return array
-     */
     function config_array(string $key, array $default = []): array
     {
         return \App\Core\Config::getArray($key, $default);
     }
 }
 
+/**
+ * Check if configuration key exists
+ * Проверка существования ключа в конфигурации
+ *
+ * @param string $key - Configuration key
+ *                    - Ключ конфигурации
+ * @return bool
+ */
 if (!function_exists('config_has')) {
-    /**
-     * Проверить существование ключа в конфигурации
-     * 
-     * @param string $key Ключ конфигурации
-     * @return bool
-     */
     function config_has(string $key): bool
     {
         return \App\Core\Config::has($key);
     }
 }
 
+/**
+ * Set configuration value at runtime (not persisted)
+ * Установка значения конфигурации в runtime (не сохраняется между запросами)
+ *
+ * @param string $key   - Key in format 'file.group.key'
+ *                      - Ключ в формате 'файл.группа.ключ'
+ * @param mixed  $value - Value to set
+ *                      - Значение для установки
+ */
 if (!function_exists('config_set')) {
-    /**
-     * Установить значение в конфигурации (только runtime)
-     * 
-     * @param string $key Ключ в формате 'file.group.key'
-     * @param mixed $value Значение
-     */
     function config_set(string $key, mixed $value): void
     {
         \App\Core\Config::set($key, $value);
     }
 }
 
+/**
+ * Retrieve application name
+ * Получение названия приложения
+ */
 if (!function_exists('app_name')) {
-    /**
-     * Получить имя приложения
-     */
     function app_name(): string
     {
         return config_string('config.app.name', 'w3a');
     }
 }
 
-
+/**
+ * Generate URL for a specific comment with anchor
+ * Генерация URL для конкретного комментария с якорем
+ *
+ * @param int $storyId    - Story ID
+ *                        - ID истории
+ * @param int $commentId  - Comment ID
+ *                        - ID комментария
+ * @return string URL with fragment identifier (e.g., `/story/123#comment-block-456`)
+ *                URL с якорем (например, `/story/123#comment-block-456`)
+ */
 if (!function_exists('comment_url')) {
-    /**
-     * Генерация URL для конкретного комментария
-     * 
-     * @param int $storyId ID истории
-     * @param int $commentId ID комментария
-     * @return string URL с якорем
-     */
     function comment_url(int $storyId, int $commentId): string
     {
         $baseUrl = "/story/{$storyId}";
-        $anchor = "comment-block-{$commentId}";  // ← Изменено здесь!
+        $anchor = "comment-block-{$commentId}";  // ← Updated here
 
         return "{$baseUrl}#{$anchor}";
     }
 }
 
+/**
+ * Validate URL (scheme, format, length, safe characters)
+ * Валидация URL (схема, формат, длина, безопасные символы)
+ */
 if (!function_exists('isValidUrl')) {
     function isValidUrl(string $url): bool
     {
+        // Basic format validation
         // Базовая валидация формата
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
             return false;
@@ -279,17 +310,20 @@ if (!function_exists('isValidUrl')) {
 
         $parsed = parse_url($url);
 
+        // Scheme check
         // Проверка схемы
         $allowedSchemes = ['http', 'https'];
         if (!in_array($parsed['scheme'] ?? '', $allowedSchemes, true)) {
             return false;
         }
 
-        // Дополнительная защита: блокировка подозрительных символов
+        // Block control characters
+        // Блокировка управляющих символов
         if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
             return false;
         }
 
+        // Length check (DoS protection)
         // Проверка длины (защита от DoS)
         if (strlen($url) > 2048) {
             return false;
@@ -299,60 +333,80 @@ if (!function_exists('isValidUrl')) {
     }
 }
 
+/**
+ * Truncate HTML to plain text with ellipsis (length ~300 chars)
+ * Обрезка HTML до обычного текста с многоточием (~300 символов)
+ */
+if (!function_exists('truncateDescription')) {
+    function truncateDescription(string $html, int $length = 300): string {
+        $text = strip_tags($html);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        
+        if (mb_strlen($text) > $length) {
+            $text = mb_substr($text, 0, $length);
+            $text = preg_replace('/ [^ ]*$/u', '', $text);
+            $text .= '…';
+        }
+        
+        return $text;
+    }
+}
 
 /**
- * Для статей на главной
+ * Check if HTML description needs truncation (length > 300 chars)
+ * Проверка, нужно ли обрезать описание (длина > 300 символов)
  */
-
-
- if (!function_exists('truncateDescription')) {
-	/**
-	 * Обрезает HTML текст
-	 */
-	function truncateDescription(string $html, int $length = 300): string {
-		$text = strip_tags($html);
-		$text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-		
-		if (mb_strlen($text) > $length) {
-			$text = mb_substr($text, 0, $length);
-			$text = preg_replace('/ [^ ]*$/u', '', $text);
-			$text .= '…';
-		}
-		
-		return $text;
-	}
-}
- 
 if (!function_exists('needsTruncation')) {
-	/**
-	 * Проверяет, нужно ли сворачивать текст
-	 */
-	function needsTruncation(string $html, int $length = 300): bool {
-		$text = strip_tags($html);
-		$text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-		return mb_strlen($text) > $length;
-	}
+    function needsTruncation(string $html, int $length = 300): bool {
+        $text = strip_tags($html);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return mb_strlen($text) > $length;
+    }
 }
 
-
+/**
+ * Sanitize HTML links: keep only <a> with clean href attribute
+ * Очистка HTML-ссылок: оставить только <a> с безопасным href
+ */
 if (!function_exists('safeLink')) {
-	/**
-	 * Удаляем все атрибуты кроме href
-	 */
-	function safeLink(?string $text): string
-	{
-		if ($text === null || $text === '') return '—';
-		
-		// Разрешаем только <a href="...">
-		$clean = strip_tags($text, '<a>');
+    function safeLink(?string $text): string
+    {
+        if ($text === null || $text === '') return '—';
+        
+        // Allow only <a> tags
+        // Разрешить только теги <a>
+        $clean = strip_tags($text, '<a>');
 
-		$clean = preg_replace_callback('/<a\s+([^>]*)>/i', function($m) {
-			if (preg_match('/href\s*=\s*["\']([^"\']+)["\']/i', $m[1], $href)) {
-				return '<a href="' . htmlspecialchars($href[1], ENT_QUOTES) . '">';
-			}
-			return '<a>';
-		}, $clean);
-		
-		return $clean;
-	}
+        $clean = preg_replace_callback('/<a\s+([^>]*)>/i', function($m) {
+            if (preg_match('/href\s*=\s*["\']([^"\']+)["\']/i', $m[1], $href)) {
+                return '<a href="' . htmlspecialchars($href[1], ENT_QUOTES) . '">';
+            }
+            return '<a>';
+        }, $clean);
+        
+        return $clean;
+    }
+}
+
+/**
+ * Perform HTTP redirect and terminate script
+ * Выполнение HTTP-редиректа и завершение скрипта
+ *
+ * @param string $url            - Target URL (e.g., '/login', 'https://example.com')
+ *                                 Целевой URL (например, '/login', 'https://example.com')
+ * @param int    $statusCode     - HTTP status code (default 302)
+ *                                 HTTP-код ответа (по умолчанию 302)
+ */
+if (!function_exists('redirect')) {
+    function redirect(string $url, int $statusCode = 302): void 
+    {
+        // Trim URL for security
+        // Очистка URL от лишних символов для безопасности
+        $url = trim($url);
+
+        // Set header and exit
+        // Установка заголовка и выход
+        header("Location: " . $url, true, $statusCode);
+        exit;
+    }
 }

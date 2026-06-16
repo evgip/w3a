@@ -273,11 +273,7 @@ class UsersController extends Controller
 		header('Location: /register');
 		exit;
 	}
-	
-	
-	
-	
-	
+
 	public function apiUsers()
 	{
 		$users = \App\Modules\Users\Models\User::all();
@@ -290,10 +286,7 @@ class UsersController extends Controller
      */
     public function settings(): void
     {
-        if (!\App\Core\Auth::check()) {
-            header('Location: ' . route('auth.login'));
-            exit;
-        }
+		$this->requireAuth();
 
         $userId = (int)$_SESSION['user_id'];
         $userModel = new \App\Modules\Users\Models\User();
@@ -334,10 +327,7 @@ class UsersController extends Controller
      */
     public function updateSettings(): void
     {
-        if (!\App\Core\Auth::check()) { 
-            header('Location: /login'); 
-            exit; 
-        }
+        $this->requireAuth();
 
         $request = new \App\Core\Request();
         $request->validateCsrf();
@@ -491,10 +481,7 @@ class UsersController extends Controller
      */
     public function updatePassword(): void
     {
-        if (!\App\Core\Auth::check()) {
-            header('Location: /login');
-            exit;
-        }
+        $this->requireAuth();
 
         $request = new \App\Core\Request();
         $request->validateCsrf(); // Critical anti-CSRF exploit check
