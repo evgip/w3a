@@ -262,35 +262,4 @@ abstract class Model
         $stmt = $db->prepare("DELETE FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id");
         return $stmt->execute(['id' => $id]);
     }
-	
-    /**
-     * Проверка уникальности значения в колонке
-     */
-    public function isUnique(string $column, $value, ?int $excludeId = null): bool
-    {
-        // Валидация имени колонки (защита от ошибок разработчика)
-        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
-            throw new \InvalidArgumentException("Invalid column name: {$column}");
-        }
-        
-        $sql = "SELECT COUNT(*) FROM `{$this->table}` WHERE `{$column}` = :value";
-        $params = ['value' => $value];
-        
-        // Исключаем текущую запись при обновлении
-        if ($excludeId !== null) {
-            $sql .= " AND `id` != :exclude_id";
-            $params['exclude_id'] = $excludeId;
-        }
-        
-        // Учитываем soft delete
-        if (property_exists($this, 'useSoftDelete') && $this->useSoftDelete) {
-            $sql .= " AND `deleted_at` IS NULL";
-        }
-        
-        $sql .= " LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        
-        return (int)$stmt->fetchColumn() === 0;
-    }
 }
