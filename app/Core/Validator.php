@@ -58,22 +58,22 @@ class Validator
                 break;
 
             case 'unique':
-                if ($value !== '' && $param !== null) {
-                    $commaPos = strpos($param, ',');
-                    if ($commaPos !== false) {
-                        $table = substr($param, 0, $commaPos);
-                        $column = substr($param, $commaPos + 1);
-
-                        $db = Database::getConnection();
-                        $stmt = $db->prepare("SELECT COUNT(*) FROM `{$table}` WHERE `{$column}` = :val LIMIT 1");
-                        $stmt->execute(['val' => $value]);
-
-                        if ((int)$stmt->fetchColumn() > 0) {
-                            $this->errors[$field][] = "Такой {$value} уже зарегистрирован в системе.";
-                        }
-                    }
-                }
-                break;
+				if ($value !== '' && $param !== null) {
+					$parts = explode(',', $param);
+					$modelClass = $parts[0]; // Например: 'App\Modules\Users\Models\User'
+					$column = $parts[1] ?? 'id';
+					
+					if (!class_exists($modelClass)) {
+						throw new \InvalidArgumentException("Model not found: {$modelClass}");
+					}
+					
+					$model = new $modelClass();
+					
+					if (!$model->isUnique($column, $value)) {
+						$this->errors[$field][] = "Такое значение уже существует.";
+					}
+				}
+				break;
         }
     }
 
