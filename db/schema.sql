@@ -749,3 +749,47 @@ CREATE TABLE `read_ribbons` (
     CONSTRAINT `fk_rr_story` FOREIGN KEY (`story_id`) REFERENCES `stories`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Отметки прочитанных историй для индикации новых комментариев';
+
+
+-- db/migrations/002_create_categories.sql
+
+-- 1. Создаём таблицу категорий
+CREATE TABLE IF NOT EXISTS `categories` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `slug` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `description` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `sort_order` INT UNSIGNED NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_categories_slug` (`slug`),
+    KEY `idx_categories_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. Заполняем категории из существующих значений
+INSERT INTO `categories` (`name`, `slug`, `description`, `sort_order`) VALUES
+('Языки программирования', 'languages', 'PHP, Python, JavaScript и другие', 10),
+('Практики', 'practices', 'Безопасность, архитектура, методологии', 20),
+('Формат', 'format', 'Видео, демонстрации проектов, подкасты', 30),
+('Разное', 'other', 'Общие темы и обсуждения', 99);
+
+-- 3. Добавляем внешний ключ в tags (заменяем varchar на FK)
+-- Сначала добавляем колонку category_id
+ALTER TABLE `tags` 
+ADD COLUMN `category_id` INT UNSIGNED DEFAULT NULL AFTER `category`;
+
+-- Мигрируем данные из строкового поля в FK
+UPDATE `tags` t
+JOIN `categories` c ON t.`category` = c.`slug`
+SET t.`category_id` = c.`id`;
+
+-- Добавляем индекс и FK
+ALTER TABLE `tags`
+ADD KEY `idx_tags_category_id` (`category_id`),
+ADD CONSTRAINT `fk_tags_category` 
+    FOREIGN KEY (`category_id`) REFERENCES `categories`(`id`) 
+    ON DELETE SET NULL;
+
+-- Опционально: удаляем старую строковую колонку
+ALTER TABLE `tags` DROP COLUMN `category`;
