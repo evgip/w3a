@@ -8,7 +8,7 @@ $router->add('GET', 'admin/users', 'AdminController@users', 'admin.users');
 
 $router->add('POST', 'admin/users/{id}/toggle-status', 'AdminController@toggleUserStatus', 'admin.users.toggle_status');
 
-$router->add('GET', 'admin/audit', 'AdminController@auditLogs', 'admin.tools.audit');
+$router->add('GET', 'admin/audit', 'AdminController@auditLogs', 'admin.audit');
 
 
 // NEW: User status manipulation routes

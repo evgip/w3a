@@ -57,12 +57,21 @@ if ($currentUserId > 0) {
                         </a>
 
                         <?php if ($isExternal): ?>
-							<?php 
+							<?php
 							$domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
-							if ($domainHost): 
+							if ($domainHost):
+								$isBannedDomain = false;
+								if (isset($bannedDomainsCache)) {
+									$isBannedDomain = in_array(strtolower($domainHost), $bannedDomainsCache, true);
+								}
 							?>
-								<a href="<?= route('domain.show', ['domain' => $domainHost]) ?>" class="domain">
+								<a href="<?= route('domain.show', ['domain' => $domainHost]) ?>"
+								   class="domain <?= $isBannedDomain ? 'domain-banned' : '' ?>"
+								   title="<?= $isBannedDomain ? '⚠ Домен заблокирован модераторами' : '' ?>">
 									<?= e($domainHost) ?>
+									<?php if ($isBannedDomain): ?>
+										<span style="color:#ac130d;">🚫</span>
+									<?php endif; ?>
 								</a>
 							<?php endif; ?>
                         <?php endif; ?>

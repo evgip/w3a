@@ -76,6 +76,8 @@
 								<a href="/mod/log" class="dropdown-menu-item dropdown-item-mod">📋 Лог модерации</a>
 								<a href="/mod/notes" class="dropdown-menu-item dropdown-item-mod">🔒 Заметки</a>
 								<a href="/mod/stats" class="dropdown-menu-item dropdown-item-mod">📈 Активность</a>
+								<a href="/admin/domains" class="dropdown-menu-item dropdown-item-mod">🌐 Домены</a>
+								<a href="<?= route('domains.index') ?>" class="dropdown-menu-item dropdown-item-mod">🚫 Бан</a>
 							<?php endif; ?>
 
 							<div class="dropdown-divider"></div>

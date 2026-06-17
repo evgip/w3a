@@ -887,3 +887,31 @@ ALTER TABLE `user_notifications`
 --
 ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+
+-- --------------------------------------------------------
+-- Структура таблицы `domains`
+-- --------------------------------------------------------
+CREATE TABLE `domains` (
+    `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+    `domain` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `status` enum('banned','allowed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'banned',
+    `ban_reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `banned_by` int UNSIGNED DEFAULT NULL COMMENT 'ID модератора/админа, забанившего домен',
+    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_domains_domain` (`domain`),
+    KEY `idx_domains_status` (`status`),
+    KEY `idx_domains_deleted_at` (`deleted_at`),
+    KEY `fk_domains_banned_by` (`banned_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ограничения внешнего ключа
+ALTER TABLE `domains`
+    ADD CONSTRAINT `fk_domains_banned_by` FOREIGN KEY (`banned_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+-- AUTO_INCREMENT
+ALTER TABLE `domains`
+    MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;

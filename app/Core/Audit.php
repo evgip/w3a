@@ -32,14 +32,14 @@ class Audit
         $actorId = $_SESSION['user_id'] ?? null;
         $actorName = $_SESSION['user_name'] ?? 'Guest';
         $actorRole = $_SESSION['user_role'] ?? 'guest';
-        $ip = $_SERVER['REMOTE_ADDR'] ?? 'CLI';
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'CLI';
         $payloadJson = !empty($payload) ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null;
 
         // 1. НАДЕЖНОСТЬ: Пишем в файл (Защита от стирания логов при взломе БД)
         /* try {
             self::initFile();
             $fileRecord = [
-                'timestamp' => date('Y-m-d H:i:s'), 'ip' => $ip, 'user_id' => $actorId,
+                'timestamp' => date('Y-m-d H:i:s'), 'ip_address' => $ip_address, 'user_id' => $actorId,
                 'username' => $actorName, 'role' => $actorRole, 'action' => $action,
                 'description' => $description, 'payload' => $payload
             ];
@@ -52,15 +52,15 @@ class Audit
         try {
             $db = Database::getConnection();
             $stmt = $db->prepare("
-                INSERT INTO `audit_logs` (`user_id`, `username`, `role`, `ip`, `action`, `description`, `payload`) 
-                VALUES (:user_id, :username, :role, :ip, :action, :description, :payload)
+                INSERT INTO `audit_logs` (`user_id`, `username`, `role`, `ip_address`, `action`, `description`, `payload`) 
+                VALUES (:user_id, :username, :role, :ip_address, :action, :description, :payload)
             ");
             
             $stmt->execute([
                 'user_id'     => $actorId,
                 'username'    => $actorName,
                 'role'        => $actorRole,
-                'ip'          => $ip,
+                'ip_address'  => $ip_address,
                 'action'      => $action,
                 'description' => $description,
                 'payload'     => $payloadJson

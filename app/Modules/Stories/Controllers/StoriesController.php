@@ -28,8 +28,12 @@ class StoriesController extends Controller
 
 		$storyModel = new Story();
 		$showDeleted = \App\Core\Auth::isAdmin();
-		
-		// НОВОЕ: Получаем отфильтрованные теги пользователя
+
+		$domainModel = new \App\Modules\Origins\Models\Domain();
+		$bannedDomainsCache = array_column($domainModel->getBannedDomains(), 'domain');
+		$bannedDomainsCache = array_map('strtolower', $bannedDomainsCache);
+
+		// Получаем отфильтрованные теги пользователя
 		$excludeTagIds = [];
 		if (\App\Core\Auth::check()) {
 			$filterModel = new \App\Modules\Tags\Models\TagFilter();
@@ -50,7 +54,7 @@ class StoriesController extends Controller
 			$title = "Публикации с домена " . e($domain);
 		}
 
-	   // === НОВОЕ: Подсчёт новых комментариев для каждой истории ===
+	   // === Подсчёт новых комментариев для каждой истории ===
 		$newCommentsMap = [];
 		if (\App\Core\Auth::check() && !empty($stories)) {
 			$storyIds = array_column($stories, 'id');
@@ -68,6 +72,7 @@ class StoriesController extends Controller
 			'currentPage' => $currentPage,
 			'totalPages' => $totalPages,
 			'newCommentsMap'   => $newCommentsMap,
+			'bannedDomainsCache' => $bannedDomainsCache,
 		]);
 	}
 	
@@ -126,6 +131,31 @@ class StoriesController extends Controller
         }
 		
 		$domain = !empty($url) ? parse_url($url, PHP_URL_HOST) : null;
+
+		// === ПРОВЕРКА ЗАБАНЕННЫХ ДОМЕНОВ ===
+		if (!empty($domain)) {
+			$domainModel = new \App\Modules\Origins\Models\Domain();
+			if ($domainModel->isBanned($domain)) {
+				$banInfo = $domainModel->getBanInfo($domain);
+				$reason  = $banInfo['ban_reason'] ?? 'Домен заблокирован администрацией';
+
+				\App\Core\Session::setFlash(
+					'error',
+					"Публикация отклонена: домен <strong>" . e($domain) . "</strong> заблокирован. Причина: " . e($reason)
+				);
+
+				\App\Core\Audit::log('story.rejected_banned_domain', "Попытка публикации с забаненного домена", [
+					'domain'   => $domain,
+					'user_id'  => (int) ($_SESSION['user_id'] ?? 0),
+					'url'      => $url,
+					'reason'   => $reason,
+				]);
+
+				header('Location: /stories/create');
+				exit;
+			}
+		}
+		// === КОНЕЦ ПРОВЕРКИ ===
 
         $storyModel = new Story();
         $newStoryId = $storyModel->create([

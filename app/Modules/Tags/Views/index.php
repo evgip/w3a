@@ -11,12 +11,13 @@
                         <a href="<?= route('categories.show', ['slug' => $category['slug']]) ?>">
                             <?= e($category['name']) ?>
                         </a>
+						<sup><?= (int)$category['tags_count'] ?></sup>
                     </h2>
-                    <span class="badge"><?= (int)$category['tags_count'] ?> тегов</span>
+                     
                 </header>
 
                 <?php if (!empty($category['description'])): ?>
-                    <p class="category-description"><?= e($category['description']) ?></p>
+                    <p class="hint"><?= e($category['description']) ?></p>
                 <?php endif; ?>
 
                 <?php
