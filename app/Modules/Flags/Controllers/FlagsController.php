@@ -13,15 +13,13 @@ class FlagsController extends Controller
 {
     /**
      * GET /flags/report?type=story&id=123
-     * Форма подачи жалобы (модальное окно / отдельная страница)
+     * Форма подачи жалобы
      */
-    public function reportForm(): void
+    public function reportForm(string $type, string $id): void
     {
         $this->requireAuth();
 
-        $request = new Request();
-        $type = $request->getQuery('type');
-        $targetId = (int) $request->getQuery('id');
+		$targetId = (int) $id;
 
         if (!in_array($type, ['story', 'comment'], true) || $targetId <= 0) {
             http_response_code(400);
@@ -31,7 +29,6 @@ class FlagsController extends Controller
         $flagModel = new Flag();
         $userId = (int) ($_SESSION['user_id'] ?? 0);
 
-        // Уже жаловался?
         if ($flagModel->hasUserFlagged($userId, $type, $targetId)) {
             Session::setFlash('error', 'Вы уже подавали жалобу на этот контент.');
             $back = $type === 'story' ? "/stories/{$targetId}" : "/stories#comment-{$targetId}";
@@ -43,7 +40,7 @@ class FlagsController extends Controller
             'title'    => 'Пожаловаться на контент',
             'type'     => $type,
             'targetId' => $targetId,
-            'reasons'  => Flag::REASONS,
+            'reasons'  => Flag::getReasons(), // ✅ было Flag::REASONS
         ]);
     }
 
@@ -55,7 +52,7 @@ class FlagsController extends Controller
     {
         $this->requireAuth();
 
-        $request = new Request();
+        $request  = new Request();
         $request->validateCsrf();
 
         $type     = $request->getParams('flaggable_type');
@@ -70,29 +67,24 @@ class FlagsController extends Controller
         if (!$result['ok']) {
             Session::setFlash('error', $result['error']);
         } else {
-            $reasonLabel = Flag::REASONS[$reason] ?? $reason;
-            Session::setFlash(
-                'success',
-                'Спасибо! Ваша жалоба принята. Модераторы рассмотрят её в ближайшее время.'
-            );
+            Session::setFlash('success', 'Спасибо! Ваша жалоба принята. Модераторы рассмотрят её в ближайшее время.');
 
-            Audit::log('flag.submitted', "Пользователь подал жалобу", [
+            Audit::log('flag.submitted', 'Пользователь подал жалобу', [
                 'type'   => $type,
                 'id'     => $targetId,
                 'reason' => $reason,
             ]);
 
-            // Если контент был автоматически скрыт — логируем
             if (!empty($result['hidden'])) {
-                Audit::log('flag.auto_hidden', "Контент автоматически скрыт по порогу флагов", [
+                Audit::log('flag.auto_hidden', 'Контент автоматически скрыт по порогу флагов', [
                     'type'      => $type,
                     'id'        => $targetId,
-                    'threshold' => $flagModel->getHideThreshold(),
+                    'threshold' => Flag::getHideThreshold(),
                 ]);
             }
         }
 
-        $back = $type === 'story' ? "/stories/{$targetId}" : "/stories#comment-{$targetId}";
+        $back = $type === 'story' ? "/story/{$targetId}" : "/story#comment-block-{$targetId}";
         header("Location: {$back}");
         exit;
     }
@@ -113,8 +105,9 @@ class FlagsController extends Controller
             'title'        => 'Жалобы пользователей',
             'pendingFlags' => $pending,
             'recentFlags'  => $recent,
-            'reasons'      => Flag::REASONS,
+            'reasons'      => Flag::getReasons(),
             'pendingCount' => count($pending),
+            'hideThreshold'=> Flag::getHideThreshold(),
         ]);
     }
 
@@ -128,7 +121,7 @@ class FlagsController extends Controller
         $request = new Request();
         $request->validateCsrf();
 
-        $action = $request->getParams('action') ?: 'hide'; // hide | dismiss
+        $action = $request->getParams('action') ?: 'hide';
         $modId  = (int) ($_SESSION['user_id'] ?? 0);
 
         $flagModel = new Flag();
@@ -142,11 +135,11 @@ class FlagsController extends Controller
 
         if ($action === 'dismiss') {
             $flagModel->dismiss((int) $id, $modId);
-            Audit::log('flag.dismissed', "Модератор отклонил жалобу", ['flag_id' => (int) $id]);
+            Audit::log('flag.dismissed', 'Модератор отклонил жалобу', ['flag_id' => (int) $id]);
             Session::setFlash('success', 'Жалоба отклонена. Контент восстановлен.');
         } else {
-            $flagModel->resolve((int) $id, $modId, 'hide');
-            Audit::log('flag.resolved', "Модератор подтвердил жалобу", ['flag_id' => (int) $id]);
+            $flagModel->resolve((int) $id, $modId);
+            Audit::log('flag.resolved', 'Модератор подтвердил жалобу', ['flag_id' => (int) $id]);
             Session::setFlash('success', 'Жалоба подтверждена. Контент скрыт.');
         }
 
@@ -156,7 +149,6 @@ class FlagsController extends Controller
 
     /**
      * GET /admin/flags/count (AJAX)
-     * Возвращает JSON с количеством pending-жалоб — для бейджа в шапке
      */
     public function pendingCount(): void
     {

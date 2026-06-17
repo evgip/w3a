@@ -55,4 +55,14 @@ $isDeleted = !empty($story['deleted_at']);
             </form>
         <?php endif; ?>
     <?php endif; ?>
+	
+	<?php if ($currentUserId > 0): ?>
+		<a href="<?= route('flags.report', ['type' => 'story', 'id' => (int)$story['id']]) ?>"
+		   class="flag-link"
+		   title="Пожаловаться на контент"
+		   onclick="return confirm('Вы уверены, что хотите подать жалобу?');">
+			🚩
+		</a>
+	<?php endif; ?>
+	
 </div>

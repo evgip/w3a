@@ -954,3 +954,8 @@ ALTER TABLE `stories`
 ALTER TABLE `comments`
     ADD COLUMN `flag_count` int UNSIGNED NOT NULL DEFAULT 0 AFTER `score`,
     ADD COLUMN `is_hidden_by_flags` tinyint(1) NOT NULL DEFAULT 0 AFTER `flag_count`;	
+	
+	
+ALTER TABLE `flags`
+    ADD COLUMN `deleted_at` timestamp NULL DEFAULT NULL AFTER `resolved_at`,
+    ADD KEY `idx_flags_deleted_at` (`deleted_at`);	

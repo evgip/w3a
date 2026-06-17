@@ -20,25 +20,35 @@
 				<a href="<?= route('tags.index') ?>">🏷️ Теги</a>
 				<a href="/search">🔍 Поиск</a>
 
-<?php if (\App\Core\Auth::check()): ?>
-    <?php
-    $notifModel = new \App\Modules\Notifications\Models\Notification();
-    $unreadCount = $notifModel->getUnreadCount((int)$_SESSION['user_id']);
-    ?>
-
-    <a href="/notifications" class="header-notification-link" id="header-notifications-link" aria-label="Уведомления">
-
-    <svg class="header-notification-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
-    </svg>
-    
-    <span id="header-notification-badge" class="header-notification-badge">0</span>
-</a>
-    
-<?php endif; ?>
-
 				<?php if (\App\Core\Auth::check()): ?>
+					<?php
+					$notifModel = new \App\Modules\Notifications\Models\Notification();
+					$unreadCount = $notifModel->getUnreadCount((int)$_SESSION['user_id']);
+					?>
+
+					<a href="/notifications" class="header-notification-link" id="header-notifications-link" aria-label="Уведомления">
+
+					<svg class="header-notification-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+						<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+					</svg>
+					
+					<span id="header-notification-badge" class="header-notification-badge">0</span>
+				</a>
+					
+				<?php
+				if (\App\Core\Auth::isAdmin() || \App\Core\Auth::isModerator()):
+					$pendingFlagsCount = (new \App\Modules\Flags\Models\Flag())->getPendingCount();
+				?>
+					<a href="/admin/flags" class="nav-flag">
+						🚩 
+						<?php if ($pendingFlagsCount > 0): ?>
+							<span class="badge">(<?= $pendingFlagsCount ?>)</span>
+						<?php endif; ?>
+					</a>
+				<?php endif; ?>
+
+
 					<div class="navbar-user-dropdown-container" id="user-dropdown-wrapper">
 
 						<button class="dropdown-trigger-btn" id="user-dropdown-trigger" aria-haspopup="true" aria-expanded="false">

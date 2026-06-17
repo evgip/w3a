@@ -1,7 +1,7 @@
 <?php
 
 // ==================== ПУБЛИЧНЫЕ (для авторизованных) ====================
-$router->add('GET',  'flags/report', 'FlagsController@reportForm', 'flags.report');
+$router->add('GET',  'flags/report/{type}/{id}', 'FlagsController@reportForm', 'flags.report');
 $router->add('POST', 'flags/report', 'FlagsController@submit',     'flags.submit');
 
 // ==================== АДМИН-ПАНЕЛЬ ====================

@@ -13,7 +13,6 @@
                         </a>
 						<sup><?= (int)$category['tags_count'] ?></sup>
                     </h2>
-                     
                 </header>
 
                 <?php if (!empty($category['description'])): ?>
