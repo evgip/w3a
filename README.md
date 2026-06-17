@@ -123,8 +123,8 @@ location / {
 
 ### Step 6: Login information
 
-Admin: admin@example.com / password
-User: test@test.ru / password
+- Admin: admin@example.com / password
+- User: test@test.ru / password
 
 ## 📁 Project Structure
 
@@ -223,7 +223,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Inspired by [Hacker News](https://news.ycombinator.com/) and [Lobster](https://lobste.rs/)
+- Inspired by the functionality of [Hacker News](https://news.ycombinator.com/) and [Lobster](https://lobste.rs/)
+- Speed and simplicity of the [HLEB](https://hleb2framework.ru/) framework
 - Built with vanilla PHP (no frameworks)
 - Modular HMVC architecture
 

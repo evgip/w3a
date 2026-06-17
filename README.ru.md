@@ -125,8 +125,8 @@ location / {
 
 ### Шаг 6: Данные для входа
 
-Администратор: admin@example.com / password
-Пользователь: test@test.ru / password
+- Администратор: admin@example.com / password
+- Пользователь: test@test.ru / password
 
 ## 📁 Структура проекта
 
@@ -226,7 +226,8 @@ w3a/
 
 ## 🙏 Благодарности
 
-- Вдохновлено [Hacker News](https://news.ycombinator.com/) и [Lobster](https://lobste.rs/)
+- Вдохновлено функционалом [Hacker News](https://news.ycombinator.com/) и [Lobster](https://lobste.rs/)
+- Скорость, простотой фреймворка [HLEB](https://hleb2framework.ru/)
 - Создано на чистом PHP (без фреймворков)
 - Модульная HMVC-архитектура
 
