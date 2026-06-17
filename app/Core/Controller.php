@@ -54,7 +54,6 @@ abstract class Controller
                 echo $content;
             }
         }
-	
     }
 
     protected function json(array $data, int $statusCode = 200): void

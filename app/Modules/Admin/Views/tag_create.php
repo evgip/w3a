@@ -1,3 +1,8 @@
+<?php
+// Получаем список категорий
+$categoryModel = new App\Modules\Tags\Models\Category();
+$categoriesList = $categoryModel->getAllOrdered();
+?>
 <div class="admin-edit-panel-card">
     <h3>✨ Добавление новой темы/тега</h3>
     <p class="admin-subtitle-desc">Создание нового тега для классификации обсуждений. Укажите имя тега в нижнем регистре и выберите подходящую категорию.</p>
@@ -11,20 +16,19 @@
             <small class="text-muted">Только латиница в нижнем регистре, без пробелов.</small>
         </div>
 
-        <div class="admin-form-group">
-            <label>Категория Lobsters:</label>
-            <select name="category">
-                <option value="languages">languages (Языки программирования)</option>
-                <option value="practices">practices (Практики и технологии)</option>
-                <option value="format">format (Форматы контента)</option>
-                <option value="compsci">compsci (Компьютерные науки)</option>
-                <option value="tools">tools (Инструменты разработки)</option>
-                <option value="os">os (Операционные системы)</option>
-                <option value="platforms">platforms (Платформы)</option>
-                <option value="culture">culture (Культура и сообщество)</option>
-            </select>
-            <small class="text-muted">Управляет многоколоночным распределением тега на странице общего каталога.</small>
-        </div>
+		<div class="form-group">
+			<label for="category_id">Категория:</label>
+			<select id="category_id" name="category_id" required>
+				<option value="">— Выберите категорию —</option>
+				<?php foreach ($categoriesList as $cat): ?>
+					<option value="<?= (int)$cat['id'] ?>" 
+							<?= ($request->getParams('category_id', $tagItem['category_id'] ?? '') == $cat['id']) ? 'selected' : '' ?>>
+						<?= e($cat['name']) ?> (<?= e($cat['slug']) ?>)
+					</option>
+				<?php endforeach; ?>
+			</select>
+			<small>Определяет колонку на странице общего каталога тегов.</small>
+		</div>
 
         <div class="admin-form-group">
             <label>Описание назначения:</label>

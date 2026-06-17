@@ -1,49 +1,78 @@
-<div class="admin-edit-panel-card">
-    <h3>📝 Корректировка параметров тега</h3>
-    <p class="admin-subtitle-desc">
-        Изменение настроек тега <strong># <?= e($tagItem['tag']) ?></strong>. 
-        Перенос в другую категорию мгновенно перестроит его положение на странице каталога.
-    </p>
-    
-    <form action="<?= route('admin.tags.edit.submit', ['id' => $tagItem['id']]) ?>" method="POST" class="admin-form-container">
-        <?= csrf_field() ?>
+<?php
+// Получаем список категорий
+$categoryModel = new App\Modules\Tags\Models\Category();
+$categories = $categoryModel->getAllOrdered();
+?>
 
-        <div class="admin-form-group">
-            <label>Имя тега (Слуг):</label>
-            <input type="text" name="tag" required value="<?= e($tagItem['tag']) ?>">
-            <small class="text-muted">Только латиница в нижнем регистре, без пробелов (например: php).</small>
-        </div>
+<?php 
+/** 
+ * @var array $tagItem 
+ * @var array $categories 
+ * @var App\Core\Request $request 
+ */ 
+?>
 
-        <div class="admin-form-group">
-            <label>Категория Lobsters:</label>
-            <select name="category">
-                <option value="languages" <?= $tagItem['category'] === 'languages' ? 'selected' : '' ?>>languages (Языки программирования)</option>
-                <option value="practices" <?= $tagItem['category'] === 'practices' ? 'selected' : '' ?>>practices (Практики и технологии)</option>
-                <option value="format" <?= $tagItem['category'] === 'format' ? 'selected' : '' ?>>format (Форматы контента)</option>
-                <option value="compsci" <?= $tagItem['category'] === 'compsci' ? 'selected' : '' ?>>compsci (Компьютерные науки)</option>
-                <option value="tools" <?= $tagItem['category'] === 'tools' ? 'selected' : '' ?>>tools (Инструменты разработки)</option>
-                <option value="os" <?= $tagItem['category'] === 'os' ? 'selected' : '' ?>>os (Операционные системы)</option>
-                <option value="platforms" <?= $tagItem['category'] === 'platforms' ? 'selected' : '' ?>>platforms (Платформы)</option>
-                <option value="culture" <?= $tagItem['category'] === 'culture' ? 'selected' : '' ?>>culture (Культура и сообщество)</option>
-            </select>
-            <small class="text-muted">Управляет многоколоночным распределением тега на странице общего каталога.</small>
-        </div>
+<h1><?= e($title ?? 'Редактирование тега') ?></h1>
 
-        <div class="admin-form-group">
-            <label>Описание назначения:</label>
-            <input type="text" name="description" value="<?= e($tagItem['description'] ?? '') ?>" placeholder="Короткое описание темы...">
-        </div>
+<form method="POST" action="<?= route('admin.tags.edit.submit', ['id' => $tagItem['id'] ?? 0]) ?>">
+    <?= csrf_field() ?>
 
-        <!-- CLEAN CLASS-DRIVEN CHECKBOX ROW -->
-        <div class="admin-form-group admin-checkbox-row">
-            <input type="checkbox" name="is_media" id="chk-is-media-edit" <?= (int)$tagItem['is_media'] === 1 ? 'checked' : '' ?>>
-            <label for="chk-is-media-edit">Этот тег обозначает Медиа-контент (видео, подкаст, pdf)</label>
-        </div>
+    <div class="form-field-group">
+        <label for="tag">Название тега <span class="form-field-hint-inline">(обязательно)</span></label>
+        <input type="text" id="tag" name="tag" required pattern="[a-z0-9\-]+" class="form-input-wide"
+               value="<?= e($request->getParams('tag', $tagItem['tag'] ?? '')) ?>"
+               placeholder="Например: php">
+        <div class="hint">Только латиница в нижнем регистре, цифры и дефис. <strong>Изменение повлияет на URL тега.</strong></div>
+    </div>
 
-        <div class="admin-form-actions">
-            <button type="submit" class="btn btn-primary btn-admin-submit">💾 Сохранить изменения</button>
-            <a href="/admin/tags" class="btn-cancel-reply-node btn-admin-cancel">Отмена</a>
-        </div>
-    </form>
-</div>
+    <div class="form-field-group">
+        <label for="category_id">Категория <span class="form-field-hint-inline">(обязательно)</span></label>
+        <select id="category_id" name="category_id" required class="form-input-wide">
+            <option value="">— Выберите категорию —</option>
+            <?php foreach ($categories as $cat): ?>
+                <option value="<?= (int)$cat['id'] ?>"
+                    <?= ((int)($request->getParams('category_id', $tagItem['category_id'] ?? 0)) === (int)$cat['id']) ? 'selected' : '' ?>>
+                    <?= e($cat['name']) ?> (<?= e($cat['slug']) ?>)
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <div class="hint">Определяет колонку на странице общего каталога тегов.</div>
+    </div>
+
+    <div class="form-field-group">
+        <label for="description">Описание</label>
+        <textarea id="description" name="description" rows="3" class="form-input-wide"
+                  placeholder="Краткое описание тега..."><?= e($request->getParams('description', $tagItem['description'] ?? '')) ?></textarea>
+        <div class="hint">Пояснение для пользователей о содержимом тега (необязательно).</div>
+    </div>
+
+    <div class="form-field-group">
+        <label>
+            <input type="checkbox" name="is_media" value="1"
+                <?= ((string)$request->getParams('is_media', (string)($tagItem['is_media'] ?? '0')) === '1') ? 'checked' : '' ?>>
+            Это медиа-тег (видео, подкасты, демонстрации проектов)
+        </label>
+        <div class="hint">Медиа-теги отображаются со специальным значком в интерфейсе сайта.</div>
+    </div>
+
+    <hr>
+
+    <div class="form-field-group">
+        <table class="data" style="max-width: 600px;">
+            <tr>
+                <td><strong>ID тега:</strong></td>
+                <td><?= (int)($tagItem['id'] ?? 0) ?></td>
+            </tr>
+            <tr>
+                <td><strong>Создан:</strong></td>
+                <td><?= e($tagItem['created_at'] ?? '—') ?></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn-primary">💾 Сохранить изменения</button>
+        <a href="<?= route('admin.tags') ?>" class="button">Отмена</a>
+    </div>
+</form>
 

@@ -16,10 +16,11 @@
         <nav>
             <a href="/admin">📊 Главная панель</a>
             <a href="/admin/users">👥 Пользователи</a>
-			<a href="/admin/tags">🏷️ Управление тегами</a>
-			<a href="/admin/invitations">📨 Запросы приглашений</a> 
+			<a href="/admin/tags">🏷️ Теги</a>
+			<a href="/admin/categories">📂 Категории</a>
+			<a href="/admin/invitations">📨 Инвайты</a> 
 			<a href="/admin/audit">🔒 Журнал аудита</a>
-			<a href="/admin/firewall">🧱 Сетевой экран (Firewall)</a>
+			<a href="/admin/firewall">🧱 Firewall</a>
 			<a href="/admin/tools">🛠️ Инструменты</a>
             <a href="/" target="_blank">🌐 Перейти на сайт</a>
         </nav>

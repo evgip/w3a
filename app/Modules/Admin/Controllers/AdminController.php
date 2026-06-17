@@ -5,6 +5,10 @@ namespace App\Modules\Admin\Controllers;
 use App\Core\Controller;
 use App\Core\Auth;
 use App\Modules\Users\Models\User;
+use App\Modules\Tags\Models\Category;
+use App\Core\Request as AppCoreRequest;
+use App\Core\Session as AppCoreSession;
+use App\Core\Audit as AppCoreAudit; 
 
 class AdminController extends Controller
 {
@@ -209,8 +213,8 @@ class AdminController extends Controller
     {
         $request = new \App\Core\Request();
         $request->validateCsrf(); // Защита от CSRF атак
-
-        $logDir = dirname(__DIR__, 3) . '/storage/logs/';
+ 
+        $logDir = dirname(__DIR__, 4) . '/storage/logs/';
         $files = ['app.log', 'audit.log'];
         $clearedCount = 0;
 
@@ -311,14 +315,22 @@ class AdminController extends Controller
             exit;
         }
 
-		$category = strtolower(trim($request->getParams('category', 'other')));
+		$categoryId = (int)$request->getParams('category_id');
+		
+		// Валидация категории
+		$categoryModel = new Category();
+		if (!$categoryModel->find($categoryId)) {
+			AppCoreSession::setFlash('error', 'Выбранная категория не существует.');
+			header('Location: /admin/tags/create'); // или edit
+			exit;
+		}
 
         // Persist safely using base model class mapping definitions
         $tagModel->create([
             'tag' => $tagName,
             'description' => $description,
             'is_media' => $isMedia,
-			'category' => $category
+			'category_id' => $categoryId,
         ]);
 
         \App\Core\Audit::log('admin.tag_created', "Администратор создал новый тег #{$tagName}");
@@ -334,7 +346,7 @@ class AdminController extends Controller
     {
         $tagId = (int)$id;
         $tagModel = new \App\Modules\Tags\Models\Tag();
-        $tag = $tagModel->find($tagId);
+        $tag = $tagModel->getById($tagId);
 
         if (!$tag) {
             header('Location: /admin/tags');
@@ -358,7 +370,7 @@ class AdminController extends Controller
 
         $tagId = (int)$id;
         $tagModel = new \App\Modules\Tags\Models\Tag();
-        $tag = $tagModel->find($tagId);
+        $tag = $tagModel->getById($tagId);
 
         if (!$tag) { header('Location: /admin/tags'); exit; }
 
@@ -378,13 +390,22 @@ class AdminController extends Controller
             exit;
         }
 
-		$category = strtolower(trim($request->getParams('category', 'other')));
+		$categoryId = (int)$request->getParams('category_id');
+		
+		// Валидация категории
+		$categoryModel = new Category();
+		if (!$categoryModel->getById($categoryId)) {
+			AppCoreSession::setFlash('error', 'Выбранная категория не существует.');
+			header('Location: /admin/tags/create'); // или edit
+			exit;
+		}
+		
 
         $tagModel->update($tagId, [
             'tag' => $tagName,
             'description' => $description,
             'is_media' => $isMedia,
-			'category' => $category
+			'category_id' => $categoryId,
         ]);
 
         \App\Core\Audit::log('admin.tag_updated', "Администратор изменил параметры тега #{$tagName}");
@@ -779,6 +800,223 @@ class AdminController extends Controller
 		}
 		
 		header('Location: /admin/invitations?status=pending');
+		exit;
+	}
+	
+	// ==================== CATEGORIES MANAGEMENT ====================
+
+	/**
+	 * Список категорий (GET /admin/categories)
+	 */
+	public function categoriesIndex(): void
+	{
+        if (!\App\Core\Auth::isAdmin()) { 
+            header('Location: /'); 
+            exit; 
+        }
+
+		$categoryModel = new Category();
+		$categories = $categoryModel->getAdminCategoriesList();
+
+		$this->render('categories_list', [
+			'title' => 'Управление категориями тегов',
+			'categories' => $categories,
+		]);
+	}
+
+	/**
+	 * Форма создания категории (GET /admin/categories/create)
+	 */
+	public function showCategoryCreateForm(): void
+	{
+        if (!\App\Core\Auth::isAdmin()) { 
+            header('Location: /'); 
+            exit; 
+        }
+
+		$this->render('category_create', [
+			'title' => 'Создание новой категории',
+			'request' => new \App\Core\Request(),
+		]);
+	}
+
+	/**
+	 * Обработка создания категории (POST /admin/categories/create)
+	 */
+	public function createCategory(): void
+	{
+        if (!\App\Core\Auth::isAdmin()) { 
+            header('Location: /'); 
+            exit; 
+        }
+
+		$request = new \App\Core\Request();
+		$request->validateCsrf();
+
+		$name = trim($request->getParams('name'));
+		$slug = strtolower(trim($request->getParams('slug')));
+		$description = trim($request->getParams('description'));
+		$sortOrder = (int)$request->getParams('sort_order', 0);
+
+		// Валидация
+		if (strlen($name) < 2) {
+			AppCoreSession::setFlash('error', 'Название категории должно содержать не менее 2 символов.');
+			header('Location: /admin/categories/create');
+			exit;
+		}
+
+		if (!preg_match('/^[a-z0-9\-]+$/', $slug)) {
+			AppCoreSession::setFlash('error', 'Slug должен содержать только латиницу в нижнем регистре, цифры и дефис.');
+			header('Location: /admin/categories/create');
+			exit;
+		}
+
+		$categoryModel = new Category();
+
+		if ($categoryModel->slugExists($slug)) {
+			AppCoreSession::setFlash('error', "Категория с slug '{$slug}' уже существует.");
+			header('Location: /admin/categories/create');
+			exit;
+		}
+
+		$categoryId = $categoryModel->createCategory([
+			'name' => $name,
+			'slug' => $slug,
+			'description' => $description,
+			'sort_order' => $sortOrder,
+		]);
+
+		AppCoreAudit::log('admin.category_created', "Администратор создал категорию '{$name}' (slug: {$slug})");
+		AppCoreSession::setFlash('success', "Категория '{$name}' успешно создана.");
+		header('Location: /admin/categories');
+		exit;
+	}
+
+	/**
+	 * Форма редактирования категории (GET /admin/categories/{id}/edit)
+	 */
+	public function showCategoryEditForm(string $id): void
+	{
+        if (!\App\Core\Auth::isAdmin()) { 
+            header('Location: /'); 
+            exit; 
+        }
+
+		$categoryId = (int)$id;
+		$categoryModel = new Category();
+		$category = $categoryModel->getById($categoryId);
+
+		if (!$category) {
+			AppCoreSession::setFlash('error', 'Категория не найдена.');
+			header('Location: /admin/categories');
+			exit;
+		}
+
+		$this->render('category_edit', [
+			'title' => 'Редактирование категории: ' . e($category['name']),
+			'categoryItem' => $category,
+			'request' => new \App\Core\Request(),
+		]);
+	}
+
+	/**
+	 * Обработка обновления категории (POST /admin/categories/{id}/edit)
+	 */
+	public function updateCategory(string $id): void
+	{
+        if (!\App\Core\Auth::isAdmin()) { 
+            header('Location: /'); 
+            exit; 
+        }
+
+		$request = new \App\Core\Request();
+		$request->validateCsrf();
+
+		$categoryId = (int)$id;
+		$categoryModel = new Category();
+		$category = $categoryModel->getById($categoryId);
+
+		if (!$category) {
+			AppCoreSession::setFlash('error', 'Категория не найдена.');
+			header('Location: /admin/categories');
+			exit;
+		}
+
+		$name = trim($request->getParams('name'));
+		$slug = strtolower(trim($request->getParams('slug')));
+		$description = trim($request->getParams('description'));
+		$sortOrder = (int)$request->getParams('sort_order', 0);
+
+		// Валидация
+		if (strlen($name) < 2) {
+			AppCoreSession::setFlash('error', 'Название категории должно содержать не менее 2 символов.');
+			header("Location: /admin/categories/{$categoryId}/edit");
+			exit;
+		}
+
+		if (!preg_match('/^[a-z0-9\-]+$/', $slug)) {
+			AppCoreSession::setFlash('error', 'Slug должен содержать только латиницу в нижнем регистре, цифры и дефис.');
+			header("Location: /admin/categories/{$categoryId}/edit");
+			exit;
+		}
+
+		if ($categoryModel->slugExists($slug, $categoryId)) {
+			AppCoreSession::setFlash('error', "Slug '{$slug}' уже используется другой категорией.");
+			header("Location: /admin/categories/{$categoryId}/edit");
+			exit;
+		}
+
+		$categoryModel->updateCategory($categoryId, [
+			'name' => $name,
+			'slug' => $slug,
+			'description' => $description,
+			'sort_order' => $sortOrder,
+		]);
+
+		AppCoreAudit::log('admin.category_updated', "Администратор обновил категорию '{$name}' (ID: {$categoryId})");
+		AppCoreSession::setFlash('success', "Категория '{$name}' успешно обновлена.");
+		header('Location: /admin/categories');
+		exit;
+	}
+
+	/**
+	 * Удаление категории (POST /admin/categories/{id}/delete)
+	 */
+	public function deleteCategory(string $id): void
+	{
+        if (!\App\Core\Auth::isAdmin()) { 
+            header('Location: /'); 
+            exit; 
+        }
+
+		$request = new \App\Core\Request();
+		$request->validateCsrf();
+
+		$categoryId = (int)$id;
+		$categoryModel = new Category();
+		$category = $categoryModel->getById($categoryId);
+
+		if (!$category) {
+			AppCoreSession::setFlash('error', 'Категория не найдена.');
+			header('Location: /admin/categories');
+			exit;
+		}
+
+		// Проверяем наличие тегов
+		if ($categoryModel->hasTags($categoryId)) {
+			AppCoreSession::setFlash('error', 'Нельзя удалить категорию, содержащую теги. Сначала перенесите теги в другую категорию.');
+			header('Location: /admin/categories');
+			exit;
+		}
+
+		if ($categoryModel->deleteCategory($categoryId)) {
+			AppCoreAudit::log('admin.category_deleted', "Администратор удалил категорию '{$category['name']}' (ID: {$categoryId})");
+			AppCoreSession::setFlash('success', "Категория '{$category['name']}' успешно удалена.");
+		} else {
+			AppCoreSession::setFlash('error', 'Не удалось удалить категорию.');
+		}
+
+		header('Location: /admin/categories');
 		exit;
 	}
 }

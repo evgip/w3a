@@ -1,5 +1,9 @@
 <?php
 
+// === Categories ===
+$router->add('GET', 'categories', 'CategoriesController@index', 'categories.index');
+$router->add('GET', 'categories/{slug}', 'CategoriesController@show', 'categories.show');
+
 // POST-маршруты (AJAX) — имена тоже нужны для единообразия
 $router->add('POST', 'filters/add',    'TagsController@addFilter',    'tags.filters.add');
 $router->add('POST', 'filters/remove', 'TagsController@removeFilter', 'tags.filters.remove');

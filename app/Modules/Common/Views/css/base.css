@@ -1,73 +1,55 @@
 @charset "UTF-8";
 
 /* ============================================
-   W3A — стили в духе Lobsters
-   Минимализм, типографика, красный акцент
+   W3A — стиль. Минимализм, типографика, красный акцент
    ============================================ */
 
 /* ---------- CSS-переменные (светлая тема) ---------- */
 :root {
-    /* Базовые цвета */
     --base-bg: 254 254 254;
     --base-fg: 51 51 51;
-
-    /* Контрастность текста */
     --opacity-fg: rgb(var(--base-fg) / 100%);
     --opacity-fg-contrast-10: rgb(var(--base-fg) / 84%);
     --opacity-fg-contrast-7-5: rgb(var(--base-fg) / 75%);
     --opacity-fg-contrast-6: rgb(var(--base-fg) / 67%);
     --opacity-fg-contrast-5: rgb(var(--base-fg) / 63%);
     --opacity-fg-contrast-4-5: rgb(var(--base-fg) / 59%);
-
-    /* Акцентные цвета */
-    --color-bg-accent: rgb(172 19 13);        /* красный  */
-    --color-fg-link: rgb(28 89 209);          /* синий для ссылок */
+    --color-bg-accent: rgb(172 19 13);
+    --color-fg-link: rgb(28 89 209);
     --color-fg-link-visited: rgb(95 134 212);
-    --color-fg-accent: rgb(172 19 13);        /* красный для акцентов */
-    --color-fg-negative: rgb(139 0 0);        /* тёмно-красный для ошибок */
-    --color-fg-affirmative: rgb(0 128 0);     /* зелёный для успеха */
-    --color-fg-author: rgb(96 129 189);       /* синий для автора */
-    --color-fg-shape: rgb(187 187 187);       /* серый для линий */
-
-    /* Фоны элементов */
+    --color-fg-accent: rgb(172 19 13);
+    --color-fg-negative: rgb(139 0 0);
+    --color-fg-affirmative: rgb(0 128 0);
+    --color-fg-author: rgb(96 129 189);
+    --color-fg-shape: rgb(187 187 187);
     --color-bg: rgb(var(--base-bg));
     --color-fg: rgb(var(--base-fg) / var(--opacity-fg));
     --color-box-bg: #fff;
     --color-box-bg-shaded: #eee;
     --color-box-border: #ccc;
     --color-box-border-focus: #808080;
-
-    /* Кнопки */
     --color-button-bg: #fafafa;
     --color-button-bg-shaded: #e6e6e6;
-
-    /* Таблицы */
     --color-table-header-bg: #eaeaea;
     --color-table-header-border: #cacaca;
     --color-table-row-bg-even: #f8f8f8;
     --color-table-row-bg-odd: #f5f5f5;
-
-    /* Теги */
+    --color-table-row-border: #e0e0e0;
     --color-tag-bg: #fffcd7;
     --color-tag-border: #d5d458;
-
-    /* Уведомления */
     --color-flash-bg-error: #fdcfcc;
     --color-flash-bg-success: #dff0d8;
     --color-flash-bg-notice: #cce6ee;
-
-    /* Размеры */
     --font-size-default: 1rem;
     --font-size-tags: 0.66rem;
     --input-outline-width: 2px;
+    --transition-fast: 0.2s ease-in-out;
 }
 
-/* ---------- Тёмная тема ---------- */
 @media (prefers-color-scheme: dark) {
     :root {
         --base-bg: 20 20 20;
         --base-fg: 220 220 220;
-
         --color-bg-accent: rgb(220 80 70);
         --color-fg-link: rgb(120 170 255);
         --color-fg-link-visited: rgb(160 180 230);
@@ -76,38 +58,31 @@
         --color-fg-affirmative: rgb(100 200 100);
         --color-fg-author: rgb(140 170 230);
         --color-fg-shape: rgb(80 80 80);
-
-        --color-bg: rgb(var(--base-bg));
-        --color-fg: rgb(var(--base-fg) / var(--opacity-fg));
         --color-box-bg: #2a2a2a;
         --color-box-bg-shaded: #1e1e1e;
         --color-box-border: #444;
         --color-box-border-focus: #888;
-
         --color-button-bg: #333;
         --color-button-bg-shaded: #444;
-
         --color-table-header-bg: #2e2e2e;
         --color-table-header-border: #444;
         --color-table-row-bg-even: #252525;
         --color-table-row-bg-odd: #2a2a2a;
-
+        --color-table-row-border: #333;
         --color-tag-bg: #3a3a20;
         --color-tag-border: #6a6a30;
-
         --color-flash-bg-error: #4a2020;
         --color-flash-bg-success: #204a20;
         --color-flash-bg-notice: #203a4a;
     }
 }
 
-/* ---------- Базовые стили ---------- */
 html {
     font-size: var(--font-size-default);
     overflow-y: scroll;
     -moz-text-size-adjust: none;
     -webkit-text-size-adjust: none;
-	scroll-behavior: smooth; /* Плавная прокрутка для всех якорей */
+    scroll-behavior: smooth;
 }
 
 body, textarea, input, button {
@@ -147,6 +122,10 @@ hr {
     height: 1px;
     background-color: var(--color-fg-shape);
     margin: 1em 0;
+}
+
+ul {
+	list-style-type: none;
 }
 
 pre {
@@ -257,29 +236,14 @@ li.story:last-child {
     border-bottom: none;
 }
 
-/* Блок голосования */
-div.voters {
+.voters {
     float: left;
     margin-top: 0;
     text-align: center;
     margin-right: 10px;
 }
 
-.upvoter {
-    color: var(--opacity-fg-contrast-4-5);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-self: center;
-    text-decoration: none;
-    font-size: 1.2rem;
-    cursor: pointer;
-    background: none;
-    border: none;
-    padding: 0;
-}
-
-/* Кнопка голосования */
+/* ✅ Единая кнопка голосования (объединены два блока) */
 .upvoter {
     color: var(--opacity-fg-contrast-4-5);
     display: flex;
@@ -297,10 +261,8 @@ div.voters {
 
 .upvoter:hover {
     color: var(--color-fg-accent);
-	background: none;
 }
 
-/* Активное состояние (когда проголосовали) */
 .upvoter.upvoted {
     color: var(--color-fg-accent);
 }
@@ -312,8 +274,7 @@ div.voters {
     margin: 2px 0;
 }
 
-/* Контент публикации */
-div.story_liner {
+.story_liner {
     padding-top: 0.25em;
     padding-bottom: 0.25em;
     word-break: break-word;
@@ -347,14 +308,12 @@ li .domain:hover {
     text-decoration: underline;
 }
 
-/* Описание публикации */
-div.story_content {
+.story_content {
     margin: 0.5em 0;
     color: var(--opacity-fg-contrast-7-5);
     font-size: 0.9em;
 }
 
-/* ---------- Теги ---------- */
 .tag {
     background-color: var(--color-tag-bg);
     border: 1px solid var(--color-tag-border);
@@ -367,8 +326,8 @@ div.story_content {
     white-space: nowrap;
     display: inline-block;
     vertical-align: middle;
-	line-height: 1.2em;
-	font-weight: normal;
+    line-height: 1.2em;
+    font-weight: normal;
 }
 
 .tag:hover {
@@ -377,7 +336,6 @@ div.story_content {
 
 .tag:visited { color: var(--opacity-fg-contrast-10); }
 
-/* ---------- Метаданные (byline) ---------- */
 li .byline {
     color: var(--opacity-fg-contrast-4-5);
     font-size: 0.85em;
@@ -406,13 +364,11 @@ img.avatar {
     width: 16px;
 }
 
-/* Разделитель в byline */
 .byline .divider {
     color: var(--color-fg-shape);
     margin: 0 0.25em;
 }
 
-/* ---------- Дополнительные классы для форм ---------- */
 .form-input-wide {
     width: 100%;
     max-width: 600px;
@@ -445,35 +401,6 @@ img.avatar {
 
 /* ---------- Комментарии ---------- */
 ol.comments {
-    margin-left: 20px;
-    margin-bottom: 0;
-    padding-left: 6px;
-    list-style: none;
-}
-
-.comment {
-    clear: both;
-    padding-top: 0.4em;
-    padding-bottom: 0.4em;
-    position: relative;
-}
-
-div.comment_text {
-    max-width: 45rem;
-    overflow-wrap: break-word;
-    overflow: hidden;
-}
-
-div.comment_text p {
-    margin: 0.5em 0;
-}
-
-div.comment_text p:first-child {
-    margin-top: 0.3em;
-}
-
-/* ---------- Комментарии (Comments) ---------- */
-ol.comments {
     margin-left: 0;
     margin-bottom: 0;
     padding-left: 0;
@@ -492,47 +419,47 @@ ol.comments ol.comments {
     position: relative;
 }
 
-div.comment_meta {
+.comment_meta {
     color: var(--opacity-fg-contrast-4-5);
     font-size: 0.85em;
     margin-bottom: 0.3em;
 }
 
-div.comment_meta a {
+.comment_meta a {
     color: var(--opacity-fg-contrast-4-5);
     text-decoration: none;
 }
 
-div.comment_meta a:hover {
+.comment_meta a:hover {
     text-decoration: underline;
 }
 
-div.comment_meta .score {
+.comment_meta .score {
     font-size: inherit;
     margin: 0 0.25em;
 }
 
-div.comment_text {
+.comment_text {
     max-width: 45rem;
     overflow-wrap: break-word;
     overflow: hidden;
 }
 
-div.comment_text p {
+.comment_text p {
     margin: 0.5em 0;
 }
 
-div.comment_text p:first-child {
+.comment_text p:first-child {
     margin-top: 0.3em;
 }
 
-div.comment_actions {
+.comment_actions {
     margin-top: 0.3em;
     font-size: 0.85em;
 }
 
-div.comment_actions a,
-div.comment_actions button {
+.comment_actions a,
+.comment_actions button {
     color: var(--opacity-fg-contrast-4-5);
     text-decoration: none;
     background: none;
@@ -542,13 +469,13 @@ div.comment_actions button {
     cursor: pointer;
 }
 
-div.comment_actions a:hover,
-div.comment_actions button:hover {
+.comment_actions a:hover,
+.comment_actions button:hover {
     color: var(--color-fg);
     text-decoration: underline;
 }
 
-div.comment_actions .divider {
+.comment_actions .divider {
     color: var(--color-fg-shape);
     margin: 0 0.25em;
 }
@@ -557,7 +484,7 @@ div.comment_actions .divider {
     opacity: 0.6;
 }
 
-.comment.deleted div.comment_text {
+.comment.deleted .comment_text {
     font-style: italic;
     color: var(--opacity-fg-contrast-4-5);
 }
@@ -580,8 +507,6 @@ div.comment_actions .divider {
     }
 }
 
-
-
 /* ---------- Голосование в комментариях ---------- */
 .comment_votes {
     display: inline-flex;
@@ -600,180 +525,6 @@ div.comment_actions .divider {
     margin: 0;
 }
 
-/* ---------- Форма комментария ---------- */
-div.comment_form_container {
-    margin-top: 1em;
-    padding: 0.5em 0;
-}
-
-div.comment_form_container form {
-    margin-left: 0;
-}
-
-div.comment_form_container textarea {
-    width: 100%;
-    box-sizing: border-box;
-    min-height: 80px;
-}
-
-div.comment_form_container button {
-    margin-top: 0.3em;
-}
-
-/* ---------- Inline-формы (для действий в byline) ---------- */
-.inline-form {
-    display: inline;
-}
-
-
-/* ---------- Загрузка аватара ---------- */
-.avatar-upload-container {
-    display: flex;
-    align-items: flex-start;
-    gap: 1em;
-    margin-top: 0.5em;
-}
-
-.avatar-preview {
-    width: 80px;
-    height: 80px;
-    border-radius: 3px;
-    object-fit: cover;
-    border: 1px solid var(--color-box-border);
-}
-
-.avatar-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 80px;
-    height: 80px;
-    border-radius: 3px;
-    background-color: var(--color-fg-accent);
-    color: white;
-    font-size: 2em;
-    font-weight: bold;
-    border: 1px solid var(--color-box-border);
-}
-
-.form-input-file {
-    font-size: 0.9em;
-    margin-bottom: 0.3em;
-}
-
-/* ---------- Профиль пользователя ---------- */
-.profile-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 1.5em;
-    margin-bottom: 1.5em;
-}
-
-.profile-avatar-large {
-    width: 100px;
-    height: 100px;
-    border-radius: 3px;
-    object-fit: cover;
-    border: 1px solid var(--color-box-border);
-    flex-shrink: 0;
-}
-
-.profile-avatar-placeholder-large {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100px;
-    height: 100px;
-    border-radius: 3px;
-    background-color: var(--color-fg-accent);
-    color: white;
-    font-size: 3em;
-    font-weight: bold;
-    border: 1px solid var(--color-box-border);
-    flex-shrink: 0;
-}
-
-.profile-info {
-    flex-grow: 1;
-}
-
-.profile-username {
-    margin: 0 0 0.3em 0;
-    font-size: 1.5em;
-}
-
-.profile-status {
-    display: inline-block;
-    padding: 0.2em 0.6em;
-    background-color: var(--color-box-bg-shaded);
-    border: 1px solid var(--color-box-border);
-    border-radius: 3px;
-    font-size: 0.85em;
-    color: var(--opacity-fg-contrast-6);
-}
-
-.profile-bio {
-    margin: 1em 0;
-    padding: 1em;
-    background-color: var(--color-box-bg-shaded);
-    border-left: 3px solid var(--color-fg-shape);
-    font-style: italic;
-    color: var(--opacity-fg-contrast-7-5);
-}
-
-.profile-details {
-    width: 100%;
-    max-width: 600px;
-    border-collapse: collapse;
-    margin-top: 1.5em;
-}
-
-.profile-details td {
-    padding: 0.5em 0;
-    border-bottom: 1px solid var(--color-box-bg-shaded);
-}
-
-.profile-details td:first-child {
-    font-weight: bold;
-    color: var(--opacity-fg-contrast-6);
-    width: 200px;
-    vertical-align: top;
-}
-
-.profile-details td:last-child {
-    color: var(--color-fg);
-}
-
-.profile-karma-positive {
-    color: var(--color-fg-affirmative);
-    font-weight: bold;
-}
-
-.profile-karma-negative {
-    color: var(--color-fg-negative);
-    font-weight: bold;
-}
-
-.profile-karma-neutral {
-    color: var(--opacity-fg-contrast-6);
-}
-
-.profile-id-subtext {
-    color: var(--opacity-fg-contrast-4-5);
-    font-size: 0.85em;
-    margin-left: 0.5em;
-}
-
-.profile-message-btn {
-    margin-top: 0.5em;
-}
-
-/* ---------- Таблица уведомлений ---------- */
-table.data tr.unread td {
-    background-color: var(--color-flash-bg-notice);
-    font-weight: bold;
-}
-
 /* ---------- Формы ---------- */
 input, button, select, textarea {
     color: var(--color-fg);
@@ -790,12 +541,13 @@ input:focus, button:focus, select:focus, textarea:focus {
 }
 
 textarea {
-    width: 100%;
+    width: 99%;
     box-sizing: border-box;
     min-height: 80px;
     resize: vertical;
 }
 
+/* ✅ Объединённые кнопки: button, input[type="submit"], input[type="button"], a.button */
 button,
 input[type="submit"],
 input[type="button"],
@@ -818,7 +570,7 @@ input[type="button"]:hover {
     background-color: var(--color-button-bg-shaded);
 }
 
-/* Кнопка-ссылка (без рамки) */
+/* Кнопка-ссылка (без фона и рамки) */
 .btn-link {
     background: none;
     border: none;
@@ -831,39 +583,163 @@ input[type="button"]:hover {
 
 .btn-link:hover {
     opacity: 0.8;
+	background-color: transparent;
 }
 
-/* ---------- Уведомления (Flash messages) ---------- */
-.flash-error,
-.flash-notice,
-.flash-success {
+/* ---------- Уведомления (Alerts / Flash messages) ---------- */
+.alert, .flash-error, .flash-success, .flash-notice {
     position: relative;
-    padding: 7px 15px;
+    padding: 0.75em 1em;
     margin-bottom: 1em;
-    border: 1px solid var(--color-box-border);
-    border-radius: 4px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    font-size: 0.9em;
+    line-height: 1.4;
 }
 
-.flash-error {
-    background-color: var(--color-flash-bg-error);
-}
-
-.flash-success {
+.alert-success, .flash-success {
     background-color: var(--color-flash-bg-success);
+    border-color: var(--color-fg-affirmative);
+    color: var(--color-fg);
 }
 
-.flash-notice {
+.alert-danger, .flash-error {
+    background-color: var(--color-flash-bg-error);
+    border-color: var(--color-fg-negative);
+    color: var(--color-fg);
+}
+
+.alert-notice, .flash-notice {
     background-color: var(--color-flash-bg-notice);
+    border-color: var(--color-fg-link);
+    color: var(--color-fg);
+}
+
+.alert strong {
+    font-weight: bold;
+}
+
+/* ------------------- Более плавное раскрытие постов на центральной ----------------- */
+.story_content details {
+    border: none;
+    background: none;
+}
+
+.story_content summary {
+    cursor: pointer;
+    padding: 0.5em 0;
+    color: #666;
+    font-style: italic;
+}
+
+.story_content summary:hover {
+    color: #333;
+}
+
+.story_content details[open] summary {
+    margin-bottom: 1em;
+    border-bottom: 1px solid #eee;
+}
+
+.story_content .full-content {
+    padding: 1em 0;
+}
+
+/* ------------------- Layout комментариев ----------------- */
+
+/* Карточка истории с новыми комментариями */
+.story-card--has-new {
+    border-left: 3px solid #0d6efd;
+    background-color: #f8f9ff;
+}
+
+/* Бейдж "+N новых" */
+.new-comments {
+    display: inline-block;
+    color: #dc3545;
+}
+
+.new-comments:hover {
+    color: #bb2d3b;
+}
+
+/* Переопределяем базовые стили для li.comment (важно для layout) */
+li.comment {
+    display: block;
+    clear: none; /* Убираем clear: both из base.css */
+    overflow: hidden; /* Создаёт BFC для очистки float */
+    margin-bottom: 0.5em;
+    padding: 0.5em 0;
+}
+
+/* Голосование слева (float уже есть в base.css для .voters) */
+li.comment > .comment_votes {
+    float: left;
+    margin-right: 0.75em;
+}
+
+/* Убираем float для вложенных voters */
+li.comment .comment_votes .voters {
+    float: none;
+    margin-right: 0;
+}
+
+/* Контент справа (BFC занимает оставшееся пространство) */
+li.comment > .comment_body {
+    overflow: hidden; /* Создаёт BFC */
+    min-height: 1px; /* Гарантирует, что блок виден */
+}
+
+/* Вложенные комментарии */
+li.comment > ol.comments {
+    clear: both; /* Опускается ниже floated элементов */
+    margin-left: 1.5em;
+    margin-top: 0.5em;
+    padding-left: 1em;
+    border-left: 1px dashed var(--color-fg-shape, #e0e0e0);
+}
+
+/* Убираем отступы у первого уровня комментариев */
+ol.comments {
+    list-style: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 600px) {
+    li.comment > .comment_votes {
+        float: none;
+        margin-bottom: 0.5em;
+    }
+    
+    li.comment > .comment_body {
+        overflow: visible;
+    }
+    
+    li.comment > ol.comments {
+        margin-left: 0.5em;
+        padding-left: 0.5em;
+    }
+}
+
+/* ---------- Утилитарные классы ---------- */
+.clear { clear: both; }
+
+.hint {
+    color: var(--opacity-fg-contrast-5);
+    font-style: italic;
+    font-size: 0.85em;
 }
 
 /* ---------- Пагинация ---------- */
-div.page_link_buttons {
+.page_link_buttons {
     font-weight: bold;
     margin-top: 1.5em;
 }
 
-div.page_link_buttons a,
-div.page_link_buttons span {
+.page_link_buttons a,
+.page_link_buttons span {
     border: 1px solid var(--color-box-border);
     background-color: var(--color-button-bg);
     color: var(--opacity-fg-contrast-7-5);
@@ -874,12 +750,12 @@ div.page_link_buttons span {
     display: inline-block;
 }
 
-div.page_link_buttons a:hover {
+.page_link_buttons a:hover {
     background-color: var(--color-button-bg-shaded);
 }
 
-div.page_link_buttons a.cur,
-div.page_link_buttons span.current {
+.page_link_buttons a.cur,
+.page_link_buttons span.current {
     background-color: transparent;
     border-color: transparent;
     color: var(--color-fg);
@@ -906,26 +782,25 @@ table {
   border-collapse: collapse;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 20px 0;
-  color: #333;
+  color: var(--color-fg);
 }
 
 table th,
 table td {
   padding: 12px 15px;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0; /* Тонкая светлая линия */
+  border-bottom: 1px solid var(--color-table-row-border);
 }
 
 table thead th {
   font-weight: 600;
   background-color: transparent;
-  border-bottom: 2px solid #d0d0d0; /* Чуть толще для шапки */
+  border-bottom: 2px solid var(--color-table-header-border);
 }
 
 table tbody tr:hover {
-  background-color: #f9f9f9; /* Лёгкий фон при наведении */
+  background-color: var(--color-box-bg-shaded);
 }
-
 
 table.data {
     width: 100%;
@@ -996,12 +871,6 @@ table.data.zebra tr:nth-child(odd) td {
 
 .navbar-links a:hover {
     color: var(--color-fg);
-}
-
-.btn-primary {
-    background-color: #ac130d;
-    border-color: #8a0f0a;
-    color: #fff;
 }
 
 /* ---------- Кнопка регистрации ---------- */
@@ -1079,13 +948,13 @@ table.data.zebra tr:nth-child(odd) td {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #212529; /* Аналог text-dark */
+    color: var(--color-fg);
     text-decoration: none;
     transition: color 0.2s ease-in-out;
 }
 
 .header-notification-link:hover {
-    color: #0d6efd; /* Цвет при наведении (синий, можно изменить под ваш дизайн) */
+    color: var(--color-fg-link);
 }
 
 /* SVG иконка колокольчика */
@@ -1241,24 +1110,6 @@ ol.notification-list {
     color: white;
 }
 
-/* ------------------- Адаптивность уведомлений ---------- */
-@media only screen and (max-width: 480px) {
-    .notification-filters {
-        gap: 0.5em;
-    }
-
-    .notification-icon {
-        width: 32px;
-        height: 32px;
-        font-size: 1em;
-    }
-
-    .notification-link {
-        gap: 0.5em;
-        padding: 0.5em 0.1em;
-    }
-}
-
 /* Бейдж с количеством уведомлений */
 .header-notification-badge {
     position: absolute;
@@ -1269,13 +1120,13 @@ ol.notification-list {
     font-weight: 600;
     line-height: 1;
     padding: 0.25em 0.4em;
-    border-radius: 9999px; /* Аналог rounded-pill */
-    background-color: #dc3545; /* Аналог bg-danger */
+    border-radius: 9999px;
+    background-color: #dc3545;
     color: #ffffff;
     text-align: center;
     min-width: 16px;
     white-space: nowrap;
-    box-shadow: 0 0 0 2px #ffffff; /* Белая обводка для красивого контраста с фоном шапки */
+    box-shadow: 0 0 0 2px #ffffff;
 }
 
 /* ---------- Стрелка dropdown ---------- */
@@ -1385,39 +1236,166 @@ ol.notification-list {
     display: none;
 }
 
-/* ---------- Адаптивность для мобильных ---------- */
-@media only screen and (max-width: 480px) {
-    .navbar-container {
-        flex-wrap: wrap;
-    }
-
-    .navbar-links {
-        width: 100%;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-        gap: 0.5em;
-        margin-top: 0.5em;
-    }
-
-    .navbar-user-dropdown-container {
-        margin-left: auto;
-    }
-
-    .navbar-dropdown-menu {
-        right: 0;
-        left: auto;
-        min-width: 160px;
-    }
+/* ---------- Загрузка аватара ---------- */
+.avatar-upload-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 1em;
+    margin-top: 0.5em;
 }
 
+.avatar-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid var(--color-box-border);
+}
 
-/* ---------- Утилитарные классы ---------- */
-.clear { clear: both; }
+.avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 3px;
+    background-color: var(--color-fg-accent);
+    color: white;
+    font-size: 2em;
+    font-weight: bold;
+    border: 1px solid var(--color-box-border);
+}
 
-.hint {
-    color: var(--opacity-fg-contrast-5);
-    font-style: italic;
+.form-input-file {
+    font-size: 0.9em;
+    margin-bottom: 0.3em;
+}
+
+/* ---------- Профиль пользователя ---------- */
+.profile-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5em;
+    margin-bottom: 1.5em;
+}
+
+.profile-avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid var(--color-box-border);
+    flex-shrink: 0;
+}
+
+.profile-avatar-placeholder-large {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    height: 100px;
+    border-radius: 3px;
+    background-color: var(--color-fg-accent);
+    color: white;
+    font-size: 3em;
+    font-weight: bold;
+    border: 1px solid var(--color-box-border);
+    flex-shrink: 0;
+}
+
+.profile-info {
+    flex-grow: 1;
+}
+
+.profile-username {
+    margin: 0 0 0.3em 0;
+    font-size: 1.5em;
+}
+
+.profile-status {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    background-color: var(--color-box-bg-shaded);
+    border: 1px solid var(--color-box-border);
+    border-radius: 3px;
     font-size: 0.85em;
+    color: var(--opacity-fg-contrast-6);
+}
+
+.profile-bio {
+    margin: 1em 0;
+    padding: 1em;
+    background-color: var(--color-box-bg-shaded);
+    border-left: 3px solid var(--color-fg-shape);
+    font-style: italic;
+    color: var(--opacity-fg-contrast-7-5);
+}
+
+.profile-details {
+    width: 100%;
+    max-width: 600px;
+    border-collapse: collapse;
+    margin-top: 1.5em;
+}
+
+.profile-details td {
+    padding: 0.5em 0;
+    border-bottom: 1px solid var(--color-box-bg-shaded);
+}
+
+.profile-details td:first-child {
+    font-weight: bold;
+    color: var(--opacity-fg-contrast-6);
+    width: 200px;
+    vertical-align: top;
+}
+
+.profile-details td:last-child {
+    color: var(--color-fg);
+}
+
+.profile-karma-positive {
+    color: var(--color-fg-affirmative);
+    font-weight: bold;
+}
+
+.profile-karma-negative {
+    color: var(--color-fg-negative);
+    font-weight: bold;
+}
+
+.profile-karma-neutral {
+    color: var(--opacity-fg-contrast-6);
+}
+
+.profile-id-subtext {
+    color: var(--opacity-fg-contrast-4-5);
+    font-size: 0.85em;
+    margin-left: 0.5em;
+}
+
+.profile-message-btn {
+    margin-top: 0.5em;
+}
+
+/* ---------- Таблица уведомлений ---------- */
+table.data tr.unread td {
+    background-color: var(--color-flash-bg-notice);
+    font-weight: bold;
+}
+
+/* ---------- Inline-формы (для действий в byline) ---------- */
+.inline-form {
+    display: inline;
+}
+
+.delete {
+	color: var(--color-fg-negative);
+	font-size: 0.85em;
+}
+
+.delete:hover {
+    opacity: 0.8;
 }
 
 /* ---------- Адаптивность (мобильные) ---------- */
@@ -1439,7 +1417,7 @@ ol.notification-list {
         width: 100%;
     }
 
-    div.comment_form_container form {
+    .comment_form_container form {
         margin-left: 0;
     }
 
@@ -1452,151 +1430,49 @@ ol.notification-list {
         display: inline-block;
         margin: 0.25em 0.5em;
     }
+
+    .navbar-container {
+        flex-wrap: wrap;
+    }
+
+    .navbar-links {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 0.5em;
+        margin-top: 0.5em;
+    }
+
+    .navbar-user-dropdown-container {
+        margin-left: auto;
+    }
+
+    .navbar-dropdown-menu {
+        right: 0;
+        left: auto;
+        min-width: 160px;
+    }
+	
+    .notification-filters {
+        gap: 0.5em;
+    }
+
+    .notification-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 1em;
+    }
+
+    .notification-link {
+        gap: 0.5em;
+        padding: 0.5em 0.1em;
+    }
 }
 
 /* ---------- Печать ---------- */
 @media print {
-    header#nav, footer, div.voters, .byline .divider {
+    header#nav, footer, .voters, .byline .divider {
         display: none;
     }
 }
 
-/* ---------- Уведомления (Alerts / Flash messages) ---------- */
-.alert, .flash-error, .flash-success, .flash-notice {
-    position: relative;
-    padding: 0.75em 1em;
-    margin-bottom: 1em;
-    border: 1px solid transparent;
-    border-radius: 3px;
-    font-size: 0.9em;
-    line-height: 1.4;
-}
-
-.alert-success, .flash-success {
-    background-color: var(--color-flash-bg-success);
-    border-color: var(--color-fg-affirmative);
-    color: var(--color-fg);
-}
-
-.alert-danger, .flash-error {
-    background-color: var(--color-flash-bg-error);
-    border-color: var(--color-fg-negative);
-    color: var(--color-fg);
-}
-
-.alert-notice, .flash-notice {
-    background-color: var(--color-flash-bg-notice);
-    border-color: var(--color-fg-link);
-    color: var(--color-fg);
-}
-
-.alert strong {
-    font-weight: bold;
-}
-
-/* ------------------- Более плавное раскрытие постов на центальной ----------------- */
-.story_content details {
-    border: none;
-    background: none;
-}
-
-.story_content summary {
-    cursor: pointer;
-    padding: 0.5em 0;
-    color: #666;
-    font-style: italic;
-}
-
-.story_content summary:hover {
-    color: #333;
-}
-
-.story_content details[open] summary {
-    margin-bottom: 1em;
-    border-bottom: 1px solid #eee;
-}
-
-.story_content .full-content {
-    padding: 1em 0;
-}
-
-
-/* ------------------- Layout комментариев ----------------- */
-
-
-/* Карточка истории с новыми комментариями */
-.story-card--has-new {
-    border-left: 3px solid #0d6efd;
-    background-color: #f8f9ff;
-}
-
-/* Бейдж "+N новых" */
-.new-comments {
-    display: inline-block;
-    color: #dc3545;
-}
-
-.new-comments:hover {
-    color: #bb2d3b;
-}
-
-
-/* Переопределяем базовые стили для li.comment */
-li.comment {
-    display: block;
-    clear: none; /* Убираем clear: both из base.css */
-    overflow: hidden; /* Создаёт BFC для очистки float */
-    margin-bottom: 0.5em;
-    padding: 0.5em 0;
-}
-
-/* Голосование слева (float уже есть в base.css для div.voters) */
-li.comment > .comment_votes {
-    float: left;
-    margin-right: 0.75em;
-}
-
-/* Убираем float для вложенных voters */
-li.comment .comment_votes .voters {
-    float: none;
-    margin-right: 0;
-}
-
-/* Контент справа (BFC занимает оставшееся пространство) */
-li.comment > .comment_body {
-    overflow: hidden; /* Создаёт BFC */
-    min-height: 1px; /* Гарантирует, что блок виден */
-}
-
-/* Вложенные комментарии */
-li.comment > ol.comments {
-    clear: both; /* Опускается ниже floated элементов */
-    margin-left: 1.5em;
-    margin-top: 0.5em;
-    padding-left: 1em;
-    border-left: 1px dashed var(--color-fg-shape, #e0e0e0);
-}
-
-/* Убираем отступы у первого уровня комментариев */
-ol.comments {
-    list-style: none;
-    padding-left: 0;
-    margin-left: 0;
-}
-
-/* Адаптивность для мобильных */
-@media (max-width: 600px) {
-    li.comment > .comment_votes {
-        float: none;
-        margin-bottom: 0.5em;
-    }
-    
-    li.comment > .comment_body {
-        overflow: visible;
-    }
-    
-    li.comment > ol.comments {
-        margin-left: 0.5em;
-        padding-left: 0.5em;
-    }
-}

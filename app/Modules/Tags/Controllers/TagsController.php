@@ -27,7 +27,7 @@ class TagsController extends Controller
 	 */
 	public function filters(): void
 	{
-		$this->redirectWithError('/login', 'Пожалуйста, войдите в систему для управления фильтрами.');
+		$this->requireAuth();
 
 		$userId = (int)$_SESSION['user_id'];
 		$filterModel = new \App\Modules\Tags\Models\TagFilter();

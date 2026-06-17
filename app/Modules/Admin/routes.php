@@ -8,20 +8,20 @@ $router->add('GET', 'admin/users', 'AdminController@users', 'admin.users');
 
 $router->add('POST', 'admin/users/{id}/toggle-status', 'AdminController@toggleUserStatus', 'admin.users.toggle_status');
 
-$router->add('GET', 'admin/audit', 'AdminController@auditLogs');
+$router->add('GET', 'admin/audit', 'AdminController@auditLogs', 'admin.tools.audit');
 
 
 // NEW: User status manipulation routes
-$router->add('POST', 'admin/users/{id}/archive', 'AdminController@archiveUser');
-$router->add('POST', 'admin/users/{id}/restore', 'AdminController@restoreUser');
+$router->add('POST', 'admin/users/{id}/archive', 'AdminController@archiveUser', 'admin.users.archive');
+$router->add('POST', 'admin/users/{id}/restore', 'AdminController@restoreUser', 'admin.users.restore');
 
 // ИНСТРУМЕНТЫ АДМИНИСТРАТОРА
-$router->add('GET', 'admin/tools', 'AdminController@tools');
-$router->add('POST', 'admin/tools/compile-assets', 'AdminController@compileAssets');
+$router->add('GET', 'admin/tools', 'AdminController@tools', 'admin.tools');
+$router->add('POST', 'admin/tools/compile-assets', 'AdminController@compileAssets', 'admin.tools.compile_assets');
 
 // ОЧИСТКА СИСТЕМНЫХ ДАННЫХ И ЛОГОВ
-$router->add('POST', 'admin/tools/clear-file-logs', 'AdminController@clearFileLogs');
-$router->add('POST', 'admin/tools/clear-db-audit', 'AdminController@clearDbAudit');
+$router->add('POST', 'admin/tools/clear-file-logs', 'AdminController@clearFileLogs', 'admin.tools.clear_file_logs');
+$router->add('POST', 'admin/tools/clear-db-audit', 'AdminController@clearDbAudit', 'admin.tools.clear_db_audit');
 
 
 // Admin Tag CRUD Management Routes
@@ -56,3 +56,12 @@ $router->add('POST', 'admin/firewall/{id}/unban', 'AdminController@unbanIp', 'ad
 $router->add('GET', 'admin/invitations', 'AdminController@invitationsIndex', 'admin.invitations');
 $router->add('POST', 'admin/invitations/{id}/approve', 'AdminController@approveInvitation', 'admin.invitations.approve');
 $router->add('POST', 'admin/invitations/{id}/reject', 'AdminController@rejectInvitation', 'admin.invitations.reject');
+
+
+// Admin Category CRUD Management Routes
+$router->add('GET', 'admin/categories', 'AdminController@categoriesIndex', 'admin.categories');
+$router->add('GET', 'admin/categories/create', 'AdminController@showCategoryCreateForm', 'admin.categories.create');
+$router->add('POST', 'admin/categories/create', 'AdminController@createCategory', 'admin.categories.create.submit');
+$router->add('GET', 'admin/categories/{id}/edit', 'AdminController@showCategoryEditForm', 'admin.categories.edit');
+$router->add('POST', 'admin/categories/{id}/edit', 'AdminController@updateCategory', 'admin.categories.edit.submit');
+$router->add('POST', 'admin/categories/{id}/delete', 'AdminController@deleteCategory', 'admin.categories.delete');
