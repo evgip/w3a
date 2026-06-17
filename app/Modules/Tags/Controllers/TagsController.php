@@ -30,7 +30,7 @@ class TagsController extends Controller
             $tagsByCategory[$catId][] = $tag;
         }
 
-        $this->render('categories/index', [
+        $this->render('index', [
             'title' => 'Категории тегов',
             'categories' => $categories,
             'tagsByCategory' => $tagsByCategory,

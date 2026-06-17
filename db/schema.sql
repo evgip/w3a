@@ -19,9 +19,9 @@ CREATE TABLE `audit_logs` (
 --
 
 INSERT INTO `audit_logs` (`id`, `user_id`, `username`, `role`, `ip_address`, `action`, `description`, `payload`, `created_at`) VALUES
-(1, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 23:30:23'),
-(2, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 23:30:44'),
-(3, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 23:31:21');
+(1, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 14:30:23'),
+(2, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 14:30:44'),
+(3, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 14:31:21');
 
 -- --------------------------------------------------------
 
@@ -35,6 +35,32 @@ CREATE TABLE `banned_ips` (
   `reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `categories`
+--
+
+CREATE TABLE `categories` (
+  `id` int UNSIGNED NOT NULL,
+  `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sort_order` int UNSIGNED NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Дамп данных таблицы `categories`
+--
+
+INSERT INTO `categories` (`id`, `name`, `slug`, `description`, `sort_order`, `created_at`, `updated_at`) VALUES
+(1, 'Языки программирования', 'languages', 'PHP, Python, JavaScript и другие', 10, '2026-06-17 04:10:39', '2026-06-17 04:10:39'),
+(2, 'Практики', 'practices', 'Безопасность, архитектура, методологии', 20, '2026-06-17 04:10:39', '2026-06-17 04:10:39'),
+(3, 'Формат', 'format', 'Видео, демонстрации проектов, подкасты', 30, '2026-06-17 04:10:39', '2026-06-17 04:10:39'),
+(4, 'Разное', 'other', 'Общие темы и обсуждения', 99, '2026-06-17 04:10:39', '2026-06-17 04:10:39');
 
 -- --------------------------------------------------------
 
@@ -59,12 +85,12 @@ CREATE TABLE `comments` (
 --
 
 INSERT INTO `comments` (`id`, `story_id`, `user_id`, `parent_id`, `comment`, `score`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 1, 1, NULL, 'Отличная архитектура у фреймворка!', 1, '2026-06-09 01:20:16', '2026-06-09 01:20:16', NULL),
-(2, 1, 1, 1, 'Согласен, один SQL-запрос на дерево — это быстро.', 1, '2026-06-09 01:20:16', '2026-06-09 02:08:52', NULL),
-(3, 1, 1, 2, 'И рекурсия на анонимных функциях PHP выглядит лаконично.', 1, '2026-06-09 01:20:16', '2026-06-09 01:20:16', NULL),
-(4, 1, 1, NULL, 'А когда мы добавим форму отправки нового комментария?', 1, '2026-06-09 01:20:16', '2026-06-09 01:20:16', NULL),
-(5, 2, 1, NULL, 'Добавим первые комментарий 333', 1, '2026-06-09 01:51:00', '2026-06-09 02:28:13', NULL),
-(6, 2, 1, 5, 'Добавим ответ Админу', 2, '2026-06-09 01:51:12', '2026-06-09 02:28:01', NULL);
+(1, 1, 1, NULL, 'Отличная архитектура у фреймворка!', 1, '2026-06-08 16:20:16', '2026-06-08 16:20:16', NULL),
+(2, 1, 1, 1, 'Согласен, один SQL-запрос на дерево — это быстро.', 1, '2026-06-08 16:20:16', '2026-06-08 17:08:52', NULL),
+(3, 1, 1, 2, 'И рекурсия на анонимных функциях PHP выглядит лаконично.', 1, '2026-06-08 16:20:16', '2026-06-08 16:20:16', NULL),
+(4, 1, 1, NULL, 'А когда мы добавим форму отправки нового комментария?', 1, '2026-06-08 16:20:16', '2026-06-08 16:20:16', NULL),
+(5, 2, 1, NULL, 'Добавим первые комментарий 333', 1, '2026-06-08 16:51:00', '2026-06-08 17:28:13', NULL),
+(6, 2, 1, 5, 'Добавим ответ Админу', 2, '2026-06-08 16:51:12', '2026-06-08 17:28:01', NULL);
 
 -- --------------------------------------------------------
 
@@ -97,6 +123,40 @@ CREATE TABLE `email_activations` (
 -- --------------------------------------------------------
 
 --
+-- Структура таблицы `invitations`
+--
+
+CREATE TABLE `invitations` (
+  `id` int UNSIGNED NOT NULL,
+  `code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `inviter_id` int UNSIGNED NOT NULL COMMENT 'ID пользователя, который пригласил',
+  `invitee_email` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Email получателя (опционально)',
+  `invitee_id` int UNSIGNED DEFAULT NULL COMMENT 'ID зарегистрировавшегося пользователя',
+  `status` enum('pending','accepted','expired','revoked') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `expires_at` timestamp NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `invitation_requests`
+--
+
+CREATE TABLE `invitation_requests` (
+  `id` int UNSIGNED NOT NULL,
+  `email` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Причина запроса',
+  `status` enum('pending','approved','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Структура таблицы `messages`
 --
 
@@ -107,6 +167,54 @@ CREATE TABLE `messages` (
   `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_read` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `moderations`
+--
+
+CREATE TABLE `moderations` (
+  `id` int UNSIGNED NOT NULL,
+  `moderator_id` int UNSIGNED NOT NULL,
+  `action` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Тип: ban, unban, delete_story, warn, mute и т.д.',
+  `target_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Тип объекта: user, story, comment',
+  `target_id` int UNSIGNED NOT NULL COMMENT 'ID объекта воздействия',
+  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `mod_activity`
+--
+
+CREATE TABLE `mod_activity` (
+  `id` int UNSIGNED NOT NULL,
+  `moderator_id` int UNSIGNED NOT NULL,
+  `action` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `date` date NOT NULL,
+  `count` int UNSIGNED NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `mod_notes`
+--
+
+CREATE TABLE `mod_notes` (
+  `id` int UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED NOT NULL COMMENT 'Пользователь, к которому относится заметка',
+  `moderator_id` int UNSIGNED NOT NULL COMMENT 'Автор заметки',
+  `note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_private` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1=видна только модераторам, 0=публичная',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -141,56 +249,42 @@ CREATE TABLE `rate_limits` (
 --
 
 INSERT INTO `rate_limits` (`id`, `ip_address`, `endpoint_action`, `created_at`) VALUES
-(158, '127.0.0.1', 'auth.submit', '2026-06-14 03:31:51'),
-(154, '127.0.0.1', 'global.get', '2026-06-14 03:31:44'),
-(155, '127.0.0.1', 'global.get', '2026-06-14 03:31:46'),
-(156, '127.0.0.1', 'global.get', '2026-06-14 03:31:48'),
-(157, '127.0.0.1', 'global.get', '2026-06-14 03:31:49'),
-(159, '127.0.0.1', 'global.get', '2026-06-14 03:31:54'),
-(160, '127.0.0.1', 'global.get', '2026-06-14 03:31:56'),
-(161, '127.0.0.1', 'global.get', '2026-06-14 03:32:02'),
-(162, '127.0.0.1', 'global.get', '2026-06-14 03:32:04'),
-(163, '127.0.0.1', 'global.get', '2026-06-14 03:32:07'),
-(164, '127.0.0.1', 'global.get', '2026-06-14 03:32:15'),
-(165, '127.0.0.1', 'global.get', '2026-06-14 03:32:17'),
-(166, '127.0.0.1', 'global.get', '2026-06-14 03:32:25'),
-(167, '127.0.0.1', 'global.get', '2026-06-14 03:32:28'),
-(168, '127.0.0.1', 'global.get', '2026-06-14 03:32:36'),
-(169, '127.0.0.1', 'global.get', '2026-06-14 03:32:38'),
-(170, '127.0.0.1', 'global.get', '2026-06-14 03:32:47'),
-(171, '127.0.0.1', 'global.get', '2026-06-14 03:32:49'),
-(172, '127.0.0.1', 'global.get', '2026-06-14 03:32:49'),
-(173, '127.0.0.1', 'global.get', '2026-06-14 03:32:57'),
-(174, '127.0.0.1', 'global.get', '2026-06-14 03:32:59'),
-(175, '127.0.0.1', 'global.get', '2026-06-14 03:33:02'),
-(176, '127.0.0.1', 'global.get', '2026-06-14 03:33:07'),
-(177, '127.0.0.1', 'global.get', '2026-06-14 03:33:10'),
-(178, '127.0.0.1', 'global.get', '2026-06-14 03:33:18'),
-(179, '127.0.0.1', 'global.get', '2026-06-14 03:33:20'),
-(180, '127.0.0.1', 'global.get', '2026-06-14 03:33:29'),
-(181, '127.0.0.1', 'global.get', '2026-06-14 03:33:31'),
-(182, '127.0.0.1', 'global.get', '2026-06-14 03:33:39'),
-(183, '127.0.0.1', 'global.get', '2026-06-14 03:33:40'),
-(184, '127.0.0.1', 'global.get', '2026-06-14 03:33:41'),
-(185, '127.0.0.1', 'global.get', '2026-06-14 03:33:41'),
-(186, '127.0.0.1', 'global.get', '2026-06-14 03:33:43'),
-(187, '127.0.0.1', 'global.get', '2026-06-14 03:33:43'),
-(188, '127.0.0.1', 'global.get', '2026-06-14 03:33:43'),
-(190, '127.0.0.1', 'global.get', '2026-06-14 03:33:46'),
-(191, '127.0.0.1', 'global.get', '2026-06-14 03:33:46'),
-(192, '127.0.0.1', 'global.get', '2026-06-14 03:33:46'),
-(193, '127.0.0.1', 'global.get', '2026-06-14 03:33:49'),
-(194, '127.0.0.1', 'global.get', '2026-06-14 03:33:49'),
-(195, '127.0.0.1', 'global.get', '2026-06-14 03:33:49'),
-(196, '127.0.0.1', 'global.get', '2026-06-14 03:33:49'),
-(197, '127.0.0.1', 'global.get', '2026-06-14 03:33:58'),
-(198, '127.0.0.1', 'global.get', '2026-06-14 03:33:58'),
-(199, '127.0.0.1', 'global.get', '2026-06-14 03:33:58'),
-(200, '127.0.0.1', 'global.get', '2026-06-14 03:33:59'),
-(201, '127.0.0.1', 'global.get', '2026-06-14 03:34:02'),
-(202, '127.0.0.1', 'global.get', '2026-06-14 03:34:08'),
-(203, '127.0.0.1', 'global.get', '2026-06-14 03:34:09'),
-(189, '127.0.0.1', 'global.post', '2026-06-14 03:33:46');
+(606, '127.0.0.1', 'global.get', '2026-06-17 11:59:24'),
+(607, '127.0.0.1', 'global.get', '2026-06-17 11:59:35'),
+(608, '127.0.0.1', 'global.get', '2026-06-17 11:59:45'),
+(609, '127.0.0.1', 'global.get', '2026-06-17 11:59:56'),
+(610, '127.0.0.1', 'global.get', '2026-06-17 11:59:57'),
+(611, '127.0.0.1', 'global.get', '2026-06-17 11:59:57'),
+(612, '127.0.0.1', 'global.get', '2026-06-17 12:00:06'),
+(613, '127.0.0.1', 'global.get', '2026-06-17 12:00:17'),
+(614, '127.0.0.1', 'global.get', '2026-06-17 12:00:20'),
+(615, '127.0.0.1', 'global.get', '2026-06-17 12:00:20'),
+(616, '127.0.0.1', 'global.get', '2026-06-17 12:00:24'),
+(617, '127.0.0.1', 'global.get', '2026-06-17 12:00:24'),
+(618, '127.0.0.1', 'global.get', '2026-06-17 12:00:27'),
+(619, '127.0.0.1', 'global.get', '2026-06-17 12:00:38');
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `read_ribbons`
+--
+
+CREATE TABLE `read_ribbons` (
+  `id` int UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED NOT NULL,
+  `story_id` int UNSIGNED NOT NULL,
+  `last_read_comment_id` int UNSIGNED NOT NULL DEFAULT '0' COMMENT 'ID последнего прочитанного комментария (0 = история открыта, но комментариев не было)',
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Отметки прочитанных историй для индикации новых комментариев';
+
+--
+-- Дамп данных таблицы `read_ribbons`
+--
+
+INSERT INTO `read_ribbons` (`id`, `user_id`, `story_id`, `last_read_comment_id`, `updated_at`) VALUES
+(1, 1, 2, 6, '2026-06-17 10:32:51'),
+(2, 1, 1, 4, '2026-06-17 10:32:57');
 
 -- --------------------------------------------------------
 
@@ -203,21 +297,23 @@ CREATE TABLE `stories` (
   `user_id` int UNSIGNED NOT NULL,
   `title` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `domain` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `score` int NOT NULL DEFAULT '1',
   `comments_count` int UNSIGNED NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deleted_at` timestamp NULL DEFAULT NULL
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `user_is_following` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Подписан ли автор на уведомления о новых комментариях'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Дамп данных таблицы `stories`
 --
 
-INSERT INTO `stories` (`id`, `user_id`, `title`, `url`, `description`, `score`, `comments_count`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 1, 'Кастомный PHP фреймворк успешно запущен!', 'https://github.com', NULL, 15, 1, '2026-06-09 00:53:33', '2026-06-09 16:11:07', NULL),
-(2, 1, 'Это второй пост для теста', NULL, 'Заполните, если это чисто текстовый пост, либо как дополнение к ссылке. 333', 2, 2, '2026-06-09 01:14:37', '2026-06-14 03:27:15', NULL);
+INSERT INTO `stories` (`id`, `user_id`, `title`, `url`, `domain`, `description`, `score`, `comments_count`, `created_at`, `updated_at`, `deleted_at`, `user_is_following`) VALUES
+(1, 1, 'Первый пост, написал статью про этот движок.', 'https://libarea.ru/articles/2222/reshil-napisat-lobsters-na-php', 'libarea.ru', 'Редирект будет на LibArea, а если нажать на домен, то сортировка публикаций тут по этому домену.', 15, 4, '2026-06-08 15:53:33', '2026-06-17 07:29:13', NULL, 0),
+(2, 1, 'Это второй пост для теста', NULL, NULL, 'Заполните, если это чисто текстовый пост, либо как дополнение к ссылке. 333', 2, 2, '2026-06-08 16:14:37', '2026-06-17 07:29:09', NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -252,19 +348,32 @@ CREATE TABLE `tags` (
   `is_media` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `deleted_at` timestamp NULL DEFAULT NULL,
-  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'other'
+  `category_id` int UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Дамп данных таблицы `tags`
 --
 
-INSERT INTO `tags` (`id`, `tag`, `description`, `is_media`, `created_at`, `deleted_at`, `category`) VALUES
-(1, 'php', 'Язык1 программирования PHP и фреймворки', 1, '2026-06-09 04:08:44', NULL, 'languages'),
-(2, 'security', 'Уязвимости, безопасность и CSP политики', 0, '2026-06-09 04:08:44', NULL, 'practices'),
-(3, 'show', 'Демонстрация личных проектов разработчиков', 0, '2026-06-09 04:08:44', NULL, 'format'),
-(4, 'video', 'Материал содержит видеоролик', 1, '2026-06-09 04:08:44', NULL, 'format'),
-(5, 'libarea', 'Обсуждение сайта...', 0, '2026-06-09 04:46:26', NULL, 'other');
+INSERT INTO `tags` (`id`, `tag`, `description`, `is_media`, `created_at`, `deleted_at`, `category_id`) VALUES
+(1, 'php', 'Язык1 программирования PHP и фреймворки', 1, '2026-06-08 19:08:44', NULL, 1),
+(2, 'security', 'Уязвимости, безопасность и CSP политики', 0, '2026-06-08 19:08:44', NULL, 2),
+(3, 'show', 'Демонстрация личных проектов разработчиков', 0, '2026-06-08 19:08:44', NULL, 3),
+(4, 'video', 'Материал содержит видеоролик', 1, '2026-06-08 19:08:44', NULL, 3),
+(5, 'libarea', 'Обсуждение сайта...', 0, '2026-06-08 19:46:26', NULL, 4);
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `tag_filters`
+--
+
+CREATE TABLE `tag_filters` (
+  `id` int UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED NOT NULL,
+  `tag_id` int UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -277,22 +386,25 @@ CREATE TABLE `users` (
   `username` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `role` enum('user','admin') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user',
+  `role` enum('user','moderator','admin') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted_at` timestamp NULL DEFAULT NULL,
   `bio` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `avatar` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '0'
+  `is_active` tinyint(1) NOT NULL DEFAULT '0',
+  `notify_on_reply` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'Уведомлять об ответах на мои комментарии',
+  `notify_on_story_comment` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'Уведомлять о комментариях в историях, на которые я подписан',
+  `email_notifications` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Дублировать уведомления на email'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Дамп данных таблицы `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `email`, `password`, `role`, `created_at`, `updated_at`, `deleted_at`, `bio`, `avatar`, `is_active`) VALUES
-(1, 'Admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2026-06-08 17:28:55', '2026-06-14 03:27:25', NULL, 'О себе я расскажуыва ыва ыва 3', 'a6fa1e10b80411629030d4079a5d2253.jpg', 1),
-(2, 'test', 'test@test.ru', '$2y$10$xKEu8vvztJ/yoA2yaHHque9z4el8tdWKZDI4SY/AvX3HyyojdHFva', 'user', '2026-06-14 03:31:51', '2026-06-14 03:33:46', NULL, 'sdfsdfsdf', NULL, 1);
+INSERT INTO `users` (`id`, `username`, `email`, `password`, `role`, `created_at`, `updated_at`, `deleted_at`, `bio`, `avatar`, `is_active`, `notify_on_reply`, `notify_on_story_comment`, `email_notifications`) VALUES
+(1, 'Admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2026-06-08 08:28:55', '2026-06-17 04:15:11', NULL, 'О себе я расскажуыва ыва ыва 3', 'a6fa1e10b80411629030d4079a5d2253.jpg', 1, 1, 1, 1),
+(2, 'test', 'test@test.ru', '$2y$10$xKEu8vvztJ/yoA2yaHHque9z4el8tdWKZDI4SY/AvX3HyyojdHFva', 'user', '2026-06-13 18:31:51', '2026-06-17 04:15:14', NULL, 'sdfsdfsdf', NULL, 1, 1, 1, 1);
 
 -- --------------------------------------------------------
 
@@ -333,8 +445,8 @@ CREATE TABLE `votes` (
 --
 
 INSERT INTO `votes` (`id`, `user_id`, `votable_type`, `votable_id`, `vote_type`, `created_at`) VALUES
-(5, 1, 'comment', 6, 1, '2026-06-09 02:28:01'),
-(6, 1, 'story', 2, 1, '2026-06-09 02:28:05');
+(5, 1, 'comment', 6, 1, '2026-06-08 17:28:01'),
+(6, 1, 'story', 2, 1, '2026-06-08 17:28:05');
 
 --
 -- Индексы сохранённых таблиц
@@ -356,6 +468,14 @@ ALTER TABLE `banned_ips`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `ip_address` (`ip_address`),
   ADD KEY `idx_banned_ip_lookup` (`ip_address`);
+
+--
+-- Индексы таблицы `categories`
+--
+ALTER TABLE `categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_categories_slug` (`slug`),
+  ADD KEY `idx_categories_sort` (`sort_order`);
 
 --
 -- Индексы таблицы `comments`
@@ -386,12 +506,59 @@ ALTER TABLE `email_activations`
   ADD KEY `idx_activation_token` (`token`);
 
 --
+-- Индексы таблицы `invitations`
+--
+ALTER TABLE `invitations`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_code` (`code`),
+  ADD KEY `idx_inviter` (`inviter_id`),
+  ADD KEY `idx_invitee` (`invitee_id`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_expires` (`expires_at`);
+
+--
+-- Индексы таблицы `invitation_requests`
+--
+ALTER TABLE `invitation_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_email` (`email`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_created` (`created_at`);
+
+--
 -- Индексы таблицы `messages`
 --
 ALTER TABLE `messages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_msg_sender_id` (`sender_id`),
   ADD KEY `idx_msg_lookup` (`conversation_id`,`created_at`);
+
+--
+-- Индексы таблицы `moderations`
+--
+ALTER TABLE `moderations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_moderator_id` (`moderator_id`),
+  ADD KEY `idx_action` (`action`),
+  ADD KEY `idx_target` (`target_type`,`target_id`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
+-- Индексы таблицы `mod_activity`
+--
+ALTER TABLE `mod_activity`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_mod_action_date` (`moderator_id`,`action`,`date`),
+  ADD KEY `idx_date` (`date`);
+
+--
+-- Индексы таблицы `mod_notes`
+--
+ALTER TABLE `mod_notes`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_moderator_id` (`moderator_id`),
+  ADD KEY `idx_is_private` (`is_private`);
 
 --
 -- Индексы таблицы `password_resets`
@@ -407,6 +574,15 @@ ALTER TABLE `password_resets`
 ALTER TABLE `rate_limits`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_ip_action_time` (`ip_address`,`endpoint_action`,`created_at`);
+
+--
+-- Индексы таблицы `read_ribbons`
+--
+ALTER TABLE `read_ribbons`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_user_story` (`user_id`,`story_id`),
+  ADD KEY `idx_user_updated` (`user_id`,`updated_at`),
+  ADD KEY `fk_rr_story` (`story_id`);
 
 --
 -- Индексы таблицы `stories`
@@ -435,7 +611,16 @@ ALTER TABLE `taggings`
 ALTER TABLE `tags`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `tag` (`tag`),
-  ADD KEY `idx_tags_category` (`category`);
+  ADD KEY `idx_tags_category_id` (`category_id`);
+
+--
+-- Индексы таблицы `tag_filters`
+--
+ALTER TABLE `tag_filters`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_user_tag` (`user_id`,`tag_id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_tag_id` (`tag_id`);
 
 --
 -- Индексы таблицы `users`
@@ -480,6 +665,12 @@ ALTER TABLE `banned_ips`
   MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT для таблицы `categories`
+--
+ALTER TABLE `categories`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT для таблицы `comments`
 --
 ALTER TABLE `comments`
@@ -498,9 +689,39 @@ ALTER TABLE `email_activations`
   MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT для таблицы `invitations`
+--
+ALTER TABLE `invitations`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT для таблицы `invitation_requests`
+--
+ALTER TABLE `invitation_requests`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT для таблицы `messages`
 --
 ALTER TABLE `messages`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT для таблицы `moderations`
+--
+ALTER TABLE `moderations`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT для таблицы `mod_activity`
+--
+ALTER TABLE `mod_activity`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT для таблицы `mod_notes`
+--
+ALTER TABLE `mod_notes`
   MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -513,7 +734,13 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT для таблицы `rate_limits`
 --
 ALTER TABLE `rate_limits`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=204;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=620;
+
+--
+-- AUTO_INCREMENT для таблицы `read_ribbons`
+--
+ALTER TABLE `read_ribbons`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT для таблицы `stories`
@@ -532,6 +759,12 @@ ALTER TABLE `taggings`
 --
 ALTER TABLE `tags`
   MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT для таблицы `tag_filters`
+--
+ALTER TABLE `tag_filters`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT для таблицы `users`
@@ -577,11 +810,44 @@ ALTER TABLE `email_activations`
   ADD CONSTRAINT `fk_email_activation_uid` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
+-- Ограничения внешнего ключа таблицы `invitations`
+--
+ALTER TABLE `invitations`
+  ADD CONSTRAINT `fk_invitations_invitee` FOREIGN KEY (`invitee_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_invitations_inviter` FOREIGN KEY (`inviter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
 -- Ограничения внешнего ключа таблицы `messages`
 --
 ALTER TABLE `messages`
   ADD CONSTRAINT `fk_msg_conversation_id` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_msg_sender_id` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Ограничения внешнего ключа таблицы `moderations`
+--
+ALTER TABLE `moderations`
+  ADD CONSTRAINT `fk_moderations_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Ограничения внешнего ключа таблицы `mod_activity`
+--
+ALTER TABLE `mod_activity`
+  ADD CONSTRAINT `fk_mod_activity_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Ограничения внешнего ключа таблицы `mod_notes`
+--
+ALTER TABLE `mod_notes`
+  ADD CONSTRAINT `fk_mod_notes_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_mod_notes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Ограничения внешнего ключа таблицы `read_ribbons`
+--
+ALTER TABLE `read_ribbons`
+  ADD CONSTRAINT `fk_rr_story` FOREIGN KEY (`story_id`) REFERENCES `stories` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_rr_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Ограничения внешнего ключа таблицы `stories`
@@ -597,6 +863,19 @@ ALTER TABLE `taggings`
   ADD CONSTRAINT `fk_taggings_tag_id` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE;
 
 --
+-- Ограничения внешнего ключа таблицы `tags`
+--
+ALTER TABLE `tags`
+  ADD CONSTRAINT `fk_tags_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL;
+
+--
+-- Ограничения внешнего ключа таблицы `tag_filters`
+--
+ALTER TABLE `tag_filters`
+  ADD CONSTRAINT `fk_tag_filters_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_tag_filters_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
 -- Ограничения внешнего ключа таблицы `user_notifications`
 --
 ALTER TABLE `user_notifications`
@@ -608,188 +887,3 @@ ALTER TABLE `user_notifications`
 --
 ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-
-ALTER TABLE stories ADD COLUMN user_is_following TINYINT(1) NOT NULL DEFAULT 0 
-    COMMENT 'Подписан ли автор на уведомления о новых комментариях';
-	
-	
-ALTER TABLE users 
-    ADD COLUMN notify_on_reply TINYINT(1) NOT NULL DEFAULT 1 
-        COMMENT 'Уведомлять об ответах на мои комментарии',
-    ADD COLUMN notify_on_story_comment TINYINT(1) NOT NULL DEFAULT 1 
-        COMMENT 'Уведомлять о комментариях в историях, на которые я подписан',
-    ADD COLUMN email_notifications TINYINT(1) NOT NULL DEFAULT 0 
-        COMMENT 'Дублировать уведомления на email';	
-	
-CREATE TABLE IF NOT EXISTS tag_filters (
-    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id     INT UNSIGNED NOT NULL,
-    tag_id      INT UNSIGNED NOT NULL,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    UNIQUE KEY uq_user_tag (user_id, tag_id),
-    KEY idx_user_id (user_id),
-    KEY idx_tag_id (tag_id),
-    
-    CONSTRAINT fk_tag_filters_user FOREIGN KEY (user_id) 
-        REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_tag_filters_tag FOREIGN KEY (tag_id) 
-        REFERENCES tags(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;	
-	
--- Таблица приглашений
-CREATE TABLE IF NOT EXISTS `invitations` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `code` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `inviter_id` INT UNSIGNED NOT NULL COMMENT 'ID пользователя, который пригласил',
-    `invitee_email` VARCHAR(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Email получателя (опционально)',
-    `invitee_id` INT UNSIGNED DEFAULT NULL COMMENT 'ID зарегистрировавшегося пользователя',
-    `status` ENUM('pending', 'accepted', 'expired', 'revoked') NOT NULL DEFAULT 'pending',
-    `expires_at` TIMESTAMP NOT NULL,
-    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `unique_code` (`code`),
-    KEY `idx_inviter` (`inviter_id`),
-    KEY `idx_invitee` (`invitee_id`),
-    KEY `idx_status` (`status`),
-    KEY `idx_expires` (`expires_at`),
-    CONSTRAINT `fk_invitations_inviter` FOREIGN KEY (`inviter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_invitations_invitee` FOREIGN KEY (`invitee_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Таблица запросов приглашений
-CREATE TABLE IF NOT EXISTS `invitation_requests` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `email` VARCHAR(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `reason` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Причина запроса',
-    `status` ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
-    `ip_address` VARCHAR(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    KEY `idx_email` (`email`),
-    KEY `idx_status` (`status`),
-    KEY `idx_created` (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- ============================================
--- ФАЙЛ: db/migrations/001_add_moderation.sql
--- ============================================
-
--- 1. Расширяем enum role в таблице users
-ALTER TABLE `users` 
-MODIFY COLUMN `role` ENUM('user','moderator','admin') 
-CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user';
-
--- 2. Таблица модераторских заметок о пользователях
-CREATE TABLE `mod_notes` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `user_id` INT UNSIGNED NOT NULL COMMENT 'Пользователь, к которому относится заметка',
-    `moderator_id` INT UNSIGNED NOT NULL COMMENT 'Автор заметки',
-    `note` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `is_private` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1=видна только модераторам, 0=публичная',
-    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    INDEX `idx_user_id` (`user_id`),
-    INDEX `idx_moderator_id` (`moderator_id`),
-    INDEX `idx_is_private` (`is_private`),
-    CONSTRAINT `fk_mod_notes_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_mod_notes_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 3. Таблица лога модераторских действий
-CREATE TABLE `moderations` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `moderator_id` INT UNSIGNED NOT NULL,
-    `action` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL 
-        COMMENT 'Тип: ban, unban, delete_story, warn, mute и т.д.',
-    `target_type` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL 
-        COMMENT 'Тип объекта: user, story, comment',
-    `target_id` INT UNSIGNED NOT NULL COMMENT 'ID объекта воздействия',
-    `reason` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    INDEX `idx_moderator_id` (`moderator_id`),
-    INDEX `idx_action` (`action`),
-    INDEX `idx_target` (`target_type`, `target_id`),
-    INDEX `idx_created_at` (`created_at`),
-    CONSTRAINT `fk_moderations_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 4. Таблица статистики активности модераторов
-CREATE TABLE `mod_activity` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `moderator_id` INT UNSIGNED NOT NULL,
-    `action` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `date` DATE NOT NULL,
-    `count` INT UNSIGNED NOT NULL DEFAULT 1,
-    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_mod_action_date` (`moderator_id`, `action`, `date`),
-    INDEX `idx_date` (`date`),
-    CONSTRAINT `fk_mod_activity_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
-CREATE TABLE `read_ribbons` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `user_id` INT UNSIGNED NOT NULL,
-    `story_id` INT UNSIGNED NOT NULL,
-    `last_read_comment_id` INT UNSIGNED NOT NULL DEFAULT 0 
-        COMMENT 'ID последнего прочитанного комментария (0 = история открыта, но комментариев не было)',
-    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_user_story` (`user_id`, `story_id`),
-    INDEX `idx_user_updated` (`user_id`, `updated_at`),
-    CONSTRAINT `fk_rr_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_rr_story` FOREIGN KEY (`story_id`) REFERENCES `stories`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT='Отметки прочитанных историй для индикации новых комментариев';
-
-
--- db/migrations/002_create_categories.sql
-
--- 1. Создаём таблицу категорий
-CREATE TABLE IF NOT EXISTS `categories` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `name` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `slug` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `description` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `sort_order` INT UNSIGNED NOT NULL DEFAULT 0,
-    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_categories_slug` (`slug`),
-    KEY `idx_categories_sort` (`sort_order`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 2. Заполняем категории из существующих значений
-INSERT INTO `categories` (`name`, `slug`, `description`, `sort_order`) VALUES
-('Языки программирования', 'languages', 'PHP, Python, JavaScript и другие', 10),
-('Практики', 'practices', 'Безопасность, архитектура, методологии', 20),
-('Формат', 'format', 'Видео, демонстрации проектов, подкасты', 30),
-('Разное', 'other', 'Общие темы и обсуждения', 99);
-
--- 3. Добавляем внешний ключ в tags (заменяем varchar на FK)
--- Сначала добавляем колонку category_id
-ALTER TABLE `tags` 
-ADD COLUMN `category_id` INT UNSIGNED DEFAULT NULL AFTER `category`;
-
--- Мигрируем данные из строкового поля в FK
-UPDATE `tags` t
-JOIN `categories` c ON t.`category` = c.`slug`
-SET t.`category_id` = c.`id`;
-
--- Добавляем индекс и FK
-ALTER TABLE `tags`
-ADD KEY `idx_tags_category_id` (`category_id`),
-ADD CONSTRAINT `fk_tags_category` 
-    FOREIGN KEY (`category_id`) REFERENCES `categories`(`id`) 
-    ON DELETE SET NULL;
-
--- Опционально: удаляем старую строковую колонку
-ALTER TABLE `tags` DROP COLUMN `category`;

@@ -7,7 +7,6 @@ $router->add('POST', 'filters/remove', 'TagsController@removeFilter', 'tags.filt
 // GET-маршруты
 $router->add('GET', 'filters',         'TagsController@filters',      'tags.filters');
 $router->add('GET', 'tags',            'TagsController@index',        'tags.index');
-$router->add('GET', 'tags/{tagname}',  'TagsController@show',         'tags.show');
 
 // === Categories ===
 $router->add('GET', 'categories/{slug}', 'TagsController@categoriesShow', 'categories.show');

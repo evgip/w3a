@@ -61,7 +61,7 @@ if ($currentUserId > 0) {
 							$domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
 							if ($domainHost): 
 							?>
-								<a href="<?= route('domains.show', ['domain' => $domainHost]) ?>" class="domain">
+								<a href="<?= route('domain.show', ['domain' => $domainHost]) ?>" class="domain">
 									<?= e($domainHost) ?>
 								</a>
 							<?php endif; ?>

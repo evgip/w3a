@@ -124,12 +124,15 @@ class StoriesController extends Controller
             header('Location: /stories/create');
             exit;
         }
+		
+		$domain = !empty($url) ? parse_url($url, PHP_URL_HOST) : null;
 
         $storyModel = new Story();
         $newStoryId = $storyModel->create([
             'user_id' => (int)$_SESSION['user_id'],
             'title' => $title,
             'url' => $url,
+			'domain' => $domain,
             'description' => $description,
             'score' => 1,
             'comments_count' => 0,
@@ -227,7 +230,7 @@ class StoriesController extends Controller
      * Просмотр одной истории и её дерева комментариев (GET /story/{id})
      */
    public function show(string $id): void
-    {
+    {  
         $storyId = (int)$id;
         $storyModel = new Story();
         
@@ -247,7 +250,7 @@ class StoriesController extends Controller
             $commentsTree[$parentId][] = $comment;
         }
 
-
+ 
 	 // ==========================================
     // НОВОЕ: Отметка прочитанного (ReadRibbon)
     // ==========================================
@@ -289,7 +292,7 @@ class StoriesController extends Controller
             'title' => $story['title'],
             'story' => $story,
             'commentsTree' => $commentsTree,
-			'newCount'     => $newCount,
+			'newCount'     => $newCount ?? 0,
         ]);
     }
 	
@@ -362,7 +365,7 @@ class StoriesController extends Controller
 		]);
 		
 		if (!$isValid) {
-			AppCoreSession::setFlash('error', "Текст комментария должен содержать не менее {$minCommentLength} символов.");
+			Session::setFlash('error', "Текст комментария должен содержать не менее {$minCommentLength} символов.");
 			header('Location: /story/' . $storyId);
 			exit;
 		}

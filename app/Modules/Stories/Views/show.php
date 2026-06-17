@@ -1,6 +1,9 @@
 <?php
+
+$user_id = $_SESSION['user_id'] ?? false;
+
 $voteModel = new \App\Modules\Votes\Models\Vote();
-$currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
+$currentUserId = \App\Core\Auth::check() ? (int)$user_id : 0;
 
 $commentsTree = $commentsTree ?? [];
 
@@ -13,7 +16,7 @@ if ($currentUserId > 0) {
     $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
 }
 
-$isAuthor = (int)$story['user_id'] === (int)$_SESSION['user_id'];
+$isAuthor = (int)$story['user_id'] === (int)$user_id;
 $isStoryDeleted = !empty($story['deleted_at']); 
 $isAdmin = \App\Core\Auth::isAdmin();
 $isModerator =  \App\Core\Auth::isModerator();
@@ -60,7 +63,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
 					$domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
 					if ($domainHost): 
 					?>
-						<a href="<?= route('domains.show', ['domain' => $domainHost]) ?>" class="domain">
+						<a href="<?= route('domain.show', ['domain' => $domainHost]) ?>" class="domain">
 							<?= e($domainHost) ?>
 						</a>
 					<?php endif; ?>

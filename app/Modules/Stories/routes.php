@@ -33,7 +33,7 @@ $router->add('POST', 'admin/stories/{id}/restore', 'StoriesController@adminResto
 
 
 // Добавьте эту строку в конец файла или рядом с маршрутом тегов
-$router->add('GET', 'domain/{domain}', 'StoriesController@index', 'domains.show');
+$router->add('GET', 'domain/{domain}', 'StoriesController@index', 'domain.show');
 
 $router->add('POST', 'story/{id}/follow', 'StoriesController@toggleFollow', 'story.toggle.follow');
 
