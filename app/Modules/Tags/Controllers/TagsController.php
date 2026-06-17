@@ -4,6 +4,7 @@ namespace App\Modules\Tags\Controllers;
 
 use App\Core\Controller;
 use App\Modules\Tags\Models\Tag;
+use App\Modules\Tags\Models\Category;
 
 class TagsController extends Controller
 {
@@ -12,16 +13,84 @@ class TagsController extends Controller
      */
     public function index(): void
     {
+        $categoryModel = new Category();
+        $categories = $categoryModel->getAllWithTagsCount();
+
+        // Получаем теги для каждой категории
         $tagModel = new Tag();
         $allTags = $tagModel->getAllTags();
 
-        $this->render('index', [
-            'title' => 'Каталог тем и тегов сообщества',
-            'tags'  => $allTags
+        // Группируем теги по category_id
+        $tagsByCategory = [];
+        foreach ($allTags as $tag) {
+            $catId = $tag['category_id'] ?? 0;
+            if (!isset($tagsByCategory[$catId])) {
+                $tagsByCategory[$catId] = [];
+            }
+            $tagsByCategory[$catId][] = $tag;
+        }
+
+        $this->render('categories/index', [
+            'title' => 'Категории тегов',
+            'categories' => $categories,
+            'tagsByCategory' => $tagsByCategory,
         ]);
     }
 	
-	
+	/**
+	 * Страница историй, которые прикреплены к тегам конкретной категории
+	 */
+	public function categoriesShow(string $slug): void
+	{
+		$request = new \App\Core\Request();
+		$currentPage = (int)$request->getParams('page', 1);
+		if ($currentPage < 1) $currentPage = 1;
+
+		$perPage = config_int('constants.pagination.stories_per_page', 15);
+		$offset = ($currentPage - 1) * $perPage;
+
+		// Получаем фильтры пользователя
+		$excludeTagIds = [];
+		if (\App\Core\Auth::check()) {
+			$filterModel = new \App\Modules\Tags\Models\TagFilter();
+			$excludeTagIds = $filterModel->getFilteredTagIds(\App\Core\Auth::id());
+		}
+
+		$categoryModel = new Category();
+		
+		// Получаем общее количество историй для пагинации
+		$totalStories = $categoryModel->getStoriesCountBySlug($slug, $excludeTagIds);
+		$totalPages = (int)ceil($totalStories / $perPage);
+
+		// Получаем категорию с историями
+		$category = $categoryModel->getStoriesBySlug($slug, $perPage, $offset, $excludeTagIds);
+
+		if (!$category) {
+			$this->redirectWithError('/categories', 'Категория не найдена.');
+			return;
+		}
+
+		// Подсчёт новых комментариев для каждой истории
+		$newCommentsMap = [];
+		if (\App\Core\Auth::check() && !empty($category['stories'])) {
+			$storyIds = array_column($category['stories'], 'id');
+			$readRibbon = new \App\Modules\Stories\Models\ReadRibbon();
+			$newCommentsMap = $readRibbon->getNewCommentsCounts(
+				(int)$_SESSION['user_id'],
+				array_map('intval', $storyIds)
+			);
+		}
+
+		$this->render('categories-show', [
+			'title' => e($category['name']),
+			'category' => $category,
+			'stories' => $category['stories'],
+			'currentPage' => $currentPage,
+			'totalPages' => $totalPages,
+			'newCommentsMap' => $newCommentsMap,
+		]);
+	}
+		
 	/**
 	 * Страница управления фильтрами тегов (GET /filters)
 	 */

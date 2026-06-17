@@ -27,6 +27,130 @@ class Category extends Model
         return $result ?: null;
     }
 
+   /**
+     * Получить все категории с количеством тегов (для публичной страницы /categories)
+     */
+    public function getAllWithTagsCount(): array
+    {
+        $sql = "SELECT c.id, c.name, c.slug, c.description, c.sort_order,
+                       COUNT(t.id) as tags_count
+                FROM {$this->table} c
+                LEFT JOIN tags t ON t.category_id = c.id AND t.deleted_at IS NULL
+                GROUP BY c.id, c.name, c.slug, c.description, c.sort_order
+                ORDER BY c.sort_order ASC, c.name ASC";
+
+        $stmt = static::db()->query($sql);
+        return $stmt->fetchAll();
+    }
+
+	/**
+	 * Получить истории, связанные с тегами конкретной категории по slug
+	 */
+	public function getStoriesBySlug(string $slug, int $limit, int $offset, array $excludeTagIds = []): ?array
+	{
+		// Получаем категорию
+		$sql = "SELECT * FROM {$this->table} WHERE slug = :slug LIMIT 1";
+		$stmt = static::db()->prepare($sql);
+		$stmt->execute(['slug' => $slug]);
+		$category = $stmt->fetch();
+
+		if (!$category) {
+			return null;
+		}
+
+		// Получаем истории с тегами из этой категории
+		$sql = "SELECT DISTINCT s.*, u.username as author_name, u.avatar as author_avatar,
+					   GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
+				FROM stories s
+				JOIN users u ON s.user_id = u.id
+				JOIN taggings tg ON s.id = tg.story_id
+				JOIN tags t ON tg.tag_id = t.id
+				WHERE t.category_id = :category_id 
+				  AND s.deleted_at IS NULL
+				  AND t.deleted_at IS NULL";
+
+		$bindings = [':category_id' => $category['id']];
+
+		// Исключаем истории с тегами из черного списка пользователя
+		if (!empty($excludeTagIds)) {
+			$namedPlaceholders = [];
+			foreach ($excludeTagIds as $index => $tagId) {
+				$paramName = ":exclude_tag_{$index}";
+				$namedPlaceholders[] = $paramName;
+				$bindings[$paramName] = (int)$tagId;
+			}
+			
+			$placeholdersStr = implode(',', $namedPlaceholders);
+			$sql .= " AND s.id NOT IN (
+				SELECT DISTINCT story_id FROM taggings 
+				WHERE tag_id IN ($placeholdersStr)
+			)";
+		}
+
+		$sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
+
+		$bindings[':limit'] = $limit;
+		$bindings[':offset'] = $offset;
+
+		$stmt = static::db()->prepare($sql);
+		$stmt->execute($bindings);
+		$stories = $stmt->fetchAll();
+
+		// Парсим теги
+		foreach ($stories as &$story) {
+			$story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
+		}
+
+		$category['stories'] = $stories;
+		return $category;
+	}
+
+	/**
+	 * Получить общее количество историй в категории
+	 */
+	public function getStoriesCountBySlug(string $slug, array $excludeTagIds = []): int
+	{
+		// Получаем категорию
+		$sql = "SELECT id FROM {$this->table} WHERE slug = :slug LIMIT 1";
+		$stmt = static::db()->prepare($sql);
+		$stmt->execute(['slug' => $slug]);
+		$category = $stmt->fetch();
+
+		if (!$category) {
+			return 0;
+		}
+
+		$sql = "SELECT COUNT(DISTINCT s.id) 
+				FROM stories s
+				JOIN taggings tg ON s.id = tg.story_id
+				JOIN tags t ON tg.tag_id = t.id
+				WHERE t.category_id = :category_id 
+				  AND s.deleted_at IS NULL
+				  AND t.deleted_at IS NULL";
+
+		$bindings = [':category_id' => $category['id']];
+
+		if (!empty($excludeTagIds)) {
+			$namedPlaceholders = [];
+			foreach ($excludeTagIds as $index => $tagId) {
+				$paramName = ":exclude_tag_{$index}";
+				$namedPlaceholders[] = $paramName;
+				$bindings[$paramName] = (int)$tagId;
+			}
+			
+			$placeholdersStr = implode(',', $namedPlaceholders);
+			$sql .= " AND s.id NOT IN (
+				SELECT DISTINCT story_id FROM taggings 
+				WHERE tag_id IN ($placeholdersStr)
+			)";
+		}
+
+		$stmt = static::db()->prepare($sql);
+		$stmt->execute($bindings);
+
+		return (int)$stmt->fetchColumn();
+	}
+
     /**
      * Получить все категории с количеством тегов для админки
      */
