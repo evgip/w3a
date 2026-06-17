@@ -915,3 +915,42 @@ ALTER TABLE `domains`
 -- AUTO_INCREMENT
 ALTER TABLE `domains`
     MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+	
+	
+-- --------------------------------------------------------
+-- Структура таблицы `flags` (жалобы пользователей на контент)
+-- --------------------------------------------------------
+CREATE TABLE `flags` (
+    `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id` int UNSIGNED NOT NULL COMMENT 'Автор жалобы',
+    `flaggable_type` enum('story','comment') NOT NULL COMMENT 'Тип контента',
+    `flaggable_id` int UNSIGNED NOT NULL COMMENT 'ID story или comment',
+    `reason` enum(
+        'spam','offensive','duplicate','broken_link',
+        'misleading','off_topic','illegal','other'
+    ) NOT NULL DEFAULT 'other',
+    `comment` varchar(500) DEFAULT NULL COMMENT 'Пояснение от пользователя',
+    `status` enum('pending','resolved','dismissed') NOT NULL DEFAULT 'pending',
+    `resolved_by` int UNSIGNED DEFAULT NULL,
+    `resolved_at` timestamp NULL DEFAULT NULL,
+    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_flags_unique` (`user_id`, `flaggable_type`, `flaggable_id`),
+    KEY `idx_flags_status` (`status`),
+    KEY `idx_flags_target` (`flaggable_type`, `flaggable_id`),
+    KEY `fk_flags_user` (`user_id`),
+    KEY `fk_flags_resolved_by` (`resolved_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `flags`
+    ADD CONSTRAINT `fk_flags_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    ADD CONSTRAINT `fk_flags_resolved_by` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+-- Поля для авто-скрытия контента
+ALTER TABLE `stories`
+    ADD COLUMN `flag_count` int UNSIGNED NOT NULL DEFAULT 0 AFTER `score`,
+    ADD COLUMN `is_hidden_by_flags` tinyint(1) NOT NULL DEFAULT 0 AFTER `flag_count`;
+
+ALTER TABLE `comments`
+    ADD COLUMN `flag_count` int UNSIGNED NOT NULL DEFAULT 0 AFTER `score`,
+    ADD COLUMN `is_hidden_by_flags` tinyint(1) NOT NULL DEFAULT 0 AFTER `flag_count`;	
