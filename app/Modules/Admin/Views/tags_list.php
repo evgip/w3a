@@ -61,7 +61,8 @@
                         <form method="POST" 
                               action="<?= route('admin.tags.delete', ['id' => $tag['id']]) ?>" 
                               style="display:inline;"
-                              onsubmit="return confirm('Вы уверены, что хотите удалить тег «<?= e($tag['tag']) ?>»? Это действие также удалит связи с историями.');">
+							  class="delete-link"
+							  data-confirm="Вы уверены, что хотите удалить тег «<?= e($tag['tag']) ?>»? Это действие также удалит связи с историями.">
                             <?= csrf_field() ?>
                             <button type="submit" class="button" style="color: #ac130d;">
                                 Удалить

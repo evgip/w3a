@@ -52,7 +52,8 @@
                             <form method="POST" 
                                   action="<?= route('admin.categories.delete', ['id' => $cat['id']]) ?>" 
                                   style="display:inline;"
-                                  onsubmit="return confirm('Вы уверены, что хотите удалить категорию «<?= e($cat['name']) ?>»?');">
+								   class="delete-link"
+								   data-confirm="Вы уверены, что хотите удалить категорию «<?= e($cat['name']) ?>»?">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="button" style="color: #ac130d;">
                                     Удалить

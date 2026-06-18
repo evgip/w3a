@@ -610,10 +610,7 @@ class AdminController extends Controller
      */
     public function usersIndex(): void
     {
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 
         // ПОДДКЛЮЧАЕМ ИЗОЛИРОВАННУЮ АДМИНИСТРАТИВНУЮ МОДЕЛЬ ИЗ ТЕКУЩЕГО МОДУЛЯ
         $adminUserModel = new \App\Modules\Admin\Models\AdminUser();
@@ -631,10 +628,7 @@ class AdminController extends Controller
      */
     public function toggleUserStatus(string $id): void
     {
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 
         $request = new \App\Core\Request();
         $request->validateCsrf();
@@ -731,10 +725,7 @@ class AdminController extends Controller
 	 */
 	public function invitationsIndex(): void
 	{
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 		
 		$status = $_GET['status'] ?? 'pending';
 		$allowedStatuses = ['pending', 'approved', 'rejected'];
@@ -758,10 +749,7 @@ class AdminController extends Controller
 	 */
 	public function approveInvitation(int $id): void
 	{
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 		
 		$request = new \App\Core\Request();
 		$request->validateCsrf();
@@ -783,10 +771,7 @@ class AdminController extends Controller
 	 */
 	public function rejectInvitation(int $id): void
 	{
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+		$this->requireAdmin();
 		
 		$request = new \App\Core\Request();
 		$request->validateCsrf();
@@ -810,10 +795,7 @@ class AdminController extends Controller
 	 */
 	public function categoriesIndex(): void
 	{
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 
 		$categoryModel = new Category();
 		$categories = $categoryModel->getAdminCategoriesList();
@@ -829,10 +811,7 @@ class AdminController extends Controller
 	 */
 	public function showCategoryCreateForm(): void
 	{
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 
 		$this->render('category_create', [
 			'title' => 'Создание новой категории',
@@ -845,10 +824,7 @@ class AdminController extends Controller
 	 */
 	public function createCategory(): void
 	{
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 
 		$request = new \App\Core\Request();
 		$request->validateCsrf();
@@ -897,10 +873,7 @@ class AdminController extends Controller
 	 */
 	public function showCategoryEditForm(string $id): void
 	{
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 
 		$categoryId = (int)$id;
 		$categoryModel = new Category();
@@ -924,10 +897,7 @@ class AdminController extends Controller
 	 */
 	public function updateCategory(string $id): void
 	{
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 
 		$request = new \App\Core\Request();
 		$request->validateCsrf();
@@ -984,10 +954,7 @@ class AdminController extends Controller
 	 */
 	public function deleteCategory(string $id): void
 	{
-        if (!\App\Core\Auth::isAdmin()) { 
-            header('Location: /'); 
-            exit; 
-        }
+        $this->requireAdmin();
 
 		$request = new \App\Core\Request();
 		$request->validateCsrf();

@@ -57,6 +57,8 @@
 
 Установите пакет через [Composer](http://getcomposer.org/). 
 
+`composer create-project evgip/w3a`
+
 ### Требования
 - PHP 8.1 или выше
 - MySQL 8.0 или выше

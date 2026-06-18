@@ -114,8 +114,9 @@
                                                     📋
                                                 </button>
                                                 <form method="POST" action="<?= route('invitations.revoke', ['id' => $inv['id']]) ?>"
-                                                      style="display: inline;"
-                                                      onsubmit="return confirm('Отозвать это приглашение?');">
+                                                      style="display: inline;" 
+													  class="restore-link" 
+													  data-confirm="Отозвать это приглашение?">
                                                     <?= csrf_field() ?>
                                                     <button type="submit" class="btn btn-outline-danger" title="Отозвать">
                                                         ✖

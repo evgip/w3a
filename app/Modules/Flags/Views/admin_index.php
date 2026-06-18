@@ -57,8 +57,8 @@
                               method="POST" class="inline-form">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="hide">
-                            <button type="submit" class="button"
-                                    onclick="return confirm('Подтвердить жалобу и скрыть контент?');">
+                            <button type="submit" class="button delete-link"
+							        data-confirm="Подтвердить жалобу и скрыть контент?">
                                 ✓ Подтвердить
                             </button>
                         </form>
@@ -66,8 +66,7 @@
                               method="POST" class="inline-form">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="dismiss">
-                            <button type="submit" class="button"
-                                    onclick="return confirm('Отклонить жалобу?');">
+                            <button type="submit" class="button delete-link" data-confirm="Отклонить жалобу?">
                                 ✗ Отклонить
                             </button>
                         </form>

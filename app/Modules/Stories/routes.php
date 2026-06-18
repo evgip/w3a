@@ -22,15 +22,12 @@ $router->add('POST', 'comments/{id}/restore', 'StoriesController@restoreComment'
 
 $router->add('GET', 't/{tagname}', 'StoriesController@index', 'tags.filter');
 
-
 // NEW: Story Editing operational routes
 $router->add('GET', 'stories/{id}/edit', 'StoriesController@showEditForm', 'story.edit');
 $router->add('POST', 'stories/{id}/edit', 'StoriesController@update', 'story.edit.submit');
 
-
 $router->add('POST', 'admin/stories/{id}/delete', 'StoriesController@adminDelete', 'admin.story.delete');
 $router->add('POST', 'admin/stories/{id}/restore', 'StoriesController@adminRestore', 'admin.story.restore');
-
 
 // Добавьте эту строку в конец файла или рядом с маршрутом тегов
 $router->add('GET', 'domain/{domain}', 'StoriesController@index', 'domain.show');

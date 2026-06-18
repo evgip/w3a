@@ -1,18 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Stories\Models;
 
 use App\Core\Model;
 
 class ReadRibbon extends Model
 {
-    protected string $table = 'read_ribbons';
+	protected string $table = 'read_ribbons';
 
-    protected array $fillable = [
-        'user_id',
-        'story_id',
-        'last_read_comment_id',
-    ];
+	protected array $fillable = [
+		'user_id',
+		'story_id',
+		'last_read_comment_id',
+	];
 
 	/*
 		-- Синхронизация всех отметок с реальным состоянием комментариев
@@ -24,22 +26,22 @@ class ReadRibbon extends Model
 		);
 	*/
 
-    // Нет deleted_at
-    protected bool $includeTrashed = true;
+	// Нет deleted_at
+	protected bool $includeTrashed = true;
 
-    protected function applySoftDeleteConstraint(string $sql): string
-    {
-        return $sql;
-    }
+	protected function applySoftDeleteConstraint(string $sql): string
+	{
+		return $sql;
+	}
 
-    /**
-     * Отметить историю как прочитанную до указанного комментария
-     * Использует UPSERT — создаёт запись или обновляет существующую
-     *
-     * @param int $userId         ID пользователя
-     * @param int $storyId        ID истории
-     * @param int $lastCommentId  ID последнего комментария на момент просмотра
-     */
+	/**
+	 * Отметить историю как прочитанную до указанного комментария
+	 * Использует UPSERT — создаёт запись или обновляет существующую
+	 *
+	 * @param int $userId         ID пользователя
+	 * @param int $storyId        ID истории
+	 * @param int $lastCommentId  ID последнего комментария на момент просмотра
+	 */
 	public function markAsRead(int $userId, int $storyId, int $lastCommentId): void
 	{
 		if ($userId <= 0 || $storyId <= 0) {
@@ -54,7 +56,7 @@ class ReadRibbon extends Model
 					ON DUPLICATE KEY UPDATE 
 						`last_read_comment_id` = GREATEST(`last_read_comment_id`, VALUES(`last_read_comment_id`)),
 						`updated_at` = NOW()";
-			
+
 			$stmt = static::db()->prepare($sql);
 			$stmt->execute([
 				'user_id'         => $userId,
@@ -67,36 +69,36 @@ class ReadRibbon extends Model
 		}
 	}
 
-    /**
-     * Получить отметки прочтения для списка историй (одним запросом)
-     * Возвращает ассоциативный массив: story_id => last_read_comment_id
-     *
-     * @param int   $userId   ID пользователя
-     * @param array $storyIds Список ID историй
-     * @return array<int, int>
-     */
-    public function getForStories(int $userId, array $storyIds): array
-    {
-        if ($userId <= 0 || empty($storyIds)) {
-            return [];
-        }
+	/**
+	 * Получить отметки прочтения для списка историй (одним запросом)
+	 * Возвращает ассоциативный массив: story_id => last_read_comment_id
+	 *
+	 * @param int   $userId   ID пользователя
+	 * @param array $storyIds Список ID историй
+	 * @return array<int, int>
+	 */
+	public function getForStories(int $userId, array $storyIds): array
+	{
+		if ($userId <= 0 || empty($storyIds)) {
+			return [];
+		}
 
-        $placeholders = implode(',', array_fill(0, count($storyIds), '?'));
-        
-        $sql = "SELECT `story_id`, `last_read_comment_id` 
+		$placeholders = implode(',', array_fill(0, count($storyIds), '?'));
+
+		$sql = "SELECT `story_id`, `last_read_comment_id` 
                 FROM `read_ribbons` 
                 WHERE `user_id` = ? AND `story_id` IN ($placeholders)";
-        
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(array_merge([$userId], $storyIds));
-        
-        $result = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $result[(int)$row['story_id']] = (int)$row['last_read_comment_id'];
-        }
-        
-        return $result;
-    }
+
+		$stmt = static::db()->prepare($sql);
+		$stmt->execute(array_merge([$userId], $storyIds));
+
+		$result = [];
+		foreach ($stmt->fetchAll() as $row) {
+			$result[(int)$row['story_id']] = (int)$row['last_read_comment_id'];
+		}
+
+		return $result;
+	}
 
 	/**
 	 * Реальный подсчёт новых комментариев (без использования read_ribbons)
@@ -111,7 +113,7 @@ class ReadRibbon extends Model
 		);
 		$stmt->execute([$userId, $storyId]);
 		$lastReadId = (int) $stmt->fetchColumn();
-		
+
 		// Считаем реальные новые (неудалённые) комментарии
 		$stmt = static::db()->prepare(
 			"SELECT COUNT(*) FROM `comments` 
@@ -120,30 +122,30 @@ class ReadRibbon extends Model
 			   AND `deleted_at` IS NULL"
 		);
 		$stmt->execute([$storyId, $lastReadId]);
-		
+
 		return (int) $stmt->fetchColumn();
 	}
 
 
-    /**
-     * Пакетный подсчёт количества новых комментариев для списка историй
-     * Один эффективный запрос вместо N+1
-     *
-     * @param int   $userId   ID пользователя
-     * @param array $storyIds Список ID историй
-     * @return array<int, int> story_id => количество новых комментариев
-     */
-    public function getNewCommentsCounts(int $userId, array $storyIds): array
-    {
-        if ($userId <= 0 || empty($storyIds)) {
-            return [];
-        }
+	/**
+	 * Пакетный подсчёт количества новых комментариев для списка историй
+	 * Один эффективный запрос вместо N+1
+	 *
+	 * @param int   $userId   ID пользователя
+	 * @param array $storyIds Список ID историй
+	 * @return array<int, int> story_id => количество новых комментариев
+	 */
+	public function getNewCommentsCounts(int $userId, array $storyIds): array
+	{
+		if ($userId <= 0 || empty($storyIds)) {
+			return [];
+		}
 
-        $placeholders = implode(',', array_fill(0, count($storyIds), '?'));
+		$placeholders = implode(',', array_fill(0, count($storyIds), '?'));
 
-        // LEFT JOIN с read_ribbons, чтобы учесть истории, которые пользователь ещё не открывал
-        // Для таких историй last_read_comment_id = 0, значит все комментарии — новые
-        $sql = "SELECT 
+		// LEFT JOIN с read_ribbons, чтобы учесть истории, которые пользователь ещё не открывал
+		// Для таких историй last_read_comment_id = 0, значит все комментарии — новые
+		$sql = "SELECT 
                     s.id AS story_id,
                     COUNT(c.id) AS new_count
                 FROM `stories` s
@@ -156,36 +158,36 @@ class ReadRibbon extends Model
                 WHERE s.id IN ($placeholders)
                 GROUP BY s.id";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(array_merge([$userId], $storyIds));
+		$stmt = static::db()->prepare($sql);
+		$stmt->execute(array_merge([$userId], $storyIds));
 
-        $result = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $result[(int)$row['story_id']] = (int)$row['new_count'];
-        }
+		$result = [];
+		foreach ($stmt->fetchAll() as $row) {
+			$result[(int)$row['story_id']] = (int)$row['new_count'];
+		}
 
-        return $result;
-    }
+		return $result;
+	}
 
-    /**
-     * Подсчёт новых комментариев для одной истории
-     */
-    public function getNewCommentsCount(int $userId, int $storyId): int
-    {
-        $counts = $this->getNewCommentsCounts($userId, [$storyId]);
-        return $counts[$storyId] ?? 0;
-    }
+	/**
+	 * Подсчёт новых комментариев для одной истории
+	 */
+	public function getNewCommentsCount(int $userId, int $storyId): int
+	{
+		$counts = $this->getNewCommentsCounts($userId, [$storyId]);
+		return $counts[$storyId] ?? 0;
+	}
 
-    /**
-     * Удалить отметки для истории (вызывается при удалении истории)
-     * Каскадный FK уже делает это автоматически, но оставим для явности
-     */
-    public function clearForStory(int $storyId): void
-    {
-        $stmt = static::db()->prepare("DELETE FROM `read_ribbons` WHERE `story_id` = ?");
-        $stmt->execute([$storyId]);
-    }
-	
+	/**
+	 * Удалить отметки для истории (вызывается при удалении истории)
+	 * Каскадный FK уже делает это автоматически, но оставим для явности
+	 */
+	public function clearForStory(int $storyId): void
+	{
+		$stmt = static::db()->prepare("DELETE FROM `read_ribbons` WHERE `story_id` = ?");
+		$stmt->execute([$storyId]);
+	}
+
 	/**
 	 * Принудительный сброс отметки для одной истории
 	 * Устанавливает last_read_comment_id = последний существующий комментарий

@@ -12,22 +12,19 @@ if ($currentUserId > 0) {
     $viewerKarma = $userModel->getUserKarma($currentUserId);
     $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
 }
-
- 
-
 ?>
 
 <?php if (!empty($stories)): ?>
     <ol class="stories">
         <?php foreach ($stories as $story): ?>
-            <?php 
-				$isStoryDeleted = !empty($story['deleted_at']); 
-				
-				$fullHtml = \App\Core\Markdown::parse($story['description']);
-				$needsTruncation = needsTruncation($fullHtml, 300);
-				
-				$newCount = $newCommentsMap[$story['id']] ?? 0;
-			?>
+            <?php
+            $isStoryDeleted = !empty($story['deleted_at']);
+
+            $fullHtml = \App\Core\Markdown::parse($story['description']);
+            $needsTruncation = needsTruncation($fullHtml, 300);
+
+            $newCount = $newCommentsMap[$story['id']] ?? 0;
+            ?>
 
             <li class="story <?= $isStoryDeleted ? 'deleted' : '' ?>">
 
@@ -57,55 +54,55 @@ if ($currentUserId > 0) {
                         </a>
 
                         <?php if ($isExternal): ?>
-							<?php
-							$domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
-							if ($domainHost):
-								$isBannedDomain = false;
-								if (isset($bannedDomainsCache)) {
-									$isBannedDomain = in_array(strtolower($domainHost), $bannedDomainsCache, true);
-								}
-							?>
-								<a href="<?= route('domain.show', ['domain' => $domainHost]) ?>"
-								   class="domain <?= $isBannedDomain ? 'domain-banned' : '' ?>"
-								   title="<?= $isBannedDomain ? '⚠ Домен заблокирован модераторами' : '' ?>">
-									<?= e($domainHost) ?>
-									<?php if ($isBannedDomain): ?>
-										<span style="color:#ac130d;">🚫</span>
-									<?php endif; ?>
-								</a>
-							<?php endif; ?>
+                            <?php
+                            $domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
+                            if ($domainHost):
+                                $isBannedDomain = false;
+                                if (isset($bannedDomainsCache)) {
+                                    $isBannedDomain = in_array(strtolower($domainHost), $bannedDomainsCache, true);
+                                }
+                            ?>
+                                <a href="<?= route('domain.show', ['domain' => $domainHost]) ?>"
+                                    class="domain <?= $isBannedDomain ? 'domain-banned' : '' ?>"
+                                    title="<?= $isBannedDomain ? '⚠ Домен заблокирован модераторами' : '' ?>">
+                                    <?= e($domainHost) ?>
+                                    <?php if ($isBannedDomain): ?>
+                                        <span style="color:#ac130d;">🚫</span>
+                                    <?php endif; ?>
+                                </a>
+                            <?php endif; ?>
                         <?php endif; ?>
-						
-						<?php if (!empty($story['tags'])): ?>
-							<span class="tags">
-								<?php foreach ($story['tags'] as $tagName): ?>
-									<a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= e($tagName) ?></a>
-								<?php endforeach; ?>
-							</span>
-						<?php endif; ?>
+
+                        <?php if (!empty($story['tags'])): ?>
+                            <span class="tags">
+                                <?php foreach ($story['tags'] as $tagName): ?>
+                                    <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= e($tagName) ?></a>
+                                <?php endforeach; ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
 
-					<div class="story_content">
-						<?php if ($needsTruncation): ?>
-							<details>
-								<summary>
-									<?= truncateDescription($fullHtml, 300) ?>
-								</summary>
-								<div class="full-content">
-									<?= $fullHtml ?>
-								</div>
-							</details>
-						<?php else: ?>
-							<?= $fullHtml ?>
-						<?php endif; ?>
-					</div>
+                    <div class="story_content">
+                        <?php if ($needsTruncation): ?>
+                            <details>
+                                <summary>
+                                    <?= truncateDescription($fullHtml, 300) ?>
+                                </summary>
+                                <div class="full-content">
+                                    <?= $fullHtml ?>
+                                </div>
+                            </details>
+                        <?php else: ?>
+                            <?= $fullHtml ?>
+                        <?php endif; ?>
+                    </div>
 
                     <!-- Метаданные (1 строка вместо 30) -->
                     <?php partial('Users::_story_meta', [
                         'story' => $story,
                         'currentUserId' => $currentUserId,
                         'isAdmin' => $isAdmin,
-						'newCount' => $newCount,
+                        'newCount' => $newCount,
                     ]); ?>
                 </div>
             </li>

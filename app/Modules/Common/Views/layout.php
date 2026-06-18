@@ -130,7 +130,6 @@
 				  <a href="<?= route('tags.filters') ?>">Фильтры</a>
 				<?php endif; ?>
 			</nav>
-			<hr>
 			<?= \App\Core\Benchmark::renderStats() ?>
 		</div>
 	</footer>

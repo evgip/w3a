@@ -17,7 +17,7 @@ if ($currentUserId > 0) {
 }
 
 $isAuthor = (int)$story['user_id'] === (int)$user_id;
-$isStoryDeleted = !empty($story['deleted_at']); 
+$isStoryDeleted = !empty($story['deleted_at']);
 $isAdmin = \App\Core\Auth::isAdmin();
 $isModerator =  \App\Core\Auth::isModerator();
 
@@ -32,13 +32,13 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
 
         <!-- Голосование -->
         <?php partial('Votes::_voters', [
-			'type' => 'story',
-			'id' => (int)$story['id'],
-			'score' => (int)$story['score'],
-			'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
-			'canDownvote' => $canUserDownvote,
-			'isLoggedIn' => $currentUserId > 0,
-		]); ?>
+            'type' => 'story',
+            'id' => (int)$story['id'],
+            'score' => (int)$story['score'],
+            'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
+            'canDownvote' => $canUserDownvote,
+            'isLoggedIn' => $currentUserId > 0,
+        ]); ?>
 
         <!-- Контент публикации -->
         <div class="story_liner">
@@ -59,14 +59,14 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                 </a>
 
                 <?php if ($isExternal): ?>
-                    <?php 
-					$domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
-					if ($domainHost): 
-					?>
-						<a href="<?= route('domain.show', ['domain' => $domainHost]) ?>" class="domain">
-							<?= e($domainHost) ?>
-						</a>
-					<?php endif; ?>
+                    <?php
+                    $domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
+                    if ($domainHost):
+                    ?>
+                        <a href="<?= route('domain.show', ['domain' => $domainHost]) ?>" class="domain">
+                            <?= e($domainHost) ?>
+                        </a>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
 
@@ -94,7 +94,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
 
                 <a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>" <?= (int)$story['user_id'] === $currentUserId ? 'class="user_is_author"' : '' ?>>
                     <?= e($story['author_name']) ?>
-               </a>
+                </a>
 
                 <span class="divider">|</span>
                 <span title="<?= e(date('d.m.Y H:i:s', strtotime($story['created_at']))) ?>">
@@ -116,15 +116,15 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                     <a href="<?= route('story.edit', ['id' => $story['id']]) ?>">edit</a>
                 <?php endif; ?>
 
-				<?php if ($currentUserId > 0): ?>
-					<span class="divider">|</span>
-					<a href="<?= route('flags.report', ['type' => 'story', 'id' => (int)$story['id']]) ?>"
-					   class="flag-link"
-					   title="Пожаловаться на контент"
-					   onclick="return confirm('Вы уверены, что хотите подать жалобу?');">
-						🚩
-					</a>
-				<?php endif; ?>
+                <?php if ($currentUserId > 0): ?>
+                    <span class="divider">|</span>
+                    <a href="<?= route('flags.report', ['type' => 'story', 'id' => (int)$story['id']]) ?>"
+                        class="flag-link"
+                        title="Пожаловаться на контент"
+                        data-confirm="Вы уверены, что хотите подать жалобу?">
+                        🚩
+                    </a>
+                <?php endif; ?>
 
                 <!-- Админские действия -->
                 <?php if ($isAdmin): ?>
@@ -141,24 +141,24 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                         </form>
                     <?php endif; ?>
                 <?php endif; ?>
-				
-				<?php if ($isAuthor): ?> <br><br>
-					<form method="POST" action="/story/<?= $story['id'] ?>/follow" class="d-inline">
-						 <?= csrf_field() ?> 
-						<button type="submit" class="btn btn-sm <?= $story['user_is_following'] ? 'btn-primary' : 'btn-outline-primary' ?>">
-							<?= $story['user_is_following'] ? '🔔 Вы подписаны' : '🔕 Подписаться на ответы' ?>
-						</button>
-					</form>
-				<?php endif; ?>
-				
-				<?php if ($showMarkReadButton): ?> <br><br>
-					<form action="/story/<?= (int)$story['id'] ?>/mark-read" method="POST" style="display:inline">
-						<?= csrf_field() ?>
-						<button type="submit" class="btn btn-sm btn-outline-secondary" title="Сбросить счётчик новых комментариев">
-							✓ Отметить прочитанным
-						</button>
-					</form>
-				<?php endif; ?>
+
+                <?php if ($isAuthor): ?> <br><br>
+                    <form method="POST" action="/story/<?= $story['id'] ?>/follow" class="d-inline">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-sm <?= $story['user_is_following'] ? 'btn-primary' : 'btn-outline-primary' ?>">
+                            <?= $story['user_is_following'] ? '🔔 Вы подписаны' : '🔕 Подписаться на ответы' ?>
+                        </button>
+                    </form>
+                <?php endif; ?>
+
+                <?php if ($showMarkReadButton): ?> <br><br>
+                    <form action="/story/<?= (int)$story['id'] ?>/mark-read" method="POST" style="display:inline">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Сбросить счётчик новых комментариев">
+                            ✓ Отметить прочитанным
+                        </button>
+                    </form>
+                <?php endif; ?>
             </div>
 
         </div>
@@ -175,7 +175,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
             <input type="hidden" name="parent_id" id="form-parent-id" value="">
 
             <textarea name="comment_text" id="form-comment-textarea" required
-                      placeholder="Ваш комментарий... (поддерживается Markdown)"></textarea>
+                placeholder="Ваш комментарий... (поддерживается Markdown)"></textarea>
 
             <button type="submit">Опубликовать комментарий</button>
             <button type="button" id="btn-cancel-reply" style="display: none;">Отмена</button>
@@ -197,11 +197,11 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
 <?php else: ?>
 
     <?php
-    $renderTree = function(int $parentId) use (&$renderTree, $commentsTree,  $voteModel, $currentUserId, $isAdmin, $isModerator, $canUserDownvote) {
+    $renderTree = function (int $parentId) use (&$renderTree, $commentsTree,  $voteModel, $currentUserId, $isAdmin, $isModerator, $canUserDownvote) {
         if (!isset($commentsTree[$parentId])) {
             return;
         }
-        ?>
+    ?>
         <ol class="comments">
             <?php foreach ($commentsTree[$parentId] as $comment): ?>
                 <?php
@@ -242,7 +242,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                         <!-- Тело комментария -->
                         <?php if (!$isCommentDeleted): ?>
                             <div class="comment_text" id="comment-text-content-<?= $commentId ?>"
-                                 data-raw="<?= e($comment['comment'], ENT_QUOTES, 'UTF-8') ?>">
+                                data-raw="<?= e($comment['comment'], ENT_QUOTES, 'UTF-8') ?>">
                                 <?= \App\Core\Markdown::parse($comment['comment']) ?>
                             </div>
 
@@ -252,25 +252,25 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                                     <a href="#reply-to-<?= $commentId ?>" class="comment-reply-link" data-id="<?= $commentId ?>">Ответить</a>
                                 <?php endif; ?>
 
-								<?php if ((int)$comment['user_id'] === $currentUserId || $isAdmin || $isModerator): ?>
+                                <?php if ((int)$comment['user_id'] === $currentUserId || $isAdmin || $isModerator): ?>
                                     <span class="divider">|</span>
                                     <a class="comment-edit-trigger" data-id="<?= $commentId ?>">Редактировать</a>
                                     <span class="divider">|</span>
                                     <form action="/comments/<?= $commentId ?>/delete" method="POST" class="inline-form js-confirm-delete" data-confirm-message="Удалить комментарий?">
-										<?= csrf_field() ?>
-										<button type="submit">Удалить</button>
-									</form>
+                                        <?= csrf_field() ?>
+                                        <button type="submit">Удалить</button>
+                                    </form>
                                 <?php endif; ?>
-								
+
                                 <?php if ($currentUserId > 0): ?>
-									<span class="divider">|</span>
-									<a href="<?= route('flags.report', ['type' => 'comment', 'id' => $commentId]) ?>"
-									   class="flag-link"
-									   title="Пожаловаться на контент"
-									   onclick="return confirm('Вы уверены, что хотите подать жалобу?');">
-										🚩
-									</a>
-								<?php endif; ?>
+                                    <span class="divider">|</span>
+                                    <a href="<?= route('flags.report', ['type' => 'comment', 'id' => $commentId]) ?>"
+                                        class="flag-link"
+                                        title="Пожаловаться на контент"
+                                        data-confirm="Вы уверены, что хотите подать жалобу?">
+                                        🚩
+                                    </a>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
 
@@ -278,11 +278,11 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
 
                     <!-- Рекурсия ветки -->
                     <?php $renderTree($commentId); ?>
- 
+
                 </li>
             <?php endforeach; ?>
         </ol>
-        <?php
+    <?php
     };
 
     if (!empty($commentsTree)) {

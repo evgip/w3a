@@ -66,7 +66,8 @@
                             <form method="POST" 
                                   action="<?= route('admin.users.delete', ['id' => $user['id']]) ?>" 
                                   style="display:inline;"
-                                  onsubmit="return confirm('Вы уверены, что хотите удалить пользователя «<?= e($user['username']) ?>»? Это действие необратимо.');">
+								  class="delete-link"
+								  data-confirm="Вы уверены, что хотите удалить пользователя «<?= e($user['username']) ?>»? Это действие необратимо.">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="button" style="color: #ac130d;">
                                     Удалить

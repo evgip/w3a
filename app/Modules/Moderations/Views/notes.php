@@ -64,8 +64,7 @@
                 <td>
                     <form method="POST" action="/mod/notes/<?= $note['id'] ?>/delete" style="display:inline">
                         <?= csrf_field() ?>
-                        <button type="submit" class="btn btn-sm btn-danger" 
-                                onclick="return confirm('Удалить заметку?')">✕</button>
+                        <button type="submit" class="btn btn-sm btn-danger flag-link" data-confirm="Удалить заметку?">✕</button>
                     </form>
                 </td>
             </tr>

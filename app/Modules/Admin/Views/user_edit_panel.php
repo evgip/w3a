@@ -32,7 +32,7 @@
             
             <form action="<?= route('admin.users.avatar.delete', ['id' => $userItem['id']]) ?>" method="POST" style="display:inline; margin-top: 0.5rem;">
                 <?= csrf_field() ?>
-                <button type="submit" class="button" style="color: #ac130d;" onclick="return confirm('Вы уверены, что хотите удалить аватар этого пользователя?');">
+                <button type="submit" class="button delete-link" style="color: #ac130d;" data-confirm="Вы уверены, что хотите удалить аватар этого пользователя?">
                     🗑️ Удалить аватар
                 </button>
             </form>

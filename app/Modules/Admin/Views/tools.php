@@ -31,7 +31,7 @@
     
     <form action="<?= route('admin.tools.clear_file_logs') ?>" method="POST">
         <?= csrf_field() ?>
-        <button type="submit" class="button" style="color: #ac130d;" onclick="return confirm('Вы уверены, что хотите полностью очистить файлы логов на диске?');">
+        <button type="submit" class="button restore-link" style="color: #ac130d;" data-confirm="Вы уверены, что хотите полностью очистить файлы логов на диске?">
             🗑️ Очистить логи на диске
         </button>
     </form>
@@ -48,7 +48,7 @@
     
     <form action="<?= route('admin.tools.clear_db_audit') ?>" method="POST">
         <?= csrf_field() ?>
-        <button type="submit" class="button" style="color: #ac130d;" onclick="return confirm('ВНИМАНИЕ! Вы уверены, что хотите БЕЗВОЗВРАТНО удалить все логи аудита из Базы Данных?');">
+        <button type="submit" class="button restore-link" style="color: #ac130d;" data-confirm="ВНИМАНИЕ! Вы уверены, что хотите БЕЗВОЗВРАТНО удалить все логи аудита из Базы Данных?">
             🚨 Очистить аудит в БД
         </button>
     </form>
@@ -72,7 +72,7 @@
         
         <form action="<?= route('admin.tools.clear_cache_routes') ?>" method="POST" style="display:inline;">
             <?= csrf_field() ?>
-            <button type="submit" class="button" style="color: #ac130d;" onclick="return confirm('Вы уверены, что хотите сбросить кэш маршрутов?');">
+            <button type="submit" class="button restore-link" style="color: #ac130d;" data-confirm="Вы уверены, что хотите сбросить кэш маршрутов?">
                 🗑️ Сбросить кэш
             </button>
         </form>

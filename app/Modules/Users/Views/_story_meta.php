@@ -46,7 +46,7 @@ $isDeleted = !empty($story['deleted_at']);
 		<a href="<?= route('flags.report', ['type' => 'story', 'id' => (int)$story['id']]) ?>"
 		   class="flag-link"
 		   title="Пожаловаться на контент"
-		   onclick="return confirm('Вы уверены, что хотите подать жалобу?');">
+		   data-confirm="Вы уверены, что хотите подать жалобу?">
 			🚩
 		</a>
 	<?php endif; ?>

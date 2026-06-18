@@ -1,98 +1,148 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Notifications\Services;
 
 use App\Modules\Notifications\Models\Notification;
+use App\Modules\Stories\Models\Comment;
+use App\Modules\Users\Models\User;
 
+/**
+ * Сервис для работы с уведомлениями.
+ * Содержит только бизнес-логику, работа с БД делегирована моделям.
+ */
 class NotificationService
 {
     private Notification $notificationModel;
+    private Comment $commentModel;
+    private User $userModel;
 
     public function __construct()
     {
         $this->notificationModel = new Notification();
+        $this->commentModel = new Comment();
+        $this->userModel = new User();
     }
 
     /**
-     * Обработка создания нового комментария (аналог NotifyCommentJob из Lobsters)
+     * Обработка создания нового комментария.
+     * Уведомляет:
+     * 1. Автора поста (если подписан)
+     * 2. Автора родительского комментария (при ответе)
+     * 3. Упомянутых пользователей (@username)
      */
-	public function notifyCommentCreated(int $commentId): void
-	{
-        // Получаем полную информацию о комментарии
-        $stmt = static::db()->prepare("
-            SELECT 
-                c.id,
-                c.user_id as author_id,
-                c.parent_id,
-                c.story_id,
-                c.comment,
-                s.user_id as story_author_id,
-                s.title as story_title
-            FROM comments c
-            JOIN stories s ON c.story_id = s.id
-            WHERE c.id = :comment_id
-        ");
-        $stmt->execute(['comment_id' => $commentId]);
-        $comment = $stmt->fetch(\PDO::FETCH_ASSOC);
+    public function notifyCommentCreated(int $commentId): void
+    {
+        // Получаем полную информацию о комментарии через модель
+        $comment = $this->commentModel->getWithStoryInfo($commentId);
 
-		if (!$comment) {
-			return;
-		}
+        if (!$comment) {
+            return;
+        }
 
-		$authorId        = (int)$comment['author_id'];
-		$storyAuthorId   = (int)$comment['story_author_id'];
-		$parentCommentId = $comment['parent_id'] ? (int)$comment['parent_id'] : null;
-		
-		// Инициализируем список уже уведомлённых, чтобы исключить дубли
-		$notifiedUserIds = [$authorId];
+        $authorId = (int)$comment['author_id'];
+        $storyAuthorId = (int)$comment['story_author_id'];
+        $parentCommentId = $comment['parent_id'] ? (int)$comment['parent_id'] : null;
 
-		// 1. Уведомление автору поста ТОЛЬКО если он подписан на свой пост
-		if ($storyAuthorId !== $authorId && !in_array($storyAuthorId, $notifiedUserIds)) {
-			// Проверяем флаг подписки из результата запроса
-			if ((bool)$comment['user_is_following']) {
-				$this->notificationModel->createReplyNotification(
-					$storyAuthorId,
-					$comment['comment_id'],
-					$authorId,
-					'Прокомментировал вашу публикацию'
-				);
-				$notifiedUserIds[] = $storyAuthorId;
-			}
-		}
+        // Исключаем автора из уведомлений
+        $notifiedUserIds = [$authorId];
 
-		// 2. Уведомление автору родительского комментария (ответ на комментарий)
-		if ($parentCommentId) {
-			$stmt = $this->db->prepare("SELECT author_id FROM comments WHERE id = ?");
-			$stmt->execute([$parentCommentId]);
-			$parentComment = $stmt->fetch();
+        // 1. Уведомление автору поста (если подписан)
+        $this->notifyStoryAuthor(
+            $storyAuthorId,
+            $authorId,
+            (int)$comment['id'],
+            (bool)$comment['user_is_following'],
+            $notifiedUserIds
+        );
 
-			if ($parentComment) {
-				$parentAuthorId = (int)$parentComment['author_id'];
-				
-				if ($parentAuthorId !== $authorId && !in_array($parentAuthorId, $notifiedUserIds)) {
-					$this->notificationModel->createReplyNotification(
-						$parentAuthorId,
-						$comment['comment_id'],
-						$authorId,
-						'Ответил на ваш комментарий'
-					);
-					$notifiedUserIds[] = $parentAuthorId;
-				}
-			}
-		}
+        // 2. Уведомление автору родительского комментария
+        if ($parentCommentId) {
+            $this->notifyParentCommentAuthor(
+                $parentCommentId,
+                $authorId,
+                (int)$comment['id'],
+                $notifiedUserIds
+            );
+        }
 
-			// 3. Обработка упоминаний @username
-			$this->processMentions(
-				$comment['comment'],
-				$commentId,
-				$authorId,
-				$notifiedUserIds
-			);
-	}
-		
+        // 3. Обработка упоминаний @username
+        $this->processMentions(
+            $comment['comment'],
+            (int)$comment['id'],
+            $authorId,
+            $notifiedUserIds
+        );
+    }
 
     /**
-     * Обработка упоминаний @username в тексте (как в Lobsters)
+     * Уведомляет автора поста о новом комментарии.
+     */
+    private function notifyStoryAuthor(
+        int $storyAuthorId,
+        int $commentAuthorId,
+        int $commentId,
+        bool $isFollowing,
+        array &$notifiedUserIds
+    ): void {
+        if ($storyAuthorId === $commentAuthorId) {
+            return; // Не уведомляем автора о его же комментарии
+        }
+
+        if (in_array($storyAuthorId, $notifiedUserIds)) {
+            return; // Уже уведомлён
+        }
+
+        if (!$isFollowing) {
+            return; // Автор не подписан на свой пост
+        }
+
+        $this->notificationModel->createReplyNotification(
+            $storyAuthorId,
+            $commentId,
+            $commentAuthorId,
+            'Прокомментировал вашу публикацию'
+        );
+
+        $notifiedUserIds[] = $storyAuthorId;
+    }
+
+    /**
+     * Уведомляет автора родительского комментария об ответе.
+     */
+    private function notifyParentCommentAuthor(
+        int $parentCommentId,
+        int $commentAuthorId,
+        int $commentId,
+        array &$notifiedUserIds
+    ): void {
+        $parentAuthorId = $this->commentModel->getAuthorId($parentCommentId);
+
+        if ($parentAuthorId === null) {
+            return;
+        }
+
+        if ($parentAuthorId === $commentAuthorId) {
+            return; // Не уведомляем автора о его же ответе
+        }
+
+        if (in_array($parentAuthorId, $notifiedUserIds)) {
+            return; // Уже уведомлён
+        }
+
+        $this->notificationModel->createReplyNotification(
+            $parentAuthorId,
+            $commentId,
+            $commentAuthorId,
+            'Ответил на ваш комментарий'
+        );
+
+        $notifiedUserIds[] = $parentAuthorId;
+    }
+
+    /**
+     * Обработка упоминаний @username в тексте.
      */
     private function processMentions(
         string $text,
@@ -110,32 +160,31 @@ class NotificationService
         $usernames = array_unique($matches[1]);
 
         foreach ($usernames as $username) {
-            // Находим пользователя по имени
-            $stmt = static::db()->prepare("
-                SELECT id FROM users 
-                WHERE name = :username AND deleted_at IS NULL
-            ");
-            $stmt->execute(['username' => $username]);
-            $user = $stmt->fetch(\PDO::FETCH_ASSOC);
+            // Находим пользователя через модель
+            $user = $this->userModel->findByName($username);
 
-            if ($user) {
-                $userId = (int)$user['id'];
-                
-                // Не уведомляем автора и тех, кто уже получил уведомление
-                if ($userId !== $authorId && !in_array($userId, $excludeUserIds)) {
-                    $this->notificationModel->createMentionNotification(
-                        $userId,
-                        $commentId,
-                        $authorId,
-                        'Упомянул вас в комментарии'
-                    );
-                }
+            if (!$user) {
+                continue;
             }
+
+            $userId = (int)$user['id'];
+
+            // Не уведомляем автора и тех, кто уже получил уведомление
+            if ($userId === $authorId || in_array($userId, $excludeUserIds)) {
+                continue;
+            }
+
+            $this->notificationModel->createMentionNotification(
+                $userId,
+                $commentId,
+                $authorId,
+                'Упомянул вас в комментарии'
+            );
         }
     }
 
     /**
-     * Уведомление о новом личном сообщении
+     * Уведомление о новом личном сообщении.
      */
     public function notifyMessageSent(int $messageId, int $recipientId, int $senderId): void
     {
@@ -148,7 +197,7 @@ class NotificationService
     }
 
     /**
-     * Получить сводку уведомлений для пользователя
+     * Получить сводку уведомлений для пользователя.
      */
     public function getNotificationSummary(int $userId): array
     {

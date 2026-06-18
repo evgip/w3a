@@ -53,7 +53,7 @@ class Benchmark
         $files = self::getIncludedFilesCount();
 
         return "
-        <div class='stats'>
+        <div class='hint'>
             ⏱️ {$time} ms | 
             💾 {$memory} MB | 
             📂 {$files}

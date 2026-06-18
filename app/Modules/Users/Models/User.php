@@ -63,6 +63,22 @@ class User extends Model
         return $storyKarma + $commentKarma;
     }
 	
-
+	/**
+	 * Находит пользователя по имени (username).
+	 *
+	 * @param string $username Имя пользователя
+	 * @return array|null Данные пользователя или null
+	 */
+	public function findByName(string $username): ?array
+	{
+		$stmt = $this->db()->prepare("
+			SELECT id, name, username FROM users 
+			WHERE name = :username AND deleted_at IS NULL
+		");
+		$stmt->execute(['username' => $username]);
+		$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+		
+		return $result ?: null;
+	}
 	
 }

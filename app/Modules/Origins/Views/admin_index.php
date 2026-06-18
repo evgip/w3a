@@ -91,8 +91,7 @@
                             <form action="<?= route('admin.domains.unban', ['id' => $domain['id']]) ?>"
                                   method="POST" style="display:inline;">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="button" style="color: #2e8b57;"
-                                        onclick="return confirm('Разблокировать домен «<?= e($domain['domain']) ?>»?');">
+                                <button type="submit" class="button restore-link" style="color: #2e8b57;" data-confirm="Разблокировать домен «<?= e($domain['domain']) ?>»?">
                                     🔓 Разбанить
                                 </button>
                             </form>

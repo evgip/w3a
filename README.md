@@ -56,6 +56,8 @@ A modern, lightweight news aggregator built with PHP 8.1+ and MySQL, inspired by
 
 Install the package through [Composer](http://getcomposer.org/). 
 
+`composer create-project evgip/w3a`
+
 ### Requirements
 - PHP 8.1 or higher
 - MySQL 8.0 or higher

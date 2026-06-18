@@ -19,34 +19,34 @@
     <!-- Панель фильтров -->
     <nav class="nav">
         <a href="/notifications?type=all"
-           class="<?=$currentType === 'all' ? 'active' : ''?>">
+            class="<?= $currentType === 'all' ? 'active' : '' ?>">
             Все
             <?php if ($totalUnread > 0): ?>
-                <span class="nav-notification-badge"><?=$totalUnread?></span>
+                <span class="nav-notification-badge"><?= $totalUnread ?></span>
             <?php endif; ?>
         </a>
 
         <a href="/notifications?type=reply"
-           class="<?=$currentType === 'reply' ? 'active' : ''?>">
+            class="<?= $currentType === 'reply' ? 'active' : '' ?>">
             💬 Ответы
             <?php if ($counts['reply'] > 0): ?>
-                <span class="nav-notification-badge"><?=$counts['reply']?></span>
+                <span class="nav-notification-badge"><?= $counts['reply'] ?></span>
             <?php endif; ?>
         </a>
 
         <a href="/notifications?type=mention"
-           class="<?=$currentType === 'mention' ? 'active' : ''?>">
+            class="<?= $currentType === 'mention' ? 'active' : '' ?>">
             @ Упоминания
             <?php if ($counts['mention'] > 0): ?>
-                <span class="nav-notification-badge"><?=$counts['mention']?></span>
+                <span class="nav-notification-badge"><?= $counts['mention'] ?></span>
             <?php endif; ?>
         </a>
 
         <a href="/notifications?type=message"
-           class="<?=$currentType === 'message' ? 'active' : ''?>">
+            class="<?= $currentType === 'message' ? 'active' : '' ?>">
             ✉️ Сообщения
             <?php if ($counts['message'] > 0): ?>
-                <span class="nav-notification-badge"><?=$counts['message']?></span>
+                <span class="nav-notification-badge"><?= $counts['message'] ?></span>
             <?php endif; ?>
         </a>
     </nav>
@@ -55,7 +55,7 @@
     <?php if (empty($notifications)): ?>
 
         <div class="flash-notice">
-            У вас нет уведомлений <?=$currentType !== 'all' ? 'этого типа' : ''?>.
+            У вас нет уведомлений <?= $currentType !== 'all' ? 'этого типа' : '' ?>.
         </div>
 
     <?php else: ?>
@@ -82,30 +82,30 @@
                     $link = '/messages/chat/' . ($notif['conversation_id'] ?? $notif['source_id']);
                 }
                 ?>
-                <li class="notification-item <?=$notif['is_read'] ? '' : 'notification-unread'?>">
-                    <a href="<?=$link?>"
-                       class="notification-link"
-                       data-notification-id="<?=$notif['id']?>">
+                <li class="notification-item <?= $notif['is_read'] ? '' : 'notification-unread' ?>">
+                    <a href="<?= $link ?>"
+                        class="notification-link"
+                        data-notification-id="<?= $notif['id'] ?>">
 
                         <div class="notification-icon">
-                            <?=$icon?>
+                            <?= $icon ?>
                         </div>
 
                         <div class="notification-body">
                             <span class="notification-sender">
-                                <?=htmlspecialchars($notif['sender_name'] ?? 'Пользователь')?>
+                                <?= htmlspecialchars($notif['sender_name'] ?? 'Пользователь') ?>
                             </span>
-                            <span class="notification-action"><?=$actionText?></span>
+                            <span class="notification-action"><?= $actionText ?></span>
 
                             <?php if (!empty($notif['content_text'])): ?>
                                 <blockquote class="notification-quote">
-                                    <?=htmlspecialchars(mb_substr($notif['content_text'], 0, 100))?>...
+                                    <?= htmlspecialchars(mb_substr($notif['content_text'], 0, 100)) ?>...
                                 </blockquote>
                             <?php endif; ?>
 
                             <div class="byline">
                                 <span class="notification-time">
-                                    <?=date('d.m.Y H:i', strtotime($notif['created_at']))?>
+                                    <?= date('d.m.Y H:i', strtotime($notif['created_at'])) ?>
                                 </span>
                             </div>
                         </div>
@@ -117,4 +117,3 @@
     <?php endif; ?>
 
 </div>
-

@@ -1,187 +1,297 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Stories\Controllers;
 
 use App\Core\Controller;
 use App\Core\Request;
-use App\Core\Validator;
 use App\Core\Auth;
 use App\Core\Session;
+use App\Core\Audit;
+use App\Modules\Stories\Services\StoryService;
+use App\Modules\Stories\Services\StoryFilterService;
+use App\Modules\Stories\Services\CommentService;
+use App\Modules\Stories\Services\ReadRibbonService;
 use App\Modules\Stories\Models\Story;
+use App\Modules\Stories\Models\Comment;
+use App\Modules\Stories\Models\ReadRibbon;
+use App\Modules\Tags\Models\Tag;
+use App\Modules\Origins\Models\Domain;
+use App\Modules\Notifications\Services\NotificationService;
+use App\Modules\Moderations\Models\Moderation;
 
+/**
+ * Контроллер для работы с историями (публикациями) и комментариями.
+ * 
+ * Бизнес-логика вынесена в Service-классы:
+ * - StoryService: создание, обновление, удаление историй
+ * - StoryFilterService: фильтрация и получение списков
+ * - CommentService: работа с комментариями
+ * - ReadRibbonService: отметки прочитанного
+ */
 class StoriesController extends Controller
 {
+    /** @var StoryService|null Лениво инициализируемый сервис */
+    private ?StoryService $storyService = null;
+
+    /** @var StoryFilterService|null Лениво инициализируемый сервис */
+    private ?StoryFilterService $filterService = null;
+
+    /** @var CommentService|null Лениво инициализируемый сервис */
+    private ?CommentService $commentService = null;
+
+    /** @var ReadRibbonService|null Лениво инициализируемый сервис */
+    private ?ReadRibbonService $readRibbonService = null;
+
+    public function __construct()
+    {
+        // Временно: диагностика, какой класс падает
+        $classes = [
+            'App\\Modules\\Stories\\Models\\Story' => 'Story',
+            'App\\Modules\\Origins\\Models\\Domain' => 'Domain',
+            'App\\Modules\\Stories\\Models\\Comment' => 'Comment',
+            'App\\Modules\\Stories\\Models\\ReadRibbon' => 'ReadRibbon',
+            'App\\Modules\\Notifications\\Services\\NotificationService' => 'NotificationService',
+        ];
+
+        foreach ($classes as $class => $name) {
+            try {
+                if (!class_exists($class)) {
+                    error_log("✗ {$name}: класс НЕ СУЩЕСТВУЕТ");
+                    continue;
+                }
+
+                $reflection = new \ReflectionClass($class);
+
+                if (!$reflection->isInstantiable()) {
+                    error_log("✗ {$name}: НЕ МОЖЕТ быть создан (абстрактный/интерфейс/приватный конструктор)");
+                    continue;
+                }
+
+                $constructor = $reflection->getConstructor();
+                if ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0) {
+                    error_log("✗ {$name}: требует {$constructor->getNumberOfRequiredParameters()} обязательных параметров");
+                    continue;
+                }
+
+                new $class();
+                error_log("✓ {$name}: OK");
+            } catch (\Throwable $e) {
+                error_log("✗ {$name}: " . $e->getMessage());
+            }
+        }
+
+        // Теперь вызываем родительский конструктор
+        try {
+            parent::__construct();
+        } catch (\Throwable $e) {
+            error_log("✗ parent::__construct(): " . $e->getMessage());
+            error_log("   Файл: " . $e->getFile() . ":" . $e->getLine());
+        }
+    }
+    
+    // =========================================================================
+    // ЛЕНИВЫЕ ГЕТТЕРЫ СЕРВИСОВ
+    // =========================================================================
+
     /**
-     * Отображение главной ленты историй (а также фильтрация по тегу)
-     * 
-     * @param string|null $tagname Параметр автоматически передается роутером из {tagname}
+     * Получает экземпляр StoryService (ленивая инициализация).
      */
-
-	public function index(string $tagname = '', string $domain = ''): void
-	{
-		$request = new Request();
-		$currentPage = (int)$request->getParams('page', 1);
-		if ($currentPage < 1) $currentPage = 1;
-
-		$perPage = config_int('constants.pagination.stories_per_page', 15);
-		$offset = ($currentPage - 1) * $perPage;
-
-		$storyModel = new Story();
-		$showDeleted = \App\Core\Auth::isAdmin();
-
-		$domainModel = new \App\Modules\Origins\Models\Domain();
-		$bannedDomainsCache = array_column($domainModel->getBannedDomains(), 'domain');
-		$bannedDomainsCache = array_map('strtolower', $bannedDomainsCache);
-
-		// Получаем отфильтрованные теги пользователя
-		$excludeTagIds = [];
-		if (\App\Core\Auth::check()) {
-			$filterModel = new \App\Modules\Tags\Models\TagFilter();
-			$excludeTagIds = $filterModel->getFilteredTagIds(\App\Core\Auth::id());
-		}
-		
-		// Передаем $excludeTagIds в модель для фильтрации
-		$stories = $storyModel->getFeed($perPage, $offset, $tagname, $showDeleted, $domain, $excludeTagIds);
-		
-		// Получаем корректное количество записей с учетом фильтров
-		$totalStories = $storyModel->getTotalCount($tagname, $domain, $excludeTagIds);
-		$totalPages = (int)ceil($totalStories / $perPage);
-
-		$title = 'Лента историй';
-		if ($tagname) {
-			$title = "Публикации с тегом # " . e($tagname);
-		} elseif ($domain) {
-			$title = "Публикации с домена " . e($domain);
-		}
-
-	   // === Подсчёт новых комментариев для каждой истории ===
-		$newCommentsMap = [];
-		if (\App\Core\Auth::check() && !empty($stories)) {
-			$storyIds = array_column($stories, 'id');
-			$readRibbon = new \App\Modules\Stories\Models\ReadRibbon();
-			$newCommentsMap = $readRibbon->getNewCommentsCounts(
-				(int)$_SESSION['user_id'],
-				array_map('intval', $storyIds)
-			);
-		}
-		// ===========================================================
-
-		$this->render('index', [
-			'title' => $title,
-			'stories' => $stories,
-			'currentPage' => $currentPage,
-			'totalPages' => $totalPages,
-			'newCommentsMap'   => $newCommentsMap,
-			'bannedDomainsCache' => $bannedDomainsCache,
-		]);
-	}
-	
+    private function getStoryService(): StoryService
+    {
+        if ($this->storyService === null) {
+            $this->storyService = new StoryService(
+                new Story(),
+                new Domain()
+            );
+        }
+        return $this->storyService;
+    }
 
     /**
-     * Display the submission form (GET /stories/create)
+     * Получает экземпляр StoryFilterService (ленивая инициализация).
+     */
+    private function getFilterService(): StoryFilterService
+    {
+        if ($this->filterService === null) {
+            $this->filterService = new StoryFilterService(
+                new Story(),
+                new Domain()
+            );
+        }
+        return $this->filterService;
+    }
+
+    /**
+     * Получает экземпляр CommentService (ленивая инициализация).
+     */
+    private function getCommentService(): CommentService
+    {
+        if ($this->commentService === null) {
+            $this->commentService = new CommentService(
+                new Comment(),
+                new NotificationService() // ← ДОБАВЬТЕ ЭТО
+            );
+        }
+        return $this->commentService;
+    }
+
+    /**
+     * Получает экземпляр ReadRibbonService (ленивая инициализация).
+     */
+    private function getReadRibbonService(): ReadRibbonService
+    {
+        if ($this->readRibbonService === null) {
+            $this->readRibbonService = new ReadRibbonService(
+                new ReadRibbon()
+            );
+        }
+        return $this->readRibbonService;
+    }
+    
+    // =========================================================================
+    // ЛЕНТА ИСТОРИЙ
+    // =========================================================================
+
+    /**
+     * Отображение главной ленты историй.
+     *
+     * @param string $tagname Фильтр по тегу (опционально)
+     * @param string $domain Фильтр по домену (опционально)
+     */
+    public function index(string $tagname = '', string $domain = ''): void
+    {
+        $request = new Request();
+
+        $currentPage = max(1, (int)$request->getParams('page', 1));
+        $perPage = config_int('constants.pagination.stories_per_page', 15);
+        $offset = ($currentPage - 1) * $perPage;
+
+        // Получаем отфильтрованные истории через сервис
+        $stories = $this->getFilterService()->getFilteredStories($perPage, $offset, $tagname, $domain);
+        $totalStories = $this->getFilterService()->getTotalCount($tagname, $domain);
+        $totalPages = (int)ceil($totalStories / $perPage);
+
+        // Дополнительные данные
+        $bannedDomainsCache = $this->getFilterService()->getBannedDomains();
+        $storyIds = array_column($stories, 'id');
+        $newCommentsMap = $this->getFilterService()->getNewCommentsCounts($storyIds);
+
+        // Формируем заголовок страницы
+        $title = 'Лента историй';
+        if ($tagname) {
+            $title = "Публикации с тегом # " . e($tagname);
+        } elseif ($domain) {
+            $title = "Публикации с домена " . e($domain);
+        }
+
+        $this->render('index', [
+            'title' => $title,
+            'stories' => $stories,
+            'currentPage' => $currentPage,
+            'totalPages' => $totalPages,
+            'newCommentsMap' => $newCommentsMap,
+            'bannedDomainsCache' => $bannedDomainsCache,
+        ]);
+    }
+    
+    // =========================================================================
+    // ПРОСМОТР ОДНОЙ ИСТОРИИ
+    // =========================================================================
+
+    /**
+     * Просмотр одной истории с комментариями.
+     *
+     * @param string $id ID истории
+     */
+    public function show(string $id): void
+    {
+        $storyId = (int)$id;
+
+        $story = $this->getFilterService()->getStoryWithAuthor($storyId);
+        if (!$story) {
+            $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
+            if (class_exists($errorController)) {
+                (new $errorController())->notFound("История не найдена.");
+                exit;
+            }
+            http_response_code(404);
+            die("404 Not Found");
+        }
+
+        // Получаем комментарии в виде дерева
+        $commentsTree = $this->getFilterService()->getCommentsTree($storyId);
+
+        // Обрабатываем отметку прочитанного
+        $newCount = $this->getReadRibbonService()->handleStoryView($storyId);
+
+        $this->render('show', [
+            'title' => $story['title'],
+            'story' => $story,
+            'commentsTree' => $commentsTree,
+            'newCount' => $newCount,
+        ]);
+    }
+    
+    // =========================================================================
+    // СОЗДАНИЕ ИСТОРИИ
+    // =========================================================================
+
+    /**
+     * Форма создания новой истории.
      */
     public function showCreateForm(): void
     {
         $this->requireAuth();
-		
-        $request = new Request();
-        
-        // Pull master available checkboxes catalog from the cross-module Tag class model
-        $tagModel = new \App\Modules\Tags\Models\Tag();
+
+        $tagModel = new Tag();
         $availableTags = $tagModel->getAllTags();
 
         $this->render('create', [
             'title' => 'Поделиться интересным',
-            'availableTags'  => $availableTags,
-            'request' => $request
+            'availableTags' => $availableTags,
+            'request' => new Request()
         ]);
     }
 
     /**
-     * Process story creation payloads (POST /stories/create)
+     * Обработка создания новой истории.
      */
     public function create(): void
     {
-        $this->requireAuth(); 
+        $this->requireAuth();
 
         $request = new Request();
         $request->validateCsrf();
 
-        $validator = new Validator();
-		$minTitleLength = config_int('validation.title_min_length', 5);
-		$isValid = $validator->validate($_POST, ['title' => "required|min:{$minTitleLength}"]);
+        $data = [
+            'title' => $request->getParams('title'),
+            'url' => $request->getParams('url') ?: null,
+            'description' => $request->getParams('description') ?: null,
+            'tags' => $_POST['tags'] ?? [],
+            'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
+        ];
 
-        $title = $request->getParams('title');
-        $url = $request->getParams('url') ?: null;
-        $description = $request->getParams('description') ?: null;
-        
-        // Capture checked item integers list securely: $_POST['tags'] -> [1, 3]
-        $selectedTags = $_POST['tags'] ?? [];
+        $storyId = $this->getStoryService()->createStory($data, (int)$_SESSION['user_id']);
 
-        if (!empty($url) && !isValidUrl($url)) {
-            \App\Core\Session::setFlash('error', 'Пожалуйста, укажите корректный URL-адрес.');
+        if ($storyId > 0) {
+            Session::setFlash('success', 'Ваша история успешно опубликована!');
+            header('Location: /');
+        } else {
             header('Location: /stories/create');
-            exit;
         }
-
-        if (!$isValid) {
-            \App\Core\Session::setFlash('error', 'Заголовок должен содержать как минимум 5 символов.');
-            header('Location: /stories/create');
-            exit;
-        }
-		
-		$domain = !empty($url) ? parse_url($url, PHP_URL_HOST) : null;
-
-		// === ПРОВЕРКА ЗАБАНЕННЫХ ДОМЕНОВ ===
-		if (!empty($domain)) {
-			$domainModel = new \App\Modules\Origins\Models\Domain();
-			if ($domainModel->isBanned($domain)) {
-				$banInfo = $domainModel->getBanInfo($domain);
-				$reason  = $banInfo['ban_reason'] ?? 'Домен заблокирован администрацией';
-
-				\App\Core\Session::setFlash(
-					'error',
-					"Публикация отклонена: домен <strong>" . e($domain) . "</strong> заблокирован. Причина: " . e($reason)
-				);
-
-				\App\Core\Audit::log('story.rejected_banned_domain', "Попытка публикации с забаненного домена", [
-					'domain'   => $domain,
-					'user_id'  => (int) ($_SESSION['user_id'] ?? 0),
-					'url'      => $url,
-					'reason'   => $reason,
-				]);
-
-				header('Location: /stories/create');
-				exit;
-			}
-		}
-		// === КОНЕЦ ПРОВЕРКИ ===
-
-        $storyModel = new Story();
-        $newStoryId = $storyModel->create([
-            'user_id' => (int)$_SESSION['user_id'],
-            'title' => $title,
-            'url' => $url,
-			'domain' => $domain,
-            'description' => $description,
-            'score' => 1,
-            'comments_count' => 0,
-			'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
-        ]);
-
-        // Intercept and map chosen checkboxes into the pivot database partition
-        if ($newStoryId > 0) {
-            $storyModel->syncTags($newStoryId, $selectedTags);
-        }
-
-        \App\Core\Audit::log('story.created', 'Пользователь создал новую публикацию с тегами');
-        \App\Core\Session::setFlash('success', 'Ваша история успешно опубликована!');
-        header('Location: /');
         exit;
     }
+    
+    // =========================================================================
+    // РЕДАКТИРОВАНИЕ ИСТОРИИ
+    // =========================================================================
 
     /**
-     * Display the Story Editing Panel (GET /stories/{id}/edit)
+     * Форма редактирования истории.
+     *
+     * @param string $id ID истории
      */
     public function showEditForm(string $id): void
     {
@@ -191,33 +301,31 @@ class StoriesController extends Controller
         $storyModel = new Story();
         $story = $storyModel->find($storyId);
 
-        if (!$story) { header('Location: /'); exit; }
-
-        // PERMISSION ENFORCEMENT LAYER: Check if current account owns the target story row
-        $isAuthor = ((int)$story['user_id'] === (int)$_SESSION['user_id']);
-        if (!$isAuthor && !\App\Core\Auth::isAdmin()) {
-            \App\Core\Session::setFlash('error', 'У вас нет прав для изменения этой публикации.');
+        if (!$story || !$this->getStoryService()->canEditStory($story, (int)$_SESSION['user_id'])) {
+            Session::setFlash('error', 'У вас нет прав для изменения этой публикации.');
             header('Location: /');
             exit;
         }
 
-        $tagModel = new \App\Modules\Tags\Models\Tag();
-        
+        $tagModel = new Tag();
+
         $this->render('edit', [
             'title' => 'Редактирование публикации',
             'story' => $story,
             'availableTags' => $tagModel->getAllTags(),
-            'activeTagIds'  => $storyModel->getStoryTagIds($storyId),
+            'activeTagIds' => $storyModel->getStoryTagIds($storyId),
             'request' => new Request()
         ]);
     }
 
     /**
-     * Handle Update persistence transaction requests (POST /stories/{id}/edit)
+     * Обработка обновления истории.
+     *
+     * @param string $id ID истории
      */
     public function update(string $id): void
     {
-         $userId = $this->currentUserId();
+        $this->requireAuth();
 
         $request = new Request();
         $request->validateCsrf();
@@ -226,213 +334,114 @@ class StoriesController extends Controller
         $storyModel = new Story();
         $story = $storyModel->find($storyId);
 
-        if (!$story) { header('Location: /'); exit; }
-
-        if ((int)$story['user_id'] !== (int)$_SESSION['user_id'] && !\App\Core\Auth::isAdmin()) {
+        if (!$story || !$this->getStoryService()->canEditStory($story, (int)$_SESSION['user_id'])) {
             header('Location: /');
             exit;
         }
 
-        $title = $request->getParams('title');
-        $url = $request->getParams('url') ?: null;
-        $description = $request->getParams('description') ?: null;
-        $selectedTags = $_POST['tags'] ?? [];
+        $data = [
+            'title' => $request->getParams('title'),
+            'url' => $request->getParams('url') ?: null,
+            'description' => $request->getParams('description') ?: null,
+            'tags' => $_POST['tags'] ?? [],
+            'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
+        ];
 
- 
+        $this->getStoryService()->updateStory($storyId, $data);
 
-        $storyModel->update($storyId, [
-            'title' => $title,
-            'url' => $url,
-            'description' => $description,
-			'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
-        ]);
-
-        // Sync the edited set of checkboxes into MySQL
-        $storyModel->syncTags($storyId, $selectedTags);
-
-        \App\Core\Session::setFlash('success', 'Публикация успешно отредактирована.');
+        Session::setFlash('success', 'Публикация успешно отредактирована.');
         header('Location: /story/' . $storyId);
         exit;
     }
+    
+    // =========================================================================
+    // АДМИНИСТРИРОВАНИЕ ИСТОРИЙ
+    // =========================================================================
 
-	
-   /**
-     * Просмотр одной истории и её дерева комментариев (GET /story/{id})
-     */
-   public function show(string $id): void
-    {  
-        $storyId = (int)$id;
-        $storyModel = new Story();
-        
-        $showDeleted = \App\Core\Auth::isAdmin();
-        $story = $storyModel->getSingleWithAuthor($storyId, $showDeleted);
-        
-        if (!$story) {
-            $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-            if (class_exists($errorController)) { (new $errorController())->notFound("История не найдена."); exit; }
-            http_response_code(404); die("404 Not Found");
-        }
-
-        $flatComments = $storyModel->getCommentsForStory($storyId);
-        $commentsTree = [];
-        foreach ($flatComments as $comment) {
-            $parentId = $comment['parent_id'] ?? 0;
-            $commentsTree[$parentId][] = $comment;
-        }
-
- 
-	 // ==========================================
-    // НОВОЕ: Отметка прочитанного (ReadRibbon)
-    // ==========================================
-	if (\App\Core\Auth::check()) {
-		$readRibbon = new \App\Modules\Stories\Models\ReadRibbon();
-		
-		// 1. Получаем количество новых
-		$newCount = $readRibbon->getNewCommentsCount(
-			(int)$_SESSION['user_id'], 
-			$storyId
-		);
-		
-		// 2. === АВТОСИНХРОНИЗАЦИЯ ===
-		// Если счётчик показывает новые, но в реальности их нет — сбрасываем
-		if ($newCount > 0) {
-			$realNewCount = $readRibbon->countRealNewComments($storyId, (int)$_SESSION['user_id']);
-			
-			if ($realNewCount === 0) {
-				// Рассинхрон! Синхронизируем отметку
-				$readRibbon->syncForUserAndStory((int)$_SESSION['user_id'], $storyId);
-				$newCount = 0; // Обнуляем для flash-сообщения
-			}
-		}
-		// ===========================
-		
-		// 3. Показываем flash
-		if ($newCount > 0) {
-			$word = $this->pluralizeComment($newCount);
-			\App\Core\Session::setFlash('info', "Вы пропустили {$newCount} {$word}.");
-		}
-		
-		// 4. Отмечаем как прочитанное
-		$readRibbon->syncForUserAndStory((int)$_SESSION['user_id'], $storyId);
-	}
-    // ==========================================
-
-
-        $this->render('show', [
-            'title' => $story['title'],
-            'story' => $story,
-            'commentsTree' => $commentsTree,
-			'newCount'     => $newCount ?? 0,
-        ]);
-    }
-	
-	    /**
-     * Administrative Moderation Override: Soft Delete Story (POST /admin/stories/{id}/delete)
+    /**
+     * Удаление истории (только для администраторов).
+     *
+     * @param string $id ID истории
      */
     public function adminDelete(string $id): void
     {
-        \App\Core\Auth::middlewareAdmin(); // Block standard accounts
-        
+        Auth::middlewareAdmin();
+
         $request = new Request();
         $request->validateCsrf();
 
         $storyId = (int)$id;
         $storyModel = new Story();
-        
-        // Execute core model inherited soft delete operation
         $storyModel->delete($storyId);
 
-        \App\Core\Audit::log('admin.story_moderated', "Администратор принудительно скрыл публикацию ID: {$storyId}");
-        \App\Core\Session::setFlash('success', 'Публикация успешно скрыта из общей ленты.');
-        
+        Audit::log('admin.story_moderated', "Администратор принудительно скрыл публикацию ID: {$storyId}");
+        Session::setFlash('success', 'Публикация успешно скрыта из общей ленты.');
+
         header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
         exit;
     }
 
     /**
-     * Administrative Moderation Override: Restore Soft Deleted Story (POST /admin/stories/{id}/restore)
+     * Восстановление истории (только для администраторов).
+     *
+     * @param string $id ID истории
      */
     public function adminRestore(string $id): void
     {
-        \App\Core\Auth::middlewareAdmin();
-        
+        Auth::middlewareAdmin();
+
         $request = new Request();
         $request->validateCsrf();
 
         $storyId = (int)$id;
         $storyModel = new Story();
-        
-        // Execute core model inherited restore operation
         $storyModel->restore($storyId);
 
-        \App\Core\Audit::log('admin.story_restored', "Администратор восстановил публикацию ID: {$storyId}");
-        \App\Core\Session::setFlash('success', 'Публикация успешно восстановлена в общей ленте.');
-        
+        Audit::log('admin.story_restored', "Администратор восстановил публикацию ID: {$storyId}");
+        Session::setFlash('success', 'Публикация успешно восстановлена в общей ленте.');
+
         header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
         exit;
-    }	
-	
-	/**
-     * Process new comment submissions (POST /comments/create)
-     */
-	public function addComment(): void
-	{
-		$this->requireAuth();
-		
-		$request = new Request();
-		$request->validateCsrf();
-		
-		// 2. Clean incoming tracking parameters
-		$storyId = (int)$request->getParams('story_id');
-		$parentId = $request->getParams('parent_id') !== '' ? (int)$request->getParams('parent_id') : null;
-		$commentText = $request->getParams('comment_text');
-		
-		// 3. Perform server-side field length validation checks
-		$validator = new Validator();
-		$minCommentLength = config_int('constants.validation.comment_min_length', 2);
-		$isValid = $validator->validate(['comment_text' => $commentText], [
-			'comment_text' => "required|min:{$minCommentLength}"
-		]);
-		
-		if (!$isValid) {
-			Session::setFlash('error', "Текст комментария должен содержать не менее {$minCommentLength} символов.");
-			header('Location: /story/' . $storyId);
-			exit;
-		}
-		
-		// 4. Trigger database storage transaction operations through the Comment model
-		$commentModel = new \App\Modules\Stories\Models\Comment();
-		$commentId = $commentModel->saveComment([
-			'story_id' => $storyId,
-			'user_id' => (int)$_SESSION['user_id'],
-			'parent_id' => $parentId,
-			'comment' => trim($commentText)
-		]);
-		
-		if ($commentId > 0) {
+    }
+    
+    // =========================================================================
+    // КОММЕНТАРИИ
+    // =========================================================================
 
-			// Отправляем уведомления
-			$notificationService = new \App\Modules\Notifications\Services\NotificationService();
-			$notificationService->notifyCommentCreated($commentId);
-			
-			\App\Core\Audit::log('comment.created', 'Пользователь оставил комментарий к истории', [
-				'story_id' => $storyId,
-				'parent_id' => $parentId
-			]);
-			\App\Core\Session::setFlash('success', 'Ваш комментарий успешно опубликован!');
-			
-			// Редирект к созданному комментарию с якорем
-			header('Location: ' . comment_url($storyId, $commentId));
-		} else {
-			\App\Core\Session::setFlash('error', 'Произошла непредвиденная ошибка при публикации комментария.');
-			header('Location: /story/' . $storyId);
-		}
-		
-		exit;
-	}
-	
     /**
-     * Редактирование текста комментария (POST /comments/{id}/edit)
+     * Добавление нового комментария.
+     */
+    public function addComment(): void
+    {
+        $this->requireAuth();
+
+        $request = new Request();
+        $request->validateCsrf();
+
+        $storyId = (int)$request->getParams('story_id');
+        $parentId = $request->getParams('parent_id') !== '' ? (int)$request->getParams('parent_id') : null;
+        $commentText = $request->getParams('comment_text');
+
+        $commentId = $this->getCommentService()->createComment(
+            $storyId,
+            $commentText,
+            $parentId,
+            (int)$_SESSION['user_id']
+        );
+
+        if ($commentId > 0) {
+            Session::setFlash('success', 'Ваш комментарий успешно опубликован!');
+            header('Location: ' . comment_url($storyId, $commentId));
+        } else {
+            header('Location: /story/' . $storyId);
+        }
+        exit;
+    }
+
+    /**
+     * Редактирование комментария.
+     *
+     * @param string $id ID комментария
      */
     public function editComment(string $id): void
     {
@@ -442,44 +451,25 @@ class StoriesController extends Controller
         $request->validateCsrf();
 
         $commentId = (int)$id;
-        $commentModel = new \App\Modules\Stories\Models\Comment();
-        
-        // Находим оригинальный комментарий, включая архивные (на случай скрытых проверок)
-        $comment = $commentModel->withTrashed()->find($commentId);
-        if (!$comment) { header('Location: /'); exit; }
-
-        // ПРАВА: Изменять коммент может только автор или админ
-        $isAuthor = (int)$comment['user_id'] === (int)$_SESSION['user_id'];
-        $isAdmin = \App\Core\Auth::isAdmin();
-        $isModerator =  \App\Core\Auth::isModerator();
-		
-        if (!$isAuthor && !$isAdmin && !$isModerator) {
-            \App\Core\Session::setFlash('error', 'У вас нет прав для изменения этого комментария.');
-            header('Location: /story/' . $comment['story_id']);
-            exit;
-        }
-
         $newText = $request->getParams('comment_text');
-        $validator = new Validator();
-        $isValid = $validator->validate(['comment_text' => $newText], ['comment_text' => 'required|min:2']);
 
-        if (!$isValid) {
-            \App\Core\Session::setFlash('error', 'Текст комментария должен содержать не менее 2 символов.');
+        $this->getCommentService()->updateComment($commentId, $newText, (int)$_SESSION['user_id']);
+
+        $commentModel = new Comment();
+        $comment = $commentModel->withTrashed()->find($commentId);
+
+        if ($comment) {
+            header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
         } else {
-            $commentModel->update($commentId, ['comment' => trim($newText)]);
-            \App\Core\Audit::log('comment.updated', 'Пользователь отредактировал свой комментарий', ['comment_id' => $commentId]);
-            \App\Core\Session::setFlash('success', 'Комментарий успешно обновлен.');
-			
-			\App\Modules\Moderations\Models\Moderation::logCommentModeratorAction('Изменён', $isAuthor, $comment);
-
+            header('Location: /');
         }
-
-		header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
         exit;
     }
 
     /**
-     * Мягкое удаление комментария (POST /comments/{id}/delete)
+     * Удаление комментария.
+     *
+     * @param string $id ID комментария
      */
     public function deleteComment(string $id): void
     {
@@ -489,30 +479,25 @@ class StoriesController extends Controller
         $request->validateCsrf();
 
         $commentId = (int)$id;
-        $commentModel = new \App\Modules\Stories\Models\Comment();
-        $comment = $commentModel->find($commentId); // Ищем только среди активных
+
+        // ✅ Получаем комментарий ДО удаления, чтобы знать story_id
+        $commentModel = new Comment();
+        $comment = $commentModel->find($commentId);
+
+        $this->getCommentService()->deleteComment($commentId, (int)$_SESSION['user_id']);
 
         if ($comment) {
-            $isAuthor = (int)$comment['user_id'] === (int)$_SESSION['user_id'];
-
-			if ($isAuthor || \App\Core\Auth::isAdmin() || \App\Core\Auth::isModerator()) {
-                $commentModel->softDeleteComment($commentId, (int)$comment['story_id']);
-                \App\Core\Session::setFlash('success', 'Комментарий успешно удален.');
-				
-				\App\Modules\Moderations\Models\Moderation::logCommentModeratorAction('Удален', $isAuthor, $comment);
-				
-            } else {
-                \App\Core\Session::setFlash('error', 'Недостаточно прав для удаления.');
-            }
-			
-			header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
-            exit;
+            header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
+        } else {
+            header('Location: /');
         }
-        header('Location: /');
+        exit;
     }
 
     /**
-     * Восстановление мягко удаленного комментария (POST /comments/{id}/restore)
+     * Восстановление удалённого комментария.
+     *
+     * @param string $id ID комментария
      */
     public function restoreComment(string $id): void
     {
@@ -522,101 +507,69 @@ class StoriesController extends Controller
         $request->validateCsrf();
 
         $commentId = (int)$id;
-        $commentModel = new \App\Modules\Stories\Models\Comment();
+        $this->getCommentService()->restoreComment($commentId, (int)$_SESSION['user_id']);
+
+        $commentModel = new Comment();
         $comment = $commentModel->withTrashed()->find($commentId);
 
-        if ($comment && !empty($comment['deleted_at'])) {
-            $isAuthor = (int)$comment['user_id'] === (int)$_SESSION['user_id'];
-
-			if ($isAuthor || \App\Core\Auth::isAdmin() || \App\Core\Auth::isModerator()) {
-				
-                $commentModel->restoreComment($commentId, (int)$comment['story_id']);
-                \App\Core\Session::setFlash('success', 'Комментарий успешно восстановлен из архива.');
-				
-				\App\Modules\Moderations\Models\Moderation::logCommentModeratorAction('Восстановлен', $isAuthor, $comment);
-				
-            } else {
-                \App\Core\Session::setFlash('error', 'Недостаточно прав для восстановления.');
-            }
-			
-			header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
-            exit;
+        if ($comment) {
+            header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
+        } else {
+            header('Location: /');
         }
-        header('Location: /');
+        exit;
     }
-	
-	/**
-	 * Переключить подписку на историю
-	 */
-	public function toggleFollow(string $id): void
-	{
-		$this->requireAuth();
-		
-		$storyId = (int)$id;
-		$userId = (int)$_SESSION['user_id'];
-		
-		$storyModel = new Story();
-		$storyModel->toggleFollow($storyId, $userId);
-		
-		// Для AJAX-запросов
-		if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-			$isFollowing = $storyModel->isFollowing($storyId, $userId);
-			$this->json([
-				'success' => true,
-				'is_following' => $isFollowing,
-			]);
-			return;
-		}
-		
-		// Для обычных форм — редирект обратно
-		header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? "/story/{$storyId}"));
-		exit;
-	}
-	
-	/**
-	 * Склонение слова "комментарий" для русского языка
-	 * 
-	 * @param int $count Количество
-	 * @return string Правильная форма слова
-	 */
-	private function pluralizeComment(int $count): string
-	{
-		$abs = abs($count) % 100;
-		$lastDigit = $abs % 10;
-		
-		if ($abs > 10 && $abs < 20) {
-			return 'комментариев';
-		}
-		if ($lastDigit > 1 && $lastDigit < 5) {
-			return 'комментария';
-		}
-		if ($lastDigit === 1) {
-			return 'комментарий';
-		}
-		return 'комментариев';
-	}
-	
-	/**
-	 * POST /story/{id}/mark-read — принудительно отметить историю как прочитанную
-	 */
-	public function markRead(string $id): void
-	{
-		$this->requireAuth();
+    
+    // =========================================================================
+    // ПОДПИСКА И ПРОЧТЕНИЕ
+    // =========================================================================
 
-		$request = new \App\Core\Request();
-		$request->validateCsrf();
+    /**
+     * Переключение подписки на историю.
+     *
+     * @param string $id ID истории
+     */
+    public function toggleFollow(string $id): void
+    {
+        $this->requireAuth();
 
-		$storyId = (int)$id;
-		$readRibbon = new \App\Modules\Stories\Models\ReadRibbon();
-		$readRibbon->syncForUserAndStory((int)$_SESSION['user_id'], $storyId);
+        $storyId = (int)$id;
+        $userId = (int)$_SESSION['user_id'];
 
-		\App\Core\Session::setFlash('success', 'История отмечена как прочитанная.');
-		
-		$referer = $_SERVER['HTTP_REFERER'] ?? '/story/' . $storyId;
-		header('Location: ' . $referer);
-		exit;
-	}
-	
+        $storyModel = new Story();
+        $storyModel->toggleFollow($storyId, $userId);
 
+        // AJAX-ответ
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+            $isFollowing = $storyModel->isFollowing($storyId, $userId);
+            $this->json([
+                'success' => true,
+                'is_following' => $isFollowing,
+            ]);
+            return;
+        }
+
+        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? "/story/{$storyId}"));
+        exit;
+    }
+
+    /**
+     * Отметить историю как прочитанную.
+     *
+     * @param string $id ID истории
+     */
+    public function markRead(string $id): void
+    {
+        $this->requireAuth();
+
+        $request = new Request();
+        $request->validateCsrf();
+
+        $storyId = (int)$id;
+        $this->getReadRibbonService()->markAsRead($storyId);
+
+        $referer = $_SERVER['HTTP_REFERER'] ?? '/story/' . $storyId;
+        header('Location: ' . $referer);
+        exit;
+    }
 }
-

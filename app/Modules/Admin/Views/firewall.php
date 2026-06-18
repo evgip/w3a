@@ -68,8 +68,7 @@
                     <td>
                         <form action="<?= route('admin.firewall.unban', ['id' => $ban['id']]) ?>" method="POST" style="display:inline;">
                             <?= csrf_field() ?>
-                            <button type="submit" class="button" style="color: #ac130d;" 
-                                    onclick="return confirm('Вы уверены, что хотите разблокировать IP-адрес «<?= e($ban['ip_address']) ?>»?');">
+                            <button type="submit" class="button restore-link" style="color: #ac130d;" data-confirm="Вы уверены, что хотите разблокировать IP-адрес «<?= e($ban['ip_address']) ?>»?">
                                 🔓 Разблокировать
                             </button>
                         </form>
