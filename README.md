@@ -2,7 +2,7 @@
 
 [🇷🇺 Русский](README.ru.md) | [🇬🇧 English](README.md)
 
-A modern, lightweight news aggregator built with PHP 8.1+ and MySQL, inspired by Hacker News. Features a modular HMVC architecture, real-time updates, and comprehensive moderation tools.
+A modern, lightweight news aggregator built with PHP 8.1+ and MySQL, inspired by Hacker News and Lobster. Features a modular HMVC architecture, real-time updates, and comprehensive moderation tools.
 
 ![PHP Version](https://img.shields.io/badge/PHP-8.1%2B-blue)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-orange)
@@ -53,6 +53,8 @@ A modern, lightweight news aggregator built with PHP 8.1+ and MySQL, inspired by
 | **Server** | Apache/Nginx with mod_rewrite |
 
 ## 📦 Installation
+
+Install the package through [Composer](http://getcomposer.org/). 
 
 ### Requirements
 - PHP 8.1 or higher
