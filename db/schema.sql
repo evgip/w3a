@@ -959,3 +959,11 @@ ALTER TABLE `comments`
 ALTER TABLE `flags`
     ADD COLUMN `deleted_at` timestamp NULL DEFAULT NULL AFTER `resolved_at`,
     ADD KEY `idx_flags_deleted_at` (`deleted_at`);	
+	
+	
+ALTER TABLE users 
+ADD COLUMN is_banned TINYINT(1) NOT NULL DEFAULT 0 AFTER  email_notifications,
+ADD COLUMN banned_at TIMESTAMP NULL AFTER is_banned,
+ADD COLUMN banned_by INT UNSIGNED NULL AFTER banned_at,
+ADD COLUMN ban_reason VARCHAR(500) NULL AFTER banned_by,
+ADD INDEX idx_users_banned (is_banned);

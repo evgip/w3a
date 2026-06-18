@@ -18,6 +18,9 @@ class Story extends Model
 		'description',
 		'rejected_fields',
 		'user_is_following',
+		'domain', 
+		'score',
+		'comments_count',
 		'deleted_at'
 	];
 

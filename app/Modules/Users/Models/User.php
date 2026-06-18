@@ -15,6 +15,7 @@ class User extends Model
 		'email',
 		'password',
 		'avatar',
+		'status',
 		'bio',
 		'role' // Будем осторожны с role, лучше менять его через отдельный метод, но для полноты оставим
 	];
@@ -80,5 +81,45 @@ class User extends Model
 		
 		return $result ?: null;
 	}
-	
+
+	/**
+	 * Проверяет, забанен ли пользователь.
+	 *
+	 * @param int $userId ID пользователя
+	 * @return bool true если забанен
+	 */
+	public function isBanned(int $userId): bool
+	{
+		$stmt = static::db()->prepare("
+			SELECT is_banned FROM `{$this->table}` 
+			WHERE id = :id LIMIT 1
+		");
+		$stmt->execute(['id' => $userId]);
+		$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+		
+		return $result && (int)$result['is_banned'] === 1;
+	}
+
+	/**
+	 * Получает информацию о бане пользователя.
+	 *
+	 * @param int $userId ID пользователя
+	 * @return array|null Массив с данными бана или null
+	 */
+	public function getBanInfo(int $userId): ?array
+	{
+		$stmt = static::db()->prepare("
+			SELECT is_banned, banned_at, banned_by, ban_reason 
+			FROM `{$this->table}` 
+			WHERE id = :id LIMIT 1
+		");
+		$stmt->execute(['id' => $userId]);
+		$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+		
+		if (!$result || (int)$result['is_banned'] !== 1) {
+			return null;
+		}
+		
+		return $result;
+	}
 }

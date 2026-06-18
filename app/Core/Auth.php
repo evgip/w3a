@@ -35,6 +35,33 @@ class Auth
             $currentTime = time();
             $lastActivity = $_SESSION['last_activity_time'] ?? $currentTime;
 
+			// ✅ ПРОВЕРКА БАНА: разлогин забаненных пользователей
+			if (self::isBanned()) {
+				$userName = $_SESSION['user_name'] ?? 'ID:' . $_SESSION['user_id'];
+				
+				// Логируем
+				Audit::log('auth.banned_logout', 
+					"Забаненный пользователь разлогинен: {$userName} (ID: {$_SESSION['user_id']})");
+				
+				// Очищаем сессию
+				$_SESSION = [];
+				if (ini_get("session.use_cookies")) {
+					$params = session_get_cookie_params();
+					setcookie(session_name(), '', time() - 42000,
+						$params["path"], $params["domain"],
+						$params["secure"], $params["httponly"]
+					);
+				}
+				session_destroy();
+				
+				self::$isLoopProtect = false;
+				
+				// Редирект с сообщением
+				Session::setFlash('error', 'Ваш аккаунт заблокирован. Обратитесь к администрации.');
+				header('Location: /login?banned=1');
+				exit;
+			}
+
             if (($currentTime - $lastActivity) > self::$sessionTimeout) {
                 // Clear session tracking variables silently without invoking cascading method chains
                 $_SESSION = [];
@@ -73,6 +100,23 @@ class Auth
         $user = $userModel->findBy('email', $email);
 
         if ($user && password_verify($password, $user['password'])) {
+			
+			// ✅ ПРОВЕРКА БАНА ПРИ ВХОДЕ
+			if ((int)($user['is_banned'] ?? 0) === 1) {
+				$banMessage = 'Ваш аккаунт заблокирован.';
+				if (!empty($user['ban_reason'])) {
+					$banMessage .= ' Причина: ' . $user['ban_reason'];
+				}
+				$banMessage .= ' Обратитесь к администрации.';
+				
+				Session::setFlash('error', $banMessage);
+				
+				Audit::log('auth.login_blocked', 
+					"Попытка входа забаненного пользователя: {$user['name']} (ID: {$user['id']})");
+				
+				return false;
+			}
+					
             session_regenerate_id(true);
 
             $_SESSION['user_id'] = $user['id'];
@@ -151,6 +195,34 @@ class Auth
 		return $_SESSION['user_role'] ?? null;
 	}
 
+	/**
+	 * Проверка, забанен ли текущий пользователь.
+	 * Использует кэш в сессии для оптимизации.
+	 * 
+	 * @return bool true если пользователь забанен
+	 */
+	public static function isBanned(): bool
+	{
+		if (!isset($_SESSION['user_id'])) {
+			return false;
+		}
+		
+		$userId = (int)$_SESSION['user_id'];
+		$now = time();
+		
+		// Кэш в сессии: проверяем раз в 60 секунд
+		$lastCheck = $_SESSION['ban_check_time'] ?? 0;
+		
+		if ($now - $lastCheck > 60) {
+			$userModel = new \App\Modules\Users\Models\User();
+			$isBanned = $userModel->isBanned($userId);
+			
+			$_SESSION['is_banned'] = $isBanned ? 1 : 0;
+			$_SESSION['ban_check_time'] = $now;
+		}
+		
+		return (bool)($_SESSION['is_banned'] ?? false);
+	}
 
     public static function isAdmin(): bool
     {

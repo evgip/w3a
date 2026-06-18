@@ -16,3 +16,6 @@ $router->add('POST', 'mod/notes/{id}/delete', 'ModerationsController@deleteNote'
 // Статистика активности модераторов
 // ==========================================
 $router->add('GET', 'mod/stats', 'ModerationsController@stats', 'mod.stats');
+
+// Действия модератора
+$router->add('POST', 'mod/ban/{id}', 'ModerationsController@banUser', 'mod.ban');

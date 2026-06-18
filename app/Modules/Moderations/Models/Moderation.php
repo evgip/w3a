@@ -139,4 +139,50 @@ class Moderation extends Model
 
 		return true;
     }
+	
+	/**
+	 * Забанить пользователя.
+	 *
+	 * @param int $userId ID пользователя
+	 * @param int $moderatorId ID модератора
+	 * @param string $reason Причина бана
+	 * @return bool Успешно ли выполнен запрос
+	 */
+	public function banUser(int $userId, int $moderatorId, string $reason = ''): bool
+	{
+		$stmt = static::db()->prepare("
+			UPDATE users 
+			SET is_banned = 1, 
+				banned_at = NOW(), 
+				banned_by = :mod_id,
+				ban_reason = :reason
+			WHERE id = :id
+		");
+		
+		return $stmt->execute([
+			'mod_id' => $moderatorId,
+			'reason' => $reason,
+			'id'     => $userId,
+		]);
+	}
+
+	/**
+	 * Разбанить пользователя.
+	 *
+	 * @param int $userId ID пользователя
+	 * @return bool Успешно ли выполнен запрос
+	 */
+	public function unbanUser(int $userId): bool
+	{
+		$stmt = static::db()->prepare("
+			UPDATE users 
+			SET is_banned = 0, 
+				banned_at = NULL, 
+				banned_by = NULL,
+				ban_reason = NULL
+			WHERE id = :id
+		");
+		
+		return $stmt->execute(['id' => $userId]);
+	}
 }

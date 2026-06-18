@@ -41,15 +41,35 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
 		<?php if (\App\Core\Auth::isModerator() && $profileUser['id'] !== (int)$_SESSION['user_id']): ?>
 			<div class="mod-actions">
 				<h3>Действия модератора</h3>
+				
 				<a href="/mod/notes?user_id=<?= $profileUser['id'] ?>" class="btn btn-sm">
 					📝 Добавить заметку
 				</a>
-				<a href="/mod/ban/<?= $profileUser['id'] ?>" class="btn btn-sm btn-danger">
-					🚫 Забанить
-				</a>
+				
+				<?php if (empty($profileUser['is_banned'])): ?>
+					<!-- Форма бана -->
+					<form method="POST" action="<?= route('mod.ban', ['id' => $profileUser['id']]) ?>" style="display: inline;">
+						<?= csrf_field() ?>
+						<input type="hidden" name="action" value="ban">
+						<button type="submit" class="btn btn-sm btn-danger" 
+								data-confirm="Забанить пользователя <?= e($profileUser['username']) ?>?">
+							🚫 Забанить
+						</button>
+					</form>
+				<?php else: ?>
+					<!-- Форма разбана -->
+					<form method="POST" action="<?= route('mod.ban', ['id' => $profileUser['id']]) ?>" style="display: inline;">
+						<?= csrf_field() ?>
+						<input type="hidden" name="action" value="unban">
+						<button type="submit" class="btn btn-sm btn-success"
+								data-confirm="Разбанить пользователя <?= e($profileUser['username']) ?>?">
+							✅ Разбанить
+						</button>
+					</form>
+				<?php endif; ?>
 			</div>
 		<?php endif; ?>
-    </div>
+     </div>
 
 </div>
 

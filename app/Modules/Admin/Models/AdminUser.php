@@ -9,6 +9,11 @@ class AdminUser extends Model
     // Указываем базовому ядру, что эта админ-модель оперирует таблицей пользователей
     protected string $table = 'users';
 
+	protected array $fillable = [
+		'is_active',
+		'type'
+	];
+
     /**
      * Выборка реестра учетных записей для панели модератора
      * 

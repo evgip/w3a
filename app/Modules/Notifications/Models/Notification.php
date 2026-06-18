@@ -20,7 +20,7 @@ class Notification extends Model
         'is_read',
         'read_at'
     ];
-
+ 
 
     // Типы уведомлений (как в Lobsters)
     public const TYPE_REPLY = 'reply';  // Ответ на ваш комментарий
@@ -32,7 +32,11 @@ class Notification extends Model
     public const ENTITY_MESSAGE = 'Message';
     public const ENTITY_STORY = 'Story';
 
-
+	public const TYPE_BAN = 'ban';
+	public const TYPE_UNBAN = 'unban';
+	
+	public const TYPE_DEACTIVATED = 'deactivated';  // ← ДОБАВЬТЕ
+	public const TYPE_ACTIVATED = 'activated';      // ← ДОБАВЬТЕ
 
     const TYPE_STORY_COMMENT = 'story_comment'; // Новый комментарий в истории, на которую подписаны
     const TYPE_STORY_REPLY = 'story_reply';  // Ответ в ветке вашей истории
@@ -127,6 +131,40 @@ class Notification extends Model
             'is_read' => 0
         ]);
     }
+
+	/**
+	 * Создать уведомление о деактивации аккаунта
+	 */
+	public function createDeactivatedNotification(
+		int $userId,
+		int $adminId
+	): int {
+		return $this->createNotification(
+			$userId,
+			self::TYPE_DEACTIVATED,
+			'User',
+			$userId,
+			$adminId,
+			'Ваша учетная запись была деактивирована администратором. Обратитесь в поддержку для восстановления доступа.'
+		);
+	}
+
+	/**
+	 * Создать уведомление об активации аккаунта
+	 */
+	public function createActivatedNotification(
+		int $userId,
+		int $adminId
+	): int {
+		return $this->createNotification(
+			$userId,
+			self::TYPE_ACTIVATED,
+			'User',
+			$userId,
+			$adminId,
+			'Ваша учетная запись была активирована администратором. Добро пожаловать!'
+		);
+	}
 
     /**
      * Найти первое уведомление по условиям
@@ -292,81 +330,130 @@ class Notification extends Model
         return $stmt->rowCount();
     }
 
-    /**
-     * Получить список пользователей, которых нужно уведомить о новом комментарии
-     */
-    public function getUsersToNotify(int $storyId, int $commentId, int $commentAuthorId): array
-    {
+	/**
+	 * Получить список пользователей, которых нужно уведомить о новом комментарии.
+	 *
+	 * @param int $storyId ID истории
+	 * @param int $commentId ID комментария
+	 * @param int $commentAuthorId ID автора комментария (исключается из уведомлений)
+	 * @return array Массив пользователей для уведомления
+	 */
+	public function getUsersToNotify(int $storyId, int $commentId, int $commentAuthorId): array
+	{
+		$usersToNotify = [];
+		$db = static::db();
+		
+		// Получаем данные комментария (включая parent_id)
+		$stmt = $db->prepare("
+			SELECT user_id, parent_id, comment 
+			FROM comments 
+			WHERE id = :comment_id
+		");
+		$stmt->execute(['comment_id' => $commentId]);
+		$comment = $stmt->fetch(\PDO::FETCH_ASSOC);
+		
+		if (!$comment) {
+			return [];
+		}
+		
+		// 1. Уведомить автора родительского комментария (если это ответ)
+		if (!empty($comment['parent_id'])) {
+			$stmt = $db->prepare("
+				SELECT user_id FROM comments WHERE id = :parent_id
+			");
+			$stmt->execute(['parent_id' => (int)$comment['parent_id']]);
+			$parentAuthorId = $stmt->fetchColumn();
+			
+			if ($parentAuthorId && (int)$parentAuthorId !== $commentAuthorId) {
+				// Проверяем настройки пользователя
+				if ($this->userWantsNotification((int)$parentAuthorId, 'notify_on_reply')) {
+					$usersToNotify[] = [
+						'user_id' => (int)$parentAuthorId,
+						'type' => self::TYPE_REPLY,
+					];
+				}
+			}
+		}
+		
+		// 2. Уведомить автора истории, если он подписан и не является автором комментария
+		$stmt = $db->prepare("
+			SELECT user_id, user_is_following FROM stories WHERE id = :story_id
+		");
+		$stmt->execute(['story_id' => $storyId]);
+		$story = $stmt->fetch(\PDO::FETCH_ASSOC);
+		
+		if ($story && $story['user_is_following'] && (int)$story['user_id'] !== $commentAuthorId) {
+			// Не дублируем, если автор истории уже получил уведомление как автор родительского коммента
+			$alreadyNotified = array_column($usersToNotify, 'user_id');
+			
+			if (!in_array((int)$story['user_id'], $alreadyNotified)) {
+				if ($this->userWantsNotification((int)$story['user_id'], 'notify_on_story_comment')) {
+					$usersToNotify[] = [
+						'user_id' => (int)$story['user_id'],
+						'type' => self::TYPE_STORY_COMMENT,
+					];
+				}
+			}
+		}
+		
+		// 3. Обработка @упоминаний в тексте комментария
+		$mentionedUsers = $this->extractMentions($comment['comment'] ?? '');
+		foreach ($mentionedUsers as $mentionedUserId) {
+			if ($mentionedUserId === $commentAuthorId) {
+				continue; // Не уведомляем автора о самом себе
+			}
+			
+			$alreadyNotified = array_column($usersToNotify, 'user_id');
+			if (!in_array($mentionedUserId, $alreadyNotified)) {
+				$usersToNotify[] = [
+					'user_id' => $mentionedUserId,
+					'type' => self::TYPE_MENTION,
+				];
+			}
+		}
+		
+		return $usersToNotify;
+	}
 
-        // Проверяем настройки пользователя перед добавлением в список
-        $stmt = static::db()->prepare(
-            "SELECT notify_on_reply, notify_on_story_comment FROM users WHERE id = ?"
-        );
-        $stmt->execute($userId);
-        $settings = $stmt->fetch();
-
-        if ($type === self::TYPE_REPLY && !$settings['notify_on_reply']) {
-            return []; // Пропускаем
-        }
-
-
-        $usersToNotify = [];
-
-        // 1. Уведомить автора родительского комментария (если это ответ)
-        $stmt = static::db()->prepare(
-            "SELECT user_id FROM comments WHERE id = (
-				SELECT parent_comment_id FROM comments WHERE id = ?
-			)"
-        );
-        $stmt->execute([$commentId]);
-        $parentAuthorId = $stmt->fetchColumn();
-
-        if ($parentAuthorId && $parentAuthorId != $commentAuthorId) {
-            $usersToNotify[] = [
-                'user_id' => $parentAuthorId,
-                'type' => self::TYPE_REPLY,
-            ];
-        }
-
-        // 2. Уведомить автора истории, если он подписан и не является автором комментария
-        $stmt = $this->db->prepare(
-            "SELECT user_id, user_is_following FROM stories WHERE id = ?"
-        );
-        $stmt->execute([$storyId]);
-        $story = $stmt->fetch();
-
-        if ($story && $story['user_is_following'] && $story['user_id'] != $commentAuthorId) {
-            // Не дублируем, если автор истории уже получил уведомление как автор родительского коммента
-            $alreadyNotified = array_column($usersToNotify, 'user_id');
-            if (!in_array($story['user_id'], $alreadyNotified)) {
-                $usersToNotify[] = [
-                    'user_id' => $story['user_id'],
-                    'type' => self::TYPE_STORY_COMMENT,
-                ];
-            }
-        }
-
-        // 3. TODO: Обработка @упоминаний в тексте комментария
-        // $mentionedUsers = $this->extractMentions($commentText);
-
-        return $usersToNotify;
-    }
-
-    /**
-     * Создать уведомления для всех заинтересованных пользователей
-     */
-    public function createForComment(int $storyId, int $commentId, int $commentAuthorId): void
-    {
-        $usersToNotify = $this->getUsersToNotify($storyId, $commentId, $commentAuthorId);
-
-        foreach ($usersToNotify as $notify) {
-            $this->create(
-                $notify['user_id'],
-                $notify['type'],
-                $commentAuthorId,
-                $storyId,
-                $commentId
-            );
-        }
-    }
+	/**
+	 * Создать уведомления для всех заинтересованных пользователей.
+	 *
+	 * @param int $storyId ID истории
+	 * @param int $commentId ID комментария
+	 * @param int $commentAuthorId ID автора комментария
+	 */
+	public function createForComment(int $storyId, int $commentId, int $commentAuthorId): void
+	{
+		$usersToNotify = $this->getUsersToNotify($storyId, $commentId, $commentAuthorId);
+		
+		foreach ($usersToNotify as $notify) {
+			// Используем правильный метод createNotification (приватный) через публичные методы
+			switch ($notify['type']) {
+				case self::TYPE_REPLY:
+					$this->createReplyNotification(
+						$notify['user_id'],
+						$commentId,
+						$commentAuthorId
+					);
+					break;
+					
+				case self::TYPE_STORY_COMMENT:
+					$this->createReplyNotification(
+						$notify['user_id'],
+						$commentId,
+						$commentAuthorId,
+						'Прокомментировал вашу публикацию'
+					);
+					break;
+					
+				case self::TYPE_MENTION:
+					$this->createMentionNotification(
+						$notify['user_id'],
+						$commentId,
+						$commentAuthorId
+					);
+					break;
+			}
+		}
+	}
 }

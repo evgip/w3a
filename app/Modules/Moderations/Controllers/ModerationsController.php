@@ -124,4 +124,70 @@ class ModerationsController extends Controller
             'leaderboard' => $activity->getLeaderboard(30),
         ]);
     }
+	
+	// ==========================================
+	// POST /mod/ban/{id} — Бан/разбан пользователя
+	// ==========================================
+	public function banUser(string $id): void
+	{
+		$request = new Request();
+		$request->validateCsrf();
+
+		$targetUserId = (int) $id;
+		$currentUserId = (int) $_SESSION['user_id'];
+		$action = $request->getParams('action') ?? '';
+		$reason = trim($request->getParams('reason') ?? '');
+
+		if ($targetUserId === $currentUserId) {
+			Session::setFlash('error', 'Вы не можете применить это действие к себе.');
+			header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+			exit;
+		}
+
+		if (!in_array($action, ['ban', 'unban'], true)) {
+			Session::setFlash('error', 'Неизвестное действие.');
+			header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+			exit;
+		}
+
+		$userModel = new \App\Modules\Users\Models\User();
+		$targetUser = $userModel->find($targetUserId);
+
+		if (!$targetUser) {
+			Session::setFlash('error', 'Пользователь не найден.');
+			header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+			exit;
+		}
+
+		$moderationModel = new Moderation();
+
+		if ($action === 'ban') {
+			$moderationModel->banUser($targetUserId, $currentUserId, $reason);
+
+			$moderationModel->logAction(
+				$currentUserId,
+				'ban_user',
+				'user',
+				$targetUserId,
+				$reason ?: 'Без указания причины'
+			);
+
+			Session::setFlash('success', "Пользователь «{$targetUser['username']}» забанен.");
+		} else {
+			$moderationModel->unbanUser($targetUserId);
+
+			$moderationModel->logAction(
+				$currentUserId,
+				'unban_user',
+				'user',
+				$targetUserId,
+				'Разбан пользователя'
+			);
+
+			Session::setFlash('success', "Пользователь «{$targetUser['username']}» разбанен.");
+		}
+
+		header('Location: /user/' . $targetUser['username']);
+		exit;
+	}
 }

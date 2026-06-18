@@ -46,13 +46,35 @@
                     </td>
                     <td>
                         <?php
-                        // Предполагаем, что 1 = активен, 0 = заблокирован. Адаптируйте под вашу БД.
-                        $status = (int)($user['status'] ?? 1);
-                        if ($status === 0): ?>
-                            <span style="color: #ac130d; font-weight: bold;">Заблокирован</span>
-                        <?php else: ?>
+                        if ($user['is_active']): ?>
                             Активен
+                        <?php else: ?>
+                            <span style="color: #ac130d; font-weight: bold;">Заблокирован</span>
                         <?php endif; ?>
+						
+						<?php if (($user['role'] ?? 'user') != 'admin'): ?>
+							<form method="POST" 
+								  action="/admin/users/<?= $user['id'] ?>/toggle-status" 
+								  style="display: inline;">
+								<?= csrf_field() ?>
+								
+								<?php if ($user['is_active']): ?>
+									<!-- Пользователь активен → кнопка "Деактивировать" -->
+									<button type="submit" 
+											class="btn btn-sm btn-warning"
+											data-confirm="Деактивировать пользователя «<?= e($user['username'] ?? $user['name']) ?>»? Он не сможет войти в систему.">
+										⏸️ Деактивировать
+									</button>
+								<?php else: ?>
+									<!-- Пользователь неактивен → кнопка "Активировать" -->
+									<button type="submit" 
+											class="btn btn-sm btn-success"
+											data-confirm="Активировать пользователя «<?= e($user['username'] ?? $user['name']) ?>»?">
+										✅ Активировать
+									</button>
+								<?php endif; ?>
+							</form>
+						<?php endif; ?>				
                     </td>
                     <td>
                         <?= e($user['created_at'] ?? '—') ?>
@@ -62,17 +84,31 @@
                             Изменить
                         </a>
                         
+
+ 
+						
                         <?php if ((int)($user['id'] ?? 0) !== 1): // Защита от удаления супер-админа (ID=1) ?>
-                            <form method="POST" 
-                                  action="<?= route('admin.users.delete', ['id' => $user['id']]) ?>" 
-                                  style="display:inline;"
-								  class="delete-link"
-								  data-confirm="Вы уверены, что хотите удалить пользователя «<?= e($user['username']) ?>»? Это действие необратимо.">
-                                <?= csrf_field() ?>
-                                <button type="submit" class="button" style="color: #ac130d;">
-                                    Удалить
-                                </button>
-                            </form>
+							<?php if (empty($user['is_banned'])): ?>
+								<!-- Форма бана -->
+								<form method="POST" action="<?= route('mod.ban', ['id' => $user['id']]) ?>" style="display: inline;">
+									<?= csrf_field() ?>
+									<input type="hidden" name="action" value="ban">
+									<button type="submit" class="btn btn-sm btn-danger" 
+											data-confirm="Забанить пользователя <?= e($user['username']) ?>?">
+										🚫 Забанить
+									</button>
+								</form>
+							<?php else: ?>
+								<!-- Форма разбана -->
+								<form method="POST" action="<?= route('mod.ban', ['id' => $user['id']]) ?>" style="display: inline;">
+									<?= csrf_field() ?>
+									<input type="hidden" name="action" value="unban">
+									<button type="submit" class="btn btn-sm btn-success"
+											data-confirm="Разбанить пользователя <?= e($user['username']) ?>?">
+										✅ Разбанить
+									</button>
+								</form>
+							<?php endif; ?>
                         <?php else: ?>
                             <span class="hint" title="Главного администратора нельзя удалить">
                                 🔒
