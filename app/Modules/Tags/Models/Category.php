@@ -59,10 +59,11 @@ class Category extends Model
 		}
 
 		// Получаем истории с тегами из этой категории
-		$sql = "SELECT DISTINCT s.*, u.username as author_name, u.avatar as author_avatar,
+		$sql = "SELECT DISTINCT s.*, u.username as author_name, up.avatar as author_avatar,
 					   GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
 				FROM stories s
 				JOIN users u ON s.user_id = u.id
+				LEFT JOIN `user_profiles` up ON u.id = up.user_id
 				JOIN taggings tg ON s.id = tg.story_id
 				JOIN tags t ON tg.tag_id = t.id
 				WHERE t.category_id = :category_id 

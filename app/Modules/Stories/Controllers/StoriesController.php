@@ -262,6 +262,14 @@ class StoriesController extends Controller
     {
         $this->requireAuth();
 
+	    // Проверка бана пользователя
+		$userModel = new \App\Modules\Users\Models\User();
+		if ($userModel->isBanned((int)$_SESSION['user_id'])) {
+			AppCoreSession::setFlash('error', 'Ваш аккаунт заблокирован. Вы не можете публиковать истории.');
+			header('Location: /stories/create');
+			exit;
+		}
+
         $request = new Request();
         $request->validateCsrf();
 
@@ -414,6 +422,14 @@ class StoriesController extends Controller
     public function addComment(): void
     {
         $this->requireAuth();
+
+		// НОВОЕ: Проверка бана пользователя
+		$userModel = new \App\Modules\Users\Models\User();
+		if ($userModel->isBanned((int)$_SESSION['user_id'])) {
+			AppCoreSession::setFlash('error', 'Ваш аккаунт заблокирован. Вы не можете оставлять комментарии.');
+			header('Location: /story/' . $storyId);
+			exit;
+		}
 
         $request = new Request();
         $request->validateCsrf();

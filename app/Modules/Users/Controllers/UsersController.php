@@ -49,6 +49,11 @@ class UsersController extends Controller
             die("404 Not Found");
         }
 
+	   // НОВОЕ: Подгружаем данные профиля
+		$profile = $userModel->getProfile((int)$user['id']);
+		$user['bio'] = $profile['bio'] ?? null;
+		$user['avatar'] = $profile['avatar'] ?? null;
+
         // 2. Запрашиваем статистику активности через метод модели (БЕЗ SQL В КОНТРОЛЛЕРЕ)
         $stats = $userModel->getProfileStats((int)$user['id']);
 
@@ -101,30 +106,31 @@ class UsersController extends Controller
         $userModel = new User();
         $user = $userModel->findBy('email', $email);
 
-        if ($user && password_verify($password, $user['password'])) {
+		if ($user && password_verify($password, $user['password'])) {
+			if ((int)$user['is_active'] !== 1) {
+				AppCoreSession::setFlash('error', 'Ваш аккаунт еще не активирован...');
+				header('Location: /login');
+				exit;
+			}
+
+			// НОВОЕ: Проверяем, не забанен ли пользователь
+			if ($userModel->isBanned((int)$user['id'])) {
+				AppCoreSession::setFlash('error', 'Ваш аккаунт заблокирован.');
+				header('Location: /login');
+				exit;
+			}
+
+			// НОВОЕ: Получаем аватар из связанной таблицы user_profiles
+			$profile = $userModel->getProfile((int)$user['id']);
 			
-            // CRITICAL STATUS ENFORCEMENT CHECK: Block inactive user logins
-            $activeStatus = config_int('user.status_active', 1);
-			if ((int)$user['is_active'] !== $activeStatus) {
-                \App\Core\Session::setFlash('error', 'Ваш аккаунт еще не активирован. Пожалуйста, перейдите по ссылке из приветственного письма на Email.');
-                header('Location: /login');
-                exit;
-            }
-            
-            $_SESSION['user_id']     = $user['id'];
-            $_SESSION['user_name']   = $user['username'];
-            $_SESSION['user_avatar'] = $user['avatar']; 
-            $_SESSION['user_role']   = $user['role'] ?? 'user';
-            $_SESSION['last_activity_time'] = time();
+			$_SESSION['user_id'] = $user['id'];
+			$_SESSION['user_name'] = $user['username'];
+			$_SESSION['user_avatar'] = $profile['avatar'] ?? null; // БЕРЕМ ИЗ ПРОФИЛЯ
+			$_SESSION['user_role'] = $user['role'] ?? 'user';
+			$_SESSION['last_activity_time'] = time();
 
-            session_regenerate_id(true);
-
-            Audit::log('auth.login_success', 'Пользователь успешно авторизовался в системе', ['user_id' => $user['id']]);
-            Session::setFlash('success', 'Добро пожаловать обратно, ' . e($user['username']) . '!');
-            
-            header('Location: ' . route('home'));
-            exit;
-        }
+			// ... (остальной код логина) ...
+		}
 
         Audit::log('auth.login_failed', 'Неудачная попытка входа в систему', ['attempted_email' => $email]);
         Session::setFlash('error', 'Неверный Email адрес или пароль.');
@@ -241,6 +247,15 @@ class UsersController extends Controller
 		]);
 		
 		if ($newUserId > 0) {
+			
+			// НОВОЕ: Инициализируем профиль и настройки по умолчанию
+			$userModel->updateProfile($newUserId, ['bio' => null, 'avatar' => null]);
+			$userModel->updateSettings($newUserId, [
+				'notify_on_reply' => 1,
+				'notify_on_story_comment' => 1,
+				'email_notifications' => 0
+			]);
+			
 			// Создание токена активации
 			$activationModel = new \App\Modules\Users\Models\EmailActivation();
 			$token = $activationModel->createActivationToken($newUserId);
@@ -292,7 +307,17 @@ class UsersController extends Controller
         $userModel = new \App\Modules\Users\Models\User();
         $user = $userModel->find($userId);
 
-        // NEW: Fetch all logged notifications via the notification model layer
+		// НОВОЕ: Подгружаем профиль и настройки для формы
+		$profile = $userModel->getProfile($userId);
+		$user['bio'] = $profile['bio'] ?? null;
+		$user['avatar'] = $profile['avatar'] ?? null;
+
+		$settings = $userModel->getSettings($userId);
+		$user['notify_on_reply'] = $settings['notify_on_reply'] ?? 1;
+		$user['notify_on_story_comment'] = $settings['notify_on_story_comment'] ?? 1;
+		$user['email_notifications'] = $settings['email_notifications'] ?? 0;
+
+        // Fetch all logged notifications via the notification model layer
         $notifModel = new \App\Modules\Users\Models\Notification();
         $notifications = $notifModel->getActiveNotifications($userId);
 
@@ -322,159 +347,175 @@ class UsersController extends Controller
     }
 
 
-    /**
-     * Process avatar upload with automatic smart resize to 150x150 (POST /account/settings)
-     */
-    public function updateSettings(): void
-    {
-        $this->requireAuth();
+	/**
+	 * Process avatar upload with automatic smart resize to 150x150 (POST /account/settings)
+	 */
+	public function updateSettings(): void
+	{
+		$this->requireAuth();
 
-        $request = new \App\Core\Request();
-        $request->validateCsrf();
+		$request = new Request();
+		$request->validateCsrf();
 
-        $userId = (int)$_SESSION['user_id'];
-        $userModel = new \App\Modules\Users\Models\User();
-        $user = $userModel->find($userId);
+		$userId = (int)$_SESSION['user_id'];
+		$userModel = new \App\Modules\Users\Models\User();
+		$user = $userModel->find($userId);
 
-        if (!$user) { header('Location: /'); exit; }
+		if (!$user) { header('Location: /'); exit; }
 
-        $email = trim($request->getParams('email'));
-        $bio = trim($request->getParams('bio'));
-        $avatarFilename = $user['avatar'];
+		// Получаем текущий профиль для работы с аватаром и bio
+		$profile = $userModel->getProfile($userId);
+		$oldAvatarFilename = $profile['avatar'] ?? null;
+		$avatarFilename = $oldAvatarFilename; // По умолчанию аватар не меняется
 
-        if ($email !== $user['email'] && $userModel->findBy('email', $email)) {
-            \App\Core\Session::setFlash('error', 'Этот Email адрес уже занят другим аккаунтом.');
-            header('Location: ' . route('account.settings'));
-            exit;
-        }
+		$email = trim($request->getParams('email'));
+		$bio = trim($request->getParams('bio'));
 
-        // SMART RESIZE AVATAR UPLOAD HANDLING
-        if (isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
-            $fileTmpPath = $_FILES['avatar_file']['tmp_name'] ?? '';
-            
-            if (empty($fileTmpPath) || !file_exists($fileTmpPath)) {
-                \App\Core\Session::setFlash('error', 'Временный файл загрузки недоступен.');
-                header('Location: ' . route('account.settings'));
-                exit;
-            }
+		if ($email !== $user['email'] && $userModel->findBy('email', $email)) {
+			AppCoreSession::setFlash('error', 'Этот Email адрес уже занят другим аккаунтом.');
+			header('Location: ' . route('account.settings'));
+			exit;
+		}
+
+		// SMART RESIZE AVATAR UPLOAD HANDLING
+		if (isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
+			$fileTmpPath = $_FILES['avatar_file']['tmp_name'] ?? '';
+
+			if (empty($fileTmpPath) || !file_exists($fileTmpPath)) {
+				AppCoreSession::setFlash('error', 'Временный файл загрузки недоступен.');
+				header('Location: ' . route('account.settings'));
+				exit;
+			}
 
 			$maxAvatarSize = config_int('uploads.avatar_max_size', 5242880);
 			$maxAvatarSizeMb = config_int('uploads.avatar_max_size_mb', 5);
 
 			if ($_FILES['avatar_file']['size'] > $maxAvatarSize) {
-				\App\CoreSession::setFlash('error', "Размер загружаемого файла не должен превышать {$maxAvatarSizeMb} МБ.");
+				AppCoreSession::setFlash('error', "Размер загружаемого файла не должен превышать {$maxAvatarSizeMb} МБ.");
 				header('Location: ' . route('account.settings'));
 				exit;
 			}
 
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mimeType = finfo_file($finfo, $fileTmpPath);
-            finfo_close($finfo);
+			$finfo = finfo_open(FILEINFO_MIME_TYPE);
+			$mimeType = finfo_file($finfo, $fileTmpPath);
+			finfo_close($finfo);
 
-            $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
-            if (!in_array($mimeType, $allowedMimeTypes)) {
-                \App\Core\Session::setFlash('error', 'Разрешены только графические форматы файлов (JPG, PNG, GIF).');
-                header('Location: ' . route('account.settings'));
-                exit;
-            }
+			$allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
+			if (!in_array($mimeType, $allowedMimeTypes)) {
+				AppCoreSession::setFlash('error', 'Разрешены только графические форматы файлов (JPG, PNG, GIF).');
+				header('Location: ' . route('account.settings'));
+				exit;
+			}
 
-            // Нам больше не нужно сохранять оригинальное расширение, мы принудительно переведем всё в универсальный JPG для оптимизации места
-            $avatarFilename = bin2hex(random_bytes(16)) . '.jpg';
-            $subFolder = substr($avatarFilename, 0, 2);
+			// Нам больше не нужно сохранять оригинальное расширение, мы принудительно переведем всё в универсальный JPG для оптимизации места
+			$avatarFilename = bin2hex(random_bytes(16)) . '.jpg';
+			$subFolder = substr($avatarFilename, 0, 2);
 
-            $projectRoot = dirname(__FILE__, 5); 
-            $baseUploadDir = $projectRoot . '/public/uploads/avatars';
-            $uploadTargetDir = $baseUploadDir . '/' . $subFolder;
+			$projectRoot = dirname(__FILE__, 5);
+			$baseUploadDir = $projectRoot . '/public/uploads/avatars';
+			$uploadTargetDir = $baseUploadDir . '/' . $subFolder;
 
-            if (!is_dir($baseUploadDir)) mkdir($baseUploadDir, 0777, true);
-            if (!is_dir($uploadTargetDir)) mkdir($uploadTargetDir, 0777, true);
+			if (!is_dir($baseUploadDir)) mkdir($baseUploadDir, 0777, true);
+			if (!is_dir($uploadTargetDir)) mkdir($uploadTargetDir, 0777, true);
 
-            // --- АЛГОРИТМ УМНОГО РЕСАЙЗА И КРОПА СИЛАМИ PHP GD ---
-            list($srcWidth, $srcHeight) = getimagesize($fileTmpPath);
-            
-            // Создаем временный ресурс изображения в зависимости от исходного типа
-            switch ($mimeType) {
-                case 'image/png':  $srcImage = imagecreatefrompng($fileTmpPath); break;
-                case 'image/gif':  $srcImage = imagecreatefromgif($fileTmpPath); break;
-                default:           $srcImage = imagecreatefromjpeg($fileTmpPath); break;
-            }
+			// --- АЛГОРИТМ УМНОГО РЕСАЙЗА И КРОПА СИЛАМИ PHP GD ---
+			list($srcWidth, $srcHeight) = getimagesize($fileTmpPath);
 
-            if (!$srcImage) {
-                \App\Core\Session::setFlash('error', 'Не удалось обработать структуру изображения.');
-                header('Location: ' . route('account.settings'));
-                exit;
-            }
+			// Создаем временный ресурс изображения в зависимости от исходного типа
+			switch ($mimeType) {
+				case 'image/png': $srcImage = imagecreatefrompng($fileTmpPath); break;
+				case 'image/gif': $srcImage = imagecreatefromgif($fileTmpPath); break;
+				default: $srcImage = imagecreatefromjpeg($fileTmpPath); break;
+			}
 
-            // Вычисляем параметры для обрезки (центрируем квадрат)
-            $targetSize = 150;
-            $dstImage = imagecreatetruecolor($targetSize, $targetSize);
+			if (!$srcImage) {
+				AppCoreSession::setFlash('error', 'Не удалось обработать структуру изображения.');
+				header('Location: ' . route('account.settings'));
+				exit;
+			}
 
-            // Сохраняем прозрачность для PNG/GIF, переводя её в белый фон для результирующего JPG
-            $whiteBackground = imagecolorallocate($dstImage, 255, 255, 255);
-            imagefill($dstImage, 0, 0, $whiteBackground);
+			// Вычисляем параметры для обрезки (центрируем квадрат)
+			$targetSize = 150;
+			$dstImage = imagecreatetruecolor($targetSize, $targetSize);
 
-            if ($srcWidth > $srcHeight) {
-                // Исходник альбомный (широкий)
-                $srcX = (int)(($srcWidth - $srcHeight) / 2);
-                $srcY = 0;
-                $srcSquareSize = $srcHeight;
-            } else {
-                // Исходник портретный (высокий)
-                $srcX = 0;
-                $srcY = (int)(($srcHeight - $srcWidth) / 2);
-                $srcSquareSize = $srcWidth;
-            }
+			// Сохраняем прозрачность для PNG/GIF, переводя её в белый фон для результирующего JPG
+			$whiteBackground = imagecolorallocate($dstImage, 255, 255, 255);
+			imagefill($dstImage, 0, 0, $whiteBackground);
 
-            // Высококачественное сжатие и обрезка в целевой квадрат 150x150
-            imagecopyresampled(
-                $dstImage, $srcImage, 
-                0, 0, $srcX, $srcY, 
-                $targetSize, $targetSize, $srcSquareSize, $srcSquareSize
-            );
+			if ($srcWidth > $srcHeight) {
+				// Исходник альбомный (широкий)
+				$srcX = (int)(($srcWidth - $srcHeight) / 2);
+				$srcY = 0;
+				$srcSquareSize = $srcHeight;
+			} else {
+				// Исходник портретный (высокий)
+				$srcX = 0;
+				$srcY = (int)(($srcHeight - $srcWidth) / 2);
+				$srcSquareSize = $srcWidth;
+			}
 
-            // Сохраняем сжатый JPG в папку шардирования с качеством 85% (идеальный баланс веса и четкости)
-            $finalDestination = $uploadTargetDir . '/' . $avatarFilename;
-            imagejpeg($dstImage, $finalDestination, 85);
+			// Высококачественное сжатие и обрезка в целевой квадрат 150x150
+			imagecopyresampled(
+				$dstImage, $srcImage,
+				0, 0, $srcX, $srcY,
+				$targetSize, $targetSize, $srcSquareSize, $srcSquareSize
+			);
 
-            // Очищаем память сервера от тяжелых графических ресурсов
-            imagedestroy($srcImage);
-            imagedestroy($dstImage);
+			// Сохраняем сжатый JPG в папку шардирования с качеством 85% (идеальный баланс веса и четкости)
+			$finalDestination = $uploadTargetDir . '/' . $avatarFilename;
+			imagejpeg($dstImage, $finalDestination, 85);
 
-            // Удаление старого аватара с диска и папки, где она лежит
-            if (!empty($user['avatar'])) {
-                $oldSub = substr($user['avatar'], 0, 2);
-                $oldFolderDir = $baseUploadDir . '/' . $oldSub;
-                $oldAvatarPath = $oldFolderDir . '/' . $user['avatar'];
-                
-                // 1. Удаляем сам файл картинки
-                if (file_exists($oldAvatarPath)) {
-                    unlink($oldAvatarPath);
-                }
+			// Очищаем память сервера от тяжелых графических ресурсов
+			imagedestroy($srcImage);
+			imagedestroy($dstImage);
 
-                // 2. УМНАЯ ОЧИСТКА: Если папка шардирования опустела — удаляем её
-                if (is_dir($oldFolderDir)) {
-                    // Сканируем папку, исключая системные указатели "." и ".."
-                    $remainingFiles = array_diff(scandir($oldFolderDir), ['.', '..']);
-                    if (empty($remainingFiles)) {
-                        rmdir($oldFolderDir); // Папка пуста, удаляем её с диска
-                    }
-                }
-            }
-			
-        }
+			// Удаление старого аватара с диска и папки, где она лежит
+			if (!empty($oldAvatarFilename) && $oldAvatarFilename !== $avatarFilename) {
+				$oldSub = substr($oldAvatarFilename, 0, 2);
+				$oldFolderDir = $baseUploadDir . '/' . $oldSub;
+				$oldAvatarPath = $oldFolderDir . '/' . $oldAvatarFilename;
 
-        // Обновляем настройки в БД
-        $userModel->update($userId, [
-            'email'  => $email,
-            'bio'    => $bio,
-            'avatar' => $avatarFilename
-        ]);
+				// 1. Удаляем сам файл картинки
+				if (file_exists($oldAvatarPath)) {
+					unlink($oldAvatarPath);
+				}
 
-        \App\Core\Session::setFlash('success', 'Изменения вашего личного кабинета успешно сохранены. Аватар оптимизирован.');
-        header('Location: ' . route('account.settings'));
-        exit;
-    }
+				// 2. УМНАЯ ОЧИСТКА: Если папка шардирования опустела — удаляем её
+				if (is_dir($oldFolderDir)) {
+					// Сканируем папку, исключая системные указатели "." и ".."
+					$remainingFiles = array_diff(scandir($oldFolderDir), ['.', '..']);
+					if (empty($remainingFiles)) {
+						rmdir($oldFolderDir); // Папка пуста, удаляем её с диска
+					}
+				}
+			}
+		}
 
+		// 1. Обновляем только email в таблице users
+		$userModel->update($userId, [
+			'email' => $email
+		]);
+
+		// 2. Обновляем профиль (bio и avatar) в таблице user_profiles
+		$userModel->updateProfile($userId, [
+			'bio' => $bio,
+			'avatar' => $avatarFilename
+		]);
+
+		// 3. Обновляем настройки уведомлений в таблице user_settings
+		$userModel->updateSettings($userId, [
+			'notify_on_reply' => $request->getParams('notify_on_reply') ? 1 : 0,
+			'notify_on_story_comment' => $request->getParams('notify_on_story_comment') ? 1 : 0,
+			'email_notifications' => $request->getParams('email_notifications') ? 1 : 0,
+		]);
+
+		// Обновляем аватар в сессии, если он изменился
+		$_SESSION['user_avatar'] = $avatarFilename;
+
+		\App\Core\Session::setFlash('success', 'Изменения вашего личного кабинета успешно сохранены. Аватар оптимизирован.');
+		header('Location: ' . route('account.settings'));
+		exit;
+	}
 
     /**
      * Process secure password changes (POST /account/settings/password)
@@ -483,7 +524,7 @@ class UsersController extends Controller
     {
         $this->requireAuth();
 
-        $request = new \App\Core\Request();
+        $request = new Request();
         $request->validateCsrf(); // Critical anti-CSRF exploit check
 
         $userId = (int)$_SESSION['user_id'];
@@ -560,7 +601,7 @@ class UsersController extends Controller
 
     public function sendResetLink(): void
     {
-        $request = new \App\Core\Request();
+        $request = new Request();
         $request->validateCsrf();
 
         // Enforce Captcha verification check to prevent bot flooding
@@ -633,7 +674,7 @@ class UsersController extends Controller
 
     public function executePasswordReset(): void
     {
-        $request = new \App\Core\Request();
+        $request = new Request();
         $request->validateCsrf();
 
         $token = $request->getParams('token');

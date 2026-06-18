@@ -30,10 +30,11 @@ class Story extends Model
 	 */
 	public function getFeed(int $limit, int $offset, string $tagname = '', bool $showDeleted = false, ?string $domain = '', array $excludeTagIds = []): array
 	{
-		$sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
+		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
 				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
 				FROM `stories` s
 				JOIN `users` u ON s.user_id = u.id
+				LEFT JOIN `user_profiles` up ON u.id = up.user_id
 				LEFT JOIN `taggings` tg ON s.id = tg.story_id
 				LEFT JOIN `tags` t ON tg.tag_id = t.id";
 
@@ -153,13 +154,14 @@ class Story extends Model
 	 */
 	public function getSingleWithAuthor(int $id, bool $showDeleted = false): ?array
 	{
-		$sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
+		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
                        GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
                 FROM `stories` s
-                JOIN `users` u ON s.user_id = u.id
-                LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                LEFT JOIN `tags` t ON tg.tag_id = t.id
-                WHERE s.id = :id";
+					JOIN `users` u ON s.user_id = u.id
+					LEFT JOIN `user_profiles` up ON u.id = up.user_id
+					LEFT JOIN `taggings` tg ON s.id = tg.story_id
+					LEFT JOIN `tags` t ON tg.tag_id = t.id
+					WHERE s.id = :id";
 
 		if (!$showDeleted) {
 			$sql .= " AND s.deleted_at IS NULL";
@@ -183,9 +185,10 @@ class Story extends Model
 	public function getCommentsForStory(int $storyId): array
 	{
 		// Мы НЕ фильтруем тут deleted_at IS NULL, чтобы не ломать дерево (обработаем в шаблоне)
-		$sql = "SELECT c.*, u.username as author_name, u.avatar as author_avatar  
+		$sql = "SELECT c.*, u.username as author_name, up.avatar as author_avatar 
                 FROM `comments` c 
                 JOIN `users` u ON c.user_id = u.id 
+				LEFT JOIN `user_profiles` up ON u.id = up.user_id 
                 WHERE c.story_id = :story_id 
                 ORDER BY c.parent_id ASC, c.id ASC";
 		$stmt = static::db()->prepare($sql);
@@ -299,10 +302,11 @@ class Story extends Model
 	 */
 	public function getFeedWithFilters(int $limit, int $offset, array $excludeTagIds = [], ?string $tagname = null): array
 	{
-		$sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
+		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,,
 				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
 				FROM `stories` s
 				JOIN `users` u ON s.user_id = u.id
+				LEFT JOIN `user_profiles` up ON u.id = up.user_id 
 				LEFT JOIN `taggings` tg ON s.id = tg.story_id
 				LEFT JOIN `tags` t ON tg.tag_id = t.id";
 

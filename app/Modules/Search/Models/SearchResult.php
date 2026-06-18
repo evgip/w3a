@@ -11,11 +11,12 @@ class SearchResult extends Model
      */
     public function searchStories(string $keywords, string $sortBy = 'relevance'): array
     {
-        $sql = "SELECT s.*, u.username as author_name, u.avatar as author_avatar,
+        $sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
                        GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
                        MATCH(s.title, s.description) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
                 FROM `stories` s
                 JOIN `users` u ON s.user_id = u.id
+				LEFT JOIN `user_profiles` up ON u.id = up.user_id
                 LEFT JOIN `taggings` tg ON s.id = tg.story_id
                 LEFT JOIN `tags` t ON tg.tag_id = t.id
                 WHERE s.deleted_at IS NULL 
@@ -43,11 +44,12 @@ class SearchResult extends Model
     public function searchComments(string $keywords, string $sortBy = 'relevance'): array
     {
         // Pull comment contents joined with comment authors and their respective parent stories
-        $sql = "SELECT c.*, u.username as author_name, u.avatar as author_avatar,
+        $sql = "SELECT c.*, u.username as author_name, up.avatar as author_avatar,
                        s.title as story_title,
                        MATCH(c.comment) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
                 FROM `comments` c
                 JOIN `users` u ON c.user_id = u.id
+				LEFT JOIN `user_profiles` up ON u.id = up.user_id
                 JOIN `stories` s ON c.story_id = s.id
                 WHERE c.deleted_at IS NULL
                   AND MATCH(c.comment) AGAINST(:query2 IN NATURAL LANGUAGE MODE)";
