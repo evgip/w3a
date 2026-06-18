@@ -9,10 +9,13 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 
-![LibArea test design](https://raw.githubusercontent.com/evgip/soc/main/public/github-admin.png)
+![W3A home](https://raw.githubusercontent.com/evgip/soc/main/public/github-home.png)
 
 
-![LibArea test design](https://raw.githubusercontent.com/evgip/soc/main/public/github-setting.png)
+![W3A admin](https://raw.githubusercontent.com/evgip/soc/main/public/github-admin.png)
+
+
+![W3A setting](https://raw.githubusercontent.com/evgip/soc/main/public/github-setting.png)
 
 
 ## 🚀 Возможности

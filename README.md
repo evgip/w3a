@@ -8,10 +8,14 @@ A modern, lightweight news aggregator built with PHP 8.1+ and MySQL, inspired by
 ![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-![LibArea test design](https://raw.githubusercontent.com/evgip/soc/main/public/github-admin.png)
+ 
+![W3A home](https://raw.githubusercontent.com/evgip/soc/main/public/github-home.png)
 
 
-![LibArea test design](https://raw.githubusercontent.com/evgip/soc/main/public/github-setting.png)
+![W3A admin](https://raw.githubusercontent.com/evgip/soc/main/public/github-admin.png)
+
+
+![W3A setting](https://raw.githubusercontent.com/evgip/soc/main/public/github-setting.png)
 
 ## 🚀 Features
 
