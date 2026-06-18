@@ -41,6 +41,16 @@ $isDeleted = !empty($story['deleted_at']);
         <a href="<?= route('story.edit', ['id' => $story['id']]) ?>">edit</a>
     <?php endif; ?>
 
+	<?php if ($currentUserId > 0): ?>
+	    <span class="divider">|</span>
+		<a href="<?= route('flags.report', ['type' => 'story', 'id' => (int)$story['id']]) ?>"
+		   class="flag-link"
+		   title="Пожаловаться на контент"
+		   onclick="return confirm('Вы уверены, что хотите подать жалобу?');">
+			🚩
+		</a>
+	<?php endif; ?>
+
     <?php if ($isAdmin): ?>
         <span class="divider">|</span>
         <?php if ($isDeleted): ?>
@@ -55,14 +65,5 @@ $isDeleted = !empty($story['deleted_at']);
             </form>
         <?php endif; ?>
     <?php endif; ?>
-	
-	<?php if ($currentUserId > 0): ?>
-		<a href="<?= route('flags.report', ['type' => 'story', 'id' => (int)$story['id']]) ?>"
-		   class="flag-link"
-		   title="Пожаловаться на контент"
-		   onclick="return confirm('Вы уверены, что хотите подать жалобу?');">
-			🚩
-		</a>
-	<?php endif; ?>
-	
+
 </div>

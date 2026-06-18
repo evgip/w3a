@@ -131,7 +131,9 @@ location / {
 ```
 w3a/
 ├── app/
-│   ├── Core/                    # Core framework classes
+│	├── Config/                 # Configuration
+│   │	└── config.php          # App settings
+│   ├── Core/                   # Core framework classes
 │   │   ├── Router.php          # URL routing
 │   │   ├── Controller.php      # Base controller
 │   │   ├── Model.php           # Base model
@@ -170,9 +172,6 @@ w3a/
 ├── db/                          # Database
 │   └── schema.sql             # Database schema
 │
-├── config/                      # Configuration
-│   └── app.php                # App settings
-│
 └── README.md                    # This file
 ```
 
@@ -204,6 +203,7 @@ Enable in `app/Config/config.php`:
 - `sessions` - Active user sessions
 - `audit_logs` - Administrative activity log
 - `domains` - Banned domains list
+- `flags` - Complaint log
 
 See `db/schema.sql` for complete schema.
 

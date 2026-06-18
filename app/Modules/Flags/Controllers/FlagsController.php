@@ -31,7 +31,7 @@ class FlagsController extends Controller
 
         if ($flagModel->hasUserFlagged($userId, $type, $targetId)) {
             Session::setFlash('error', 'Вы уже подавали жалобу на этот контент.');
-            $back = $type === 'story' ? "/stories/{$targetId}" : "/stories#comment-{$targetId}";
+            $back = $type === 'story' ? "/story/{$targetId}" : "/story#comment-block-{$targetId}";
             header("Location: {$back}");
             exit;
         }

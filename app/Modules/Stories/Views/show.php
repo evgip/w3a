@@ -116,6 +116,16 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                     <a href="<?= route('story.edit', ['id' => $story['id']]) ?>">edit</a>
                 <?php endif; ?>
 
+				<?php if ($currentUserId > 0): ?>
+					<span class="divider">|</span>
+					<a href="<?= route('flags.report', ['type' => 'story', 'id' => (int)$story['id']]) ?>"
+					   class="flag-link"
+					   title="Пожаловаться на контент"
+					   onclick="return confirm('Вы уверены, что хотите подать жалобу?');">
+						🚩
+					</a>
+				<?php endif; ?>
+
                 <!-- Админские действия -->
                 <?php if ($isAdmin): ?>
                     <span class="divider">|</span>
@@ -242,7 +252,6 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                                     <a href="#reply-to-<?= $commentId ?>" class="comment-reply-link" data-id="<?= $commentId ?>">Ответить</a>
                                 <?php endif; ?>
 
-                                <!--?php if (((int)$comment['user_id'] === $currentUserId) || $isAdmin): ? -->
 								<?php if ((int)$comment['user_id'] === $currentUserId || $isAdmin || $isModerator): ?>
                                     <span class="divider">|</span>
                                     <a class="comment-edit-trigger" data-id="<?= $commentId ?>">Редактировать</a>
@@ -252,6 +261,16 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
 										<button type="submit">Удалить</button>
 									</form>
                                 <?php endif; ?>
+								
+                                <?php if ($currentUserId > 0): ?>
+									<span class="divider">|</span>
+									<a href="<?= route('flags.report', ['type' => 'comment', 'id' => $commentId]) ?>"
+									   class="flag-link"
+									   title="Пожаловаться на контент"
+									   onclick="return confirm('Вы уверены, что хотите подать жалобу?');">
+										🚩
+									</a>
+								<?php endif; ?>
                             </div>
                         <?php endif; ?>
 
