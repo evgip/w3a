@@ -90,7 +90,7 @@ class Conversation extends Model
 		$sql = "SELECT
 			c.*, 
 			u.username as participant_name,
-			u.avatar as participant_avatar,
+			up.avatar as participant_avatar,
 			m.message as last_message,
 			m.created_at as last_message_time,
 			m.sender_id as last_sender_id,
@@ -105,6 +105,7 @@ class Conversation extends Model
 				ELSE c.user_one 
 			END
 		) = u.id
+		LEFT JOIN `user_profiles` up ON u.id = up.user_id
 		LEFT JOIN messages m ON m.id = (
 			SELECT MAX(id) FROM messages WHERE conversation_id = c.id
 		)

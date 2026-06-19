@@ -1,0 +1,117 @@
+<?php
+
+namespace App\Modules\Tags\Services;
+
+use App\Modules\Tags\Models\Category;
+use App\Modules\Tags\Models\Tag;
+use App\Modules\Tags\Models\TagFilter;
+use App\Modules\Stories\Models\ReadRibbon;
+use App\Core\Auth as AppCoreAuth;
+
+/**
+ * Сервис для работы с категориями тегов.
+ * Инкапсулирует бизнес-логику: группировка тегов, пагинация историй по категориям.
+ */
+class CategoryService
+{
+    private Category $categoryModel;
+    private Tag $tagModel;
+
+    public function __construct(Category $categoryModel, Tag $tagModel)
+    {
+        $this->categoryModel = $categoryModel;
+        $this->tagModel = $tagModel;
+    }
+
+    /**
+     * Получить все категории с количеством тегов для страницы /categories
+     */
+    public function getCategoriesWithTagsCount(): array
+    {
+        return $this->categoryModel->getAllWithTagsCount();
+    }
+
+    /**
+     * Получить все теги, сгруппированные по категориям.
+     * @return array Массив вида [category_id => [tag1, tag2, ...]]
+     */
+    public function getTagsGroupedByCategory(): array
+    {
+        $allTags = $this->tagModel->getAllTags();
+
+        $tagsByCategory = [];
+        foreach ($allTags as $tag) {
+            $catId = $tag['category_id'] ?? 0;
+            if (!isset($tagsByCategory[$catId])) {
+                $tagsByCategory[$catId] = [];
+            }
+            $tagsByCategory[$catId][] = $tag;
+        }
+
+        return $tagsByCategory;
+    }
+
+    /**
+     * Получить данные для страницы категории: категория с историями и пагинацией.
+     */
+    public function getCategoryWithStories(string $slug, int $currentPage, int $perPage): ?array
+    {
+        $offset = ($currentPage - 1) * $perPage;
+
+        // Получаем фильтры пользователя
+        $excludeTagIds = $this->getUserExcludeTagIds();
+
+        // Получаем общее количество историй для пагинации
+        $totalStories = $this->categoryModel->getStoriesCountBySlug($slug, $excludeTagIds);
+        $totalPages = (int)ceil($totalStories / $perPage);
+
+        // Получаем категорию с историями
+        $category = $this->categoryModel->getStoriesBySlug($slug, $perPage, $offset, $excludeTagIds);
+
+        if (!$category) {
+            return null;
+        }
+
+        // Подсчёт новых комментариев для каждой истории
+        $newCommentsMap = $this->getNewCommentsForStories($category['stories'] ?? []);
+
+        return [
+            'category' => $category,
+            'stories' => $category['stories'],
+            'currentPage' => $currentPage,
+            'totalPages' => $totalPages,
+            'newCommentsMap' => $newCommentsMap,
+        ];
+    }
+
+    /**
+     * Получить ID тегов, которые пользователь исключил из ленты.
+     */
+    private function getUserExcludeTagIds(): array
+    {
+        if (!AppCoreAuth::check()) {
+            return [];
+        }
+
+        $filterModel = new TagFilter();
+        return $filterModel->getFilteredTagIds(AppCoreAuth::id());
+    }
+
+    /**
+     * Подсчитать количество новых комментариев для списка историй.
+     */
+    private function getNewCommentsForStories(array $stories): array
+    {
+        if (!AppCoreAuth::check() || empty($stories)) {
+            return [];
+        }
+
+        $storyIds = array_column($stories, 'id');
+        $readRibbon = new ReadRibbon();
+
+        return $readRibbon->getNewCommentsCounts(
+            (int)$_SESSION['user_id'],
+            array_map('intval', $storyIds)
+        );
+    }
+}

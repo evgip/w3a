@@ -1,108 +1,201 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Modules\Notifications\Controllers;
 
 use App\Core\Controller;
+use App\Core\Request;
 use App\Core\Auth;
 use App\Modules\Notifications\Models\Notification;
+use App\Modules\Notifications\Services\NotificationService;
+use App\Modules\Stories\Models\Comment;
+use App\Modules\Users\Models\User;
 
+/**
+ * Контроллер модуля Notifications.
+ * 
+ * Маршруты (должны соответствовать JS):
+ * - GET  /notifications                   → index()
+ * - GET  /api/notifications/count         → getCount()
+ * - POST /notifications/mark-all-read     → markAllAsRead()  (конкретный — первым!)
+ * - POST /notifications/{id}/read         → markAsRead()
+ */
 class NotificationsController extends Controller
 {
-	public function __construct()
-	{
-		// Проверка авторизации только для НЕ-API запросов
-		$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-		$isApi = strpos($requestUri, '/api/') === 0;
+    private ?NotificationService $notificationService = null;
 
-		if (!$isApi && !Auth::check()) {
-			header('Location: /login');
-			exit;
-		}
-		// Для API-запросов проверку НЕ делаем — она будет в самих методах
-	}
+    private function getNotificationService(): NotificationService
+    {
+        if ($this->notificationService === null) {
+            $this->notificationService = new NotificationService();
+        }
+        return $this->notificationService;
+    }
 
-	public function index(): void
-	{
-		$userId = (int)$_SESSION['user_id'];
-		$notificationModel = new Notification();
+    // =========================================================================
+    // СПИСОК УВЕДОМЛЕНИЙ
+    // =========================================================================
 
-		// Получаем тип фильтра из GET-параметра (по умолчанию 'all')
-		$type = $_GET['type'] ?? 'all';
-		$allowedTypes = ['all', 'reply', 'mention', 'message'];
+    public function index(): void
+    {
+        $this->requireAuth();
 
-		if (!in_array($type, $allowedTypes)) {
-			$type = 'all';
-		}
+        $userId = (int)$_SESSION['user_id'];
+        $request = new Request();
 
-		$page = (int)($_GET['page'] ?? 1);
-		$limit = 50;
+        $type = (string)$request->getParams('type', 'all');
+        $page = max(1, (int)$request->getParams('page', 1));
+        $perPage = config_int('constants.pagination.notifications_per_page', 25);
 
-		// Получаем уведомления с учетом фильтра
-		$notifications = $notificationModel->getUserNotifications(
-			$_SESSION['user_id'],
-			$type,
-			$limit,
-			$page
-		);
+        $data = $this->getNotificationService()->getNotificationsForIndex(
+            $userId,
+            $type,
+            $page,
+            $perPage
+        );
 
-		// Получаем количество непрочитанных по типам для бейджей на вкладках
-		$unreadCounts = $notificationModel->getUnreadCountByType($userId);
-		$counts = ['reply' => 0, 'mention' => 0, 'message' => 0];
-		foreach ($unreadCounts as $row) {
-			if (isset($counts[$row['type']])) {
-				$counts[$row['type']] = (int)$row['count'];
-			}
-		}
+        $this->render('index', [
+            'title' => 'Уведомления',
+            'notifications' => $data['notifications'],
+            'currentType' => $data['currentType'],
+            'counts' => $data['counts'],
+            'totalUnread' => $data['totalUnread'],
+            'currentPage' => $page,
+            'request' => $request,
+        ]);
+    }
 
-		// Общее количество непрочитанных
-		$totalUnread = $notificationModel->getUnreadCount($userId);
+    // =========================================================================
+    // ОТМЕТКА ОДНОГО УВЕДОМЛЕНИЯ КАК ПРОЧИТАННОГО
+    // Маршрут: POST /notifications/{id}/read
+    // JS отправляет CSRF в заголовке X-CSRF-Token
+    // =========================================================================
 
-		$this->render('index', [
-			'notifications' => $notifications,
-			'currentType' => $type,
-			'counts' => $counts,
-			'totalUnread' => $totalUnread
-		]);
-	}
+    public function markAsRead(string $id): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
 
-	public function markAsRead(int $id): void
-	{
-		$userId = (int)$_SESSION['user_id'];
-		$notificationId = $id;  // ← Берем из URL, а не из POST
+        if (!Auth::check()) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Не авторизован']);
+            exit;
+        }
 
-		if ($notificationId) {
-			$notificationModel = new Notification();
-			$notificationModel->markAsRead($notificationId, $userId);
-		}
+        // Проверяем CSRF из заголовка (JS отправляет его именно так)
+        if (!$this->validateCsrfFromHeader()) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
+            exit;
+        }
 
-		$this->json(['success' => true]);
-	}
+        $notificationId = (int)$id;
+        $userId = (int)Auth::id();
 
-	public function markAllAsRead(): void
-	{
-		$userId = (int)$_SESSION['user_id'];
+        try {
+            $success = $this->getNotificationService()->markAsRead($notificationId, $userId);
 
-		$notificationModel = new Notification();
-		$notificationModel->markAllAsRead($userId);
+            echo json_encode([
+                'success' => $success,
+                'message' => $success ? 'Отмечено как прочитанное' : 'Не удалось отметить'
+            ]);
+        } catch (\Throwable $e) {
+            error_log('[NOTIFICATIONS] Error in markAsRead: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Ошибка сервера']);
+        }
 
-		$this->json(['success' => true]);
-	}
+        exit;
+    }
 
-	// API endpoint для получения общего количества непрочитанных (для шапки)
-	public function getCount(): void
-	{
-		// Для неавторизованных возвращаем 0 без ошибок
-		if (!Auth::check()) {
-			$this->json(['count' => 0]);
-			return;
-		}
+    // =========================================================================
+    // ОТМЕТКА ВСЕХ УВЕДОМЛЕНИЙ КАК ПРОЧИТАННЫХ
+    // Маршрут: POST /notifications/mark-all-read
+    // JS отправляет CSRF в заголовке X-CSRF-Token
+    // =========================================================================
 
-		$userId = (int)$_SESSION['user_id'];
-		$notificationModel = new Notification();
-		$count = $notificationModel->getUnreadCount($userId);
-		$this->json(['count' => $count]);
-	}
+    public function markAllAsRead(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
 
+        if (!Auth::check()) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Не авторизован']);
+            exit;
+        }
+
+        // Проверяем CSRF из заголовка
+        if (!$this->validateCsrfFromHeader()) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
+            exit;
+        }
+
+        $userId = (int)Auth::id();
+
+        try {
+            $success = $this->getNotificationService()->markAllAsRead($userId);
+
+            echo json_encode([
+                'success' => $success,
+                'message' => $success ? 'Все уведомления отмечены' : 'Ошибка'
+            ]);
+        } catch (\Throwable $e) {
+            error_log('[NOTIFICATIONS] Error in markAllAsRead: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Ошибка сервера']);
+        }
+
+        exit;
+    }
+
+    // =========================================================================
+    // API: СЧЁТЧИК НЕПРОЧИТАННЫХ
+    // Маршрут: GET /api/notifications/count
+    // JS ожидает: { count: number }
+    // =========================================================================
+
+    public function getCount(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (!Auth::check()) {
+            http_response_code(401);
+            echo json_encode(['count' => 0]);
+            exit;
+        }
+
+        try {
+            $userId = (int)Auth::id();
+            $count = $this->getNotificationService()->getUnreadCount($userId);
+
+            // JS ожидает именно { count: N } — без лишних полей
+            echo json_encode(['count' => $count]);
+
+        } catch (\Throwable $e) {
+            error_log('[NOTIFICATIONS] Error in getCount: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['count' => 0]);
+        }
+
+        exit;
+    }
+
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * Проверить CSRF-токен из заголовка X-CSRF-Token.
+     * JS отправляет токен именно так (см. fetch в notifications.js).
+     */
+    private function validateCsrfFromHeader(): bool
+    {
+        $sessionToken = $_SESSION['csrf_token'] ?? '';
+        $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+
+        if (empty($sessionToken) || empty($headerToken)) {
+            return false;
+        }
+
+        return hash_equals($sessionToken, $headerToken);
+    }
 }

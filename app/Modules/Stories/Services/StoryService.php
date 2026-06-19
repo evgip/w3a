@@ -33,7 +33,7 @@ class StoryService
     public function createStory(array $data, int $userId): int
     {
 		// Проверка бана
-		$userModel = new App\Modules\Users\Models\User();
+		$userModel = new \App\Modules\Users\Models\User();
 		if ($userModel->isBanned($userId)) {
 			Session::setFlash('error', 'Ваш аккаунт заблокирован.');
 			return 0;

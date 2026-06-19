@@ -7,6 +7,7 @@ namespace App\Modules\Users\Controllers;
 use App\Core\Controller;
 use App\Core\Request as AppCoreRequest;
 use App\Core\Session as AppCoreSession;
+use App\Core\Auth;
 use App\Modules\Users\Services\UserService;
 use App\Modules\Users\Services\AuthService;
 use App\Modules\Users\Services\AvatarService;
@@ -81,6 +82,44 @@ class UsersController extends Controller
         header('Location: /');
         exit;
     }
+
+    /**
+     * Отображение формы логина (GET /login)
+     */
+    public function showLoginForm()
+    {
+        // Если уже авторизован — отправляем на главную
+        if (Auth::check()) {
+            header('Location: /');
+            exit;
+        }
+
+        $request = new AppCoreRequest();
+        
+        // Рендерим шаблон login.php из папки Views модуля Users
+        $this->render('login', [
+            'title' => 'Авторизация',
+            'request' => $request // Передаем объект запроса для вывода CSRF-поля
+        ]);
+    }
+
+    /**
+     * Display the registration form (GET /register)
+     */
+	public function showRegisterForm(): void
+	{
+		$request = new AppCoreRequest();
+		
+		// Получаем старые значения из сессии (если есть)
+		$old = \App\Core\Session::get('old_input', []);
+		\App\Core\Session::delete('old_input'); // Очищаем после использования
+		
+		$this->render('register', [
+			'title' => 'Регистрация нового пользователя',
+			'request' => $request,
+			'old' => $old
+		]);
+	}
 
     /**
      * Обработка регистрации нового пользователя (POST /register).

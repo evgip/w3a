@@ -2,33 +2,68 @@
 
 namespace App\Modules\Tags\Controllers;
 
-use App\Core\Controller;
-use App\Modules\Tags\Models\Tag;
+use App\Core\Controller as AppCoreController;
+use App\Core\Request as AppCoreRequest;
+use App\Core\Auth as AppCoreAuth;
 use App\Modules\Tags\Models\Category;
+use App\Modules\Tags\Models\Tag;
+use App\Modules\Tags\Models\TagFilter;
+use App\Modules\Tags\Services\CategoryService;
+use App\Modules\Tags\Services\TagFilterService;
 
-class TagsController extends Controller
+/**
+ * Контроллер модуля Tags.
+ * Отвечает за отображение категорий тегов и управление фильтрами.
+ * Вся бизнес-логика вынесена в сервисы CategoryService и TagFilterService.
+ */
+class TagsController extends AppCoreController
 {
+    private ?CategoryService $categoryService = null;
+    private ?TagFilterService $filterService = null;
+
+    // =========================================================================
+    // ЛЕНИВЫЕ ГЕТТЕРЫ СЕРВИСОВ
+    // =========================================================================
+
     /**
-     * Renders the Lobsters-style Master Tags Matrix Catalog Index (GET /tags)
+     * Получает экземпляр CategoryService (ленивая инициализация).
+     */
+    private function getCategoryService(): CategoryService
+    {
+        if ($this->categoryService === null) {
+            $this->categoryService = new CategoryService(
+                new Category(),
+                new Tag()
+            );
+        }
+        return $this->categoryService;
+    }
+
+    /**
+     * Получает экземпляр TagFilterService (ленивая инициализация).
+     */
+    private function getFilterService(): TagFilterService
+    {
+        if ($this->filterService === null) {
+            $this->filterService = new TagFilterService(
+                new TagFilter(),
+                new Tag()
+            );
+        }
+        return $this->filterService;
+    }
+
+    // =========================================================================
+    // КАТЕГОРИИ ТЕГОВ
+    // =========================================================================
+
+    /**
+     * Страница со всеми категориями тегов (GET /categories)
      */
     public function index(): void
     {
-        $categoryModel = new Category();
-        $categories = $categoryModel->getAllWithTagsCount();
-
-        // Получаем теги для каждой категории
-        $tagModel = new Tag();
-        $allTags = $tagModel->getAllTags();
-
-        // Группируем теги по category_id
-        $tagsByCategory = [];
-        foreach ($allTags as $tag) {
-            $catId = $tag['category_id'] ?? 0;
-            if (!isset($tagsByCategory[$catId])) {
-                $tagsByCategory[$catId] = [];
-            }
-            $tagsByCategory[$catId][] = $tag;
-        }
+        $categories = $this->getCategoryService()->getCategoriesWithTagsCount();
+        $tagsByCategory = $this->getCategoryService()->getTagsGroupedByCategory();
 
         $this->render('index', [
             'title' => 'Категории тегов',
@@ -36,189 +71,130 @@ class TagsController extends Controller
             'tagsByCategory' => $tagsByCategory,
         ]);
     }
-	
-	/**
-	 * Страница историй, которые прикреплены к тегам конкретной категории
-	 */
-	public function categoriesShow(string $slug): void
-	{
-		$request = new \App\Core\Request();
-		$currentPage = (int)$request->getParams('page', 1);
-		if ($currentPage < 1) $currentPage = 1;
 
-		$perPage = config_int('constants.pagination.stories_per_page', 15);
-		$offset = ($currentPage - 1) * $perPage;
+    /**
+     * Страница историй, которые прикреплены к тегам конкретной категории
+     * (GET /categories/{slug})
+     */
+    public function categoriesShow(string $slug): void
+    {
+        $request = new AppCoreRequest();
+        $currentPage = max(1, (int)$request->getParams('page', 1));
+        $perPage = config_int('constants.pagination.stories_per_page', 15);
 
-		// Получаем фильтры пользователя
-		$excludeTagIds = [];
-		if (\App\Core\Auth::check()) {
-			$filterModel = new \App\Modules\Tags\Models\TagFilter();
-			$excludeTagIds = $filterModel->getFilteredTagIds(\App\Core\Auth::id());
-		}
+        $data = $this->getCategoryService()->getCategoryWithStories($slug, $currentPage, $perPage);
 
-		$categoryModel = new Category();
-		
-		// Получаем общее количество историй для пагинации
-		$totalStories = $categoryModel->getStoriesCountBySlug($slug, $excludeTagIds);
-		$totalPages = (int)ceil($totalStories / $perPage);
+        if (!$data) {
+            $this->redirectWithError('/categories', 'Категория не найдена.');
+            return;
+        }
 
-		// Получаем категорию с историями
-		$category = $categoryModel->getStoriesBySlug($slug, $perPage, $offset, $excludeTagIds);
+        $this->render('categories-show', [
+            'title' => e($data['category']['name']),
+            'category' => $data['category'],
+            'stories' => $data['stories'],
+            'currentPage' => $data['currentPage'],
+            'totalPages' => $data['totalPages'],
+            'newCommentsMap' => $data['newCommentsMap'],
+        ]);
+    }
 
-		if (!$category) {
-			$this->redirectWithError('/categories', 'Категория не найдена.');
-			return;
-		}
+    // =========================================================================
+    // ФИЛЬТРЫ ТЕГОВ
+    // =========================================================================
 
-		// Подсчёт новых комментариев для каждой истории
-		$newCommentsMap = [];
-		if (\App\Core\Auth::check() && !empty($category['stories'])) {
-			$storyIds = array_column($category['stories'], 'id');
-			$readRibbon = new \App\Modules\Stories\Models\ReadRibbon();
-			$newCommentsMap = $readRibbon->getNewCommentsCounts(
-				(int)$_SESSION['user_id'],
-				array_map('intval', $storyIds)
-			);
-		}
+    /**
+     * Страница управления фильтрами тегов (GET /filters)
+     */
+    public function filters(): void
+    {
+        $this->requireAuth();
 
-		$this->render('categories-show', [
-			'title' => e($category['name']),
-			'category' => $category,
-			'stories' => $category['stories'],
-			'currentPage' => $currentPage,
-			'totalPages' => $totalPages,
-			'newCommentsMap' => $newCommentsMap,
-		]);
-	}
-		
-	/**
-	 * Страница управления фильтрами тегов (GET /filters)
-	 */
-	public function filters(): void
-	{
-		$this->requireAuth();
+        $userId = (int)$_SESSION['user_id'];
+        $data = $this->getFilterService()->getFiltersData($userId);
 
-		$userId = (int)$_SESSION['user_id'];
-		$filterModel = new \App\Modules\Tags\Models\TagFilter();
-		$tagModel = new \App\Modules\Tags\Models\Tag();
-		
-		$filters = $filterModel->getUserFilters($userId);
-		$allTags = $tagModel->getAllTags();
-		
-		$this->render('filters', [
-			'title' => 'Фильтры тегов',
-			'filters' => $filters,
-			'allTags' => $allTags,
-			'request' => new \App\Core\Request()
-		]);
-	}
+        $this->render('filters', [
+            'title' => 'Фильтры тегов',
+            'filters' => $data['filters'],
+            'allTags' => $data['allTags'],
+            'request' => new AppCoreRequest()
+        ]);
+    }
 
-	/**
-	 * Добавить тег в фильтры (POST /filters/add)
-	 */
-	public function addFilter(): void
-	{
-		// УБРАЛИ die() — теперь возвращаем настоящий JSON
-		
-		header('Content-Type: application/json; charset=utf-8');
-		
-		try {
-			if (!\App\Core\Auth::check()) {
-				echo json_encode(['success' => false, 'message' => 'Требуется авторизация']);
-				exit;
-			}
-			
-			$request = new \App\Core\Request();
-			
-			if (!$request->isCsrfValid()) {
-				echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
-				exit;
-			}
-			
-			$tagId = (int)$request->getParams('tag_id', 0);
-			$userId = (int)\App\Core\Auth::id();
-			
-			if (!$tagId || !$userId) {
-				echo json_encode(['success' => false, 'message' => 'Некорректные данные']);
-				exit;
-			}
-			
-			$filterModel = new \App\Modules\Tags\Models\TagFilter();
-			$result = $filterModel->addFilter($userId, $tagId);
-			
-			if ($result) {
-				echo json_encode(['success' => true, 'message' => 'Тег добавлен в фильтры']);
-			} else {
-				echo json_encode(['success' => false, 'message' => 'Тег уже в фильтрах']);
-			}
-			
-		} catch (\Throwable $e) {
-			echo json_encode(['success' => false, 'message' => 'Ошибка: ' . $e->getMessage()]);
-		}
-		
-		exit;
-	}
+    /**
+     * Добавить тег в фильтры (POST /filters/add)
+     */
+    public function addFilter(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
 
-	/**
-	 * Удалить тег из фильтров (POST /filters/remove)
-	 */
-	public function removeFilter(): void
-	{
-		// 1. Форсируем JSON
-		header('Content-Type: application/json; charset=utf-8');
-		
-		try {
-			// 2. Проверка авторизации
-			if (!\App\Core\Auth::check()) {
-				error_log('[FILTERS] Auth failed for removeFilter');
-				echo json_encode(['success' => false, 'message' => 'Требуется авторизация']);
-				exit;
-			}
-			
-			$request = new \App\Core\Request();
-			
-			// 3. ПРЯМАЯ проверка CSRF (НЕ используйте $request->validateCsrf() здесь!)
-			$sessionToken = $_SESSION['csrf_token'] ?? '';
-			$submittedToken = $request->getParams('csrf_token') ?? '';
-			
-			error_log("[FILTERS] CSRF Check -> Session: '{$sessionToken}', Submitted: '{$submittedToken}'");
-			
-			if (empty($sessionToken) || empty($submittedToken) || !hash_equals($sessionToken, $submittedToken)) {
-				echo json_encode(['success' => false, 'message' => 'Ошибка безопасности (CSRF). Токены не совпадают.']);
-				exit;
-			}
-			
-			$tagId = (int)$request->getParams('tag_id', 0);
-			$userId = (int)\App\Core\Auth::id();
-			
-			if (!$tagId || !$userId) {
-				echo json_encode(['success' => false, 'message' => 'Некорректные данные']);
-				exit;
-			}
-			
-			// 4. Вызов модели
-			$modelClass = '\\App\\Modules\\Tags\\Models\\TagFilter';
-			if (!class_exists($modelClass)) {
-				throw new \Exception('Класс TagFilter не найден');
-			}
-			
-			$filterModel = new $modelClass();
-			$filterModel->removeFilter($userId, $tagId);
-			
-			echo json_encode(['success' => true, 'message' => 'Тег удалён из фильтров']);
-			
-		} catch (\Throwable $e) {
-			error_log('[FILTERS] Exception in removeFilter: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-			echo json_encode([
-				'success' => false, 
-				'message' => 'Ошибка сервера: ' . $e->getMessage()
-			], 500);
-		}
-		
-		// 5. Жёсткое завершение
-		exit;
-	}
-	
+        try {
+            if (!AppCoreAuth::check()) {
+                echo json_encode(['success' => false, 'message' => 'Требуется авторизация']);
+                exit;
+            }
+
+            $request = new AppCoreRequest();
+
+            if (!$request->isCsrfValid()) {
+                echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
+                exit;
+            }
+
+            $tagId = (int)$request->getParams('tag_id', 0);
+            $userId = (int)AppCoreAuth::id();
+
+            $result = $this->getFilterService()->addFilter($userId, $tagId);
+            echo json_encode($result);
+
+        } catch (\Throwable $e) {
+            echo json_encode(['success' => false, 'message' => 'Ошибка: ' . $e->getMessage()]);
+        }
+
+        exit;
+    }
+
+    /**
+     * Удалить тег из фильтров (POST /filters/remove)
+     */
+    public function removeFilter(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            if (!AppCoreAuth::check()) {
+                error_log('[FILTERS] Auth failed for removeFilter');
+                echo json_encode(['success' => false, 'message' => 'Требуется авторизация']);
+                exit;
+            }
+
+            $request = new AppCoreRequest();
+
+            // Проверка CSRF
+            $sessionToken = $_SESSION['csrf_token'] ?? '';
+            $submittedToken = $request->getParams('csrf_token') ?? '';
+
+            error_log("[FILTERS] CSRF Check -> Session: '{$sessionToken}', Submitted: '{$submittedToken}'");
+
+            if (empty($sessionToken) || empty($submittedToken) || !hash_equals($sessionToken, $submittedToken)) {
+                echo json_encode(['success' => false, 'message' => 'Ошибка безопасности (CSRF). Токены не совпадают.']);
+                exit;
+            }
+
+            $tagId = (int)$request->getParams('tag_id', 0);
+            $userId = (int)AppCoreAuth::id();
+
+            $result = $this->getFilterService()->removeFilter($userId, $tagId);
+            echo json_encode($result);
+
+        } catch (\Throwable $e) {
+            error_log('[FILTERS] Exception in removeFilter: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            echo json_encode([
+                'success' => false,
+                'message' => 'Ошибка сервера: ' . $e->getMessage()
+            ], 500);
+        }
+
+        exit;
+    }
 }
-
-

@@ -209,7 +209,7 @@ class Notification extends Model
 		SELECT
 			n.*,
 			u.username as actor_name,
-			u.avatar as actor_avatar,
+			up.avatar as actor_avatar,
 			c.comment as comment_text,
 			c.story_id,
 			s.title as story_title,
@@ -217,6 +217,7 @@ class Notification extends Model
 			m.conversation_id
 		FROM `{$this->table}` n
 		LEFT JOIN users u ON n.actor_id = u.id
+		LEFT JOIN `user_profiles` up ON u.id = up.user_id
 		LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
 		LEFT JOIN stories s ON c.story_id = s.id
 		LEFT JOIN messages m ON n.notifiable_type = 'Message' AND n.notifiable_id = m.id
@@ -242,12 +243,13 @@ class Notification extends Model
             SELECT 
                 n.*,
                 u.username as actor_name,
-                u.avatar as actor_avatar,
+                up.avatar as actor_avatar,
                 c.comment as comment_text,
                 c.story_id,
                 s.title as story_title
             FROM `{$this->table}` n
             LEFT JOIN users u ON n.actor_id = u.id
+			LEFT JOIN `user_profiles` up ON u.id = up.user_id
             LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
             LEFT JOIN stories s ON c.story_id = s.id
             WHERE n.user_id = :user_id AND n.is_read = 0

@@ -22,9 +22,10 @@ class Message extends Model
     {
         // Strategy: Select the most recent chunk using a subquery, then re-sort them chronologically for the view
         $sql = "SELECT * FROM (
-                    SELECT m.*, u.username as sender_name, u.avatar as sender_avatar 
+                    SELECT m.*, u.username as sender_name, up.avatar as sender_avatar 
                     FROM `messages` m
                     JOIN `users` u ON m.sender_id = u.id
+					LEFT JOIN `user_profiles` up ON u.id = up.user_id
                     WHERE m.conversation_id = :cid AND m.deleted_at IS NULL
                     ORDER BY m.id DESC 
                     LIMIT :limit OFFSET :offset
@@ -57,9 +58,10 @@ class Message extends Model
     public function getChatHistory(int $conversationId): array
     {
         $stmt = static::db()->prepare("
-            SELECT m.*, u.username as sender_name, u.avatar as sender_avatar 
+            SELECT m.*, u.username as sender_name, up.avatar as sender_avatar 
             FROM `messages` m
             JOIN `users` u ON m.sender_id = u.id
+			LEFT JOIN `user_profiles` up ON u.id = up.user_id
             WHERE m.conversation_id = :cid AND m.deleted_at IS NULL
             ORDER BY m.id ASC LIMIT 100
         ");

@@ -131,7 +131,7 @@ class StoriesController extends Controller
         if ($this->commentService === null) {
             $this->commentService = new CommentService(
                 new Comment(),
-                new NotificationService() // ← ДОБАВЬТЕ ЭТО
+                new NotificationService()
             );
         }
         return $this->commentService;

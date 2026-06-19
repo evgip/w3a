@@ -5,8 +5,8 @@ $router->add('GET', 'notifications', 'NotificationsController@index', 'notificat
 
 // API endpoints
 $router->add('GET', 'api/notifications/unread', 'NotificationsController@getUnread', 'notifications.api.unread');
-$router->add('GET', 'api/notifications/count', 'NotificationsController@getCount', 'notifications.api.count');  // ← Было @count
+$router->add('GET', 'api/notifications/count', 'NotificationsController@getCount', 'notifications.api.count');
 
-// Действия с уведомлениями
-$router->add('POST', 'notifications/{id}/read', 'NotificationsController@markAsRead', 'notifications.read');
+// ⚠️ ВАЖНО: конкретный маршрут СНАЧАЛА, параметрический — ПОТОМ!
 $router->add('POST', 'notifications/mark-all-read', 'NotificationsController@markAllAsRead', 'notifications.markAllRead');
+$router->add('POST', 'notifications/{id}/read', 'NotificationsController@markAsRead', 'notifications.read');
