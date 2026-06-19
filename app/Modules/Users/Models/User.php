@@ -161,6 +161,77 @@ class User extends Model
         return (bool)$stmt->fetch(\PDO::FETCH_ASSOC);
     }
 
+	/**
+	 * Получить список всех пользователей с информацией о бане.
+	 * Использует LEFT JOIN с user_bans для вычисления is_banned.
+	 * 
+	 * @param bool $withTrashed Включать ли удалённых пользователей
+	 * @return array Массив пользователей с дополнительными полями:
+	 *               - is_banned (0|1)
+	 *               - ban_reason
+	 *               - banned_at
+	 *               - expires_at
+	 *               - banned_by
+	 */
+	public function getAllUsersWithBanStatus(bool $withTrashed = false): array
+	{
+		$deletedCondition = $withTrashed ? '' : 'WHERE u.`deleted_at` IS NULL';
+		
+		$sql = "
+			SELECT 
+				u.*,
+				-- Вычисляем is_banned: 1 если есть активный бан
+				(
+					SELECT COUNT(*) 
+					FROM `user_bans` b 
+					WHERE b.`user_id` = u.id 
+					  AND b.`unbanned_at` IS NULL 
+					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+				) > 0 AS `is_banned`,
+				-- Причина активного бана
+				(
+					SELECT b.`reason` 
+					FROM `user_bans` b 
+					WHERE b.`user_id` = u.id 
+					  AND b.`unbanned_at` IS NULL 
+					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+					LIMIT 1
+				) AS `ban_reason`,
+				-- Дата начала активного бана
+				(
+					SELECT b.`created_at` 
+					FROM `user_bans` b 
+					WHERE b.`user_id` = u.id 
+					  AND b.`unbanned_at` IS NULL 
+					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+					LIMIT 1
+				) AS `banned_at`,
+				-- Дата окончания активного бана (NULL = перманентный)
+				(
+					SELECT b.`expires_at` 
+					FROM `user_bans` b 
+					WHERE b.`user_id` = u.id 
+					  AND b.`unbanned_at` IS NULL 
+					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+					LIMIT 1
+				) AS `expires_at`,
+				-- ID модератора, который забанил
+				(
+					SELECT b.`banned_by` 
+					FROM `user_bans` b 
+					WHERE b.`user_id` = u.id 
+					  AND b.`unbanned_at` IS NULL 
+					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+					LIMIT 1
+				) AS `banned_by`
+			FROM `users` u
+			{$deletedCondition}
+			ORDER BY u.`created_at` DESC
+		";
+		
+		return static::db()->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+	}
+
     /**
      * Получает информацию об активном бане пользователя.
      */

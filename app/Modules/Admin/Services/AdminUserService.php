@@ -31,7 +31,7 @@ class AdminUserService
      */
     public function getAllUsers(): array
     {
-        return $this->userModel->withTrashed()->all();
+         return $this->userModel->getAllUsersWithBanStatus(withTrashed: true);
     }
     
     /**

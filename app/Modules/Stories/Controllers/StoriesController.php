@@ -265,7 +265,7 @@ class StoriesController extends Controller
 	    // Проверка бана пользователя
 		$userModel = new \App\Modules\Users\Models\User();
 		if ($userModel->isBanned((int)$_SESSION['user_id'])) {
-			AppCoreSession::setFlash('error', 'Ваш аккаунт заблокирован. Вы не можете публиковать истории.');
+			Session::setFlash('error', 'Ваш аккаунт заблокирован. Вы не можете публиковать истории.');
 			header('Location: /stories/create');
 			exit;
 		}
@@ -426,7 +426,7 @@ class StoriesController extends Controller
 		// НОВОЕ: Проверка бана пользователя
 		$userModel = new \App\Modules\Users\Models\User();
 		if ($userModel->isBanned((int)$_SESSION['user_id'])) {
-			AppCoreSession::setFlash('error', 'Ваш аккаунт заблокирован. Вы не можете оставлять комментарии.');
+			Session::setFlash('error', 'Ваш аккаунт заблокирован. Вы не можете оставлять комментарии.');
 			header('Location: /story/' . $storyId);
 			exit;
 		}

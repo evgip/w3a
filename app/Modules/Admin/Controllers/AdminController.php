@@ -91,9 +91,12 @@ class AdminController extends Controller
     
     public function users(): void
     {
+		$user = $this->getUserService()->getAllUsers();
+		
+
         $this->render('users_list', [
             'title' => 'Управление пользователями',
-            'users' => $this->getUserService()->getAllUsers()
+            'users' => $user
         ]);
     }
     
