@@ -13,6 +13,7 @@ class SearchResult extends Model
     {
         $sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
                        GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
+                       GROUP_CONCAT(CONCAT(t.tag, '||', t.name) ORDER BY t.tag ASC) as tags_combined,
                        MATCH(s.title, s.description) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
                 FROM `stories` s
                 JOIN `users` u ON s.user_id = u.id
@@ -33,7 +34,7 @@ class SearchResult extends Model
 
         $stories = $stmt->fetchAll();
         foreach ($stories as &$story) {
-            $story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
+            parseTagsCombined($story);
         }
         return $stories;
     }

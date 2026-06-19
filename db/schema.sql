@@ -19,9 +19,14 @@ CREATE TABLE `audit_logs` (
 --
 
 INSERT INTO `audit_logs` (`id`, `user_id`, `username`, `role`, `ip_address`, `action`, `description`, `payload`, `created_at`) VALUES
-(1, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 11:30:23'),
-(2, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 11:30:44'),
-(3, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 11:31:21');
+(1, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 08:30:23'),
+(2, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 08:30:44'),
+(3, NULL, 'Guest', 'guest', '127.0.0.1', 'auth.login_failed', 'Неудачная попытка входа в систему', '{\"attempted_email\":\"admin@example.com\"}', '2026-06-08 08:31:21'),
+(4, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #libarea', NULL, '2026-06-19 14:47:20'),
+(5, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #php', NULL, '2026-06-19 14:47:29'),
+(6, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #security', NULL, '2026-06-19 14:47:39'),
+(7, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #show', NULL, '2026-06-19 14:47:51'),
+(8, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #video', NULL, '2026-06-19 14:47:59');
 
 -- --------------------------------------------------------
 
@@ -57,10 +62,10 @@ CREATE TABLE `categories` (
 --
 
 INSERT INTO `categories` (`id`, `name`, `slug`, `description`, `sort_order`, `created_at`, `updated_at`) VALUES
-(1, 'Языки программирования', 'languages', 'PHP, Python, JavaScript и другие', 10, '2026-06-17 01:10:39', '2026-06-17 01:10:39'),
-(2, 'Практики', 'practices', 'Безопасность, архитектура, методологии', 20, '2026-06-17 01:10:39', '2026-06-17 01:10:39'),
-(3, 'Формат', 'format', 'Видео, демонстрации проектов, подкасты', 30, '2026-06-17 01:10:39', '2026-06-17 01:10:39'),
-(4, 'Разное', 'other', 'Общие темы и обсуждения', 99, '2026-06-17 01:10:39', '2026-06-17 01:10:39');
+(1, 'Языки программирования', 'languages', 'PHP, Python, JavaScript и другие', 10, '2026-06-16 22:10:39', '2026-06-16 22:10:39'),
+(2, 'Практики', 'practices', 'Безопасность, архитектура, методологии', 20, '2026-06-16 22:10:39', '2026-06-16 22:10:39'),
+(3, 'Формат', 'format', 'Видео, демонстрации проектов, подкасты', 30, '2026-06-16 22:10:39', '2026-06-16 22:10:39'),
+(4, 'Разное', 'other', 'Общие темы и обсуждения', 99, '2026-06-16 22:10:39', '2026-06-16 22:10:39');
 
 -- --------------------------------------------------------
 
@@ -87,12 +92,12 @@ CREATE TABLE `comments` (
 --
 
 INSERT INTO `comments` (`id`, `story_id`, `user_id`, `parent_id`, `comment`, `score`, `flag_count`, `is_hidden_by_flags`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 1, 1, NULL, 'Отличная архитектура у фреймворка!', 1, 0, 0, '2026-06-08 13:20:16', '2026-06-08 13:20:16', NULL),
-(2, 1, 1, 1, 'Согласен, один SQL-запрос на дерево — это быстро.', 1, 0, 0, '2026-06-08 13:20:16', '2026-06-08 14:08:52', NULL),
-(3, 1, 1, 2, 'И рекурсия на анонимных функциях PHP выглядит лаконично.', 1, 0, 0, '2026-06-08 13:20:16', '2026-06-08 13:20:16', NULL),
-(4, 1, 1, NULL, 'А когда мы добавим форму отправки нового комментария?', 1, 0, 0, '2026-06-08 13:20:16', '2026-06-08 13:20:16', NULL),
-(5, 2, 1, NULL, 'Добавим первые комментарий 333', 1, 0, 0, '2026-06-08 13:51:00', '2026-06-08 14:28:13', NULL),
-(6, 2, 1, 5, 'Добавим ответ Админу', 2, 0, 0, '2026-06-08 13:51:12', '2026-06-08 14:28:01', NULL);
+(1, 1, 1, NULL, 'Отличная архитектура у фреймворка!', 1, 0, 0, '2026-06-08 10:20:16', '2026-06-08 10:20:16', NULL),
+(2, 1, 1, 1, 'Согласен, один SQL-запрос на дерево — это быстро.', 1, 0, 0, '2026-06-08 10:20:16', '2026-06-08 11:08:52', NULL),
+(3, 1, 1, 2, 'И рекурсия на анонимных функциях PHP выглядит лаконично.', 1, 0, 0, '2026-06-08 10:20:16', '2026-06-08 10:20:16', NULL),
+(4, 1, 1, NULL, 'А когда мы добавим форму отправки нового комментария?', 1, 0, 0, '2026-06-08 10:20:16', '2026-06-08 10:20:16', NULL),
+(5, 2, 1, NULL, 'Добавим первые комментарий 333', 1, 0, 0, '2026-06-08 10:51:00', '2026-06-08 11:28:13', NULL),
+(6, 2, 1, 5, 'Добавим ответ Админу', 2, 0, 0, '2026-06-08 10:51:12', '2026-06-08 11:28:01', NULL);
 
 -- --------------------------------------------------------
 
@@ -148,11 +153,11 @@ CREATE TABLE `email_activations` (
 CREATE TABLE `flags` (
   `id` int UNSIGNED NOT NULL,
   `user_id` int UNSIGNED NOT NULL COMMENT 'Автор жалобы',
-  `flaggable_type` enum('story','comment') COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Тип контента',
+  `flaggable_type` enum('story','comment') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Тип контента',
   `flaggable_id` int UNSIGNED NOT NULL COMMENT 'ID story или comment',
-  `reason` enum('spam','offensive','duplicate','broken_link','misleading','off_topic','illegal','other') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'other',
-  `comment` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Пояснение от пользователя',
-  `status` enum('pending','resolved','dismissed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `reason` enum('spam','offensive','duplicate','broken_link','misleading','off_topic','illegal','other') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'other',
+  `comment` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Пояснение от пользователя',
+  `status` enum('pending','resolved','dismissed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
   `resolved_by` int UNSIGNED DEFAULT NULL,
   `resolved_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -288,15 +293,58 @@ CREATE TABLE `rate_limits` (
 --
 
 INSERT INTO `rate_limits` (`id`, `ip_address`, `endpoint_action`, `created_at`) VALUES
-(622, '127.0.0.1', 'global.get', '2026-06-18 15:12:26'),
-(623, '127.0.0.1', 'global.get', '2026-06-18 15:12:37'),
-(624, '127.0.0.1', 'global.get', '2026-06-18 15:12:39'),
-(625, '127.0.0.1', 'global.get', '2026-06-18 15:12:46'),
-(626, '127.0.0.1', 'global.get', '2026-06-18 15:12:47'),
-(627, '127.0.0.1', 'global.get', '2026-06-18 15:12:57'),
-(628, '127.0.0.1', 'global.get', '2026-06-18 15:13:08'),
-(629, '127.0.0.1', 'global.get', '2026-06-18 15:13:19'),
-(630, '127.0.0.1', 'global.get', '2026-06-18 15:13:29');
+(677, '127.0.0.1', 'global.get', '2026-06-19 14:47:22'),
+(678, '127.0.0.1', 'global.get', '2026-06-19 14:47:22'),
+(679, '127.0.0.1', 'global.get', '2026-06-19 14:47:22'),
+(681, '127.0.0.1', 'global.get', '2026-06-19 14:47:29'),
+(682, '127.0.0.1', 'global.get', '2026-06-19 14:47:29'),
+(683, '127.0.0.1', 'global.get', '2026-06-19 14:47:30'),
+(684, '127.0.0.1', 'global.get', '2026-06-19 14:47:31'),
+(685, '127.0.0.1', 'global.get', '2026-06-19 14:47:32'),
+(686, '127.0.0.1', 'global.get', '2026-06-19 14:47:32'),
+(687, '127.0.0.1', 'global.get', '2026-06-19 14:47:32'),
+(689, '127.0.0.1', 'global.get', '2026-06-19 14:47:39'),
+(690, '127.0.0.1', 'global.get', '2026-06-19 14:47:39'),
+(691, '127.0.0.1', 'global.get', '2026-06-19 14:47:39'),
+(692, '127.0.0.1', 'global.get', '2026-06-19 14:47:42'),
+(693, '127.0.0.1', 'global.get', '2026-06-19 14:47:42'),
+(694, '127.0.0.1', 'global.get', '2026-06-19 14:47:42'),
+(695, '127.0.0.1', 'global.get', '2026-06-19 14:47:42'),
+(697, '127.0.0.1', 'global.get', '2026-06-19 14:47:51'),
+(698, '127.0.0.1', 'global.get', '2026-06-19 14:47:51'),
+(699, '127.0.0.1', 'global.get', '2026-06-19 14:47:51'),
+(700, '127.0.0.1', 'global.get', '2026-06-19 14:47:52'),
+(701, '127.0.0.1', 'global.get', '2026-06-19 14:47:53'),
+(702, '127.0.0.1', 'global.get', '2026-06-19 14:47:53'),
+(703, '127.0.0.1', 'global.get', '2026-06-19 14:47:53'),
+(705, '127.0.0.1', 'global.get', '2026-06-19 14:47:59'),
+(706, '127.0.0.1', 'global.get', '2026-06-19 14:47:59'),
+(707, '127.0.0.1', 'global.get', '2026-06-19 14:47:59'),
+(708, '127.0.0.1', 'global.get', '2026-06-19 14:48:02'),
+(709, '127.0.0.1', 'global.get', '2026-06-19 14:48:09'),
+(710, '127.0.0.1', 'global.get', '2026-06-19 14:48:09'),
+(711, '127.0.0.1', 'global.get', '2026-06-19 14:48:12'),
+(712, '127.0.0.1', 'global.get', '2026-06-19 14:48:20'),
+(713, '127.0.0.1', 'global.get', '2026-06-19 14:48:22'),
+(714, '127.0.0.1', 'global.get', '2026-06-19 14:48:29'),
+(715, '127.0.0.1', 'global.get', '2026-06-19 14:48:29'),
+(716, '127.0.0.1', 'global.get', '2026-06-19 14:48:30'),
+(717, '127.0.0.1', 'global.get', '2026-06-19 14:48:33'),
+(718, '127.0.0.1', 'global.get', '2026-06-19 14:48:35'),
+(719, '127.0.0.1', 'global.get', '2026-06-19 14:48:35'),
+(721, '127.0.0.1', 'global.get', '2026-06-19 14:48:40'),
+(722, '127.0.0.1', 'global.get', '2026-06-19 14:48:40'),
+(723, '127.0.0.1', 'global.get', '2026-06-19 14:48:40'),
+(724, '127.0.0.1', 'global.get', '2026-06-19 14:48:43'),
+(725, '127.0.0.1', 'global.get', '2026-06-19 14:48:43'),
+(726, '127.0.0.1', 'global.get', '2026-06-19 14:48:43'),
+(727, '127.0.0.1', 'global.get', '2026-06-19 14:48:50'),
+(728, '127.0.0.1', 'global.get', '2026-06-19 14:48:54'),
+(680, '127.0.0.1', 'global.post', '2026-06-19 14:47:29'),
+(688, '127.0.0.1', 'global.post', '2026-06-19 14:47:39'),
+(696, '127.0.0.1', 'global.post', '2026-06-19 14:47:51'),
+(704, '127.0.0.1', 'global.post', '2026-06-19 14:47:59'),
+(720, '127.0.0.1', 'global.post', '2026-06-19 14:48:40');
 
 -- --------------------------------------------------------
 
@@ -317,8 +365,8 @@ CREATE TABLE `read_ribbons` (
 --
 
 INSERT INTO `read_ribbons` (`id`, `user_id`, `story_id`, `last_read_comment_id`, `updated_at`) VALUES
-(1, 1, 2, 6, '2026-06-17 07:32:51'),
-(2, 1, 1, 4, '2026-06-17 07:32:57');
+(1, 1, 2, 6, '2026-06-17 04:32:51'),
+(2, 1, 1, 4, '2026-06-19 14:48:40');
 
 -- --------------------------------------------------------
 
@@ -348,8 +396,8 @@ CREATE TABLE `stories` (
 --
 
 INSERT INTO `stories` (`id`, `user_id`, `title`, `url`, `domain`, `description`, `score`, `flag_count`, `is_hidden_by_flags`, `comments_count`, `created_at`, `updated_at`, `deleted_at`, `user_is_following`) VALUES
-(1, 1, 'Первый пост, написал статью про этот движок.', 'https://libarea.ru/articles/2222/reshil-napisat-lobsters-na-php', 'libarea.ru', 'Редирект будет на LibArea, а если нажать на домен, то сортировка публикаций тут по этому домену.', 15, 0, 0, 4, '2026-06-08 12:53:33', '2026-06-17 04:29:13', NULL, 0),
-(2, 1, 'Это второй пост для теста', NULL, NULL, 'Заполните, если это чисто текстовый пост, либо как дополнение к ссылке. 333', 2, 0, 0, 2, '2026-06-08 13:14:37', '2026-06-17 04:29:09', NULL, 0);
+(1, 1, 'Первый пост, написал статью про этот движок.', 'https://libarea.ru/articles/2222/reshil-napisat-lobsters-na-php', 'libarea.ru', 'Редирект будет на LibArea, а если нажать на домен, то сортировка публикаций тут по этому домену.', 15, 0, 0, 4, '2026-06-08 09:53:33', '2026-06-19 14:48:40', NULL, 1),
+(2, 1, 'Это второй пост для теста', NULL, NULL, 'Заполните, если это чисто текстовый пост, либо как дополнение к ссылке. 333', 2, 0, 0, 2, '2026-06-08 10:14:37', '2026-06-17 01:29:09', NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -368,6 +416,7 @@ CREATE TABLE `taggings` (
 --
 
 INSERT INTO `taggings` (`id`, `story_id`, `tag_id`) VALUES
+(5, 1, 3),
 (4, 2, 1),
 (3, 2, 4);
 
@@ -379,6 +428,7 @@ INSERT INTO `taggings` (`id`, `story_id`, `tag_id`) VALUES
 
 CREATE TABLE `tags` (
   `id` int UNSIGNED NOT NULL,
+  `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `tag` varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_media` tinyint(1) NOT NULL DEFAULT '0',
@@ -391,12 +441,12 @@ CREATE TABLE `tags` (
 -- Дамп данных таблицы `tags`
 --
 
-INSERT INTO `tags` (`id`, `tag`, `description`, `is_media`, `created_at`, `deleted_at`, `category_id`) VALUES
-(1, 'php', 'Язык1 программирования PHP и фреймворки', 1, '2026-06-08 16:08:44', NULL, 1),
-(2, 'security', 'Уязвимости, безопасность и CSP политики', 0, '2026-06-08 16:08:44', NULL, 2),
-(3, 'show', 'Демонстрация личных проектов разработчиков', 0, '2026-06-08 16:08:44', NULL, 3),
-(4, 'video', 'Материал содержит видеоролик', 1, '2026-06-08 16:08:44', NULL, 3),
-(5, 'libarea', 'Обсуждение сайта...', 0, '2026-06-08 16:46:26', NULL, 4);
+INSERT INTO `tags` (`id`, `name`, `tag`, `description`, `is_media`, `created_at`, `deleted_at`, `category_id`) VALUES
+(1, 'php', 'php', 'Язык1 программирования PHP и фреймворки', 1, '2026-06-08 13:08:44', NULL, 1),
+(2, 'безопасность', 'security', 'Уязвимости, безопасность и CSP политики', 1, '2026-06-08 13:08:44', NULL, 2),
+(3, 'личное', 'show', 'Демонстрация личных проектов разработчиков', 1, '2026-06-08 13:08:44', NULL, 3),
+(4, 'видео', 'video', 'Материал содержит видеоролик', 1, '2026-06-08 13:08:44', NULL, 3),
+(5, 'libarea', 'libarea', 'Обсуждение сайта...', 1, '2026-06-08 13:46:26', NULL, 4);
 
 -- --------------------------------------------------------
 
@@ -434,8 +484,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `email`, `password`, `role`, `created_at`, `updated_at`, `deleted_at`, `is_active`) VALUES
-(1, 'Admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2026-06-08 05:28:55', '2026-06-17 01:15:11', NULL, 1),
-(2, 'test', 'test@test.ru', '$2y$10$xKEu8vvztJ/yoA2yaHHque9z4el8tdWKZDI4SY/AvX3HyyojdHFva', 'user', '2026-06-13 15:31:51', '2026-06-17 01:15:14', NULL, 1);
+(1, 'Admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2026-06-08 02:28:55', '2026-06-16 22:15:11', NULL, 1),
+(2, 'test', 'test@test.ru', '$2y$10$xKEu8vvztJ/yoA2yaHHque9z4el8tdWKZDI4SY/AvX3HyyojdHFva', 'user', '2026-06-13 12:31:51', '2026-06-16 22:15:14', NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -447,7 +497,7 @@ CREATE TABLE `user_bans` (
   `id` int UNSIGNED NOT NULL,
   `user_id` int UNSIGNED NOT NULL,
   `banned_by` int UNSIGNED DEFAULT NULL COMMENT 'ID модератора/админа',
-  `reason` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reason` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Дата начала бана',
   `expires_at` timestamp NULL DEFAULT NULL COMMENT 'Дата окончания (NULL = перманентный бан)',
   `unbanned_at` timestamp NULL DEFAULT NULL COMMENT 'Дата досрочного снятия бана',
@@ -491,8 +541,8 @@ CREATE TABLE `user_profiles` (
 --
 
 INSERT INTO `user_profiles` (`user_id`, `bio`, `avatar`, `updated_at`) VALUES
-(1, 'О себе я расскажуыва ыва ыва 3', 'a6fa1e10b80411629030d4079a5d2253.jpg', '2026-06-17 01:15:11'),
-(2, 'sdfsdfsdf', NULL, '2026-06-17 01:15:14');
+(1, 'О себе я расскажуыва ыва ыва 3', 'a6fa1e10b80411629030d4079a5d2253.jpg', '2026-06-16 22:15:11'),
+(2, 'sdfsdfsdf', NULL, '2026-06-16 22:15:14');
 
 -- --------------------------------------------------------
 
@@ -513,8 +563,8 @@ CREATE TABLE `user_settings` (
 --
 
 INSERT INTO `user_settings` (`user_id`, `notify_on_reply`, `notify_on_story_comment`, `email_notifications`, `updated_at`) VALUES
-(1, 1, 1, 1, '2026-06-17 01:15:11'),
-(2, 1, 1, 1, '2026-06-17 01:15:14');
+(1, 1, 1, 1, '2026-06-16 22:15:11'),
+(2, 1, 1, 1, '2026-06-16 22:15:14');
 
 -- --------------------------------------------------------
 
@@ -536,8 +586,8 @@ CREATE TABLE `votes` (
 --
 
 INSERT INTO `votes` (`id`, `user_id`, `votable_type`, `votable_id`, `vote_type`, `created_at`) VALUES
-(5, 1, 'comment', 6, 1, '2026-06-08 14:28:01'),
-(6, 1, 'story', 2, 1, '2026-06-08 14:28:05');
+(5, 1, 'comment', 6, 1, '2026-06-08 11:28:01'),
+(6, 1, 'story', 2, 1, '2026-06-08 11:28:05');
 
 --
 -- Индексы сохранённых таблиц
@@ -788,7 +838,7 @@ ALTER TABLE `votes`
 -- AUTO_INCREMENT для таблицы `audit_logs`
 --
 ALTER TABLE `audit_logs`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT для таблицы `banned_ips`
@@ -878,13 +928,13 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT для таблицы `rate_limits`
 --
 ALTER TABLE `rate_limits`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=631;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=729;
 
 --
 -- AUTO_INCREMENT для таблицы `read_ribbons`
 --
 ALTER TABLE `read_ribbons`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT для таблицы `stories`
@@ -896,7 +946,7 @@ ALTER TABLE `stories`
 -- AUTO_INCREMENT для таблицы `taggings`
 --
 ALTER TABLE `taggings`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT для таблицы `tags`
@@ -1062,4 +1112,3 @@ ALTER TABLE `user_settings`
 --
 ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-

@@ -2,6 +2,15 @@
 $request = new \App\Core\Request();
 $voteModel = new \App\Modules\Votes\Models\Vote();
 $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
+
+$minKarmaForDownvote = config_int('config.app.min_karma_for_downvote', 10);
+
+$canUserDownvote = false;
+if ($currentUserId > 0) {
+    $userModel = new \App\Modules\Users\Models\User();
+    $viewerKarma = $userModel->getUserKarma($currentUserId);
+    $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
+}
 ?>
 
 <h1>Поиск</h1>
@@ -76,13 +85,13 @@ $currentUserId = \App\Core\Auth::check() ? (int)$_SESSION['user_id'] : 0;
                                 <?php endif; ?>
                             </div>
 
-                            <?php if (!empty($story['tags'])): ?>
-                                <span class="tags">
-                                    <?php foreach ($story['tags'] as $tagName): ?>
-                                        <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= e($tagName) ?></a>
-                                    <?php endforeach; ?>
-                                </span>
-                            <?php endif; ?>
+							<?php if (!empty($story['tags'])): ?>  
+								<span class="tags">
+									<?php foreach ($story['tags_with_names'] as $tagData): ?>  
+										<a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
+									<?php endforeach; ?>
+								</span> 
+							<?php endif; ?>
 
                             <div class="byline">
                                 <?php if (!empty($story['author_avatar'])): ?>

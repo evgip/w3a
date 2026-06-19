@@ -28,7 +28,7 @@
                         <?php foreach ($catTags as $tag): ?>
                             <li>
                                 <a href="<?= route('tags.filter', ['tagname' => $tag['tag']]) ?>" class="tag">
-                                    <?= e($tag['tag']) ?>
+                                    <?= e($tag['name']) ?>
                                 </a>
                                 <?php if (!empty($tag['description'])): ?>
                                     <span class="tag-desc">— <?= e($tag['description']) ?></span>

@@ -87,13 +87,13 @@ $paginationBaseUrl = route('categories.show', ['slug' => $category['slug']]);
                             <?php endif; ?>
                         <?php endif; ?>
                         
-                        <?php if (!empty($story['tags'])): ?>
-                            <span class="tags">
-                                <?php foreach ($story['tags'] as $tagName): ?>
-                                    <a href="<?= route('tags.filter', ['tagname' => $tagName]) ?>" class="tag"><?= e($tagName) ?></a>
-                                <?php endforeach; ?>
-                            </span>
-                        <?php endif; ?>
+						<?php if (!empty($story['tags'])): ?>  
+							<span class="tags">
+								<?php foreach ($story['tags_with_names'] as $tagData): ?>  
+									<a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
+								<?php endforeach; ?>
+							</span> 
+						<?php endif; ?>
                     </div>
 
                     <div class="story_content">

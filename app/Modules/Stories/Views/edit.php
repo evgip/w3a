@@ -44,7 +44,7 @@
             <div class="tag">
                 <input type="checkbox" name="tags[]" value="<?= (int)$tagItem['id'] ?>"
                     <?= $isBound ? 'checked' : '' ?>>
-                <span><?= e($tagItem['tag']) ?></span>
+                <span><?= e($tagItem['name']) ?></span>
             </div>
         <?php endforeach; ?>
     </div>

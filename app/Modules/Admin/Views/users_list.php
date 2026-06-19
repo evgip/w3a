@@ -49,7 +49,7 @@
                         if ($user['is_active']): ?>
                             Активен
                         <?php else: ?>
-                            <span style="color: #ac130d; font-weight: bold;">Заблокирован</span>
+                            <span style="color: #ac130d; font-weight: bold;">Не активирован</span>
                         <?php endif; ?>
 						
 						<?php if (($user['role'] ?? 'user') != 'admin'): ?>

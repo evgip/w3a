@@ -132,7 +132,7 @@ class InvitationsController extends Controller
         $invitationId = $invitationModel->createInvitation($userId, $email ?: null, $expiresDays);
 
         if ($invitationId) {
-            $invitation = $invitationModel->find($invitationId);
+            $invitation = $invitationModel->getById($invitationId);
 
             // Отправка email, если указан
             if (!empty($email)) {

@@ -97,6 +97,24 @@ abstract class Model
         return $result ? $result : null;
     }
 
+	/**
+	 * Найти запись по ID без учёта мягкого удаления
+	 * (для таблиц без колонки deleted_at)
+	 */
+	public function getById($id): ?array
+	{
+		if (!is_numeric($id)) {
+			throw new \InvalidArgumentException("Invalid ID");
+		}
+
+		$db = Database::getConnection();
+		$sql = "SELECT * FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id LIMIT 1";
+		$stmt = $db->prepare($sql);
+		$stmt->execute(['id' => $id]);
+		$result = $stmt->fetch();
+		return $result ? $result : null;
+	}
+
     /**
      * Найти активную запись по конкретному значению колонки (например, по email)
      */

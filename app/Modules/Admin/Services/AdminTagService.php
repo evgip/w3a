@@ -46,38 +46,40 @@ class AdminTagService
      */
     public function createTag(array $data)
     {
-        $tagName = strtolower(trim($data['tag'] ?? ''));
+		$tagName = strtolower(trim($data['name'] ?? ''));
+        $tagSlug = strtolower(trim($data['tag'] ?? ''));
         $description = trim($data['description'] ?? '');
         $isMedia = isset($data['is_media']) ? 1 : 0;
         $categoryId = (int)($data['category_id'] ?? 0);
         
         // Валидация имени
         $validator = new Validator();
-        if (!$validator->validate(['tag' => $tagName], ['tag' => 'required|min:2'])) {
+        if (!$validator->validate(['tag' => $tagSlug], ['tag' => 'required|min:2'])) {
             Session::setFlash('error', 'Имя тега должно содержать не менее 2 символов.');
             return false;
         }
         
         // Проверка уникальности
-        if ($this->tagModel->exists($tagName)) {
-            Session::setFlash('error', "Тег '{$tagName}' уже присутствует в базе данных.");
+        if ($this->tagModel->exists($tagSlug)) {
+            Session::setFlash('error', "Тег '{$tagSlug}' уже присутствует в базе данных.");
             return false;
         }
         
         // Валидация категории
-        if (!$this->categoryModel->find($categoryId)) {
+        if (!$this->categoryModel->getById($categoryId)) {
             Session::setFlash('error', 'Выбранная категория не существует.');
             return false;
         }
         
         $tagId = $this->tagModel->create([
-            'tag' => $tagName,
+			'name' => $tagName,
+            'tag' => $tagSlug,
             'description' => $description,
             'is_media' => $isMedia,
             'category_id' => $categoryId,
         ]);
         
-        Audit::log('admin.tag_created', "Администратор создал новый тег #{$tagName}");
+        Audit::log('admin.tag_created', "Администратор создал новый тег #{$tagSlug}");
         
         return $tagId;
     }
@@ -94,20 +96,21 @@ class AdminTagService
             return false;
         }
         
-        $tagName = strtolower(trim($data['tag'] ?? ''));
+		$tagName = strtolower(trim($data['name'] ?? ''));
+        $tagSlug = strtolower(trim($data['tag'] ?? ''));
         $description = trim($data['description'] ?? '');
         $isMedia = isset($data['is_media']) ? 1 : 0;
         $categoryId = (int)($data['category_id'] ?? 0);
         
         // Валидация имени
-        if (strlen($tagName) < 2) {
+        if (strlen($tagSlug) < 2) {
             Session::setFlash('error', 'Имя тега должно содержать не менее 2 символов.');
             return false;
         }
         
         // Проверка уникальности (исключая текущий тег)
-        if ($this->tagModel->exists($tagName, $tagId)) {
-            Session::setFlash('error', "Имя тега '{$tagName}' занято другим элементом.");
+        if ($this->tagModel->exists($tagSlug, $tagId)) {
+            Session::setFlash('error', "Имя тега '{$tagSlug}' занято другим элементом.");
             return false;
         }
         
@@ -118,13 +121,14 @@ class AdminTagService
         }
         
         $this->tagModel->update($tagId, [
-            'tag' => $tagName,
+			'name' => $tagName,
+            'tag' => $tagSlug,
             'description' => $description,
             'is_media' => $isMedia,
             'category_id' => $categoryId,
         ]);
         
-        Audit::log('admin.tag_updated', "Администратор изменил параметры тега #{$tagName}");
+        Audit::log('admin.tag_updated', "Администратор изменил параметры тега #{$tagSlug}");
         
         return true;
     }

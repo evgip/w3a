@@ -16,18 +16,6 @@ class Category extends Model
     ];
 
    /**
-     * Получить категорию по ID (без логики soft-delete родительского класса)
-     */
-    public function getById($id): ?array
-    {
-        $sql = "SELECT * FROM {$this->table} WHERE id = :id LIMIT 1";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['id' => $id]);
-        $result = $stmt->fetch();
-        return $result ?: null;
-    }
-
-   /**
      * Получить все категории с количеством тегов (для публичной страницы /categories)
      */
     public function getAllWithTagsCount(): array
@@ -60,7 +48,8 @@ class Category extends Model
 
 		// Получаем истории с тегами из этой категории
 		$sql = "SELECT DISTINCT s.*, u.username as author_name, up.avatar as author_avatar,
-					   GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
+					   GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
+					   GROUP_CONCAT(CONCAT(t.tag, '||', t.name) ORDER BY t.tag ASC) as tags_combined
 				FROM stories s
 				JOIN users u ON s.user_id = u.id
 				LEFT JOIN `user_profiles` up ON u.id = up.user_id
@@ -99,7 +88,7 @@ class Category extends Model
 
 		// Парсим теги
 		foreach ($stories as &$story) {
-			$story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
+			parseTagsCombined($story);
 		}
 
 		$category['stories'] = $stories;

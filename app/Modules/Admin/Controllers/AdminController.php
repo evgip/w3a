@@ -230,6 +230,7 @@ class AdminController extends Controller
         $request->validateCsrf();
         
         $result = $this->getTagService()->createTag([
+			'name' => $request->getParams('name'),
             'tag' => $request->getParams('tag'),
             'description' => $request->getParams('description'),
             'is_media' => isset($_POST['is_media']) ? 1 : 0,
@@ -268,6 +269,7 @@ class AdminController extends Controller
         
         $tagId = (int)$id;
         $success = $this->getTagService()->updateTag($tagId, [
+			'name' => $request->getParams('name'),
             'tag' => $request->getParams('tag'),
             'description' => $request->getParams('description'),
             'is_media' => isset($_POST['is_media']) ? 1 : 0,

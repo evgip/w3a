@@ -410,3 +410,27 @@ if (!function_exists('redirect')) {
         exit;
     }
 }
+
+
+    /**
+     * Распарсить объединённые теги в структурированный массив
+     */
+if (!function_exists('rparseTagsCombined')) {
+    function parseTagsCombined(array &$story): void
+    {
+        $story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
+
+        $tagsWithNames = [];
+        if (!empty($story['tags_combined'])) {
+            foreach (explode(',', $story['tags_combined']) as $pair) {
+                list($tag, $name) = explode('||', $pair);
+                $tagsWithNames[] = [
+                    'tag' => $tag,
+                    'name' => $name
+                ];
+            }
+        }
+        $story['tags_with_names'] = $tagsWithNames;
+        unset($story['tags_combined']);
+    }
+}	

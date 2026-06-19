@@ -19,32 +19,12 @@ class Tag extends Model
 		'deleted_at'
 	];
 
-  /**
-     * Получить тег по ID (без логики soft-delete родительского класса)
-     */
-    public function getById($id): ?array
-    {
-        $sql = "SELECT * FROM {$this->table} WHERE id = :id LIMIT 1";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['id' => $id]);
-        $result = $stmt->fetch();
-        return $result ?: null;
-    }
-
     /**
      * Получить все теги, отсортированные по категориям Lobsters
      */
    public function getAllTags(): array
     {
-        // LEFT JOIN гарантирует, что даже теги с 0 историй будут в списке
-        /* $sql = "SELECT t.id, t.tag, t.description, t.category, t.is_media, 
-                       COUNT(tg.story_id) as stories_count
-                FROM {$this->table} t
-                LEFT JOIN taggings tg ON t.id = tg.tag_id
-                GROUP BY t.id, t.tag, t.description, t.category
-                ORDER BY t.tag ASC"; */
- 
-        $sql = "SELECT t.id, t.tag, t.description,  t.category_id, t.is_media,
+        $sql = "SELECT t.id, t.name, t.tag, t.description,  t.category_id, t.is_media,
                        c.name as category_name, c.slug as category_slug,
                        COUNT(tg.story_id) as stories_count
                 FROM {$this->table} t

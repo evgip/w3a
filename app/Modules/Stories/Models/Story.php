@@ -24,14 +24,18 @@ class Story extends Model
 		'deleted_at'
 	];
 
+
 	/**
 	 * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
 	 * Получить ленту историй с пагинацией и учетом фильтров
 	 */
 	public function getFeed(int $limit, int $offset, string $tagname = '', bool $showDeleted = false, ?string $domain = '', array $excludeTagIds = []): array
 	{
-		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
-				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
+		// Возвращаем tag_list как строку для обратной совместимости с шаблоном
+		// Добавляем tags_combined для получения пары тег+имя
+		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar, 
+				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
+				GROUP_CONCAT(CONCAT(t.tag, '||', t.name) ORDER BY t.tag ASC) as tags_combined
 				FROM `stories` s
 				JOIN `users` u ON s.user_id = u.id
 				LEFT JOIN `user_profiles` up ON u.id = up.user_id
@@ -88,11 +92,12 @@ class Story extends Model
 
 		// Парсим теги
 		foreach ($stories as &$story) {
-			$story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
+			parseTagsCombined($story);
 		}
 
 		return $stories;
 	}
+
 	/**
 	 * Get all platform tags with description fields
 	 */
@@ -152,10 +157,17 @@ class Story extends Model
 	 * Получить одну конкретную историю с именем автора и списком тегов
 	 * Fetch single story with author metadata and avatar references
 	 */
+	/**
+	 * Получить одну конкретную историю с именем автора и списком тегов
+	 * Fetch single story with author metadata and avatar references
+	 */
 	public function getSingleWithAuthor(int $id, bool $showDeleted = false): ?array
 	{
+		// Возвращаем tag_list как строку для обратной совместимости
+		// Добавляем tags_combined для получения пары тег+имя
 		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
-                       GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
+                       GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
+                       GROUP_CONCAT(CONCAT(t.tag, '||', t.name) ORDER BY t.tag ASC) as tags_combined
                 FROM `stories` s
 					JOIN `users` u ON s.user_id = u.id
 					LEFT JOIN `user_profiles` up ON u.id = up.user_id
@@ -174,11 +186,31 @@ class Story extends Model
 		$story = $stmt->fetch();
 
 		if ($story) {
+			// 1. Оставляем tag_list строкой (как было раньше)
 			$story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
+
+			// 2. Парсим tags_combined в массив объектов с именами
+			$tagsWithNames = [];
+			if (!empty($story['tags_combined'])) {
+				foreach (explode(',', $story['tags_combined']) as $pair) {
+					list($tag, $name) = explode('||', $pair);
+					$tagsWithNames[] = [
+						'tag' => $tag,
+						'name' => $name
+					];
+				}
+			}
+			$story['tags_with_names'] = $tagsWithNames;
+
+			// Удаляем служебное поле, чтобы не засорять массив
+			unset($story['tags_combined']);
+
 			return $story;
 		}
 		return null;
 	}
+	
+	
 	/**
 	 * Выгрузить ВСЕ комментарии к истории за ОДИН запрос
 	 */
