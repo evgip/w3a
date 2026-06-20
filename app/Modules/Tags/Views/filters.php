@@ -23,7 +23,7 @@
                      data-tag-id="<?= e($filter['tag_id']) ?>">
                     
                     <span class="tag tag-filter">
-                        #<?= e($filter['tag']) ?>
+                        #<?= e($filter['name']) ?>
                     </span>
                     
                     <?php if (!empty($filter['description'])): ?>
@@ -57,7 +57,7 @@
                 if (!$isFiltered): 
                 ?>
                     <option value="<?= e($tag['id']) ?>">
-                        #<?= e($tag['tag']) ?> (<?= (int)($tag['stories_count'] ?? 0) ?>)
+                        #<?= e($tag['name']) ?> (<?= (int)($tag['stories_count'] ?? 0) ?>)
                     </option>
                 <?php endif; ?>
             <?php endforeach; ?>

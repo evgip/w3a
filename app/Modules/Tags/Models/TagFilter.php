@@ -18,7 +18,7 @@ class TagFilter extends Model
      */
     public function getUserFilters(int $userId): array
     {
-        $sql = "SELECT tf.*, t.tag, t.description 
+        $sql = "SELECT tf.*, t.tag, t.name, t.description 
                 FROM {$this->table} tf
                 JOIN tags t ON t.id = tf.tag_id
                 WHERE tf.user_id = :user_id
