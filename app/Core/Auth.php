@@ -244,7 +244,7 @@ class Auth
    
             $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
             if (class_exists($errorController)) {
-                (new $errorController())->notFound("Доступ запрещен. Требуются права администратора.");
+                (new $errorController())->forbidden("Доступ запрещен. Требуются права администратора.");
                 exit;
             }
             die("<h1>403 Forbidden</h1>");
@@ -289,7 +289,7 @@ class Auth
 			]);
 			$errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
 			if (class_exists($errorController)) {
-				(new $errorController())->notFound("Доступ запрещен. Требуются права модератора.");
+				(new $errorController())->forbidden("Доступ запрещен. Требуются права модератора.");
 				exit;
 			}
 			die("<h1>403 Forbidden</h1>");

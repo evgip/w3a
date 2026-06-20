@@ -43,54 +43,7 @@ class StoriesController extends Controller
 
     /** @var ReadRibbonService|null Лениво инициализируемый сервис */
     private ?ReadRibbonService $readRibbonService = null;
-
-    public function __construct()
-    {
-        // Временно: диагностика, какой класс падает
-        $classes = [
-            'App\\Modules\\Stories\\Models\\Story' => 'Story',
-            'App\\Modules\\Origins\\Models\\Domain' => 'Domain',
-            'App\\Modules\\Stories\\Models\\Comment' => 'Comment',
-            'App\\Modules\\Stories\\Models\\ReadRibbon' => 'ReadRibbon',
-            'App\\Modules\\Notifications\\Services\\NotificationService' => 'NotificationService',
-        ];
-
-        foreach ($classes as $class => $name) {
-            try {
-                if (!class_exists($class)) {
-                    error_log("✗ {$name}: класс НЕ СУЩЕСТВУЕТ");
-                    continue;
-                }
-
-                $reflection = new \ReflectionClass($class);
-
-                if (!$reflection->isInstantiable()) {
-                    error_log("✗ {$name}: НЕ МОЖЕТ быть создан (абстрактный/интерфейс/приватный конструктор)");
-                    continue;
-                }
-
-                $constructor = $reflection->getConstructor();
-                if ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0) {
-                    error_log("✗ {$name}: требует {$constructor->getNumberOfRequiredParameters()} обязательных параметров");
-                    continue;
-                }
-
-                new $class();
-                error_log("✓ {$name}: OK");
-            } catch (\Throwable $e) {
-                error_log("✗ {$name}: " . $e->getMessage());
-            }
-        }
-
-        // Теперь вызываем родительский конструктор
-        try {
-            parent::__construct();
-        } catch (\Throwable $e) {
-            error_log("✗ parent::__construct(): " . $e->getMessage());
-            error_log("   Файл: " . $e->getFile() . ":" . $e->getLine());
-        }
-    }
-    
+	
     // =========================================================================
     // ЛЕНИВЫЕ ГЕТТЕРЫ СЕРВИСОВ
     // =========================================================================
@@ -273,12 +226,14 @@ class StoriesController extends Controller
         $request = new Request();
         $request->validateCsrf();
 
+        $user_is_following = is_numeric($request->getParams('user_is_following'));
+
         $data = [
             'title' => $request->getParams('title'),
             'url' => $request->getParams('url') ?: null,
             'description' => $request->getParams('description') ?: null,
-            'tags' => $_POST['tags'] ?? [],
-            'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
+            'tags' => $request->getParams('tags') ?? [],
+            'user_is_following' => $user_is_following ? 1 : 0,
         ];
 
         $storyId = $this->getStoryService()->createStory($data, (int)$_SESSION['user_id']);
@@ -385,7 +340,7 @@ class StoriesController extends Controller
         Audit::log('admin.story_moderated', "Администратор принудительно скрыл публикацию ID: {$storyId}");
         Session::setFlash('success', 'Публикация успешно скрыта из общей ленты.');
 
-        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+        $this->redirectBack();
         exit;
     }
 
@@ -408,7 +363,7 @@ class StoriesController extends Controller
         Audit::log('admin.story_restored', "Администратор восстановил публикацию ID: {$storyId}");
         Session::setFlash('success', 'Публикация успешно восстановлена в общей ленте.');
 
-        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+        $this->redirectBack();
         exit;
     }
     

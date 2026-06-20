@@ -67,6 +67,51 @@ abstract class Controller
         exit;
     }
 	
+    /**
+     * Безопасный редирект "назад" с защитой от open redirect
+     */
+    protected function redirectBack(string $fallback = '/'): void
+    {
+        $referer = $_SERVER['HTTP_REFERER'] ?? $fallback;
+        
+        // Валидация: разрешаем только относительные URL или свой домен
+        if (!$this->isSafeUrl($referer, $fallback)) {
+            $referer = $fallback;
+        }
+        
+        $this->redirect($referer);
+    }
+    
+    /**
+     * Простой редирект (уже должен быть в базовом классе)
+     */
+    protected function redirect(string $url, int $code = 302): void
+    {
+        http_response_code($code);
+        header('Location: ' . $url);
+        exit;
+    }
+    
+    /**
+     * Проверка безопасности URL
+     */
+    private function isSafeUrl(string $url, string $fallback): bool
+    {
+        // 1. Относительные URL (начинаются с /) — всегда безопасны
+        if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
+            return true;
+        }
+        
+        // 2. Проверяем хост на совпадение с нашим доменом
+        $urlHost = parse_url($url, PHP_URL_HOST);
+        if ($urlHost === null) {
+            return false; // нет хоста и не относительный — подозрительно
+        }
+        
+        $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+        return $urlHost === $appHost;
+    }
+	
    /**
      * Требовать авторизацию пользователя.
      * Если не авторизован — перенаправляет на страницу входа.
@@ -75,7 +120,7 @@ abstract class Controller
     {
         if (!Auth::check()) {
             Session::setFlash('error', 'Пожалуйста, авторизуйтесь для доступа к этой странице.');
-            redirect('/login');
+            $this->redirect('/login');
         }
     }
 
@@ -110,7 +155,7 @@ abstract class Controller
     protected function redirectWithError(string $url, string $message): void
     {
         Session::setFlash('error', $message);
-        redirect($url);
+        $this->redirect($url);
     }
 
     /**
@@ -119,24 +164,57 @@ abstract class Controller
     protected function redirectWithSuccess(string $url, string $message): void
     {
         Session::setFlash('success', $message);
-        redirect($url);
+        $this->redirect($url);
     }
 
     /**
-     * Редирект на предыдущую страницу с ошибкой.
+     * Безопасный редирект "назад" с защитой от open redirect
      */
-    protected function backWithError(string $message): void
+    protected function safeBack(string $fallback = '/'): string
     {
-        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
-        $this->redirectWithError($referer, $message);
+        $referer = $_SERVER['HTTP_REFERER'] ?? $fallback;
+        
+        // Разрешаем только относительные URL или свой домен
+        if (!$this->isSafeRedirectUrl($referer)) {
+            return $fallback;
+        }
+        
+        return $referer;
     }
 
     /**
-     * Редирект на предыдущую страницу с сообщением об успехе.
+     * Проверка безопасности URL для редиректа
      */
-    protected function backWithSuccess(string $message): void
+    private function isSafeRedirectUrl(string $url): bool
     {
-        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
-        $this->redirectWithSuccess($referer, $message);
+        // Относительные пути (начинаются с /, но не с //) — безопасны
+        if (preg_match('#^/[^/]#', $url) || $url === '/') {
+            return true;
+        }
+        
+        // Абсолютные URL — только свой домен
+        $host = parse_url($url, PHP_URL_HOST);
+        if ($host === null) {
+            return false;
+        }
+        
+        $appHost = parse_url(config('app.url') ?? '', PHP_URL_HOST);
+        return $appHost && $host === $appHost;
+    }
+
+    /**
+     * Редирект на предыдущую страницу с ошибкой (безопасно)
+     */
+    protected function backWithError(string $message, string $fallback = '/'): void
+    {
+        $this->redirectWithError($this->safeBack($fallback), $message);
+    }
+
+    /**
+     * Редирект на предыдущую страницу с успехом (безопасно)
+     */
+    protected function backWithSuccess(string $message, string $fallback = '/'): void
+    {
+        $this->redirectWithSuccess($this->safeBack($fallback), $message);
     }
 }

@@ -46,7 +46,7 @@ abstract class Model
 	protected function applySoftDeleteConstraint(string $sql): string
 	{
 
-		if (!$this->supportsSoftDelete || $this->includeTrashed) {
+		if ($this->includeTrashed) {
 			error_log("Result: фильтр НЕ применён");
 			return $sql;
 		}
@@ -122,9 +122,12 @@ abstract class Model
      */
     public function findBy(string $column, $value): ?array
     {
-        $db = Database::getConnection();
-
+		if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
+			throw new \InvalidArgumentException("Invalid column name");
+		}
+		
         // Базовый запрос без лимита
+		$db = Database::getConnection();
         $sql = "SELECT * FROM `{$this->table}` WHERE `{$column}` = :value";
 
         // Безопасно применяем фильтр мягкого удаления

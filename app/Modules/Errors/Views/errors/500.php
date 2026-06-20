@@ -1,13 +1,10 @@
-<!-- app/Modules/Errors/Views/errors/500.php -->
-<?php $this->layout('errors/layout', compact('message', 'trace', 'statusCode')) ?>
 <h1>500 — Внутренняя ошибка сервера</h1>
-<p><?= $message ?></p>
 
-<?php if ($trace): ?>
-    <details>
-        <summary>Детали ошибки (для разработчиков)</summary>
-        <pre><?= e($trace) ?></pre>
-    </details>
-<?php endif; ?>
+<p>
+	<strong>💡 Что произошло?</strong>
+</p>
+<p>
+	К сожалению, сайт недоступен из-за внутренней ошибки сервера. Это означает, что на сервере произошла проблема, которая не позволяет обработать ваш запрос.
+</p>
 
-<p><a href="/">← Вернуться на главную</a></p>
+<a href="/" class="csrf-error__btn">🏠 Вернуться на главную</a>

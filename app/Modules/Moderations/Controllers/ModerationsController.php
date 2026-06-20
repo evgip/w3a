@@ -140,13 +140,13 @@ class ModerationsController extends Controller
 
 		if ($targetUserId === $currentUserId) {
 			Session::setFlash('error', 'Вы не можете применить это действие к себе.');
-			header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+			$this->redirectBack();
 			exit;
 		}
 
 		if (!in_array($action, ['ban', 'unban'], true)) {
 			Session::setFlash('error', 'Неизвестное действие.');
-			header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+			$this->redirectBack();
 			exit;
 		}
 
@@ -155,7 +155,7 @@ class ModerationsController extends Controller
 
 		if (!$targetUser) {
 			Session::setFlash('error', 'Пользователь не найден.');
-			header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+			$this->redirectBack();
 			exit;
 		}
 

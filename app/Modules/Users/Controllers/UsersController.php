@@ -173,8 +173,12 @@ class UsersController extends Controller
         $user = $userModel->findBy('username', trim($username));
 
         if (!$user) {
-            $this->notFound("Пользователь '{$username}' не найден.");
-            return;
+			$errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
+			if (class_exists($errorController)) {
+				(new $errorController())->notFound("Пользователь <i>{$username}</i> не найден.");
+				exit;
+			}
+			die("<h1>404 Errors</h1>");
         }
 
         $profile = $userModel->getProfile((int)$user['id']);
@@ -317,21 +321,4 @@ class UsersController extends Controller
         exit;
     }
 
-    /**
-     * Отобразить страницу 404 (не найдено).
-     * Пытается вызвать контроллер ошибок, если он существует.
-     *
-     * @param string $message Сообщение об ошибке
-     * @return void
-     */
-    private function notFound(string $message): void
-    {
-        $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-        if (class_exists($errorController)) {
-            (new $errorController())->notFound($message);
-            exit;
-        }
-        http_response_code(404);
-        die("404 Not Found");
-    }
 }

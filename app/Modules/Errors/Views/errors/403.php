@@ -1,5 +1,10 @@
-<!-- app/Modules/Errors/Views/errors/403.php -->
-<?php $this->layout('errors/layout', compact('message', 'statusCode')) ?>
 <h1>403 — Доступ запрещён</h1>
-<p><?= $message ?></p>
-<p><a href="/">← Вернуться на главную</a></p>
+
+<p>
+	<strong>💡 Что произошло?</strong>
+</p>
+<p>
+	У вас нет прав на доступ к этой странице или разделу сайта. 
+</p>
+
+<a href="/" class="csrf-error__btn">🏠 Вернуться на главную</a>

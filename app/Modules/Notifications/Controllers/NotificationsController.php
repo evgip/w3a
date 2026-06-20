@@ -98,7 +98,6 @@ class NotificationsController extends Controller
                 'message' => $success ? 'Отмечено как прочитанное' : 'Не удалось отметить'
             ]);
         } catch (\Throwable $e) {
-            error_log('[NOTIFICATIONS] Error in markAsRead: ' . $e->getMessage());
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Ошибка сервера']);
         }
@@ -139,7 +138,6 @@ class NotificationsController extends Controller
                 'message' => $success ? 'Все уведомления отмечены' : 'Ошибка'
             ]);
         } catch (\Throwable $e) {
-            error_log('[NOTIFICATIONS] Error in markAllAsRead: ' . $e->getMessage());
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Ошибка сервера']);
         }
@@ -171,7 +169,6 @@ class NotificationsController extends Controller
             echo json_encode(['count' => $count]);
 
         } catch (\Throwable $e) {
-            error_log('[NOTIFICATIONS] Error in getCount: ' . $e->getMessage());
             http_response_code(500);
             echo json_encode(['count' => 0]);
         }

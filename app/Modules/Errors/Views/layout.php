@@ -7,12 +7,7 @@
 </head>
 <body>
     <main>
-	  <div class="card">
-        <h1>⚠️ Ошибка</h1>
-        <p><?= e($message) ?></p>
-        <hr>
-        <a href="/">Вернуться на главную страницу</a>
-		</div>
+		<?= $content ?>
     </main>
 </body>
 </html>

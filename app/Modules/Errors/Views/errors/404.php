@@ -1,5 +1,17 @@
-<!-- app/Modules/Errors/Views/errors/404.php -->
-<?php $this->layout('errors/layout', compact('uri', 'statusCode')) ?>
 <h1>404 — Страница не найдена</h1>
-<p>Запрошенный путь <strong><?= $uri ?></strong> не существует.</p>
-<p><a href="/">← Вернуться на главную</a></p>
+
+<p>
+	<strong>💡 Что произошло?</strong>
+</p>
+
+<?php if (!empty($message)): ?>  
+	<p>
+		<?= $message; ?>
+	</p>
+<?php endif; ?>
+
+<p>
+	Страница, которую вы пытается открыть, отсутствует по указанному URL-адресу или недоступна для отображения.
+</p>
+
+<a href="/" class="csrf-error__btn">🏠 Вернуться на главную</a>

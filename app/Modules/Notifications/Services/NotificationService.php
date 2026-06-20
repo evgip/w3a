@@ -157,8 +157,7 @@ class NotificationService
             $comment = $this->commentModel->getWithStoryInfo($commentId);
 
             if (!$comment) {
-                error_log("[NOTIFICATIONS] Comment not found: {$commentId}");
-                return;
+                 return; // Тихий выход
             }
 
             $authorId = (int)($comment['author_id'] ?? 0);

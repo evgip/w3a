@@ -1,9 +1,16 @@
 <?php
+// app/Core/Request.php
 
 namespace App\Core;
 
 class Request
 {
+    private const CSRF_TOKEN_KEY = 'csrf_token';
+    private const CSRF_TOKEN_NAME = 'csrf_token';
+
+    /**
+     * Получить URI без query-параметров
+     */
     public function getUri(): string
     {
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
@@ -13,109 +20,159 @@ class Request
         return $uri === '/' ? '/' : trim($uri, '/');
     }
 
+    /**
+     * Получить HTTP-метод
+     */
     public function getMethod(): string
     {
         return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
     }
 
+    /**
+     * Проверка POST-запроса
+     */
     public function isPost(): bool
     {
         return $this->getMethod() === 'POST';
     }
 
+    /**
+     * Проверка GET-запроса
+     */
     public function isGet(): bool
     {
         return $this->getMethod() === 'GET';
     }
 
     /**
-     * БЕЗОПАСНО: Возвращает чистые, исходные данные без принудительного искажения.
+     * Получить параметры запроса (GET или POST)
      */
     public function getParams(?string $key = null, $default = null)
     {
         $data = [];
-
         if ($this->isGet()) {
             $data = $_GET;
         }
-
         if ($this->isPost()) {
             $data = $_POST;
         }
-
         if ($key !== null) {
             return $data[$key] ?? $default;
         }
-
         return $data;
     }
 
+    /**
+     * Получить или сгенерировать CSRF-токен
+     */
     public function getCsrfToken(): string
     {
-        // Если сессия не запущена, принудительно стартуем её
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-
-        // КРИТИЧЕСКИЙ ФИКС: Генерируем токен ТОЛЬКО если его еще нет в сессии
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        
+        if (empty($_SESSION[self::CSRF_TOKEN_KEY])) {
+            $_SESSION[self::CSRF_TOKEN_KEY] = bin2hex(random_bytes(32));
         }
-
-        return $_SESSION['csrf_token'];
+        
+        return $_SESSION[self::CSRF_TOKEN_KEY];
     }
 
-
     /**
-     * Вывод скрытого HTML-поля токена для вставки в формы
+     * HTML-поле с токеном для вставки в формы
      */
     public function csrfField(): string
     {
-        $token = $this->getCsrfToken();
-        return '<input type="hidden" name="csrf_token" value="' . $token . '">';
+        $token = htmlspecialchars($this->getCsrfToken(), ENT_QUOTES, 'UTF-8');
+        return '<input type="hidden" name="' . self::CSRF_TOKEN_NAME . '" value="' . $token . '">';
     }
 
     /**
-     * Validates incoming form tokens against active session cryptographic payloads
+     * Валидация CSRF-токена с обработкой ошибки (для обычных форм)
      */
     public function validateCsrf(): void
     {
-        // 1. Capture parameters securely and fall back to empty strings instead of null
-        $sessionToken = $_SESSION['csrf_token'] ?? '';
-        $submittedToken = $this->getParams('csrf_token') ?? '';
+        // GET-запросы не требуют CSRF
+        if ($this->isGet()) {
+            return;
+        }
 
-        // 2. Perform validation checks safely without breaking on PHP 8 strict types
-        if (empty($sessionToken) || empty($submittedToken) || !hash_equals((string)$sessionToken, (string)$submittedToken)) {
+        $sessionToken = $_SESSION[self::CSRF_TOKEN_KEY] ?? '';
+        $submittedToken = $this->getParams(self::CSRF_TOKEN_NAME) ?? '';
 
-            // Log security exploit footprint tokens into your audit database logs natively
-            \App\Core\Audit::log('security.csrf_failed', 'Обнаружена атака CSRF / Неверный проверочный токен формы', [
-                'ip'  => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-                'url' => $_SERVER['REQUEST_URI'] ?? '/'
-            ]);
-
-            // Clear out stale session parameters safely
-            \App\Core\Session::setFlash('error', 'Срок действия сессии формы истек. Пожалуйста, попробуйте еще раз.');
-
-            // Bounce the attacker or expired form user back to the referrer source
-            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
-            exit;
+        // Timing-safe сравнение
+        if (empty($sessionToken) || empty($submittedToken) || 
+            !hash_equals((string)$sessionToken, (string)$submittedToken)) {
+            
+            $this->handleCsrfFailure();
         }
     }
-	
-	/**
-	 * Проверяет CSRF-токен без редиректа (для AJAX-запросов)
-	 * 
-	 * @return bool true если токен валиден, false если нет
-	 */
-	public function isCsrfValid(): bool
-	{
-		$sessionToken = $_SESSION['csrf_token'] ?? '';
-		$submittedToken = $this->getParams('csrf_token') ?? '';
 
-		if (empty($sessionToken) || empty($submittedToken)) {
-			return false;
-		}
+    /**
+     * Валидация CSRF без редиректа (для AJAX-запросов)
+     */
+    public function isCsrfValid(): bool
+    {
+        $sessionToken = $_SESSION[self::CSRF_TOKEN_KEY] ?? '';
+        $submittedToken = $this->getParams(self::CSRF_TOKEN_NAME) ?? '';
+        
+        if (empty($sessionToken) || empty($submittedToken)) {
+            return false;
+        }
+        
+        return hash_equals((string)$sessionToken, (string)$submittedToken);
+    }
 
-		return hash_equals((string)$sessionToken, (string)$submittedToken);
-	}
+    /**
+     * Обработка провала CSRF-валидации
+     */
+    private function handleCsrfFailure(): void
+    {
+        // 1. Логируем попытку атаки через существующий Audit
+        Audit::log('security.csrf_failed', 'Неверный CSRF-токен', [
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+            'url' => $_SERVER['REQUEST_URI'] ?? '/',
+            'method' => $this->getMethod(),
+            'referer' => $_SERVER['HTTP_REFERER'] ?? null,
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+        ]);
+
+        // 2. Регенерируем токен (предотвращает повторное использование)
+        unset($_SESSION[self::CSRF_TOKEN_KEY]);
+
+        // 3. Flash-сообщение для пользователя
+        Session::setFlash('error', 'Срок действия формы истёк. Пожалуйста, обновите страницу и попробуйте снова.');
+
+        // 4. Для AJAX — возвращаем JSON
+        if ($this->isAjaxRequest()) {
+            http_response_code(419);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'error' => 'CSRF token validation failed',
+                'message' => 'Срок действия формы истёк. Обновите страницу.',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 5. Для обычных запросов — используем существующий ErrorsController
+        http_response_code(419);
+        
+        $errorController = new \App\Modules\Errors\Controllers\ErrorsController();
+        $errorController->csrf('Срок действия формы истёк. Пожалуйста, обновите страницу и попробуйте снова.');
+        exit;
+    }
+
+    /**
+     * Проверка AJAX-запроса
+     */
+    private function isAjaxRequest(): bool
+    {
+        return (
+            (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) 
+                && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || 
+            (!empty($_SERVER['HTTP_ACCEPT']) 
+                && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'))
+        );
+    }
 }
