@@ -36,7 +36,7 @@
             <?php foreach ($tags as $tag): ?>
                 <tr>
                     <td><?= (int)($tag['id'] ?? 0) ?></td>
-                    <td>
+                    <td <?php if ($tag['deleted_at']): ?>style="color: #ac130d;"<?php endif; ?>>
                         <strong><code><?= e($tag['tag'] ?? '') ?></code></strong>
                     </td>
                     <td>
@@ -57,17 +57,31 @@
                         <a href="<?= route('admin.tags.edit', ['id' => $tag['id']]) ?>" class="button">
                             Изменить
                         </a>
-                        
-                        <form method="POST" 
-                              action="<?= route('admin.tags.delete', ['id' => $tag['id']]) ?>" 
-                              style="display:inline;"
-							  class="delete-link"
-							  data-confirm="Вы уверены, что хотите удалить тег «<?= e($tag['tag']) ?>»? Это действие также удалит связи с историями.">
-                            <?= csrf_field() ?>
-                            <button type="submit" class="button" style="color: #ac130d;">
-                                Удалить
-                            </button>
-                        </form>
+
+						<?php if ($tag['deleted_at']): ?>
+							<form method="POST" 
+								  action="<?= route('admin.tags.restore', ['id' => $tag['id']]) ?>" 
+								  style="display:inline;"
+								  class="delete-link"
+								  data-confirm="Вы уверены, что хотите восстановить тег «<?= e($tag['tag']) ?>»?">
+								<?= csrf_field() ?>
+								<button type="submit" class="button">
+									Восстановить
+								</button>
+							</form>
+						 <?php else: ?>
+ 						
+							<form method="POST" 
+								  action="<?= route('admin.tags.delete', ['id' => $tag['id']]) ?>" 
+								  style="display:inline;"
+								  class="delete-link"
+								  data-confirm="Вы уверены, что хотите удалить тег «<?= e($tag['tag']) ?>»? Это действие также удалит связи с историями.">
+								<?= csrf_field() ?>
+								<button type="submit" class="button" style="color: #ac130d;">
+									Удалить
+								</button>
+							</form>
+						<?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>

@@ -31,6 +31,10 @@ $router->add('POST', 'admin/tags/create', 'AdminController@createTag', 'admin.ta
 $router->add('GET', 'admin/tags/{id}/edit', 'AdminController@showTagEditForm', 'admin.tags.edit');
 $router->add('POST', 'admin/tags/{id}/edit', 'AdminController@updateTag', 'admin.tags.edit.submit');
 
+// Маршруты для мягкого удаления и восстановления
+$router->add('POST', 'admin/tags/{id}/delete', 'AdminController@deleteTag', 'admin.tags.delete');
+$router->add('POST', 'admin/tags/{id}/restore', 'AdminController@restoreTag', 'admin.tags.restore');
+
 // Administrative Profile Overrides & Avatar Deletion endpoints
 $router->add('GET', 'admin/users/{id}/edit', 'AdminController@editUser', 'admin.users.edit');
 $router->add('POST', 'admin/users/{id}/edit', 'AdminController@updateUser', 'admin.users.edit.submit');

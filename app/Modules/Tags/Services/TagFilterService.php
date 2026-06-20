@@ -28,7 +28,7 @@ class TagFilterService
     {
         return [
             'filters' => $this->filterModel->getUserFilters($userId),
-            'allTags' => $this->tagModel->getAllTags(),
+            'allTags' => $this->tagModel->getAllTags(false),
         ];
     }
 

@@ -8,6 +8,7 @@ use App\Modules\Tags\Models\Category;
 use App\Core\Session;
 use App\Core\Audit;
 use App\Core\Validator;
+use App\Core\Database;
 
 /**
  * Сервис для административного управления тегами.
@@ -28,7 +29,7 @@ class AdminTagService
      */
     public function getAllTags(): array
     {
-        return $this->tagModel->getAllTags();
+        return $this->tagModel->getAllTags(true);
     }
     
     /**
@@ -131,5 +132,29 @@ class AdminTagService
         Audit::log('admin.tag_updated', "Администратор изменил параметры тега #{$tagSlug}");
         
         return true;
+    }
+	
+   // Мягкое удаление (Soft Delete)
+    public function softDeleteTag(int $id): bool
+    {
+        $sql = "UPDATE tags 
+                SET deleted_at = NOW() 
+                WHERE id = :id AND deleted_at IS NULL";
+                
+		$db = Database::getConnection();		
+        $stmt = $db->prepare($sql);
+        return $stmt->execute(['id' => $id]);
+    }
+
+    // Восстановление
+    public function restoreTag(int $id): bool
+    {
+        $sql = "UPDATE tags 
+                SET deleted_at = NULL 
+                WHERE id = :id AND deleted_at IS NOT NULL";
+                
+		$db = Database::getConnection();		
+        $stmt = $db->prepare($sql);
+        return $stmt->execute(['id' => $id]);
     }
 }

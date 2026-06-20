@@ -24,7 +24,6 @@ class Story extends Model
 		'deleted_at'
 	];
 
-
 	/**
 	 * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
 	 * Получить ленту историй с пагинацией и учетом фильтров

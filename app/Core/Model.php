@@ -43,21 +43,23 @@ abstract class Model
     /**
      * Helper to append the default active-records SQL filter constraint
      */
-    protected function applySoftDeleteConstraint(string $sql): string
-    {
-        if (!$this->includeTrashed) {
-            // If the query doesn't already contain a WHERE statement
-            if (strpos(strtoupper($sql), 'WHERE') === false) {
-                $sql .= " WHERE `deleted_at` IS NULL";
-            } else {
-                $sql .= " AND `deleted_at` IS NULL";
-            }
-        }
+	protected function applySoftDeleteConstraint(string $sql): string
+	{
 
-        // Reset flag configuration for subsequent queries
-        $this->includeTrashed = false;
-        return $sql;
-    }
+		if (!$this->supportsSoftDelete || $this->includeTrashed) {
+			error_log("Result: фильтр НЕ применён");
+			return $sql;
+		}
+		
+		if (strpos(strtoupper($sql), 'WHERE') === false) {
+			$sql .= " WHERE `deleted_at` IS NULL";
+		} else {
+			$sql .= " AND `deleted_at` IS NULL";
+		}
+
+		
+		return $sql;
+	}
 
     /**
      * Get all active records from the table

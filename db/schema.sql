@@ -1112,3 +1112,6 @@ ALTER TABLE `user_settings`
 --
 ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+
+ALTER TABLE `categories` ADD `deleted_at` TIMESTAMP NULL DEFAULT NULL AFTER `updated_at`;

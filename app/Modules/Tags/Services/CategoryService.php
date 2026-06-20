@@ -37,7 +37,7 @@ class CategoryService
      */
     public function getTagsGroupedByCategory(): array
     {
-        $allTags = $this->tagModel->getAllTags();
+        $allTags = $this->tagModel->getAllTags(false);
 
         $tagsByCategory = [];
         foreach ($allTags as $tag) {

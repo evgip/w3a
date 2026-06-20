@@ -71,10 +71,10 @@ class Category extends Model
 			}
 			
 			$placeholdersStr = implode(',', $namedPlaceholders);
-			$sql .= " AND s.id NOT IN (
-				SELECT DISTINCT story_id FROM taggings 
-				WHERE tag_id IN ($placeholdersStr)
-			)";
+
+			$sql .= " LEFT JOIN taggings tg_exclude ON s.id = tg_exclude.story_id 
+				  AND tg_exclude.tag_id IN ($placeholdersStr)
+				  WHERE tg_exclude.story_id IS NULL";
 		}
 
 		$sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";

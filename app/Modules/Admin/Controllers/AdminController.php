@@ -285,6 +285,42 @@ class AdminController extends Controller
         exit;
     }
     
+    public function deleteTag(string $id): void
+    {
+        $request = new Request();
+        $request->validateCsrf();
+        
+        $tagId = (int)$id;
+        $success = $this->getTagService()->softDeleteTag($tagId);
+        
+        if ($success) {
+            Session::setFlash('success', "Тег успешно удален (перемещен в архив).");
+        } else {
+            Session::setFlash('error', "Не удалось удалить тег.");
+        }
+        
+        header('Location: /admin/tags');
+        exit;
+    }
+    
+    public function restoreTag(string $id): void
+    {
+        $request = new Request();
+        $request->validateCsrf();
+        
+        $tagId = (int)$id;
+        $success = $this->getTagService()->restoreTag($tagId);
+        
+        if ($success) {
+            Session::setFlash('success', "Тег успешно восстановлен.");
+        } else {
+            Session::setFlash('error', "Не удалось восстановить тег.");
+        }
+        
+        header('Location: /admin/tags');
+        exit;
+    }
+	
     // =========================================================================
     // КАТЕГОРИИ
     // =========================================================================

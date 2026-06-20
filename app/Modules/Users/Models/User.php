@@ -41,15 +41,16 @@ class User extends Model
      */
     public function getUserKarma(int $userId): int
     {
-        $storyStmt = static::db()->prepare("SELECT SUM(`score`) FROM `stories` WHERE `user_id` = :uid AND `deleted_at` IS NULL");
-        $storyStmt->execute(['uid' => $userId]);
-        $storyKarma = (int)$storyStmt->fetchColumn();
+		$stmt = static::db()->prepare("
+			SELECT SUM(total_score) as karma FROM (
+				SELECT SUM(`score`) as total_score FROM `stories` WHERE `user_id` = :uid1 AND `deleted_at` IS NULL
+				UNION ALL
+				SELECT SUM(`score`) as total_score FROM `comments` WHERE `user_id` = :uid2 AND `deleted_at` IS NULL
+			) as combined
+		");
+		$stmt->execute(['uid1' => $userId, 'uid2' => $userId]);
 
-        $commentStmt = static::db()->prepare("SELECT SUM(`score`) FROM `comments` WHERE `user_id` = :uid AND `deleted_at` IS NULL");
-        $commentStmt->execute(['uid' => $userId]);
-        $commentKarma = (int)$commentStmt->fetchColumn();
-
-        return $storyKarma + $commentKarma;
+		return (int)($stmt->fetchColumn() ?? 0);
     }
     
     /**
@@ -57,7 +58,7 @@ class User extends Model
      */
     public function findByName(string $username): ?array
     {
-        $stmt = $this->db()->prepare("
+        $stmt = static::db()->prepare("
             SELECT id, username FROM `{$this->table}` 
             WHERE username = :username AND deleted_at IS NULL
         ");

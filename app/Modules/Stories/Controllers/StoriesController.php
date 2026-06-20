@@ -246,7 +246,7 @@ class StoriesController extends Controller
         $this->requireAuth();
 
         $tagModel = new Tag();
-        $availableTags = $tagModel->getAllTags();
+        $availableTags = $tagModel->getAllTags(false);
 
         $this->render('create', [
             'title' => 'Поделиться интересным',
