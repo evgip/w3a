@@ -230,26 +230,6 @@ class Auth
         return self::check() && $_SESSION['user_role'] === 'admin';
     }
 
- 
-
-    public static function middlewareAdmin(): void
-    {
-        if (!self::isAdmin()) {
-            http_response_code(403);
-   
-            // ЖУРНАЛ АУДИТА: Попытка несанкционированного доступа к админке
-            Audit::log('security.unauthorized_access', "Блокировка попытки входа в панель администратора", [
-                'requested_url' => $_SERVER['REQUEST_URI'] ?? '/admin'
-            ]);
-   
-            $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-            if (class_exists($errorController)) {
-                (new $errorController())->forbidden("Доступ запрещен. Требуются права администратора.");
-                exit;
-            }
-            die("<h1>403 Forbidden</h1>");
-        }
-    }
 
 	// ============================================
 	// ФАЙЛ: app/Core/Auth.php (добавить методы)

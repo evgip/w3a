@@ -1,16 +1,53 @@
 <?php
 
+
+use App\Core\Router;
+
 /**
- * Global helper to generate URLs by route name
- * Глобальный хелпер для генерации URL по имени маршрута
+ * Генерация URL по имени маршрута
+ * 
+ * @example route('home') → '/'
+ * @example route('story.show', ['id' => 123]) → '/story/123'
  */
-if (!function_exists('route')) {
-    function route(string $name, array $params = []): string
-    {
-        global $router; // Uses global $router from index.php
-        // Использует глобальный объект $router из index.php
-        return $router->route($name, $params);
+function route(string $name, array $params = []): string
+{
+    $router = Router::getInstance();
+    
+    if ($router === null) {
+        // Fallback: Router ещё не инициализирован (например, в CLI)
+        $router = new Router(new \App\Core\Request());
     }
+    
+    return $router->route($name, $params);
+}
+
+/**
+ * Проверка, является ли текущий маршрут указанным
+ * 
+ * @example if (is_route('home')) { echo 'active'; }
+ */
+function is_route(string $name): bool
+{
+    $router = Router::getInstance();
+    return $router !== null && $router->getCurrentRouteName() === $name;
+}
+
+/**
+ * Безопасный редирект "назад"
+ */
+function back_url(string $fallback = '/'): string
+{
+    $referer = $_SERVER['HTTP_REFERER'] ?? $fallback;
+    
+    // Разрешаем только относительные URL или свой домен
+    if (str_starts_with($referer, '/') && !str_starts_with($referer, '//')) {
+        return $referer;
+    }
+    
+    $refererHost = parse_url($referer, PHP_URL_HOST);
+    $appHost = $_SERVER['HTTP_HOST'] ?? '';
+    
+    return ($refererHost === $appHost) ? $referer : $fallback;
 }
 
 /**
@@ -389,32 +426,8 @@ if (!function_exists('safeLink')) {
 }
 
 /**
- * Perform HTTP redirect and terminate script
- * Выполнение HTTP-редиректа и завершение скрипта
- *
- * @param string $url            - Target URL (e.g., '/login', 'https://example.com')
- *                                 Целевой URL (например, '/login', 'https://example.com')
- * @param int    $statusCode     - HTTP status code (default 302)
- *                                 HTTP-код ответа (по умолчанию 302)
+ * Распарсить объединённые теги в структурированный массив
  */
-if (!function_exists('redirect')) {
-    function redirect(string $url, int $statusCode = 302): void 
-    {
-        // Trim URL for security
-        // Очистка URL от лишних символов для безопасности
-        $url = trim($url);
-
-        // Set header and exit
-        // Установка заголовка и выход
-        header("Location: " . $url, true, $statusCode);
-        exit;
-    }
-}
-
-
-    /**
-     * Распарсить объединённые теги в структурированный массив
-     */
 if (!function_exists('rparseTagsCombined')) {
     function parseTagsCombined(array &$story): void
     {

@@ -1,7 +1,34 @@
 <?php
+/**
+ * Маршруты модуля Votes
+ * 
+ * Единый endpoint для голосования за истории и комментарии.
+ * 
+ * @var \App\Core\Router $router
+ */
 
-// Единая защищенная точка приема голосов для всего фреймворка
-// $router->add('POST', 'vote/{type}/{id}', 'VotesController@handle', 'vote');
+use App\Modules\Votes\Controllers\VotesController;
 
-// Unified endpoint intercepting action types and vote direction codes
-$router->add('POST', 'vote/{type}/{id}/{direction}', 'VotesController@handle', 'votes.toggle');
+// =========================================================================
+// МАРШРУТЫ ДЛЯ АВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ
+// =========================================================================
+
+$router->group(['middleware' => ['web', 'auth']], function($router) {
+    
+    /**
+     * Универсальный endpoint для голосования
+     * 
+     * @param string $type      Тип объекта: 'story' или 'comment'
+     * @param int    $id        ID объекта
+     * @param string $direction Направление: 'up' или 'down'
+     * 
+     * @example POST /vote/story/123/up    → голос за историю
+     * @example POST /vote/comment/456/down → голос против комментария
+     */
+    $router->add(
+        'POST', 
+        '/vote/{type}/{id}/{direction}', 
+        VotesController::class . '@handle', 
+        'votes.toggle'
+    );
+});

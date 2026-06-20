@@ -17,8 +17,6 @@ class FlagsController extends Controller
      */
     public function reportForm(string $type, string $id): void
     {
-        $this->requireAuth();
-
 		$targetId = (int) $id;
 
         if (!in_array($type, ['story', 'comment'], true) || $targetId <= 0) {
@@ -50,8 +48,6 @@ class FlagsController extends Controller
      */
     public function submit(): void
     {
-        $this->requireAuth();
-
         $request  = new Request();
         $request->validateCsrf();
 
@@ -160,7 +156,6 @@ class FlagsController extends Controller
 
     private function requireModerator(): void
     {
-        $this->requireAuth();
         if (!Auth::isAdmin() && !Auth::isModerator()) {
             http_response_code(403);
             die('<h1>403 Forbidden</h1><p>Требуются права модератора.</p>');

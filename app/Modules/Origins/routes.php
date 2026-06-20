@@ -1,20 +1,75 @@
 <?php
+/**
+ * Маршруты модуля Origins (управление доменами)
+ * 
+ * Две группы доступа:
+ * - Публичные: список забаненных доменов (для всех)
+ * - Админка: управление банами доменов (модераторы/админы)
+ * 
+ * @var \App\Core\Router $router
+ */
 
-// ==================== ПУБЛИЧНЫЕ МАРШРУТЫ ====================
+use App\Modules\Origins\Controllers\OriginsController;
 
-// Публичная страница списка забаненных доменов
-$router->add('GET', 'domains', 'OriginsController@index', 'domains.index');
+// =========================================================================
+// ПУБЛИЧНЫЕ МАРШРУТЫ (доступны всем)
+// =========================================================================
 
-// ==================== АДМИН-ПАНЕЛЬ (модераторы/админы) ====================
+/**
+ * Публичная страница списка забаненных доменов.
+ */
+$router->add(
+    'GET', 
+    '/domains', 
+    OriginsController::class . '@index', 
+    'domains.index'
+);
 
-// Список всех доменов (админка)
-$router->add('GET', 'admin/domains', 'OriginsController@adminIndex', 'admin.domains');
+// =========================================================================
+// АДМИН-ПАНЕЛЬ (модераторы и админы, префикс /admin/domains)
+// =========================================================================
 
-// Форма бана
-$router->add('GET', 'admin/domains/create', 'OriginsController@showBanForm', 'admin.domains.create');
-
-// Обработка бана
-$router->add('POST', 'admin/domains/ban', 'OriginsController@ban', 'admin.domains.ban');
-
-// Разбан домена
-$router->add('POST', 'admin/domains/{id}/unban', 'OriginsController@unban', 'admin.domains.unban');
+$router->group(['middleware' => ['web', 'moderator'], 'prefix' => '/admin/domains'], function($router) {
+    
+    /**
+     * Список всех доменов (админка).
+     */
+    $router->add(
+        'GET', 
+        '/', 
+        OriginsController::class . '@adminIndex', 
+        'admin.domains'
+    );
+    
+    /**
+     * Форма бана домена.
+     */
+    $router->add(
+        'GET', 
+        '/create', 
+        OriginsController::class . '@showBanForm', 
+        'admin.domains.create'
+    );
+    
+    /**
+     * Обработка бана домена.
+     */
+    $router->add(
+        'POST', 
+        '/ban', 
+        OriginsController::class . '@ban', 
+        'admin.domains.ban'
+    );
+    
+    /**
+     * Разбан домена.
+     * 
+     * @param int $id ID домена
+     */
+    $router->add(
+        'POST', 
+        '/{id}/unban', 
+        OriginsController::class . '@unban', 
+        'admin.domains.unban'
+    );
+});

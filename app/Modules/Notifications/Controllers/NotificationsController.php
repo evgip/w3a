@@ -37,8 +37,6 @@ class NotificationsController extends Controller
 
     public function index(): void
     {
-        $this->requireAuth();
-
         $userId = (int)$_SESSION['user_id'];
         $request = new Request();
 

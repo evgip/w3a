@@ -1,18 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Votes\Services;
 
 use App\Modules\Votes\Models\Vote;
 use App\Modules\Users\Models\User;
+use App\Core\Logger;
 
 /**
- * Сервис для управления голосованием за контент.
- * Инкапсулирует бизнес-логику проверки кармы и прав доступа.
+ * Сервис голосования.
+ * Отвечает за бизнес-правила (карма, права, запрет самоголосования).
  */
 class VoteService
 {
     private Vote $voteModel;
     private User $userModel;
+    private const DEFAULT_MIN_KARMA = 10;
 
     public function __construct(Vote $voteModel, User $userModel)
     {
@@ -21,92 +25,104 @@ class VoteService
     }
 
     /**
-     * Обработать голосование с проверкой прав.
-     * 
-     * @return array ['success' => bool, 'message' => string]
+     * Обработать голосование.
      */
     public function handleVote(int $userId, string $type, int $targetId, int $voteValue): array
     {
-        // Валидация типа сущности
-        if ($type !== 'story' && $type !== 'comment') {
-            return [
-                'success' => false,
-                'message' => 'Неверный тип сущности.'
-            ];
+        // ✅ НОВОЕ: Проверка самоголосования
+        $ownerCheck = $this->checkSelfVote($userId, $type, $targetId);
+        if (!$ownerCheck['allowed']) {
+            return $ownerCheck;
         }
 
         // Проверка кармы для дизлайка
-        if ($voteValue === -1) {
-            $minKarma = config_int('config.app.min_karma_for_downvote', 10);
-            $user = $this->userModel->find($userId);
-            
-            // Админы голосуют без ограничений
-            $isAdmin = $this->isAdmin($user);
-            
-            if (!$isAdmin) {
-                $userKarma = $this->userModel->getUserKarma($userId);
-                if ($userKarma < $minKarma) {
-                    return [
-                        'success' => false,
-                        'message' => "Дизлайки доступны от {$minKarma} баллов кармы. У вас: {$userKarma}."
-                    ];
-                }
-            }
-        }
-
-        // Выполняем голосование через модель
-        $result = $this->voteModel->toggleVote($userId, $type, $targetId, $voteValue);
-
-        if (!$result) {
+        if ($voteValue === -1 && !$this->canDownvote($userId)) {
+            $minKarma = $this->getMinKarma();
+            $userKarma = $this->userModel->getUserKarma($userId);
             return [
                 'success' => false,
-                'message' => 'Ошибка обработки голоса.'
+                'message' => "Дизлайки доступны от {$minKarma} кармы. У вас: {$userKarma}.",
             ];
         }
 
-        return [
-            'success' => true,
-            'message' => 'Голос учтён.'
-        ];
+        // Выполняем голосование
+        if (!$this->voteModel->toggleVote($userId, $type, $targetId, $voteValue)) {
+            return [
+                'success' => false,
+                'message' => 'Ошибка обработки голоса.',
+            ];
+        }
+
+        return ['success' => true, 'message' => 'Голос учтён.'];
     }
 
-    /**
-     * Получить новый score из целевой таблицы.
-     */
     public function getNewScore(string $type, int $targetId): int
     {
-        $db = \App\Core\Database::getConnection();
-        $targetTable = ($type === 'story') ? 'stories' : 'comments';
-        $stmt = $db->prepare("SELECT `score` FROM `{$targetTable}` WHERE `id` = :id LIMIT 1");
-        $stmt->execute(['id' => $targetId]);
-        return (int)$stmt->fetchColumn();
+        return $this->voteModel->getScoreForEntity($type, $targetId);
     }
 
-    /**
-     * Получить текущий голос пользователя.
-     */
     public function getUserVote(int $userId, string $type, int $targetId): ?int
     {
         return $this->voteModel->getUserVote($userId, $type, $targetId);
     }
 
     /**
-     * Проверить, является ли пользователь администратором.
+     * ✅ НОВОЕ: Проверка самоголосования.
+     * Пользователь не может голосовать за свой контент.
+     * 
+     * @return array ['allowed' => bool, 'success' => bool, 'message' => string]
      */
-    private function isAdmin(?array $user): bool
+    private function checkSelfVote(int $userId, string $type, int $targetId): array
     {
-        if ($user === null) {
+        $ownerId = $this->voteModel->getOwnerUserId($type, $targetId);
+        
+        // Контент не найден
+        if ($ownerId === null) {
+            return [
+                'allowed' => false,
+                'success' => false,
+                'message' => 'Контент не найден.',
+            ];
+        }
+        
+        // Пользователь пытается голосовать за свой контент
+        if ($ownerId === $userId) {
+            return [
+                'allowed' => false,
+                'success' => false,
+                'message' => 'Вы не можете голосовать за свой собственный контент.',
+            ];
+        }
+        
+        return ['allowed' => true, 'success' => true, 'message' => ''];
+    }
+
+    /**
+     * Проверить право на дизлайк.
+     */
+    private function canDownvote(int $userId): bool
+    {
+        $user = $this->userModel->find($userId);
+        
+        if (empty($user)) {
             return false;
         }
 
-        if (isset($user['role']) && $user['role'] === 'admin') {
+        if ($this->isUserAdmin($user)) {
             return true;
         }
 
-        if (isset($user['is_admin']) && (int)$user['is_admin'] === 1) {
-            return true;
-        }
+        return $this->userModel->getUserKarma($userId) >= $this->getMinKarma();
+    }
 
-        return false;
+    private function isUserAdmin(array $user): bool
+    {
+        return (isset($user['role']) && $user['role'] === 'admin')
+            || (isset($user['is_admin']) && (int)$user['is_admin'] === 1);
+    }
+
+    private function getMinKarma(): int
+    {
+        return (int)(config('app.min_karma_for_downvote') ?? self::DEFAULT_MIN_KARMA);
     }
 }

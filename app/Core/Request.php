@@ -11,14 +11,17 @@ class Request
     /**
      * Получить URI без query-параметров
      */
-    public function getUri(): string
-    {
-        $uri = $_SERVER['REQUEST_URI'] ?? '/';
-        if ($position = strpos($uri, '?')) {
-            $uri = substr($uri, 0, $position);
-        }
-        return $uri === '/' ? '/' : trim($uri, '/');
-    }
+	public function getUri(): string
+	{
+		$uri = $_SERVER['REQUEST_URI'] ?? '/';
+		
+		if ($position = strpos($uri, '?')) {
+			$uri = substr($uri, 0, $position);
+		}
+		
+		$uri = rtrim($uri, '/');
+		return $uri === '' ? '/' : (str_starts_with($uri, '/') ? $uri : '/' . $uri);
+	}
 
     /**
      * Получить HTTP-метод

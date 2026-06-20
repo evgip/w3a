@@ -108,8 +108,6 @@ class TagsController extends AppCoreController
      */
     public function filters(): void
     {
-        $this->requireAuth();
-
         $userId = (int)$_SESSION['user_id'];
         $data = $this->getFilterService()->getFiltersData($userId);
 

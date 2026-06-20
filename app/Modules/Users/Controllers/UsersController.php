@@ -88,12 +88,6 @@ class UsersController extends Controller
      */
     public function showLoginForm()
     {
-        // Если уже авторизован — отправляем на главную
-        if (Auth::check()) {
-            header('Location: /');
-            exit;
-        }
-
         $request = new AppCoreRequest();
         
         // Рендерим шаблон login.php из папки Views модуля Users
@@ -211,8 +205,6 @@ class UsersController extends Controller
      */
     public function settings(): void
     {
-        $this->requireAuth();
-
         $userId = (int)$_SESSION['user_id'];
         $user = $this->getUserService()->getUserWithProfile($userId);
 
@@ -240,8 +232,6 @@ class UsersController extends Controller
      */
     public function updateSettings(): void
     {
-        $this->requireAuth();
-
         $request = new AppCoreRequest();
         $request->validateCsrf();
 
@@ -298,8 +288,6 @@ class UsersController extends Controller
      */
     public function updatePassword(): void
     {
-        $this->requireAuth();
-
         $request = new AppCoreRequest();
         $request->validateCsrf();
 

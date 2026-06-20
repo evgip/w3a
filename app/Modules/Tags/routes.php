@@ -1,12 +1,75 @@
 <?php
+/**
+ * Маршруты модуля Tags (теги, фильтры и категории)
+ * 
+ * Две группы доступа:
+ * - Публичные: просмотр тегов и категорий
+ * - Авторизованные: персональные фильтры пользователя
+ * 
+ * @var \App\Core\Router $router
+ */
 
-// POST-маршруты (AJAX) — имена тоже нужны для единообразия
-$router->add('POST', 'filters/add',    'TagsController@addFilter',    'tags.filters.add');
-$router->add('POST', 'filters/remove', 'TagsController@removeFilter', 'tags.filters.remove');
+use App\Modules\Tags\Controllers\TagsController;
 
-// GET-маршруты
-$router->add('GET', 'filters',         'TagsController@filters',      'tags.filters');
-$router->add('GET', 'tags',            'TagsController@index',        'tags.index');
+// =========================================================================
+// ПУБЛИЧНЫЕ МАРШРУТЫ (доступны всем)
+// =========================================================================
 
-// === Categories ===
-$router->add('GET', 'categories/{slug}', 'TagsController@categoriesShow', 'categories.show');
+/**
+ * Список всех тегов сайта.
+ */
+$router->add(
+    'GET', 
+    '/tags', 
+    TagsController::class . '@index', 
+    'tags.index'
+);
+
+/**
+ * Страница конкретной категории.
+ * 
+ * @param string $slug URL-имя категории
+ */
+$router->add(
+    'GET', 
+    '/categories/{slug}', 
+    TagsController::class . '@categoriesShow', 
+    'categories.show'
+);
+
+// =========================================================================
+// МАРШРУТЫ ДЛЯ АВТОРИЗОВАННЫХ (персональные фильтры)
+// =========================================================================
+
+$router->group(['middleware' => ['web', 'auth']], function($router) {
+    
+    /**
+     * Страница управления персональными фильтрами.
+     */
+    $router->add(
+        'GET', 
+        '/filters', 
+        TagsController::class . '@filters', 
+        'tags.filters'
+    );
+    
+    /**
+     * AJAX: добавить тег в персональные фильтры.
+     */
+    $router->add(
+        'POST', 
+        '/filters/add', 
+        TagsController::class . '@addFilter', 
+        'tags.filters.add'
+    );
+    
+    /**
+     * AJAX: удалить тег из персональных фильтров.
+     */
+    $router->add(
+        'POST', 
+        '/filters/remove', 
+        TagsController::class . '@removeFilter', 
+        'tags.filters.remove'
+    );
+});

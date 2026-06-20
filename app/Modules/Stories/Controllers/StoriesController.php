@@ -196,8 +196,6 @@ class StoriesController extends Controller
      */
     public function showCreateForm(): void
     {
-        $this->requireAuth();
-
         $tagModel = new Tag();
         $availableTags = $tagModel->getAllTags(false);
 
@@ -213,8 +211,6 @@ class StoriesController extends Controller
      */
     public function create(): void
     {
-        $this->requireAuth();
-
 	    // Проверка бана пользователя
 		$userModel = new \App\Modules\Users\Models\User();
 		if ($userModel->isBanned((int)$_SESSION['user_id'])) {
@@ -258,8 +254,6 @@ class StoriesController extends Controller
      */
     public function showEditForm(string $id): void
     {
-        $this->requireAuth();
-
         $storyId = (int)$id;
         $storyModel = new Story();
         $story = $storyModel->find($storyId);
@@ -288,8 +282,6 @@ class StoriesController extends Controller
      */
     public function update(string $id): void
     {
-        $this->requireAuth();
-
         $request = new Request();
         $request->validateCsrf();
 
@@ -328,8 +320,6 @@ class StoriesController extends Controller
      */
     public function adminDelete(string $id): void
     {
-        Auth::middlewareAdmin();
-
         $request = new Request();
         $request->validateCsrf();
 
@@ -351,8 +341,6 @@ class StoriesController extends Controller
      */
     public function adminRestore(string $id): void
     {
-        Auth::middlewareAdmin();
-
         $request = new Request();
         $request->validateCsrf();
 
@@ -376,8 +364,6 @@ class StoriesController extends Controller
      */
     public function addComment(): void
     {
-        $this->requireAuth();
-
 		// НОВОЕ: Проверка бана пользователя
 		$userModel = new \App\Modules\Users\Models\User();
 		if ($userModel->isBanned((int)$_SESSION['user_id'])) {
@@ -416,8 +402,6 @@ class StoriesController extends Controller
      */
     public function editComment(string $id): void
     {
-        $this->requireAuth();
-
         $request = new Request();
         $request->validateCsrf();
 
@@ -444,8 +428,6 @@ class StoriesController extends Controller
      */
     public function deleteComment(string $id): void
     {
-        $this->requireAuth();
-
         $request = new Request();
         $request->validateCsrf();
 
@@ -472,8 +454,6 @@ class StoriesController extends Controller
      */
     public function restoreComment(string $id): void
     {
-        $this->requireAuth();
-
         $request = new Request();
         $request->validateCsrf();
 
@@ -502,8 +482,6 @@ class StoriesController extends Controller
      */
     public function toggleFollow(string $id): void
     {
-        $this->requireAuth();
-
         $storyId = (int)$id;
         $userId = (int)$_SESSION['user_id'];
 
@@ -531,8 +509,6 @@ class StoriesController extends Controller
      */
     public function markRead(string $id): void
     {
-        $this->requireAuth();
-
         $request = new Request();
         $request->validateCsrf();
 

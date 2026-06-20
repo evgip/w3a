@@ -38,6 +38,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
             'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
             'canDownvote' => $canUserDownvote,
             'isLoggedIn' => $currentUserId > 0,
+			'contentOwnerId' => $isAuthor
         ]); ?>
 
         <!-- Контент публикации -->
@@ -196,7 +197,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
 <?php else: ?>
 
     <?php
-    $renderTree = function (int $parentId) use (&$renderTree, $commentsTree,  $voteModel, $currentUserId, $isAdmin, $isModerator, $canUserDownvote) {
+    $renderTree = function (int $parentId) use (&$renderTree, $commentsTree,  $voteModel, $currentUserId, $isAdmin, $isModerator, $canUserDownvote, $isAuthor) {
         if (!isset($commentsTree[$parentId])) {
             return;
         }
@@ -219,6 +220,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                                 'currentVoteState' => $voteModel->getUserVote($currentUserId, 'comment', $commentId),
                                 'canDownvote' => $canUserDownvote,
                                 'isLoggedIn' => true,
+								'contentOwnerId' => $isAuthor,
                             ]); ?>
                         </div>
 

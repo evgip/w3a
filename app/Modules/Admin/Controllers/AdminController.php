@@ -26,11 +26,7 @@ class AdminController extends Controller
     private ?AdminFirewallService $firewallService = null;
     private ?AdminInvitationService $invitationService = null;
     
-    public function __construct()
-    {
-        Auth::middlewareAdmin();
-    }
-    
+
     // =========================================================================
     // ЛЕНИВЫЕ ГЕТТЕРЫ
     // =========================================================================

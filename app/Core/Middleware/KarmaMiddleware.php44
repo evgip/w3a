@@ -1,0 +1,32 @@
+<?php
+namespace App\Core\Middleware;
+
+use App\Core\Auth;
+use App\Core\Session;
+use App\Modules\Users\Models\User;
+
+class KarmaMiddleware implements MiddlewareInterface
+{
+    public function __construct(
+        private int $minKarma = 0
+    ) {}
+    
+    public function handle(callable $next): mixed
+    {
+        if (!Auth::check()) {
+            return $next();
+        }
+        
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+        $userModel = new User();
+        $karma = $userModel->getUserKarma($userId);
+        
+        if ($karma < $this->minKarma) {
+            Session::setFlash('error', "Для этого действия необходима карма не менее {$this->minKarma}");
+            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+            exit;
+        }
+        
+        return $next();
+    }
+}

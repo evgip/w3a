@@ -4,14 +4,17 @@
 function updateHeaderNotificationCount() {
     fetch('/api/notifications/count')
         .then(response => {
-            // Для 401 (неавторизован) — это нормальная ситуация, не ошибка
             if (response.status === 401) {
                 const badge = document.getElementById('header-notification-badge');
                 if (badge) badge.style.display = 'none';
-                return null; // Прерываем цепочку
+                return null;
             }
             
-            // Для других ошибок — выбрасываем исключение
+            if (response.status === 419) {
+                console.warn('CSRF истёк');
+                return null;
+            }
+            
             if (!response.ok) {
                 throw new Error('HTTP ' + response.status);
             }
@@ -19,7 +22,7 @@ function updateHeaderNotificationCount() {
             return response.json();
         })
         .then(data => {
-            if (!data) return; // Был ответ 401
+            if (!data) return;
             
             const badge = document.getElementById('header-notification-badge');
             if (!badge) return;
@@ -32,7 +35,6 @@ function updateHeaderNotificationCount() {
             }
         })
         .catch(error => {
-            // Не спамим в консоль для штатных ситуаций
             console.error('Ошибка получения счетчика уведомлений:', error);
         });
 }
@@ -40,8 +42,6 @@ function updateHeaderNotificationCount() {
 // Запускаем при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     updateHeaderNotificationCount();
-    
-    // Обновляем счетчик каждые 60 секунд
     setInterval(updateHeaderNotificationCount, 60000);
     
     // Делегирование событий для кликов по уведомлениям
@@ -52,42 +52,41 @@ document.addEventListener('DOMContentLoaded', () => {
         const notificationId = link.dataset.notificationId;
         if (!notificationId) return;
         
-        // Останавливаем немедленный переход по ссылке
         e.preventDefault();
         
         const destinationUrl = link.href;
+        const csrfToken = getCsrfToken();
         
-        // Получаем CSRF-токен
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content 
-            || document.querySelector('input[name="csrf_token"]')?.value 
-            || '';
-        
-        // Отправляем запрос на отметку как прочитанного
+        // ✅ ИСПРАВЛЕНО: передаём токен в теле запроса
         fetch(`/notifications/${notificationId}/read`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRF-Token': csrfToken,
+                'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest'
-            }
+            },
+            body: `csrf_token=${encodeURIComponent(csrfToken)}`,  // ← ДОБАВЛЕНО
+            credentials: 'same-origin'
         })
         .then(response => {
-            // Обновляем счетчик в шапке
+            if (response.status === 419) {
+                alert('Сессия истекла. Обновите страницу.');
+                location.reload();
+                return;
+            }
+            
             updateHeaderNotificationCount();
             
-            // Визуально помечаем уведомление как прочитанное
             const notificationItem = link.closest('.notification-item');
             if (notificationItem) {
                 notificationItem.classList.remove('notification-unread');
                 notificationItem.classList.add('notification-read');
             }
             
-            // ТОЛЬКО ПОСЛЕ ответа сервера переходим по ссылке
             window.location.href = destinationUrl;
         })
         .catch(error => {
             console.error('Ошибка при отметке уведомления:', error);
-            // Даже при ошибке переходим, чтобы пользователь не остался на месте
             window.location.href = destinationUrl;
         });
     });
@@ -97,25 +96,49 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('mark-all-read-btn')?.addEventListener('click', function(e) {
     e.preventDefault();
     
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content 
-        || document.querySelector('input[name="csrf_token"]')?.value 
-        || '';
+    const csrfToken = getCsrfToken();
     
+    // ✅ ИСПРАВЛЕНО: передаём токен в теле запроса
     fetch('/notifications/mark-all-read', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRF-Token': csrfToken,
+            'X-CSRF-TOKEN': csrfToken,
             'X-Requested-With': 'XMLHttpRequest'
-        }
+        },
+        body: `csrf_token=${encodeURIComponent(csrfToken)}`,  // ← ДОБАВЛЕНО
+        credentials: 'same-origin'
     })
     .then(response => {
+        if (response.status === 419) {
+            alert('Сессия истекла. Обновите страницу.');
+            location.reload();
+            return;
+        }
+        
         if (response.ok) {
             location.reload();
+        } else {
+            alert('Ошибка при отметке уведомлений.');
         }
     })
     .catch(error => {
         console.error('Ошибка при отметке всех уведомлений:', error);
+        alert('Ошибка соединения с сервером.');
     });
 });
 
+/**
+ * ✅ НОВАЯ ФУНКЦИЯ: Получить CSRF-токен из разных источников
+ */
+function getCsrfToken() {
+    // Приоритет 1: meta-тег (самый надёжный)
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) return meta.content;
+    
+    // Приоритет 2: скрытое поле в любой форме на странице
+    const input = document.querySelector('input[name="csrf_token"]');
+    if (input) return input.value;
+    
+    return '';
+}

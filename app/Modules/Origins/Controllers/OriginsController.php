@@ -129,7 +129,6 @@ class OriginsController extends Controller
      */
     private function requireModerator(): void
     {
-        $this->requireAuth();
         if (!Auth::isAdmin() && !Auth::isModerator()) {
             http_response_code(403);
             die('<h1>403 Forbidden</h1><p>Доступ запрещён. Требуются права модератора.</p>');

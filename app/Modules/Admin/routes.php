@@ -1,71 +1,103 @@
 <?php
+/**
+ * Маршруты модуля Admin
+ * 
+ * Все маршруты защищены middleware:
+ * - `web`   → CSRF-защита
+ * - `admin` → проверка авторизации + роль администратора
+ * 
+ * @var \App\Core\Router $router
+ */
 
-// Dashboard Main Overview Panel
-$router->add('GET', 'admin', 'AdminController@index');
+use App\Modules\Admin\Controllers\AdminController;
 
-// View Detailed Statistics Metrics Profile
-$router->add('GET', 'admin/users', 'AdminController@users', 'admin.users');
+// =========================================================================
+// API-МАРШРУТЫ (без префикса /admin, отдельная группа)
+// =========================================================================
 
-$router->add('POST', 'admin/users/{id}/toggle-status', 'AdminController@toggleUserStatus', 'admin.users.toggle_status');
+$router->group(['middleware' => ['web', 'admin']], function($router) {
+    $router->add(
+        'GET', 
+        '/api/admin/security-alerts', 
+        AdminController::class . '@getSecurityAlertsApi', 
+        'api.admin.security_alerts'
+    );
+});
 
-$router->add('GET', 'admin/audit', 'AdminController@auditLogs', 'admin.audit');
+// =========================================================================
+// ОСНОВНЫЕ МАРШРУТЫ АДМИНКИ (префикс /admin)
+// =========================================================================
 
-
-// NEW: User status manipulation routes
-$router->add('POST', 'admin/users/{id}/archive', 'AdminController@archiveUser', 'admin.users.archive');
-$router->add('POST', 'admin/users/{id}/restore', 'AdminController@restoreUser', 'admin.users.restore');
-
-// ИНСТРУМЕНТЫ АДМИНИСТРАТОРА
-$router->add('GET', 'admin/tools', 'AdminController@tools', 'admin.tools');
-$router->add('POST', 'admin/tools/compile-assets', 'AdminController@compileAssets', 'admin.tools.compile_assets');
-
-// ОЧИСТКА СИСТЕМНЫХ ДАННЫХ И ЛОГОВ
-$router->add('POST', 'admin/tools/clear-file-logs', 'AdminController@clearFileLogs', 'admin.tools.clear_file_logs');
-$router->add('POST', 'admin/tools/clear-db-audit', 'AdminController@clearDbAudit', 'admin.tools.clear_db_audit');
-
-
-// Admin Tag CRUD Management Routes
-$router->add('GET', 'admin/tags', 'AdminController@tagsIndex', 'admin.tags');
-$router->add('GET', 'admin/tags/create', 'AdminController@showTagCreateForm', 'admin.tags.create');
-$router->add('POST', 'admin/tags/create', 'AdminController@createTag', 'admin.tags.create.submit');
-$router->add('GET', 'admin/tags/{id}/edit', 'AdminController@showTagEditForm', 'admin.tags.edit');
-$router->add('POST', 'admin/tags/{id}/edit', 'AdminController@updateTag', 'admin.tags.edit.submit');
-
-// Маршруты для мягкого удаления и восстановления
-$router->add('POST', 'admin/tags/{id}/delete', 'AdminController@deleteTag', 'admin.tags.delete');
-$router->add('POST', 'admin/tags/{id}/restore', 'AdminController@restoreTag', 'admin.tags.restore');
-
-// Administrative Profile Overrides & Avatar Deletion endpoints
-$router->add('GET', 'admin/users/{id}/edit', 'AdminController@editUser', 'admin.users.edit');
-$router->add('POST', 'admin/users/{id}/edit', 'AdminController@updateUser', 'admin.users.edit.submit');
-$router->add('POST', 'admin/users/{id}/avatar/delete', 'AdminController@deleteUserAvatar', 'admin.users.avatar.delete');
-
-$router->add('POST', 'admin/tools/cache-routes', 'AdminController@cacheRoutes', 'admin.tools.cache_routes');
-$router->add('POST', 'admin/tools/clear-cache-routes', 'AdminController@clearCacheRoutes', 'admin.tools.clear_cache_routes');
-
-$router->add('POST', 'admin/tools/send-test-email', 'AdminController@sendTestEmail', 'admin.tools.send_test_email');
-
-
-// Real-time security alert telemetry payload lookup endpoint
-$router->add('GET', 'api/admin/security-alerts', 'AdminController@getSecurityAlertsApi', 'api.admin.security_alerts');
-
-
-$router->add('GET', 'admin/firewall', 'AdminController@firewallIndex', 'admin.firewall');
-$router->add('POST', 'admin/firewall/ban', 'AdminController@banIp', 'admin.firewall.ban');
-$router->add('POST', 'admin/firewall/{id}/unban', 'AdminController@unbanIp', 'admin.firewall.unban');
-
-
-// ==================== INVITATION REQUESTS MANAGEMENT ====================
-
-$router->add('GET', 'admin/invitations', 'AdminController@invitationsIndex', 'admin.invitations');
-$router->add('POST', 'admin/invitations/{id}/approve', 'AdminController@approveInvitation', 'admin.invitations.approve');
-$router->add('POST', 'admin/invitations/{id}/reject', 'AdminController@rejectInvitation', 'admin.invitations.reject');
-
-
-// Admin Category CRUD Management Routes
-$router->add('GET', 'admin/categories', 'AdminController@categoriesIndex', 'admin.categories');
-$router->add('GET', 'admin/categories/create', 'AdminController@showCategoryCreateForm', 'admin.categories.create');
-$router->add('POST', 'admin/categories/create', 'AdminController@createCategory', 'admin.categories.create.submit');
-$router->add('GET', 'admin/categories/{id}/edit', 'AdminController@showCategoryEditForm', 'admin.categories.edit');
-$router->add('POST', 'admin/categories/{id}/edit', 'AdminController@updateCategory', 'admin.categories.edit.submit');
-$router->add('POST', 'admin/categories/{id}/delete', 'AdminController@deleteCategory', 'admin.categories.delete');
+$router->group(['middleware' => ['web', 'admin'], 'prefix' => '/admin'], function($router) {
+    
+    // -------------------------------------------------------------------------
+    // Dashboard и статистика
+    // -------------------------------------------------------------------------
+    $router->add('GET', '', AdminController::class . '@index', 'admin.dashboard');
+    $router->add('GET', '/audit', AdminController::class . '@auditLogs', 'admin.audit');
+    
+    // -------------------------------------------------------------------------
+    // Управление пользователями
+    // -------------------------------------------------------------------------
+    $router->add('GET', '/users', AdminController::class . '@users', 'admin.users');
+    $router->add('GET', '/users/{id}/edit', AdminController::class . '@editUser', 'admin.users.edit');
+    $router->add('POST', '/users/{id}/edit', AdminController::class . '@updateUser', 'admin.users.edit.submit');
+    $router->add('POST', '/users/{id}/avatar/delete', AdminController::class . '@deleteUserAvatar', 'admin.users.avatar.delete');
+    $router->add('POST', '/users/{id}/toggle-status', AdminController::class . '@toggleUserStatus', 'admin.users.toggle_status');
+    $router->add('POST', '/users/{id}/archive', AdminController::class . '@archiveUser', 'admin.users.archive');
+    $router->add('POST', '/users/{id}/restore', AdminController::class . '@restoreUser', 'admin.users.restore');
+    
+    // -------------------------------------------------------------------------
+    // Управление тегами
+    // -------------------------------------------------------------------------
+    $router->add('GET', '/tags', AdminController::class . '@tagsIndex', 'admin.tags');
+    $router->add('GET', '/tags/create', AdminController::class . '@showTagCreateForm', 'admin.tags.create');
+    $router->add('POST', '/tags/create', AdminController::class . '@createTag', 'admin.tags.create.submit');
+    $router->add('GET', '/tags/{id}/edit', AdminController::class . '@showTagEditForm', 'admin.tags.edit');
+    $router->add('POST', '/tags/{id}/edit', AdminController::class . '@updateTag', 'admin.tags.edit.submit');
+    $router->add('POST', '/tags/{id}/delete', AdminController::class . '@deleteTag', 'admin.tags.delete');
+    $router->add('POST', '/tags/{id}/restore', AdminController::class . '@restoreTag', 'admin.tags.restore');
+    
+    // -------------------------------------------------------------------------
+    // Управление категориями
+    // -------------------------------------------------------------------------
+    $router->add('GET', '/categories', AdminController::class . '@categoriesIndex', 'admin.categories');
+    $router->add('GET', '/categories/create', AdminController::class . '@showCategoryCreateForm', 'admin.categories.create');
+    $router->add('POST', '/categories/create', AdminController::class . '@createCategory', 'admin.categories.create.submit');
+    $router->add('GET', '/categories/{id}/edit', AdminController::class . '@showCategoryEditForm', 'admin.categories.edit');
+    $router->add('POST', '/categories/{id}/edit', AdminController::class . '@updateCategory', 'admin.categories.edit.submit');
+    $router->add('POST', '/categories/{id}/delete', AdminController::class . '@deleteCategory', 'admin.categories.delete');
+    
+    // -------------------------------------------------------------------------
+    // Управление приглашениями
+    // -------------------------------------------------------------------------
+    $router->add('GET', '/invitations', AdminController::class . '@invitationsIndex', 'admin.invitations');
+    $router->add('POST', '/invitations/{id}/approve', AdminController::class . '@approveInvitation', 'admin.invitations.approve');
+    $router->add('POST', '/invitations/{id}/reject', AdminController::class . '@rejectInvitation', 'admin.invitations.reject');
+    
+    // -------------------------------------------------------------------------
+    // Firewall (IP-блокировки)
+    // -------------------------------------------------------------------------
+    $router->add('GET', '/firewall', AdminController::class . '@firewallIndex', 'admin.firewall');
+    $router->add('POST', '/firewall/ban', AdminController::class . '@banIp', 'admin.firewall.ban');
+    $router->add('POST', '/firewall/{id}/unban', AdminController::class . '@unbanIp', 'admin.firewall.unban');
+    
+    // -------------------------------------------------------------------------
+    // Инструменты администратора
+    // -------------------------------------------------------------------------
+    $router->add('GET', '/tools', AdminController::class . '@tools', 'admin.tools');
+    
+    // Компиляция ресурсов
+    $router->add('POST', '/tools/compile-assets', AdminController::class . '@compileAssets', 'admin.tools.compile_assets');
+    
+    // Очистка логов и данных
+    $router->add('POST', '/tools/clear-file-logs', AdminController::class . '@clearFileLogs', 'admin.tools.clear_file_logs');
+    $router->add('POST', '/tools/clear-db-audit', AdminController::class . '@clearDbAudit', 'admin.tools.clear_db_audit');
+    
+    // Управление кэшем маршрутов
+    $router->add('POST', '/tools/cache-routes', AdminController::class . '@cacheRoutes', 'admin.tools.cache_routes');
+    $router->add('POST', '/tools/clear-cache-routes', AdminController::class . '@clearCacheRoutes', 'admin.tools.clear_cache_routes');
+    
+    // Тестирование почты
+    $router->add('POST', '/tools/send-test-email', AdminController::class . '@sendTestEmail', 'admin.tools.send_test_email');
+});

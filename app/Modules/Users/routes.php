@@ -1,40 +1,235 @@
 <?php
+/**
+ * Маршруты модуля Users (пользователи, авторизация, профиль)
+ * 
+ * Четыре группы доступа:
+ * - Публичные: профили, восстановление пароля, активация
+ * - Гости: вход и регистрация (авторизованные редиректятся на главную)
+ * - Авторизованные: настройки, выход, управление аккаунтом
+ * 
+ * @var \App\Core\Router $router
+ */
 
-// Маршруты авторизации
-$router->add('GET', 'login', 'UsersController@showLoginForm', 'auth.login');
-$router->add('POST', 'login', 'UsersController@login', 'login.submit');
-$router->add('GET', 'logout', 'UsersController@logout', 'auth.logout');
+use App\Modules\Users\Controllers\UsersController;
 
+// =========================================================================
+// ПУБЛИЧНЫЕ МАРШРУТЫ (доступны всем, включая гостей)
+// =========================================================================
 
-// Маршруты регистрации
-$router->add('GET', 'register', 'UsersController@showRegisterForm', 'auth.register');
-$router->add('POST', 'register', 'UsersController@register', 'register.submit');
+/**
+ * Список пользователей (публичный каталог).
+ */
+$router->add(
+    'GET', 
+    '/users', 
+    UsersController::class . '@index', 
+    'users.index'
+);
 
-// Список пользователей
-$router->add('GET', 'users', 'UsersController@index', 'users');
+/**
+ * Публичный профиль пользователя.
+ * 
+ * @param string $username URL-имя пользователя
+ */
+$router->add(
+    'GET', 
+    '/user/{username}', 
+    UsersController::class . '@profile', 
+    'user.profile'
+);
 
-// Профиль
-$router->add('GET', 'user/{username}', 'UsersController@profile', 'user.profile');
+/**
+ * Активация аккаунта по токену из email.
+ * 
+ * @param string $token Уникальный токен активации
+ */
+$router->add(
+    'GET', 
+    '/register/activate/{token}', 
+    UsersController::class . '@activateAccount', 
+    'auth.activate'
+);
 
+// -------------------------------------------------------------------------
+// Восстановление пароля (публичное — доступно всем)
+// -------------------------------------------------------------------------
 
-// User Profile Workspace Management endpoints
-$router->add('GET', 'account/settings', 'UsersController@settings', 'account.settings');
-$router->add('POST', 'account/settings', 'UsersController@updateSettings', 'account.settings.submit');
+/**
+ * Форма запроса ссылки для восстановления пароля.
+ */
+$router->add(
+    'GET', 
+    '/password/reset', 
+    UsersController::class . '@showRequestResetForm', 
+    'password.request'
+);
 
-$router->add('POST', 'account/settings/password', 'UsersController@updatePassword', 'account.password.submit');
+/**
+ * Отправка ссылки для восстановления на email.
+ */
+$router->add(
+    'POST', 
+    '/password/reset', 
+    UsersController::class . '@sendResetLink', 
+    'password.request.submit'
+);
 
-$router->add('POST', 'account/notifications/read', 'UsersController@clearNotifications', 'account.notifications.read');
+/**
+ * Форма ввода нового пароля (по токену из email).
+ * 
+ * @param string $token Уникальный токен восстановления
+ */
+$router->add(
+    'GET', 
+    '/password/reset/{token}', 
+    UsersController::class . '@showResetPasswordForm', 
+    'password.reset'
+);
 
+/**
+ * Обработка смены пароля.
+ * 
+ * ⚠️ ВАЖНО: конкретный маршрут ДОЛЖЕН идти ДО параметрических,
+ * иначе 'submit' будет интерпретирован как {token}.
+ */
+$router->add(
+    'POST', 
+    '/password/reset/submit', 
+    UsersController::class . '@executePasswordReset', 
+    'password.reset.submit'
+);
 
-$router->add('GET', 'password/reset', 'UsersController@showRequestResetForm', 'password.request');
-$router->add('POST', 'password/reset', 'UsersController@sendResetLink', 'password.request.submit');
-$router->add('GET', 'password/reset/{token}', 'UsersController@showResetPasswordForm', 'password.reset');
-$router->add('POST', 'password/reset/submit', 'UsersController@executePasswordReset', 'password.reset.submit');
+/**
+ * Альтернативный URL для восстановления пароля.
+ * Ведёт на те же методы, что и /password/reset — для совместимости
+ * со старыми ссылками в письмах и закладках.
+ */
+$router->add(
+    'GET', 
+    '/password/recovery', 
+    UsersController::class . '@showRequestResetForm', 
+    'password.recovery'
+);
 
+$router->add(
+    'POST', 
+    '/password/recovery', 
+    UsersController::class . '@sendResetLink', 
+    'password.recovery.submit'
+);
 
-// Маршруты восстановления пароля (основной URL /password/recovery)
-$router->add('GET',  'password/recovery',        'UsersController@showRequestResetForm', 'password.recovery');
-$router->add('POST', 'password/recovery',        'UsersController@sendResetLink',        'password.recovery.submit');
+// =========================================================================
+// МАРШРУТЫ ДЛЯ ГОСТЕЙ (только для неавторизованных)
+// =========================================================================
 
-// Named route handling incoming activation tokens links
-$router->add('GET', 'register/activate/{token}', 'UsersController@activateAccount', 'auth.activate');
+$router->group(['middleware' => ['web', 'guest']], function($router) {
+    
+    /**
+     * Форма входа.
+     */
+    $router->add(
+        'GET', 
+        '/login', 
+        UsersController::class . '@showLoginForm', 
+        'auth.login'
+    );
+    
+    /**
+     * Обработка входа.
+     */
+    $router->add(
+        'POST', 
+        '/login', 
+        UsersController::class . '@login', 
+        'login.submit'
+    );
+    
+    /**
+     * Форма регистрации.
+     */
+    $router->add(
+        'GET', 
+        '/register', 
+        UsersController::class . '@showRegisterForm', 
+        'auth.register'
+    );
+    
+    /**
+     * Обработка регистрации.
+     */
+    $router->add(
+        'POST', 
+        '/register', 
+        UsersController::class . '@register', 
+        'register.submit'
+    );
+});
+
+// =========================================================================
+// МАРШРУТЫ ДЛЯ АВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ
+// =========================================================================
+
+$router->group(['middleware' => ['web', 'auth']], function($router) {
+    
+    // -------------------------------------------------------------------------
+    // Выход из системы
+    // -------------------------------------------------------------------------
+    
+    /**
+     * Выход из аккаунта (с очисткой сессии).
+     */
+    $router->add(
+        'GET', 
+        '/logout', 
+        UsersController::class . '@logout', 
+        'auth.logout'
+    );
+    
+    // -------------------------------------------------------------------------
+    // Настройки аккаунта
+    // -------------------------------------------------------------------------
+    
+    /**
+     * Страница настроек аккаунта.
+     */
+    $router->add(
+        'GET', 
+        '/account/settings', 
+        UsersController::class . '@settings', 
+        'account.settings'
+    );
+    
+    /**
+     * Обновление основных настроек (email, имя и т.д.).
+     */
+    $router->add(
+        'POST', 
+        '/account/settings', 
+        UsersController::class . '@updateSettings', 
+        'account.settings.submit'
+    );
+    
+    /**
+     * Смена пароля.
+     */
+    $router->add(
+        'POST', 
+        '/account/settings/password', 
+        UsersController::class . '@updatePassword', 
+        'account.password.submit'
+    );
+    
+    // -------------------------------------------------------------------------
+    // Уведомления
+    // -------------------------------------------------------------------------
+    
+    /**
+     * Отметить все уведомления как прочитанные.
+     */
+    $router->add(
+        'POST', 
+        '/account/notifications/read', 
+        UsersController::class . '@clearNotifications', 
+        'account.notifications.read'
+    );
+});

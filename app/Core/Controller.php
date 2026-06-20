@@ -111,43 +111,6 @@ abstract class Controller
         $appHost = parse_url(config('app.url'), PHP_URL_HOST);
         return $urlHost === $appHost;
     }
-	
-   /**
-     * Требовать авторизацию пользователя.
-     * Если не авторизован — перенаправляет на страницу входа.
-     */
-    protected function requireAuth(): void
-    {
-        if (!Auth::check()) {
-            Session::setFlash('error', 'Пожалуйста, авторизуйтесь для доступа к этой странице.');
-            $this->redirect('/login');
-        }
-    }
-
-    /**
-     * Требовать права администратора.
-     */
-    protected function requireAdmin(): void
-    {
-        $this->requireAuth();
-        
-        if (!Auth::isAdmin()) {
-            http_response_code(403);
-            die('<h1>403 Forbidden</h1><p>Доступ запрещён. Требуются права администратора.</p>');
-        }
-    }
-
-    /**
-     * Получить ID текущего авторизованного пользователя.
-     * Автоматически вызывает requireAuth().
-     * 
-     * @return int
-     */
-    protected function currentUserId(): int
-    {
-        $this->requireAuth();
-        return Auth::id();
-    }
 
     /**
      * Редирект с flash-сообщением об ошибке.
