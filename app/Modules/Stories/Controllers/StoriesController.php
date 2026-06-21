@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Modules\Stories\Controllers;
 
 use App\Core\Controller;
-use App\Core\Request;
 use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Audit;
+use App\Core\Events\StoryDeleted;
+use App\Core\Events\StoryRestore;
+use App\Core\Events\CommentUpdated;
+use App\Core\Events\CommentCreated;
+use App\Core\Events\CommentDeleted;
+use App\Core\Events\CommentRestored;
 use App\Modules\Stories\Services\StoryService;
 use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Stories\Services\CommentService;
@@ -19,7 +24,7 @@ use App\Modules\Stories\Models\ReadRibbon;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Origins\Models\Domain;
 use App\Modules\Notifications\Services\NotificationService;
-use App\Modules\Moderations\Models\Moderation;
+
 
 /**
  * Контроллер для работы с историями (публикациями) и комментариями.
@@ -115,9 +120,7 @@ class StoriesController extends Controller
      */
     public function index(string $tagname = '', string $domain = ''): void
     {
-        $request = new Request();
-
-        $currentPage = max(1, (int)$request->getParams('page', 1));
+        $currentPage = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config_int('constants.pagination.stories_per_page', 15);
         $offset = ($currentPage - 1) * $perPage;
 
@@ -202,7 +205,7 @@ class StoriesController extends Controller
         $this->render('create', [
             'title' => 'Поделиться интересным',
             'availableTags' => $availableTags,
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
 
@@ -211,18 +214,7 @@ class StoriesController extends Controller
      */
     public function create(): void
     {
-	    // Проверка бана пользователя
-		$userModel = new \App\Modules\Users\Models\User();
-		if ($userModel->isBanned((int)$_SESSION['user_id'])) {
-			Session::setFlash('error', 'Ваш аккаунт заблокирован. Вы не можете публиковать истории.');
-			header('Location: /stories/create');
-			exit;
-		}
-
-        $request = new Request();
-        $request->validateCsrf();
-
-        $user_is_following = is_numeric($request->getParams('user_is_following'));
+        $user_is_following = is_numeric($this->request->getParams('user_is_following'));
 
         $data = [
             'title' => $request->getParams('title'),
@@ -232,7 +224,8 @@ class StoriesController extends Controller
             'user_is_following' => $user_is_following ? 1 : 0,
         ];
 
-        $storyId = $this->getStoryService()->createStory($data, (int)$_SESSION['user_id']);
+        $userId = Auth::id();
+        $storyId = $this->getStoryService()->createStory($data, $userId);
 
         if ($storyId > 0) {
             Session::setFlash('success', 'Ваша история успешно опубликована!');
@@ -271,7 +264,7 @@ class StoriesController extends Controller
             'story' => $story,
             'availableTags' => $tagModel->getAllTags(),
             'activeTagIds' => $storyModel->getStoryTagIds($storyId),
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
 
@@ -282,9 +275,6 @@ class StoriesController extends Controller
      */
     public function update(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-
         $storyId = (int)$id;
         $storyModel = new Story();
         $story = $storyModel->find($storyId);
@@ -320,18 +310,18 @@ class StoriesController extends Controller
      */
     public function adminDelete(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-
         $storyId = (int)$id;
         $storyModel = new Story();
         $storyModel->delete($storyId);
 
-        Audit::log('admin.story_moderated', "Администратор принудительно скрыл публикацию ID: {$storyId}");
+		// Отправляем событие
+		$this->dispatch(new StoryDeleted(
+			$storyId,
+			Auth::id()
+		));
         Session::setFlash('success', 'Публикация успешно скрыта из общей ленты.');
 
         $this->redirectBack();
-        exit;
     }
 
     /**
@@ -341,18 +331,17 @@ class StoriesController extends Controller
      */
     public function adminRestore(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-
         $storyId = (int)$id;
         $storyModel = new Story();
         $storyModel->restore($storyId);
 
-        Audit::log('admin.story_restored', "Администратор восстановил публикацию ID: {$storyId}");
+		$this->dispatch(new StoryRestore(
+			$storyId,
+			Auth::id()
+		));
         Session::setFlash('success', 'Публикация успешно восстановлена в общей ленте.');
 
         $this->redirectBack();
-        exit;
     }
     
     // =========================================================================
@@ -364,17 +353,6 @@ class StoriesController extends Controller
      */
     public function addComment(): void
     {
-		// НОВОЕ: Проверка бана пользователя
-		$userModel = new \App\Modules\Users\Models\User();
-		if ($userModel->isBanned((int)$_SESSION['user_id'])) {
-			Session::setFlash('error', 'Ваш аккаунт заблокирован. Вы не можете оставлять комментарии.');
-			header('Location: /story/' . $storyId);
-			exit;
-		}
-
-        $request = new Request();
-        $request->validateCsrf();
-
         $storyId = (int)$request->getParams('story_id');
         $parentId = $request->getParams('parent_id') !== '' ? (int)$request->getParams('parent_id') : null;
         $commentText = $request->getParams('comment_text');
@@ -400,76 +378,94 @@ class StoriesController extends Controller
      *
      * @param string $id ID комментария
      */
-    public function editComment(string $id): void
-    {
-        $request = new Request();
-        $request->validateCsrf();
+	public function editComment(string $id): void
+	{
+		$commentId = (int)$id;
+		$newText = $this->request->getParams('comment_text');
+		$userId = Auth::id();
 
-        $commentId = (int)$id;
-        $newText = $request->getParams('comment_text');
+		//  Получаем результат обновления
+		$result = $this->getCommentService()->updateComment($commentId, $newText, $userId);
 
-        $this->getCommentService()->updateComment($commentId, $newText, (int)$_SESSION['user_id']);
+		//  Проверяем успех
+		if ($result === null) {
+			$this->redirectBack();
+			return;
+		}
 
-        $commentModel = new Comment();
-        $comment = $commentModel->withTrashed()->find($commentId);
+		// Событие для аудита
+		$this->dispatch(new CommentUpdated(
+			$commentId,
+			$userId,
+			(bool) $result['is_author']
+		));
 
-        if ($comment) {
-            header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
-        } else {
-            header('Location: /');
-        }
-        exit;
-    }
+		//  Используем уже полученный комментарий для редиректа (без дублирования запроса!)
+		$this->redirect(comment_url((int)$result['comment']['story_id'], $commentId));
+	
+	}
 
-    /**
-     * Удаление комментария.
-     *
-     * @param string $id ID комментария
-     */
-    public function deleteComment(string $id): void
-    {
-        $request = new Request();
-        $request->validateCsrf();
+	/**
+	 * Удаление комментария.
+	 *
+	 * @param string $id ID комментария
+	 */
+	public function deleteComment(string $id): void
+	{
+		$commentId = (int)$id;
+		$userId = Auth::id();
 
-        $commentId = (int)$id;
+		// Сервис возвращает данные (или null при ошибке)
+		$result = $this->getCommentService()->deleteComment($commentId, $userId);
 
-        // ✅ Получаем комментарий ДО удаления, чтобы знать story_id
-        $commentModel = new Comment();
-        $comment = $commentModel->find($commentId);
+		if ($result === null) {
+			// При ошибке flash-сообщение уже установлено в сервисе
+			$this->redirectBack();
+			return;
+		}
 
-        $this->getCommentService()->deleteComment($commentId, (int)$_SESSION['user_id']);
+		// Отправляем событие (аудит отработает через AuditListener)
+		$this->dispatch(new CommentDeleted(
+			$commentId,
+			$result['story_id'],
+			$userId,
+			(bool) $result['is_author']
+		));
 
-        if ($comment) {
-            header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
-        } else {
-            header('Location: /');
-        }
-        exit;
-    }
+		// Редирект через хелпер (используем данные из сервиса — без дублирования запроса!)
+		$this->redirect(comment_url($result['story_id'], $commentId));
+	}
 
-    /**
-     * Восстановление удалённого комментария.
-     *
-     * @param string $id ID комментария
-     */
-    public function restoreComment(string $id): void
-    {
-        $request = new Request();
-        $request->validateCsrf();
+	/**
+	 * Восстановление удалённого комментария.
+	 *
+	 * @param string $id ID комментария
+	 */
+	public function restoreComment(string $id): void
+	{
+		$commentId = (int)$id;
+		$userId = Auth::id();
 
-        $commentId = (int)$id;
-        $this->getCommentService()->restoreComment($commentId, (int)$_SESSION['user_id']);
+		// Сервис возвращает данные (или null при ошибке)
+		$result = $this->getCommentService()->restoreComment($commentId, $userId);
 
-        $commentModel = new Comment();
-        $comment = $commentModel->withTrashed()->find($commentId);
+		if ($result === null) {
+			// При ошибке flash-сообщение уже установлено в сервисе
+			$this->redirectBack();
+			return;
+		}
 
-        if ($comment) {
-            header('Location: ' . comment_url((int)$comment['story_id'], $commentId));
-        } else {
-            header('Location: /');
-        }
-        exit;
-    }
+		// Отправляем событие (аудит отработает через AuditListener)
+		$this->dispatch(new CommentRestored(
+			$commentId,
+			$result['story_id'],
+			$userId,
+			(bool)$result['is_author']
+		));
+
+		// Редирект через хелпер (используем данные из сервиса — без дублирования запроса!)
+		$this->redirect(comment_url($result['story_id'], $commentId));
+	}
     
     // =========================================================================
     // ПОДПИСКА И ПРОЧТЕНИЕ
@@ -509,9 +505,6 @@ class StoriesController extends Controller
      */
     public function markRead(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-
         $storyId = (int)$id;
         $this->getReadRibbonService()->markAsRead($storyId);
 

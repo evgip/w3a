@@ -1,74 +1,124 @@
 <?php
 
-namespace App\Core;
+declare(strict_types=1);
 
-use PDO;
-use Exception;
+namespace App\Core;
 
 class Audit
 {
-    private static ?string $auditLogFile = null;
+    /**
+     * Записать действие в журнал аудита.
+     */
+    public static function log(
+        string $action,
+        string $description,
+        string $category = 'general',
+        array $payload = []
+    ): void {
+        // Защита от рекурсии
+        static $isLogging = false;
+        if ($isLogging) {
+            return;
+        }
+        $isLogging = true;
+        
+        try {
 
-    private static function initFile(): void
-    {
-        if (self::$auditLogFile === null) {
-            self::$auditLogFile = dirname(__DIR__, 2) . '/storage/logs/audit.log';
-            $logDir = dirname(self::$auditLogFile);
-            if (!is_dir($logDir)) {
-                mkdir($logDir, 0755, true);
+            $db = Database::getConnection();
+
+            // Берём данные из сессии напрямую
+            if (session_status() === PHP_SESSION_NONE) {
+                @session_start();
             }
+            
+            $userId    = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+            $username  = $_SESSION['user_name'] ?? 'Guest';
+            $role      = $_SESSION['user_role'] ?? 'guest';
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+            $stmt = $db->prepare(
+                "INSERT INTO audit_logs 
+                    (user_id, username, role, ip_address, action, description, category, payload, created_at) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+            );
+            
+            $stmt->execute([
+                $userId,
+                $username,
+                $role,
+                $ipAddress,
+                $action,
+                $description,
+                $category,
+                !empty($payload) ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null,
+            ]);
+        } finally {
+            $isLogging = false;
         }
     }
 
     /**
-     * Логирование действия: дублирование в файл + запись в Базу Данных
+     * Получить записи по категории.
      */
-    public static function log(string $action, string $description, array $payload = []): void
+    public static function getByCategory(string $category, int $limit = 50, int $offset = 0): array
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        $db = Database::getConnection();  // ✅ getConnection()
+        
+        $stmt = $db->prepare(
+            "SELECT * FROM audit_logs 
+             WHERE category = ?
+             ORDER BY id DESC 
+             LIMIT ? OFFSET ?"
+        );
+        $stmt->execute([$category, $limit, $offset]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Получить все записи с опциональным фильтром.
+     */
+    public static function getAll(int $limit = 100, int $offset = 0, ?string $category = null): array
+    {
+        $db = Database::getConnection();  // ✅ getConnection()
+
+        if ($category && $category !== '') {
+            $stmt = $db->prepare(
+                "SELECT * FROM audit_logs 
+                 WHERE category = ?
+                 ORDER BY id DESC 
+                 LIMIT ? OFFSET ?"
+            );
+            $stmt->execute([$category, $limit, $offset]);
+            return $stmt->fetchAll();
         }
 
-        $actorId = $_SESSION['user_id'] ?? null;
-        $actorName = $_SESSION['user_name'] ?? 'Guest';
-        $actorRole = $_SESSION['user_role'] ?? 'guest';
-        $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'CLI';
-        $payloadJson = !empty($payload) ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null;
+        $stmt = $db->prepare(
+            "SELECT * FROM audit_logs 
+             ORDER BY id DESC 
+             LIMIT ? OFFSET ?"
+        );
+        $stmt->execute([$limit, $offset]);
+        return $stmt->fetchAll();
+    }
 
-        // 1. НАДЕЖНОСТЬ: Пишем в файл (Защита от стирания логов при взломе БД)
-        /* try {
-            self::initFile();
-            $fileRecord = [
-                'timestamp' => date('Y-m-d H:i:s'), 'ip_address' => $ip_address, 'user_id' => $actorId,
-                'username' => $actorName, 'role' => $actorRole, 'action' => $action,
-                'description' => $description, 'payload' => $payload
-            ];
-            file_put_contents(self::$auditLogFile, json_encode($fileRecord, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
-        } catch (Exception $e) {
-            // Если запись в файл сорвалась, не останавливаем приложение
-        } */
+    /**
+     * Подсчёт записей по категории.
+     */
+    public static function countByCategory(string $category): int
+    {
+        $db = Database::getConnection();  // ✅ getConnection()
+        $stmt = $db->prepare("SELECT COUNT(*) FROM audit_logs WHERE category = ?");
+        $stmt->execute([$category]);
+        return (int)$stmt->fetchColumn();
+    }
 
-        // 2. УДОБСТВО: Пишем в Базу Данных для вывода в админке
-        try {
-            $db = Database::getConnection();
-            $stmt = $db->prepare("
-                INSERT INTO `audit_logs` (`user_id`, `username`, `role`, `ip_address`, `action`, `description`, `payload`) 
-                VALUES (:user_id, :username, :role, :ip_address, :action, :description, :payload)
-            ");
-            
-            $stmt->execute([
-                'user_id'     => $actorId,
-                'username'    => $actorName,
-                'role'        => $actorRole,
-                'ip_address'  => $ip_address,
-                'action'      => $action,
-                'description' => $description,
-                'payload'     => $payloadJson
-            ]);
-        } catch (Exception $e) {
-            // На продакшене ошибку записи лога лучше отправить в основной PHP error_log,
-            // чтобы из-за сбоя логгера у пользователя не падал весь сайт
-            error_log("Сбой записи аудита в БД: " . $e->getMessage());
-        }
+    /**
+     * Подсчёт всех записей.
+     */
+    public static function countAll(): int
+    {
+        $db = Database::getConnection();  // ✅ getConnection()
+        $stmt = $db->query("SELECT COUNT(*) FROM audit_logs");
+        return (int)$stmt->fetchColumn();
     }
 }

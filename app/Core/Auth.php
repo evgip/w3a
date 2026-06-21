@@ -255,24 +255,4 @@ class Auth
 	{
 		return self::isModerator();
 	}
-
-	/**
-	 * Middleware: доступ только для модераторов и админов
-	 */
-	public static function middlewareModerator(): void
-	{
-		if (!self::isModerator()) {
-			http_response_code(403);
-			Audit::log('security.unauthorized_access', "Блокировка попытки входа в панель модерации", [
-				'requested_url' => $_SERVER['REQUEST_URI'] ?? '/mod',
-				'user_id' => $_SESSION['user_id'] ?? null,
-			]);
-			$errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-			if (class_exists($errorController)) {
-				(new $errorController())->forbidden("Доступ запрещен. Требуются права модератора.");
-				exit;
-			}
-			die("<h1>403 Forbidden</h1>");
-		}
-	}
 }

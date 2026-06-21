@@ -65,6 +65,39 @@ class Request
         return $data;
     }
 
+	/**
+	 * Получить GET-параметр (из $_GET).
+	 * Удобно для фильтров, пагинации, поиска.
+	 */
+	public function query(?string $key = null, $default = null)
+	{
+		if ($key === null) {
+			return $_GET;
+		}
+		return $_GET[$key] ?? $default;
+	}
+
+	/**
+	 * Получить POST-параметр (из $_POST).
+	 * Удобно для обработки форм.
+	 */
+	public function post(?string $key = null, $default = null)
+	{
+		if ($key === null) {
+			return $_POST;
+		}
+		return $_POST[$key] ?? $default;
+	}
+
+	/**
+	 * Получить все данные запроса (GET + POST).
+	 * Алиас для getParams() для обратной совместимости.
+	 */
+	public function input(?string $key = null, $default = null)
+	{
+		return $this->getParams($key, $default);
+	}
+
     /**
      * Получить или сгенерировать CSRF-токен
      */

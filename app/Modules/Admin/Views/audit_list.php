@@ -16,95 +16,124 @@
 
 <hr>
 
-<!-- ФИЛЬТРЫ И ПОИСК -->
-<form action="<?= route('admin.audit') ?>" method="GET">
-    <div class="form-field-group">
-        <label for="filter_user_id">ID Пользователя:</label>
-        <input type="number" id="filter_user_id" name="filter_user_id" class="form-input-wide" style="max-width: 200px;"
-               value="<?= e((string)($currentFilters['user_id'] ?? '')) ?>" 
-               placeholder="Например: 1">
-    </div>
-
-    <div class="form-field-group">
-        <label for="filter_action">Тип события (Action):</label>
-        <select id="filter_action" name="filter_action" class="form-input-wide">
-            <option value="">-- Все события --</option>
-            <?php foreach ($uniqueActions as $act): ?>
-                <option value="<?= e($act) ?>" <?= (($currentFilters['action'] ?? '') === $act) ? 'selected' : '' ?>>
-                    <?= e($act) ?>
+<!-- Форма фильтров -->
+<form method="get" action="/admin/audit" class="audit-filters">
+    <!-- Фильтр по пользователю -->
+    <label>
+        User ID:
+        <input type="number" name="filter_user_id" 
+               value="<?= htmlspecialchars((string)($currentFilters['user_id'] ?? '')) ?>" 
+               placeholder="Все">
+    </label>
+    
+    <!-- Фильтр по действию -->
+    <label>
+        Действие:
+        <select name="filter_action">
+            <option value="">Все действия</option>
+            <?php foreach ($uniqueActions as $action): ?>
+                <option value="<?= htmlspecialchars($action) ?>" 
+                        <?= ($currentFilters['action'] ?? '') === $action ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($action) ?>
                 </option>
             <?php endforeach; ?>
         </select>
-    </div>
-
-    <div class="form-field-group">
-        <label for="search">Поиск по тексту:</label>
-        <input type="text" id="search" name="search" class="form-input-wide"
-               value="<?= e($currentFilters['search'] ?? '') ?>" 
-               placeholder="Имя, описание или контекст...">
-    </div>
-
-    <div class="form-actions">
-        <button type="submit" class="btn-primary">🔍 Применить фильтры</button>
-        
-        <?php if (!empty($currentFilters['user_id']) || !empty($currentFilters['action']) || !empty($currentFilters['search'])): ?>
-            <a href="<?= route('admin.audit') ?>" class="button">❌ Сбросить фильтры</a>
-        <?php endif; ?>
-    </div>
+    </label>
+    
+    <!-- ✅ НОВЫЙ ФИЛЬТР: Категория -->
+    <label>
+        Категория:
+        <select name="category">
+            <option value="">Все категории</option>
+            <?php foreach ($categoryLabels as $value => $label): ?>
+                <option value="<?= htmlspecialchars($value) ?>" 
+                        <?= ($currentFilters['category'] ?? '') === $value ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($label) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </label>
+    
+    <!-- Поиск -->
+    <label>
+        Поиск:
+        <input type="text" name="search" 
+               value="<?= htmlspecialchars($currentFilters['search'] ?? '') ?>" 
+               placeholder="Поиск...">
+    </label>
+    
+    <button type="submit">Применить</button>
+    
+    <?php if (!empty(array_filter($currentFilters))): ?>
+        <a href="/admin/audit" class="btn-reset">Сбросить</a>
+    <?php endif; ?>
 </form>
 
 <hr>
 
 <!-- ТАБЛИЦА ЛОГОВ -->
 <?php if (!empty($logs)): ?>
-    <table class="data">
-        <thead>
-            <tr>
-                <th>Время (БД)</th>
-                <th>Пользователь</th>
-                <th>Роль</th>
-                <th>IP адрес</th>
-                <th>Событие</th>
-                <th>Описание</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($logs as $log): ?>
-                <tr>
-                    <td>
-                        <code><?= e($log['created_at'] ?? '—') ?></code>
-                    </td>
-                    <td>
-                        <strong><?= e($log['username'] ?? 'Guest') ?></strong>
-                        <?php if (!empty($log['user_id'])): ?>
-                            <br><span class="hint">(ID: <?= (int)$log['user_id'] ?>)</span>
-                        <?php endif; ?>
-                    </td>
-                    <td>
-                        <?php if (($log['role'] ?? '') === 'admin'): ?>
-                            <strong style="color: #ac130d;">admin</strong>
-                        <?php else: ?>
-                            <?= e($log['role'] ?? 'user') ?>
-                        <?php endif; ?>
-                    </td>
-                    <td>
-                        <code><?= e($log['ip_address'] ?? '—') ?></code>
-                    </td>
-                    <td>
-                        <strong><?= e($log['action'] ?? 'Неизвестно') ?></strong>
-                    </td>
-                    <td>
-                        <div><?= e($log['description'] ?? '—') ?></div>
-                        <?php if (!empty($log['payload'])): ?>
-                            <div class="hint" style="margin-top: 0.5rem; font-size: 0.8em;">
-                                <code><?= e(json_encode($log['payload'], JSON_UNESCAPED_UNICODE)) ?></code>
-                            </div>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+	<table class="audit-table">
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>Дата</th>
+				<th>Пользователь</th>
+				<th>Роль</th>
+				<th>IP</th>
+				<th>Действие</th>
+				<th>Описание</th>
+				<th>Категория</th>  <!-- ✅ НОВАЯ КОЛОНКА -->
+				<th>Данные</th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php if (empty($logs)): ?>
+				<tr>
+					<td colspan="9" style="text-align: center;">Нет записей</td>
+				</tr>
+			<?php else: ?>
+				<?php foreach ($logs as $log): ?>
+					<tr>
+						<td><?= $log['id'] ?></td>
+						<td><?= date('d.m.Y H:i', strtotime($log['created_at'])) ?></td>
+						<td>
+							<?php if ($log['user_id']): ?>
+								<a href="/admin/users/<?= $log['user_id'] ?>/edit">
+									<?= htmlspecialchars($log['username']) ?>
+								</a>
+							<?php else: ?>
+								<?= htmlspecialchars($log['username']) ?>
+							<?php endif; ?>
+						</td>
+						<td>
+							<span class="role-badge role-<?= htmlspecialchars($log['role']) ?>">
+								<?= htmlspecialchars($log['role']) ?>
+							</span>
+						</td>
+						<td><code><?= htmlspecialchars($log['ip_address']) ?></code></td>
+						<td><code><?= htmlspecialchars($log['action']) ?></code></td>
+						<td><?= htmlspecialchars($log['description']) ?></td>
+						<td>
+							<span class="category-badge category-<?= htmlspecialchars($log['category']) ?>">
+								<?= htmlspecialchars($categoryLabels[$log['category']] ?? $log['category']) ?>
+							</span>
+						</td>
+						<td>
+							<?php if (!empty($log['decoded_payload'])): ?>
+								<details>
+									<summary>Показать</summary>
+									<pre><?= htmlspecialchars(json_encode($log['decoded_payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
+								</details>
+							<?php else: ?>
+								—
+							<?php endif; ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			<?php endif; ?>
+		</tbody>
+	</table>
 <?php else: ?>
     <p class="hint">
         Записи, соответствующие заданным критериям фильтрации, не найдены.

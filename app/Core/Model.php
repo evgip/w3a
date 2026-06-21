@@ -245,12 +245,6 @@ abstract class Model
             throw new \InvalidArgumentException("Invalid ID");
         }
 
-        // Log auditing footprint automatically if required
-        \App\Core\Audit::log('model.soft_delete', "Запись отправлена в архив", [
-            'table' => $this->table,
-            'record_id' => $id
-        ]);
-
         return $this->update($id, [
             'deleted_at' => date('Y-m-d H:i:s')
         ]);
@@ -261,11 +255,6 @@ abstract class Model
      */
     public function restore($id): bool
     {
-        \App\Core\Audit::log('model.restore', "Запись восстановлена из архива", [
-            'table' => $this->table,
-            'record_id' => $id
-        ]);
-
         return $this->update($id, [
             'deleted_at' => null
         ]);

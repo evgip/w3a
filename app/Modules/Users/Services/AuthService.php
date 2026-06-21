@@ -32,11 +32,6 @@ class AuthService
             return null;
         }
 
-        if ($this->userModel->isBanned((int)$user['id'])) {
-            AppCoreSession::setFlash('error', 'Аккаунт заблокирован.');
-            return null;
-        }
-
         return $user;
     }
 

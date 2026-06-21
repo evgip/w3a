@@ -61,6 +61,7 @@ if ($currentUserId > 0) {
 							'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
 							'canDownvote' => $canUserDownvote,
 							'isLoggedIn' => $currentUserId > 0,
+							'contentOwnerId' => (int)$story['user_id'],
 						]); ?>
 
                         <!-- Контент -->

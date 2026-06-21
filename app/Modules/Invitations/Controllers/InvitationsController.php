@@ -3,7 +3,6 @@
 namespace App\Modules\Invitations\Controllers;
 
 use App\Core\Controller;
-use App\Core\Request;
 use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Mailer;
@@ -38,11 +37,6 @@ class InvitationsController extends Controller
      */
     public function index(): void
     {
-        if (!Auth::check()) {
-            header('Location: ' . route('auth.login'));
-            exit;
-        }
-
         if (!$this->isInvitationsEnabled()) {
             Session::setFlash('error', 'Система приглашений отключена.');
             header('Location: /');
@@ -68,7 +62,7 @@ class InvitationsController extends Controller
             'maxInvitations' => $maxInvitations,
             'hasEnoughKarma' => $this->hasEnoughKarma($userId),
             'minKarma' => config_int('config.app.min_karma_for_invitation', 10),
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
 
@@ -77,13 +71,7 @@ class InvitationsController extends Controller
      */
     public function create(): void
     {
-        if (!Auth::check()) {
-            header('Location: ' . route('auth.login'));
-            exit;
-        }
-
-        $request = new Request();
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         if (!$this->isInvitationsEnabled()) {
             Session::setFlash('error', 'Система приглашений отключена.');
@@ -153,13 +141,7 @@ class InvitationsController extends Controller
      */
     public function revoke(int $id): void
     {
-        if (!Auth::check()) {
-            header('Location: ' . route('auth.login'));
-            exit;
-        }
-
-        $request = new Request();
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         $userId = (int)$_SESSION['user_id'];
         $invitationModel = new Invitation();
@@ -194,12 +176,11 @@ class InvitationsController extends Controller
             exit;
         }
 
-        $request = new Request();
         $this->render('register_invite', [
             'title' => 'Регистрация по приглашению',
             'code' => $code,
             'invitation' => $invitation,
-            'request' => $request
+            'request' => $this->request
         ]);
     }
 
@@ -214,7 +195,7 @@ class InvitationsController extends Controller
             exit;
         }
 
-        $request = new Request();
+        $request = $this->request;
         $request->validateCsrf();
 
         $invitationModel = new Invitation();
@@ -296,7 +277,7 @@ class InvitationsController extends Controller
 
         $this->render('request', [
             'title' => 'Запрос приглашения',
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
 
@@ -311,8 +292,7 @@ class InvitationsController extends Controller
             exit;
         }
 
-        $request = new Request();
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         $email = trim($request->getParams('email'));
         $reason = trim($request->getParams('reason'));

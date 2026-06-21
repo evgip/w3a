@@ -27,57 +27,6 @@ class Moderation extends Model
         return $sql;
     }
 
-    /**
-     * Получить публичный лог модерации с пагинацией
-     */
-    public function getPublicLog(int $page = 1, int $perPage = 30): array
-    {
-        $offset = ($page - 1) * $perPage;
-
-        // Получаем записи
-        $sql = "SELECT m.*, u.username AS moderator_name
-                FROM `moderations` m
-                LEFT JOIN `users` u ON u.id = m.moderator_id
-                ORDER BY m.`created_at` DESC
-                LIMIT :limit OFFSET :offset";
-        $stmt = static::db()->prepare($sql);
-        $stmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
-        $stmt->execute();
-        $items = $stmt->fetchAll();
-
-        // Получаем общее количество
-        $countSql = "SELECT COUNT(*) FROM `moderations`";
-        $total = (int) static::db()->query($countSql)->fetchColumn();
-
-        return [
-            'items' => $items,
-            'total' => $total,
-            'pages' => (int) ceil($total / $perPage),
-            'current_page' => $page,
-        ];
-    }
-
-    /**
-     * Записать действие в лог + обновить статистику активности
-     */
-    public function logAction(int $moderatorId, string $action, string $targetType, int $targetId, ?string $reason = null): int
-    {
-        $id = $this->create([
-            'moderator_id' => $moderatorId,
-            'action'       => $action,
-            'target_type'  => $targetType,
-            'target_id'    => $targetId,
-            'reason'       => $reason,
-        ]);
-
-        // Обновляем счётчик активности за сегодня
-        $activity = new ModActivity();
-        $activity->incrementToday($moderatorId, $action);
-
-        return $id;
-    }
-	
 	/**
 	 * Универсальное форматирование ссылки для лога модерации
 	 * 

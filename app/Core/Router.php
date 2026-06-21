@@ -3,6 +3,8 @@
 namespace App\Core;
 
 use App\Core\Middleware\MiddlewarePipeline;
+use App\Core\Events\EventDispatcher;
+use App\Providers\EventServiceProvider;
 
 class Router
 {
@@ -30,6 +32,8 @@ class Router
     
     /** @var string Путь к файлу кэша маршрутов */
     protected string $cacheFile;
+	
+	protected ?EventDispatcher $eventDispatcher = null;
     
     /** @var array Группы middleware (алиасы) */
 	protected array $middlewareGroups = [
@@ -43,12 +47,10 @@ class Router
 			\App\Core\Middleware\GuestMiddleware::class,
 		],
 		'moderator' => [
-			\App\Core\Middleware\AuthMiddleware::class,      // Сначала проверяем авторизацию
-			\App\Core\Middleware\ModeratorMiddleware::class, // Затем роль
+			\App\Core\Middleware\ModeratorMiddleware::class,
 		],
 		'admin' => [
-			\App\Core\Middleware\AuthMiddleware::class,      // Сначала проверяем авторизацию
-			\App\Core\Middleware\AdminMiddleware::class,     // Затем роль
+			\App\Core\Middleware\AdminMiddleware::class,
 		],
 	];
 	
@@ -311,6 +313,12 @@ class Router
      */
     public function dispatch(): void
     {
+		// ✅ ИНИЦИАЛИЗАЦИЯ EVENT DISPATCHER (один раз на весь запрос)
+		if ($this->eventDispatcher === null) {
+			$this->eventDispatcher = new EventDispatcher();
+			EventServiceProvider::register($this->eventDispatcher);
+		}
+		
         $uri = $this->request->getUri();
         $method = $this->request->getMethod();
 
@@ -406,8 +414,9 @@ class Router
             return;
         }
         
-        $controllerInstance = new $controllerClass();
-        
+		// ✅ Передаём Request и EventDispatcher
+		$controllerInstance = new $controllerClass($this->request, $this->eventDispatcher);
+		
         if (!method_exists($controllerInstance, $method)) {
             $this->triggerError(500, "Method $method not found in $controllerClass");
             return;

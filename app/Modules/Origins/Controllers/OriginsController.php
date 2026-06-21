@@ -3,7 +3,6 @@
 namespace App\Modules\Origins\Controllers;
 
 use App\Core\Controller;
-use App\Core\Request;
 use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Audit;
@@ -32,11 +31,9 @@ class OriginsController extends Controller
      */
     public function showBanForm(): void
     {
-        $this->requireModerator();
-
         $this->render('ban_form', [
             'title'   => 'Заблокировать домен',
-            'request' => new Request(),
+            'request' => $this->request,
         ]);
     }
 
@@ -45,10 +42,7 @@ class OriginsController extends Controller
      */
     public function ban(): void
     {
-        $this->requireModerator();
-
-        $request = new Request();
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         $domain = strtolower(trim($request->getParams('domain')));
         $reason = trim($request->getParams('ban_reason')) ?: 'Нарушение правил сообщества';
@@ -82,10 +76,7 @@ class OriginsController extends Controller
      */
     public function unban(string $id): void
     {
-        $this->requireModerator();
-
-        $request = new Request();
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         $domainModel = new Domain();
         $domain = $domainModel->find((int) $id);
@@ -112,8 +103,6 @@ class OriginsController extends Controller
      */
     public function adminIndex(): void
     {
-        $this->requireModerator();
-
         $domainModel = new Domain();
         $allDomains = $domainModel->getAllDomains();
 
@@ -124,14 +113,4 @@ class OriginsController extends Controller
         ]);
     }
 
-    /**
-     * Проверка прав модератора или админа
-     */
-    private function requireModerator(): void
-    {
-        if (!Auth::isAdmin() && !Auth::isModerator()) {
-            http_response_code(403);
-            die('<h1>403 Forbidden</h1><p>Доступ запрещён. Требуются права модератора.</p>');
-        }
-    }
 }

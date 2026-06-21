@@ -3,7 +3,6 @@
 namespace App\Modules\Search\Controllers;
 
 use App\Core\Controller;
-use App\Core\Request;
 use App\Modules\Search\Models\SearchResult;
 
 class SearchController extends Controller
@@ -13,11 +12,9 @@ class SearchController extends Controller
      */
     public function index(): void
     {
-        $request = new Request();
-        
-        $query  = trim($request->getParams('q', ''));
-        $sortBy = $request->getParams('order', 'relevance'); 
-        $what   = $request->getParams('what', 'stories'); // NEW: 'stories' or 'comments'
+        $query  = trim($this->request->getParams('q', ''));
+        $sortBy = $this->request->getParams('order', 'relevance'); 
+        $what   = $this->request->getParams('what', 'stories'); // NEW: 'stories' or 'comments'
 
         $results = [];
         if (strlen($query) >= 3) {

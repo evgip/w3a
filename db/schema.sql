@@ -217,22 +217,6 @@ CREATE TABLE `messages` (
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `moderations`
---
-
-CREATE TABLE `moderations` (
-  `id` int UNSIGNED NOT NULL,
-  `moderator_id` int UNSIGNED NOT NULL,
-  `action` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Тип: ban, unban, delete_story, warn, mute и т.д.',
-  `target_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Тип объекта: user, story, comment',
-  `target_id` int UNSIGNED NOT NULL COMMENT 'ID объекта воздействия',
-  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Структура таблицы `mod_activity`
 --
 
@@ -697,16 +681,6 @@ ALTER TABLE `messages`
   ADD KEY `idx_msg_lookup` (`conversation_id`,`created_at`);
 
 --
--- Индексы таблицы `moderations`
---
-ALTER TABLE `moderations`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_moderator_id` (`moderator_id`),
-  ADD KEY `idx_action` (`action`),
-  ADD KEY `idx_target` (`target_type`,`target_id`),
-  ADD KEY `idx_created_at` (`created_at`);
-
---
 -- Индексы таблицы `mod_activity`
 --
 ALTER TABLE `mod_activity`
@@ -901,12 +875,6 @@ ALTER TABLE `messages`
   MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT для таблицы `moderations`
---
-ALTER TABLE `moderations`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT для таблицы `mod_activity`
 --
 ALTER TABLE `mod_activity`
@@ -1037,12 +1005,6 @@ ALTER TABLE `messages`
   ADD CONSTRAINT `fk_msg_sender_id` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
--- Ограничения внешнего ключа таблицы `moderations`
---
-ALTER TABLE `moderations`
-  ADD CONSTRAINT `fk_moderations_moderator` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-
---
 -- Ограничения внешнего ключа таблицы `mod_activity`
 --
 ALTER TABLE `mod_activity`
@@ -1115,3 +1077,15 @@ ALTER TABLE `votes`
 
 
 ALTER TABLE `categories` ADD `deleted_at` TIMESTAMP NULL DEFAULT NULL AFTER `updated_at`;
+
+
+-- Добавляем поле категории
+ALTER TABLE audit_logs 
+ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'general' AFTER description;
+
+-- Индекс для быстрой фильтрации
+CREATE INDEX idx_audit_category ON audit_logs(category);
+
+-- Индекс для составных запросов (категория + дата)
+CREATE INDEX idx_audit_category_created ON audit_logs(category, created_at);
+

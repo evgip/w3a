@@ -3,7 +3,6 @@
 namespace App\Modules\Messages\Controllers;
 
 use App\Core\Controller;
-use App\Core\Request;
 use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Validator;
@@ -20,15 +19,6 @@ class MessagesController extends Controller
 {
     private ?ConversationService $conversationService = null;
     private ?MessageService $messageService = null;
-
-    public function __construct()
-    {
-        if (!Auth::check()) {
-            Session::setFlash('error', 'Пожалуйста, авторизуйтесь для доступа к сообщениям.');
-            header('Location: /login');
-            exit;
-        }
-    }
 
     // =========================================================================
     // ЛЕНИВЫЕ ГЕТТЕРЫ СЕРВИСОВ
@@ -89,8 +79,7 @@ class MessagesController extends Controller
 
         $this->getMessageService()->markAsRead($conversationId, $userId);
 
-        $request = new Request();
-        $currentPage = max(1, (int)$request->getParams('chat_page', 1));
+        $currentPage = max(1, (int)$this->request->getParams('chat_page', 1));
         $perPage = config_int('pagination.messages_per_page', 15);
 
         $messagesData = $this->getMessageService()->getPaginatedMessages($conversationId, $currentPage, $perPage);
@@ -103,7 +92,7 @@ class MessagesController extends Controller
             'conversationId' => $conversationId,
             'currentPage' => $messagesData['currentPage'],
             'totalPages' => $messagesData['totalPages'],
-            'request' => $request
+            'request' => $this->request
         ]);
     }
 
@@ -113,8 +102,7 @@ class MessagesController extends Controller
 
     public function sendMessage(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         $conversationId = (int)$request->getParams('conversation_id');
         $messageText = trim($request->getParams('message_text'));
@@ -142,8 +130,7 @@ class MessagesController extends Controller
 
     public function startConversation(string $userId): void
     {
-        $request = new Request();
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         $myId = (int)$_SESSION['user_id'];
         $targetUid = (int)$userId;

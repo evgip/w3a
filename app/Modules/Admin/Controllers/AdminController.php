@@ -5,7 +5,6 @@ namespace App\Modules\Admin\Controllers;
 
 use App\Core\Controller;
 use App\Core\Auth;
-use App\Core\Request;
 use App\Core\Session;
 use App\Modules\Admin\Services\AdminUserService;
 use App\Modules\Admin\Services\AdminTagService;
@@ -101,7 +100,7 @@ class AdminController extends Controller
         $this->render('users_list', [
             'title' => 'Управление пользователями',
             'users' => $this->getUserService()->getAdminUsersList(100),
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
     
@@ -117,15 +116,12 @@ class AdminController extends Controller
         $this->render('user_edit_panel', [
             'title' => 'Модерация профиля: ' . e($user['username']),
             'userItem' => $user,
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
     
     public function updateUser(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $this->getUserService()->updateUserProfile((int)$id, [
             'email' => $request->getParams('email'),
             'role' => $request->getParams('role'),
@@ -139,9 +135,6 @@ class AdminController extends Controller
     
     public function archiveUser(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $success = $this->getUserService()->archiveUser((int)$id, (int)$_SESSION['user_id']);
         
         if ($success) {
@@ -154,9 +147,6 @@ class AdminController extends Controller
     
     public function restoreUser(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $this->getUserService()->restoreUser((int)$id);
         Session::setFlash('success', 'Аккаунт пользователя успешно восстановлен из архива.');
         
@@ -166,9 +156,6 @@ class AdminController extends Controller
     
     public function toggleUserStatus(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $result = $this->getUserService()->toggleUserStatus((int)$id, (int)$_SESSION['user_id']);
         
         if ($result === -2) {
@@ -187,9 +174,6 @@ class AdminController extends Controller
     
     public function deleteUserAvatar(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $userId = (int)$id;
         
         if ($this->getUserService()->deleteUserAvatar($userId)) {
@@ -216,15 +200,12 @@ class AdminController extends Controller
     {
         $this->render('tag_create', [
             'title' => 'Создание нового тега',
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
     
     public function createTag(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $result = $this->getTagService()->createTag([
 			'name' => $request->getParams('name'),
             'tag' => $request->getParams('tag'),
@@ -254,15 +235,12 @@ class AdminController extends Controller
         $this->render('tag_edit', [
             'title' => 'Редактирование тега #' . e($tag['tag']),
             'tagItem' => $tag,
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
     
     public function updateTag(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $tagId = (int)$id;
         $success = $this->getTagService()->updateTag($tagId, [
 			'name' => $request->getParams('name'),
@@ -283,9 +261,6 @@ class AdminController extends Controller
     
     public function deleteTag(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $tagId = (int)$id;
         $success = $this->getTagService()->softDeleteTag($tagId);
         
@@ -301,9 +276,6 @@ class AdminController extends Controller
     
     public function restoreTag(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $tagId = (int)$id;
         $success = $this->getTagService()->restoreTag($tagId);
         
@@ -333,15 +305,12 @@ class AdminController extends Controller
     {
         $this->render('category_create', [
             'title' => 'Создание новой категории',
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
     
     public function createCategory(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $result = $this->getCategoryService()->createCategory([
             'name' => $request->getParams('name'),
             'slug' => $request->getParams('slug'),
@@ -371,15 +340,12 @@ class AdminController extends Controller
         $this->render('category_edit', [
             'title' => 'Редактирование категории: ' . e($category['name']),
             'categoryItem' => $category,
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
     
     public function updateCategory(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $categoryId = (int)$id;
         $success = $this->getCategoryService()->updateCategory($categoryId, [
             'name' => $request->getParams('name'),
@@ -399,9 +365,6 @@ class AdminController extends Controller
     
     public function deleteCategory(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         if ($this->getCategoryService()->deleteCategory((int)$id)) {
             Session::setFlash('success', "Категория успешно удалена.");
         }
@@ -413,46 +376,68 @@ class AdminController extends Controller
     // =========================================================================
     // АУДИТ
     // =========================================================================
-    
-    public function auditLogs(): void
-    {
-        $request = new Request();
-        
-        $filterUserId = isset($_GET['filter_user_id']) && $_GET['filter_user_id'] !== '' ? (int)$_GET['filter_user_id'] : null;
-        $filterAction = isset($_GET['filter_action']) && $_GET['filter_action'] !== '' ? trim($_GET['filter_action']) : null;
-        $searchQuery = isset($_GET['search']) && $_GET['search'] !== '' ? trim($_GET['search']) : null;
-        
-        $currentPage = max(1, (int)$request->getParams('page', 1));
-        $perPage = 25;
-        $offset = ($currentPage - 1) * $perPage;
-        
-        $logs = $this->getAuditService()->getFilteredLogs($perPage, $offset, $filterUserId, $filterAction, $searchQuery);
-        $totalLogs = $this->getAuditService()->getFilteredCount($filterUserId, $filterAction, $searchQuery);
-        $totalPages = max(1, (int)ceil($totalLogs / $perPage));
-        
-        $this->render('audit_list', [
-            'title' => 'Журнал аудита системы',
-            'logs' => $logs,
-            'uniqueActions' => $this->getAuditService()->getUniqueActions(),
-            'currentPage' => $currentPage,
-            'totalPages' => $totalPages,
-            'currentFilters' => [
-                'user_id' => $filterUserId,
-                'action' => $filterAction,
-                'search' => $searchQuery
-            ]
-        ]);
-    }
+	public function auditLogs(): void
+	{
+		// ✅ Используем query() для GET-параметров с защитой от null
+		$filterUserIdRaw = $this->request->query('filter_user_id');
+		$filterUserId = ($filterUserIdRaw !== null && $filterUserIdRaw !== '') 
+			? (int)$filterUserIdRaw 
+			: null;
+		
+		$filterActionRaw = $this->request->query('filter_action');
+		$filterAction = ($filterActionRaw !== null && $filterActionRaw !== '') 
+			? trim($filterActionRaw) 
+			: null;
+		
+		$filterCategoryRaw = $this->request->query('category');
+		$filterCategory = ($filterCategoryRaw !== null && $filterCategoryRaw !== '') 
+			? trim($filterCategoryRaw) 
+			: null;
+		
+		$searchQueryRaw = $this->request->query('search');
+		$searchQuery = ($searchQueryRaw !== null && $searchQueryRaw !== '') 
+			? trim($searchQueryRaw) 
+			: null;
+		
+		$currentPage = max(1, (int)$this->request->query('page', 1));
+		$perPage = 25;
+		$offset = ($currentPage - 1) * $perPage;
+		
+		$logs = $this->getAuditService()->getFilteredLogs(
+			$perPage, $offset, $filterUserId, $filterAction, $searchQuery, $filterCategory
+		);
+		$totalLogs = $this->getAuditService()->getFilteredCount(
+			$filterUserId, $filterAction, $searchQuery, $filterCategory
+		);
+		$totalPages = max(1, (int)ceil($totalLogs / $perPage));
+		
+		$this->render('audit_list', [
+			'title' => 'Журнал аудита системы',
+			'logs' => $logs,
+			'uniqueActions' => $this->getAuditService()->getUniqueActions(),
+			'uniqueCategories' => $this->getAuditService()->getUniqueCategories(),
+			'currentPage' => $currentPage,
+			'totalPages' => $totalPages,
+			'currentFilters' => [
+				'user_id' => $filterUserId,
+				'action' => $filterAction,
+				'search' => $searchQuery,
+				'category' => $filterCategory
+			],
+			'categoryLabels' => [
+				'general' => 'Обычные',
+				'moderation' => 'Модерация',
+				'admin' => 'Администрирование',
+				'security' => 'Безопасность',
+				'system' => 'Системные',
+			]
+		]);
+	}
+
     
     public function getSecurityAlertsApi(): void
     {
         header('Content-Type: application/json');
-        
-        if (!Auth::isAdmin()) {
-            http_response_code(403);
-            echo json_encode(['status' => 'error', 'message' => 'Forbidden']);
-            exit;
-        }
         
         echo json_encode([
             'status' => 'success',
@@ -471,15 +456,12 @@ class AdminController extends Controller
         $this->render('firewall', [
             'title' => 'Сетевой экран (Firewall)',
             'bannedIps' => $this->getFirewallService()->getBannedIps(),
-            'request' => new Request()
+            'request' => $this->request
         ]);
     }
     
     public function banIp(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $ip = trim($request->getParams('ip_address'));
         $reason = trim($request->getParams('reason')) ?: 'Нарушение правил сообщества';
         
@@ -499,9 +481,6 @@ class AdminController extends Controller
     
     public function unbanIp(string $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $ip = $this->getFirewallService()->unbanIp((int)$id);
         
         if ($ip) {
@@ -525,9 +504,6 @@ class AdminController extends Controller
     
     public function compileAssets(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $this->getToolsService()->compileAssets();
         Session::setFlash('success', 'Все CSS файлы модулей успешно найдены, объединены и сжаты силами PHP!');
         
@@ -537,9 +513,6 @@ class AdminController extends Controller
     
     public function clearFileLogs(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $count = $this->getToolsService()->clearFileLogs();
         Session::setFlash('success', "Текстовые логи успешно очищены (обнулено файлов: {$count}).");
         
@@ -549,9 +522,6 @@ class AdminController extends Controller
     
     public function clearDbAudit(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         if ($this->getAuditService()->clearAuditLogs()) {
             \App\Core\Audit::log('admin.tools_clear_db', 'Администратор выполнил полную очистку (TRUNCATE) таблицы аудита в базе данных');
             Session::setFlash('success', 'Таблица логов аудита в базе данных успешно и полностью очищена.');
@@ -565,9 +535,6 @@ class AdminController extends Controller
     
     public function cacheRoutes(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         global $router;
         $this->getToolsService()->cacheRoutes($router);
         Session::setFlash('success', 'Маршруты всех модулей успешно оптимизированы и сохранены в кэш-файл.');
@@ -578,9 +545,6 @@ class AdminController extends Controller
     
     public function clearCacheRoutes(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         global $router;
         $this->getToolsService()->clearCacheRoutes($router);
         Session::setFlash('success', 'Кэш маршрутов успешно сброшен.');
@@ -591,9 +555,6 @@ class AdminController extends Controller
     
     public function sendTestEmail(): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         $email = $request->getParams('email');
         
         if (!$email) {
@@ -631,9 +592,6 @@ class AdminController extends Controller
     
     public function approveInvitation(int $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         if ($this->getInvitationService()->approveRequest($id)) {
             Session::setFlash('success', 'Запрос одобрен.');
         } else {
@@ -646,9 +604,6 @@ class AdminController extends Controller
     
     public function rejectInvitation(int $id): void
     {
-        $request = new Request();
-        $request->validateCsrf();
-        
         if ($this->getInvitationService()->rejectRequest($id)) {
             Session::setFlash('success', 'Запрос отклонён.');
         } else {

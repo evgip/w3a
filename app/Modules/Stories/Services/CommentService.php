@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Stories\Services;
 
 use App\Modules\Stories\Models\Comment;
-use App\Modules\Moderations\Models\Moderation;
 use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Validator;
@@ -70,103 +69,106 @@ class CommentService
         return $commentId;
     }
 
-    /**
-     * Обновляет текст комментария.
-     *
-     * @param int $commentId ID комментария
-     * @param string $newText Новый текст
-     * @param int $userId ID текущего пользователя
-     * @return bool Успешно ли обновлено
-     */
-    public function updateComment(int $commentId, string $newText, int $userId): bool
-    {
-        $comment = $this->commentModel->withTrashed()->find($commentId);
-        if (!$comment) {
-            return false;
-        }
+	/**
+	 * Обновляет текст комментария.
+	 *
+	 * @param int $commentId ID комментария
+	 * @param string $newText Новый текст
+	 * @param int $userId ID текущего пользователя
+	 * @return array|null Данные комментария при успехе, null при ошибке
+	 */
+	public function updateComment(int $commentId, string $newText, int $userId): ?array
+	{
+		$comment = $this->commentModel->withTrashed()->find($commentId);
+		if (!$comment) {
+			return null;  // ✅ Было: return false
+		}
 
-        // Проверка прав
-        if (!$this->canEditComment($comment, $userId)) {
-            Session::setFlash('error', 'У вас нет прав для изменения этого комментария.');
-            return false;
-        }
+		// Проверка прав
+		if (!$this->canEditComment($comment, $userId)) {
+			Session::setFlash('error', 'У вас нет прав для изменения этого комментария.');
+			return null;  // ✅ Было: return false
+		}
 
-        // Валидация
-        if (!$this->validateCommentText($newText)) {
-            Session::setFlash('error', 'Текст комментария должен содержать не менее 2 символов.');
-            return false;
-        }
+		// Валидация
+		if (!$this->validateCommentText($newText)) {
+			Session::setFlash('error', 'Текст комментария должен содержать не менее 2 символов.');
+			return null;  // ✅ Было: return false
+		}
 
-        // Обновление
-        $this->commentModel->update($commentId, ['comment' => trim($newText)]);
+		// Обновление
+		$this->commentModel->update($commentId, ['comment' => trim($newText)]);
 
-        // Логирование
-        Audit::log('comment.updated', 'Пользователь отредактировал свой комментарий', [
-            'comment_id' => $commentId,
-        ]);
+		// ✅ Возвращаем данные для контроллера
+		return [
+			'comment' => $comment,
+			'is_author' => $this->checkIsAuthor($comment, $userId),
+		];
+	}
 
-        Moderation::logCommentModeratorAction('Изменён', $this->checkIsAuthor($comment, $userId), $comment);
+	/**
+	 * Мягко удаляет комментарий.
+	 *
+	 * @param int $commentId ID комментария
+	 * @param int $userId ID текущего пользователя
+	 * @return array|null Данные комментария при успехе, null при ошибке
+	 */
+	public function deleteComment(int $commentId, int $userId): ?array
+	{
+		$comment = $this->commentModel->find($commentId);
+		if (!$comment) {
+			return null;
+		}
 
-        return true;
-    }
+		// Проверка прав
+		if (!$this->canDeleteComment($comment, $userId)) {
+			Session::setFlash('error', 'Недостаточно прав для удаления.');
+			return null;
+		}
 
-    /**
-     * Мягко удаляет комментарий.
-     *
-     * @param int $commentId ID комментария
-     * @param int $userId ID текущего пользователя
-     * @return bool Успешно ли удалено
-     */
-    public function deleteComment(int $commentId, int $userId): bool
-    {
-        $comment = $this->commentModel->find($commentId);
-        if (!$comment) {
-            return false;
-        }
+		// Удаление
+		$this->commentModel->softDeleteComment($commentId, (int)$comment['story_id']);
+		Session::setFlash('success', 'Комментарий успешно удален.');
 
-        // Проверка прав
-        if (!$this->canDeleteComment($comment, $userId)) {
-            Session::setFlash('error', 'Недостаточно прав для удаления.');
-            return false;
-        }
+		// ✅ Возвращаем данные для контроллера
+		return [
+			'comment' => $comment,
+			'story_id' => (int)$comment['story_id'],
+			'is_author' => (bool)$this->checkIsAuthor($comment, $userId),
+		];
+	}
 
-        // Удаление
-        $this->commentModel->softDeleteComment($commentId, (int)$comment['story_id']);
-        Session::setFlash('success', 'Комментарий успешно удален.');
+	/**
+	 * Восстанавливает удалённый комментарий.
+	 */
+	public function restoreComment(int $commentId, int $userId): ?array
+	{
+		$comment = $this->commentModel->withTrashed()->find($commentId);
+		
+		if (!$comment) {
+			return null;
+		}
 
-        Moderation::logCommentModeratorAction('Удален', $this->checkIsAuthor($comment, $userId), $comment);
+		if (empty($comment['deleted_at'])) {
+			Session::setFlash('error', 'Комментарий не удалён.');
+			return null;
+		}
 
-        return true;
-    }
+		if (!$this->canDeleteComment($comment, $userId)) {
+			Session::setFlash('error', 'Недостаточно прав для восстановления.');
+			return null;
+		}
 
-    /**
-     * Восстанавливает удалённый комментарий.
-     *
-     * @param int $commentId ID комментария
-     * @param int $userId ID текущего пользователя
-     * @return bool Успешно ли восстановлено
-     */
-    public function restoreComment(int $commentId, int $userId): bool
-    {
-        $comment = $this->commentModel->withTrashed()->find($commentId);
-        if (!$comment || empty($comment['deleted_at'])) {
-            return false;
-        }
+		// ✅ Передаём оба параметра: ID комментария и ID истории
+		$this->commentModel->restoreComment($commentId, (int)$comment['story_id']);
+		Session::setFlash('success', 'Комментарий успешно восстановлен.');
 
-        // Проверка прав
-        if (!$this->canDeleteComment($comment, $userId)) {
-            Session::setFlash('error', 'Недостаточно прав для восстановления.');
-            return false;
-        }
-
-        // Восстановление
-        $this->commentModel->restoreComment($commentId, (int)$comment['story_id']);
-        Session::setFlash('success', 'Комментарий успешно восстановлен из архива.');
-
-        Moderation::logCommentModeratorAction('Восстановлен', $this->checkIsAuthor($comment, $userId), $comment);
-
-        return true;
-    }
+		return [
+			'comment' => $comment,
+			'story_id' => (int)$comment['story_id'],
+			'is_author' => (bool)$this->checkIsAuthor($comment, $userId),
+		];
+	}
 
     /**
      * Проверяет, может ли пользователь редактировать комментарий.
@@ -200,7 +202,7 @@ class CommentService
 
     /**
      * Определяет, является ли пользователь автором комментария.
-     * Возвращает 1 (автор) или 0 (не автор) для совместимости с Moderation::logCommentModeratorAction().
+     * Возвращает 1 (автор) или 0 (не автор)
      */
     private function checkIsAuthor(array $comment, int $userId): int
     {

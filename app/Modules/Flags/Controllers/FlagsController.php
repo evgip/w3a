@@ -3,7 +3,6 @@
 namespace App\Modules\Flags\Controllers;
 
 use App\Core\Controller;
-use App\Core\Request;
 use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Audit;
@@ -48,8 +47,7 @@ class FlagsController extends Controller
      */
     public function submit(): void
     {
-        $request  = new Request();
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         $type     = $request->getParams('flaggable_type');
         $targetId = (int) $request->getParams('flaggable_id');
@@ -91,8 +89,6 @@ class FlagsController extends Controller
      */
     public function adminIndex(): void
     {
-        $this->requireModerator();
-
         $flagModel = new Flag();
         $pending = $flagModel->getPendingFlags();
         $recent  = $flagModel->getAllFlags(50);
@@ -112,10 +108,7 @@ class FlagsController extends Controller
      */
     public function resolve(string $id): void
     {
-        $this->requireModerator();
-
-        $request = new Request();
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         $action = $request->getParams('action') ?: 'hide';
         $modId  = (int) ($_SESSION['user_id'] ?? 0);
@@ -148,17 +141,8 @@ class FlagsController extends Controller
      */
     public function pendingCount(): void
     {
-        $this->requireModerator();
         header('Content-Type: application/json');
         echo json_encode(['count' => (new Flag())->getPendingCount()]);
         exit;
-    }
-
-    private function requireModerator(): void
-    {
-        if (!Auth::isAdmin() && !Auth::isModerator()) {
-            http_response_code(403);
-            die('<h1>403 Forbidden</h1><p>Требуются права модератора.</p>');
-        }
     }
 }

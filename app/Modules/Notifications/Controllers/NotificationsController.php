@@ -3,7 +3,6 @@
 namespace App\Modules\Notifications\Controllers;
 
 use App\Core\Controller;
-use App\Core\Request;
 use App\Core\Auth;
 use App\Modules\Notifications\Models\Notification;
 use App\Modules\Notifications\Services\NotificationService;
@@ -38,10 +37,9 @@ class NotificationsController extends Controller
     public function index(): void
     {
         $userId = (int)$_SESSION['user_id'];
-        $request = new Request();
 
-        $type = (string)$request->getParams('type', 'all');
-        $page = max(1, (int)$request->getParams('page', 1));
+        $type = (string)$this->request->getParams('type', 'all');
+        $page = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config_int('constants.pagination.notifications_per_page', 25);
 
         $data = $this->getNotificationService()->getNotificationsForIndex(
@@ -58,7 +56,7 @@ class NotificationsController extends Controller
             'counts' => $data['counts'],
             'totalUnread' => $data['totalUnread'],
             'currentPage' => $page,
-            'request' => $request,
+            'request' => $this->request,
         ]);
     }
 
@@ -71,12 +69,6 @@ class NotificationsController extends Controller
     public function markAsRead(string $id): void
     {
         header('Content-Type: application/json; charset=utf-8');
-
-        if (!Auth::check()) {
-            http_response_code(401);
-            echo json_encode(['success' => false, 'message' => 'Не авторизован']);
-            exit;
-        }
 
         // Проверяем CSRF из заголовка (JS отправляет его именно так)
         if (!$this->validateCsrfFromHeader()) {
@@ -113,12 +105,6 @@ class NotificationsController extends Controller
     {
         header('Content-Type: application/json; charset=utf-8');
 
-        if (!Auth::check()) {
-            http_response_code(401);
-            echo json_encode(['success' => false, 'message' => 'Не авторизован']);
-            exit;
-        }
-
         // Проверяем CSRF из заголовка
         if (!$this->validateCsrfFromHeader()) {
             http_response_code(403);
@@ -152,12 +138,6 @@ class NotificationsController extends Controller
     public function getCount(): void
     {
         header('Content-Type: application/json; charset=utf-8');
-
-        if (!Auth::check()) {
-            http_response_code(401);
-            echo json_encode(['count' => 0]);
-            exit;
-        }
 
         try {
             $userId = (int)Auth::id();

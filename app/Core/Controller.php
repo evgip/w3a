@@ -2,13 +2,43 @@
 
 namespace App\Core;
 
+use App\Core\Events\Event;
+use App\Core\Events\EventDispatcher;
+use App\Providers\EventServiceProvider;
+
 abstract class Controller
 {
+	protected Request $request;
+	protected EventDispatcher $eventDispatcher;
+	
+    /**
+     * Конструктор базового контроллера.
+     * Параметр опционален для обратной совместимости
+     * (например, при ручном создании ErrorsController).
+     */
+    public function __construct(?Request $request = null)
+    {
+        $this->request = $request ?? new Request();
+		
+        // Создаём EventDispatcher и регистрируем слушателей
+        $this->eventDispatcher = $eventDispatcher ?? new EventDispatcher();
+        \App\Providers\EventServiceProvider::register($this->eventDispatcher);
+    }
+	
+	
+    /**
+     * Отправить событие.
+     */
+    protected function dispatch(Event $event): void
+    {
+        $this->eventDispatcher->dispatch($event);
+    }
+	
     protected function render(string $viewName, array $data = []): void
     {
-		
-		// Добавляем CSRF токен во все представления
-		$data['csrf_token'] = (new \App\Core\Request())->getCsrfToken();
+        // БЫЛО: $data['csrf_token'] = (new \App\Core\Request())->getCsrfToken();
+        // СТАЛО: используем уже созданный инстанс
+        $data['csrf_token'] = $this->request->getCsrfToken();
 		
         extract($data);
 
