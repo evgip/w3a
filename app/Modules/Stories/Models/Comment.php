@@ -35,9 +35,6 @@ class Comment extends Model
 				'score' => 1
 			]);
 
-			$stmt = static::db()->prepare("UPDATE `stories` SET `comments_count` = `comments_count` + 1 WHERE `id` = :story_id");
-			$stmt->execute(['story_id' => $data['story_id']]);
-
 			static::db()->commit();
 
 			// Возвращаем ID созданного комментария (0 при ошибке)

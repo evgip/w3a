@@ -365,7 +365,7 @@ class StoriesController extends Controller
         );
 
         if ($commentId > 0) {
-			  $this->dispatch(new \App\Core\Events\CommentCreated(
+			  $this->dispatch(new CommentCreated(
 					$commentId,
 					$storyId,
 					(int)$_SESSION['user_id'],
