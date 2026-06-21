@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Audit;
 use App\Modules\Flags\Models\Flag;
+use App\Modules\Stories\Models\Comment;
 
 class FlagsController extends Controller
 {
@@ -16,7 +17,7 @@ class FlagsController extends Controller
      */
     public function reportForm(string $type, string $id): void
     {
-		$targetId = (int) $id;
+        $targetId = (int) $id;
 
         if (!in_array($type, ['story', 'comment'], true) || $targetId <= 0) {
             http_response_code(400);
@@ -28,16 +29,15 @@ class FlagsController extends Controller
 
         if ($flagModel->hasUserFlagged($userId, $type, $targetId)) {
             Session::setFlash('error', 'Вы уже подавали жалобу на этот контент.');
-            $back = $type === 'story' ? "/story/{$targetId}" : "/story#comment-block-{$targetId}";
-            header("Location: {$back}");
-            exit;
+            $this->redirect($this->buildTargetUrl($type, $targetId));
+            return;
         }
 
         $this->render('report_form', [
             'title'    => 'Пожаловаться на контент',
             'type'     => $type,
             'targetId' => $targetId,
-            'reasons'  => Flag::getReasons(), // ✅ было Flag::REASONS
+            'reasons'  => Flag::getReasons(),
         ]);
     }
 
@@ -49,10 +49,10 @@ class FlagsController extends Controller
     {
         $this->request->validateCsrf();
 
-        $type     = $request->getParams('flaggable_type');
-        $targetId = (int) $request->getParams('flaggable_id');
-        $reason   = $request->getParams('reason');
-        $comment  = $request->getParams('comment');
+        $type     = $this->request->getParams('flaggable_type');
+        $targetId = (int) $this->request->getParams('flaggable_id');
+        $reason   = $this->request->getParams('reason');
+        $comment  = $this->request->getParams('comment');
         $userId   = (int) ($_SESSION['user_id'] ?? 0);
 
         $flagModel = new Flag();
@@ -63,14 +63,14 @@ class FlagsController extends Controller
         } else {
             Session::setFlash('success', 'Спасибо! Ваша жалоба принята. Модераторы рассмотрят её в ближайшее время.');
 
-            Audit::log('flag.submitted', 'Пользователь подал жалобу', [
+            Audit::log('flag.submitted', 'Пользователь подал жалобу', 'flags', [
                 'type'   => $type,
                 'id'     => $targetId,
                 'reason' => $reason,
             ]);
 
             if (!empty($result['hidden'])) {
-                Audit::log('flag.auto_hidden', 'Контент автоматически скрыт по порогу флагов', [
+                Audit::log('flag.auto_hidden', 'Контент автоматически скрыт по порогу флагов', 'flags', [
                     'type'      => $type,
                     'id'        => $targetId,
                     'threshold' => Flag::getHideThreshold(),
@@ -78,9 +78,7 @@ class FlagsController extends Controller
             }
         }
 
-        $back = $type === 'story' ? "/story/{$targetId}" : "/story#comment-block-{$targetId}";
-        header("Location: {$back}");
-        exit;
+        $this->redirect($this->buildTargetUrl($type, $targetId));
     }
 
     /**
@@ -110,7 +108,7 @@ class FlagsController extends Controller
     {
         $this->request->validateCsrf();
 
-        $action = $request->getParams('action') ?: 'hide';
+        $action = $this->request->getParams('action') ?: 'hide';
         $modId  = (int) ($_SESSION['user_id'] ?? 0);
 
         $flagModel = new Flag();
@@ -118,22 +116,21 @@ class FlagsController extends Controller
 
         if (!$flag) {
             Session::setFlash('error', 'Жалоба не найдена');
-            header('Location: /admin/flags');
-            exit;
+            $this->redirect('/admin/flags');
+            return;
         }
 
         if ($action === 'dismiss') {
             $flagModel->dismiss((int) $id, $modId);
-            Audit::log('flag.dismissed', 'Модератор отклонил жалобу', ['flag_id' => (int) $id]);
+            Audit::log('flag.dismissed', 'Модератор отклонил жалобу', 'flags', ['flag_id' => (int) $id]);
             Session::setFlash('success', 'Жалоба отклонена. Контент восстановлен.');
         } else {
             $flagModel->resolve((int) $id, $modId);
-            Audit::log('flag.resolved', 'Модератор подтвердил жалобу', ['flag_id' => (int) $id]);
+            Audit::log('flag.resolved', 'Модератор подтвердил жалобу', 'flags', ['flag_id' => (int) $id]);
             Session::setFlash('success', 'Жалоба подтверждена. Контент скрыт.');
         }
 
-        header('Location: /admin/flags');
-        exit;
+        $this->redirect('/admin/flags');
     }
 
     /**
@@ -144,5 +141,35 @@ class FlagsController extends Controller
         header('Content-Type: application/json');
         echo json_encode(['count' => (new Flag())->getPendingCount()]);
         exit;
+    }
+
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * Строит URL для редиректа к целевому контенту (истории или комментарию).
+     *
+     * @param string $type     Тип контента: 'story' или 'comment'
+     * @param int    $targetId ID истории или комментария
+     * @return string URL для редиректа
+     */
+    private function buildTargetUrl(string $type, int $targetId): string
+    {
+        if ($type === 'story') {
+            // $targetId — это и есть ID истории
+            return "/story/{$targetId}";
+        }
+
+        // $targetId — это ID комментария, нужно получить story_id
+        $commentModel = new Comment();
+        $comment = $commentModel->find($targetId);
+
+        if ($comment && !empty($comment['story_id'])) {
+            return "/story/{$comment['story_id']}#comment-block-{$targetId}";
+        }
+
+        // Фолбэк, если комментарий не найден
+        return '/';
     }
 }

@@ -428,4 +428,36 @@ class Story extends Model
 
 		return (int)$stmt->fetchColumn();
 	}
+	
+	/**
+	 * Атомарно изменяет счётчик комментариев.
+	 *
+	 * @param int $storyId ID истории
+	 * @param int $delta   Изменение (+1 или -1)
+	 */
+	public function incrementCommentsCount(int $storyId, int $delta): void
+	{
+		$db = \App\Core\Database::getInstance();
+		$db->execute(
+			"UPDATE stories SET comments_count = GREATEST(0, comments_count + ?) WHERE id = ?",
+			[$delta, $storyId]
+		);
+	}
+
+	/**
+	 * Пересчитывает счётчик комментариев с нуля (для синхронизации).
+	 */
+	public function recalculateCommentsCount(int $storyId): void
+	{
+		$db = \App\Core\Database::getInstance();
+		$db->execute(
+			"UPDATE stories s 
+			 SET comments_count = (
+				 SELECT COUNT(*) FROM comments c 
+				 WHERE c.story_id = s.id AND c.deleted_at IS NULL
+			 )
+			 WHERE s.id = ?",
+			[$storyId]
+		);
+	}
 }

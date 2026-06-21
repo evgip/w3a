@@ -49,49 +49,29 @@ class Comment extends Model
 	}
 
 	/**
-	 * Мягкое удаление комментария с декрементом счетчика истории
+	 * Мягкое удаление комментария.
+	 * Счётчик комментариев обновляется автоматически через Event Listener.
 	 */
-	public function softDeleteComment(int $id, int $storyId): bool
+	public function softDeleteComment(int $commentId): bool
 	{
-		try {
-			static::db()->beginTransaction();
-
-			// Вызываем стандартное мягкое удаление из Core/Model
-			$this->delete($id);
-
-			// Уменьшаем счетчик комментариев у истории
-			$stmt = static::db()->prepare("UPDATE `stories` SET `comments_count` = `comments_count` - 1 WHERE `id` = :story_id AND `comments_count` > 0");
-			$stmt->execute(['story_id' => $storyId]);
-
-			static::db()->commit();
-			return true;
-		} catch (\Exception $e) {
-			static::db()->rollBack();
-			return false;
-		}
+		$stmt = static::db()->prepare(
+			"UPDATE comments SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL"
+		);
+		$stmt->execute([$commentId]);
+		return $stmt->rowCount() > 0;
 	}
 
 	/**
-	 * Восстановление комментария с инкрементом счетчика истории
+	 * Восстановление удалённого комментария.
+	 * Счётчик комментариев обновляется автоматически через Event Listener.
 	 */
-	public function restoreComment(int $id, int $storyId): bool
+	public function restoreComment(int $commentId): bool
 	{
-		try {
-			static::db()->beginTransaction();
-
-			// Вызываем восстановление из Core/Model
-			$this->restore($id);
-
-			// Увеличиваем счетчик комментариев обратно
-			$stmt = static::db()->prepare("UPDATE `stories` SET `comments_count` = `comments_count` + 1 WHERE `id` = :story_id");
-			$stmt->execute(['story_id' => $storyId]);
-
-			static::db()->commit();
-			return true;
-		} catch (\Exception $e) {
-			static::db()->rollBack();
-			return false;
-		}
+		$stmt = static::db()->prepare(
+			"UPDATE comments SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL"
+		);
+		$stmt->execute([$commentId]);
+		return $stmt->rowCount() > 0;
 	}
 
 	/**

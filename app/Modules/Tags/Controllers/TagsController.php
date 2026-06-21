@@ -3,7 +3,6 @@
 namespace App\Modules\Tags\Controllers;
 
 use App\Core\Controller as AppCoreController;
-use App\Core\Request as AppCoreRequest;
 use App\Core\Auth as AppCoreAuth;
 use App\Modules\Tags\Models\Category;
 use App\Modules\Tags\Models\Tag;
@@ -78,8 +77,7 @@ class TagsController extends AppCoreController
      */
     public function categoriesShow(string $slug): void
     {
-        $request = new AppCoreRequest();
-        $currentPage = max(1, (int)$request->getParams('page', 1));
+        $currentPage = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config_int('constants.pagination.stories_per_page', 15);
 
         $data = $this->getCategoryService()->getCategoryWithStories($slug, $currentPage, $perPage);
@@ -132,14 +130,12 @@ class TagsController extends AppCoreController
                 exit;
             }
 
-            $request = new AppCoreRequest();
-
-            if (!$request->isCsrfValid()) {
+            if (!$this->request->isCsrfValid()) {
                 echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
                 exit;
             }
 
-            $tagId = (int)$request->getParams('tag_id', 0);
+            $tagId = (int)$this->request->getParams('tag_id', 0);
             $userId = (int)AppCoreAuth::id();
 
             $result = $this->getFilterService()->addFilter($userId, $tagId);
@@ -166,11 +162,9 @@ class TagsController extends AppCoreController
                 exit;
             }
 
-            $request = new AppCoreRequest();
-
             // Проверка CSRF
             $sessionToken = $_SESSION['csrf_token'] ?? '';
-            $submittedToken = $request->getParams('csrf_token') ?? '';
+            $submittedToken = $this->request->getParams('csrf_token') ?? '';
 
             error_log("[FILTERS] CSRF Check -> Session: '{$sessionToken}', Submitted: '{$submittedToken}'");
 
@@ -179,7 +173,7 @@ class TagsController extends AppCoreController
                 exit;
             }
 
-            $tagId = (int)$request->getParams('tag_id', 0);
+            $tagId = (int)$this->request->getParams('tag_id', 0);
             $userId = (int)AppCoreAuth::id();
 
             $result = $this->getFilterService()->removeFilter($userId, $tagId);

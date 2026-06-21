@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Users\Controllers;
 
 use App\Core\Controller;
-use App\Core\Request as AppCoreRequest;
 use App\Core\Session as AppCoreSession;
 use App\Core\Auth;
 use App\Modules\Users\Services\UserService;
@@ -65,11 +64,8 @@ class UsersController extends Controller
      */
     public function login(): void
     {
-        $request = new AppCoreRequest();
-        $request->validateCsrf();
-
-        $email = trim($request->getParams('email'));
-        $password = $request->getParams('password');
+        $email = trim($this->request->getParams('email'));
+        $password = $this->request->getParams('password');
 
         $user = $this->getAuthService()->authenticate($email, $password);
         if (!$user) {
@@ -88,12 +84,10 @@ class UsersController extends Controller
      */
     public function showLoginForm()
     {
-        $request = new AppCoreRequest();
-        
         // Рендерим шаблон login.php из папки Views модуля Users
         $this->render('login', [
             'title' => 'Авторизация',
-            'request' => $request // Передаем объект запроса для вывода CSRF-поля
+            'request' => $this->request // Передаем объект запроса для вывода CSRF-поля
         ]);
     }
 
@@ -102,15 +96,13 @@ class UsersController extends Controller
      */
 	public function showRegisterForm(): void
 	{
-		$request = new AppCoreRequest();
-		
 		// Получаем старые значения из сессии (если есть)
 		$old = \App\Core\Session::get('old_input', []);
 		\App\Core\Session::delete('old_input'); // Очищаем после использования
 		
 		$this->render('register', [
 			'title' => 'Регистрация нового пользователя',
-			'request' => $request,
+			'request' => $this->request,
 			'old' => $old
 		]);
 	}
@@ -123,12 +115,9 @@ class UsersController extends Controller
      */
     public function register(): void
     {
-        $request = new AppCoreRequest();
-        $request->validateCsrf();
-
-        $username = trim($request->getParams('username'));
-        $email = trim($request->getParams('email'));
-        $password = $request->getParams('password');
+        $username = trim($this->request->getParams('username'));
+        $email = trim($this->request->getParams('email'));
+        $password = $this->request->getParams('password');
 
         $userId = $this->getAuthService()->register($username, $email, $password);
         if (!$userId) {
@@ -232,9 +221,6 @@ class UsersController extends Controller
      */
     public function updateSettings(): void
     {
-        $request = new AppCoreRequest();
-        $request->validateCsrf();
-
         $userId = (int)$_SESSION['user_id'];
         $user = $this->getUserService()->getUserWithProfile($userId);
 
@@ -243,8 +229,8 @@ class UsersController extends Controller
             exit;
         }
 
-        $email = trim($request->getParams('email'));
-        $bio = trim($request->getParams('bio'));
+        $email = trim($this->request->getParams('email'));
+        $bio = trim($this->request->getParams('bio'));
         $oldAvatarFilename = $user['avatar'];
         $newAvatarFilename = $oldAvatarFilename;
 
@@ -268,9 +254,9 @@ class UsersController extends Controller
         ]);
 
         $this->getUserService()->updateSettings($userId, [
-            'notify_on_reply' => $request->getParams('notify_on_reply') ? 1 : 0,
-            'notify_on_story_comment' => $request->getParams('notify_on_story_comment') ? 1 : 0,
-            'email_notifications' => $request->getParams('email_notifications') ? 1 : 0,
+            'notify_on_reply' => $this->request->getParams('notify_on_reply') ? 1 : 0,
+            'notify_on_story_comment' => $this->request->getParams('notify_on_story_comment') ? 1 : 0,
+            'email_notifications' => $this->request->getParams('email_notifications') ? 1 : 0,
         ]);
 
         $_SESSION['user_avatar'] = $newAvatarFilename;
@@ -288,12 +274,9 @@ class UsersController extends Controller
      */
     public function updatePassword(): void
     {
-        $request = new AppCoreRequest();
-        $request->validateCsrf();
-
         $userId = (int)$_SESSION['user_id'];
-        $currentPassword = $request->getParams('current_password');
-        $newPassword = $request->getParams('new_password');
+        $currentPassword = $this->request->getParams('current_password');
+        $newPassword = $this->request->getParams('new_password');
 
         if (strlen($newPassword) < 6) {
             AppCoreSession::setFlash('error', 'Пароль должен быть не менее 6 символов.');

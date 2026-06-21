@@ -101,7 +101,7 @@ class InvitationsController extends Controller
         }
 
         // Валидация email (опционально)
-        $email = trim($request->getParams('email'));
+        $email = trim($this->request->getParams('email'));
         if (!empty($email)) {
             $validator = new Validator();
             $validator->validate(['email' => $email], [
@@ -195,8 +195,7 @@ class InvitationsController extends Controller
             exit;
         }
 
-        $request = $this->request;
-        $request->validateCsrf();
+        $this->request->validateCsrf();
 
         $invitationModel = new Invitation();
         $invitation = $invitationModel->findByCode($code);
@@ -210,10 +209,10 @@ class InvitationsController extends Controller
         // Валидация
         $validator = new Validator();
         $validator->validate([
-            'username' => $request->getParams('username'),
-            'email' => $request->getParams('email'),
-            'password' => $request->getParams('password'),
-            'password_confirm' => $request->getParams('password_confirm')
+            'username' => $this->request->getParams('username'),
+            'email' => $this->request->getParams('email'),
+            'password' => $this->request->getParams('password'),
+            'password_confirm' => $this->request->getParams('password_confirm')
         ], [
             'username' => 'required|min:3|max:50',
             'email' => 'required|email',
@@ -229,13 +228,13 @@ class InvitationsController extends Controller
 
         // Проверка уникальности
         $userModel = new User();
-        if ($userModel->findBy('username', $request->getParams('username'))) {
+        if ($userModel->findBy('username', $this->request->getParams('username'))) {
             Session::setFlash('error', 'Имя пользователя уже занято.');
             header('Location: /register/invite/' . $code);
             exit;
         }
 
-        if ($userModel->findBy('email', $request->getParams('email'))) {
+        if ($userModel->findBy('email', $this->request->getParams('email'))) {
             Session::setFlash('error', 'Email уже зарегистрирован.');
             header('Location: /register/invite/' . $code);
             exit;
@@ -243,9 +242,9 @@ class InvitationsController extends Controller
 
         // Создание пользователя
         $newUserId = $userModel->create([
-            'username' => $request->getParams('username'),
-            'email' => $request->getParams('email'),
-            'password' => password_hash($request->getParams('password'), PASSWORD_BCRYPT),
+            'username' => $this->request->getParams('username'),
+            'email' => $this->request->getParams('email'),
+            'password' => password_hash($this->request->getParams('password'), PASSWORD_BCRYPT),
             'role' => 'user',
             'is_active' => 1 // Сразу активен, т.к. есть приглашение
         ]);
@@ -294,8 +293,8 @@ class InvitationsController extends Controller
 
         $this->request->validateCsrf();
 
-        $email = trim($request->getParams('email'));
-        $reason = trim($request->getParams('reason'));
+        $email = trim($this->request->getParams('email'));
+        $reason = trim($this->request->getParams('reason'));
 
         $validator = new Validator();
         $validator->validate([

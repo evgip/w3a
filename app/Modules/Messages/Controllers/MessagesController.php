@@ -102,10 +102,8 @@ class MessagesController extends Controller
 
     public function sendMessage(): void
     {
-        $this->request->validateCsrf();
-
-        $conversationId = (int)$request->getParams('conversation_id');
-        $messageText = trim($request->getParams('message_text'));
+        $conversationId = (int)$this->request->getParams('conversation_id');
+        $messageText = trim($this->request->getParams('message_text'));
         $userId = (int)$_SESSION['user_id'];
 
         $validator = new Validator();
@@ -130,8 +128,6 @@ class MessagesController extends Controller
 
     public function startConversation(string $userId): void
     {
-        $this->request->validateCsrf();
-
         $myId = (int)$_SESSION['user_id'];
         $targetUid = (int)$userId;
 

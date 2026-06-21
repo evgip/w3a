@@ -123,9 +123,9 @@ class AdminController extends Controller
     public function updateUser(string $id): void
     {
         $this->getUserService()->updateUserProfile((int)$id, [
-            'email' => $request->getParams('email'),
-            'role' => $request->getParams('role'),
-            'bio' => $request->getParams('bio'),
+            'email' => $this->request->getParams('email'),
+            'role' => $this->request->getParams('role'),
+            'bio' => $this->request->getParams('bio'),
         ]);
         
         Session::setFlash('success', 'Данные профиля пользователя успешно изменены администратором.');
@@ -207,11 +207,11 @@ class AdminController extends Controller
     public function createTag(): void
     {
         $result = $this->getTagService()->createTag([
-			'name' => $request->getParams('name'),
-            'tag' => $request->getParams('tag'),
-            'description' => $request->getParams('description'),
+			'name' => $this->request->getParams('name'),
+            'tag' => $this->request->getParams('tag'),
+            'description' => $this->request->getParams('description'),
             'is_media' => isset($_POST['is_media']) ? 1 : 0,
-            'category_id' => $request->getParams('category_id'),
+            'category_id' => $this->request->getParams('category_id'),
         ]);
         
         if ($result) {
@@ -243,11 +243,11 @@ class AdminController extends Controller
     {
         $tagId = (int)$id;
         $success = $this->getTagService()->updateTag($tagId, [
-			'name' => $request->getParams('name'),
-            'tag' => $request->getParams('tag'),
-            'description' => $request->getParams('description'),
+			'name' => $this->request->getParams('name'),
+            'tag' => $this->request->getParams('tag'),
+            'description' => $this->request->getParams('description'),
             'is_media' => isset($_POST['is_media']) ? 1 : 0,
-            'category_id' => $request->getParams('category_id'),
+            'category_id' => $this->request->getParams('category_id'),
         ]);
         
         if ($success) {
@@ -312,10 +312,10 @@ class AdminController extends Controller
     public function createCategory(): void
     {
         $result = $this->getCategoryService()->createCategory([
-            'name' => $request->getParams('name'),
-            'slug' => $request->getParams('slug'),
-            'description' => $request->getParams('description'),
-            'sort_order' => $request->getParams('sort_order'),
+            'name' => $this->request->getParams('name'),
+            'slug' => $this->request->getParams('slug'),
+            'description' => $this->request->getParams('description'),
+            'sort_order' => $this->request->getParams('sort_order'),
         ]);
         
         if ($result) {
@@ -348,10 +348,10 @@ class AdminController extends Controller
     {
         $categoryId = (int)$id;
         $success = $this->getCategoryService()->updateCategory($categoryId, [
-            'name' => $request->getParams('name'),
-            'slug' => $request->getParams('slug'),
-            'description' => $request->getParams('description'),
-            'sort_order' => $request->getParams('sort_order'),
+            'name' => $this->request->getParams('name'),
+            'slug' => $this->request->getParams('slug'),
+            'description' => $this->request->getParams('description'),
+            'sort_order' => $this->request->getParams('sort_order'),
         ]);
         
         if ($success) {
@@ -462,8 +462,8 @@ class AdminController extends Controller
     
     public function banIp(): void
     {
-        $ip = trim($request->getParams('ip_address'));
-        $reason = trim($request->getParams('reason')) ?: 'Нарушение правил сообщества';
+        $ip = trim($this->request->getParams('ip_address'));
+        $reason = trim($this->request->getParams('reason')) ?: 'Нарушение правил сообщества';
         
         if ($this->getFirewallService()->banIp($ip, $reason)) {
             Session::setFlash('success', "IP-адрес {$ip} успешно внесен в черный список.");
@@ -555,7 +555,7 @@ class AdminController extends Controller
     
     public function sendTestEmail(): void
     {
-        $email = $request->getParams('email');
+        $email = $this->request->getParams('email');
         
         if (!$email) {
             Session::setFlash('error', 'Не удалось определить email администратора.');

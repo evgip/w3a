@@ -13,6 +13,7 @@ use App\Core\Events\CommentRestored;
 use App\Core\Events\UserBanned;
 use App\Core\Events\FlagResolved;
 use App\Core\Events\Listeners\AuditListener;
+use App\Core\Events\Listeners\UpdateStoryCommentsCountListener;
 
 class EventServiceProvider
 {
@@ -22,6 +23,7 @@ class EventServiceProvider
     public static function register(EventDispatcher $dispatcher): void
     {
         $auditListener = new AuditListener();
+		$commentsCountListener = new UpdateStoryCommentsCountListener();
 
         // Регистрируем слушателя для всех событий, которые нужно логировать
         $dispatcher->listen(StoryCreated::class, [$auditListener, 'handle']);
@@ -33,6 +35,13 @@ class EventServiceProvider
 		$dispatcher->listen(CommentRestored::class, [$auditListener, 'handle']);
         $dispatcher->listen(UserBanned::class, [$auditListener, 'handle']);
         $dispatcher->listen(FlagResolved::class, [$auditListener, 'handle']);
+
+        // =====================================================================
+        // АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ СЧЁТЧИКА КОММЕНТАРИЕВ
+        // =====================================================================
+        $dispatcher->listen(CommentCreated::class, [$commentsCountListener, 'handleCreated']);
+        $dispatcher->listen(CommentDeleted::class, [$commentsCountListener, 'handleDeleted']);
+        $dispatcher->listen(CommentRestored::class, [$commentsCountListener, 'handleRestored']);
 
         // В будущем можно добавить другие слушатели:
         // $dispatcher->listen(UserRegistered::class, [new WelcomeEmailListener(), 'handle']);

@@ -217,10 +217,10 @@ class StoriesController extends Controller
         $user_is_following = is_numeric($this->request->getParams('user_is_following'));
 
         $data = [
-            'title' => $request->getParams('title'),
-            'url' => $request->getParams('url') ?: null,
-            'description' => $request->getParams('description') ?: null,
-            'tags' => $request->getParams('tags') ?? [],
+            'title' => $this->request->getParams('title'),
+            'url' => $this->request->getParams('url') ?: null,
+            'description' => $this->request->getParams('description') ?: null,
+            'tags' => $this->request->getParams('tags') ?? [],
             'user_is_following' => $user_is_following ? 1 : 0,
         ];
 
@@ -285,9 +285,9 @@ class StoriesController extends Controller
         }
 
         $data = [
-            'title' => $request->getParams('title'),
-            'url' => $request->getParams('url') ?: null,
-            'description' => $request->getParams('description') ?: null,
+            'title' => $this->request->getParams('title'),
+            'url' => $this->request->getParams('url') ?: null,
+            'description' => $this->request->getParams('description') ?: null,
             'tags' => $_POST['tags'] ?? [],
             'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
         ];
@@ -353,9 +353,9 @@ class StoriesController extends Controller
      */
     public function addComment(): void
     {
-        $storyId = (int)$request->getParams('story_id');
-        $parentId = $request->getParams('parent_id') !== '' ? (int)$request->getParams('parent_id') : null;
-        $commentText = $request->getParams('comment_text');
+        $storyId = (int)$this->request->getParams('story_id');
+        $parentId = $this->request->getParams('parent_id') !== '' ? (int)$this->request->getParams('parent_id') : null;
+        $commentText = $this->request->getParams('comment_text');
 
         $commentId = $this->getCommentService()->createComment(
             $storyId,
@@ -365,6 +365,13 @@ class StoriesController extends Controller
         );
 
         if ($commentId > 0) {
+			  $this->dispatch(new \App\Core\Events\CommentCreated(
+					$commentId,
+					$storyId,
+					(int)$_SESSION['user_id'],
+					$parentId
+				));
+			
             Session::setFlash('success', 'Ваш комментарий успешно опубликован!');
             header('Location: ' . comment_url($storyId, $commentId));
         } else {
@@ -455,7 +462,6 @@ class StoriesController extends Controller
 			return;
 		}
 
-		// Отправляем событие (аудит отработает через AuditListener)
 		$this->dispatch(new CommentRestored(
 			$commentId,
 			$result['story_id'],

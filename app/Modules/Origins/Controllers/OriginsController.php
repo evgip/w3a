@@ -44,8 +44,8 @@ class OriginsController extends Controller
     {
         $this->request->validateCsrf();
 
-        $domain = strtolower(trim($request->getParams('domain')));
-        $reason = trim($request->getParams('ban_reason')) ?: 'Нарушение правил сообщества';
+        $domain = strtolower(trim($this->request->getParams('domain')));
+        $reason = trim($this->request->getParams('ban_reason')) ?: 'Нарушение правил сообщества';
 
         // Валидация домена
         if (empty($domain) || !preg_match('/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*\.[a-z]{2,}$/i', $domain)) {
