@@ -6,11 +6,15 @@ namespace App\Modules\Users\Controllers;
 
 use App\Core\Controller;
 use App\Core\Session as AppCoreSession;
-use App\Core\Auth;
 use App\Modules\Users\Services\UserService;
 use App\Modules\Users\Services\AuthService;
 use App\Modules\Users\Services\AvatarService;
 
+/**
+ * Контроллер для управления пользователями: аутентификация, регистрация, профиль и настройки.
+ *
+ * Все действия (кроме login/showLoginForm/showRegisterForm) требуют авторизации через сессию.
+ */
 class UsersController extends Controller
 {
     private ?UserService $userService = null;
@@ -20,7 +24,7 @@ class UsersController extends Controller
     /**
      * Получить экземпляр сервиса работы с пользователями (ленивая инициализация).
      *
-     * @return UserService
+     * @return UserService Экземпляр UserService
      */
     private function getUserService(): UserService
     {
@@ -33,7 +37,7 @@ class UsersController extends Controller
     /**
      * Получить экземпляр сервиса аутентификации (ленивая инициализация).
      *
-     * @return AuthService
+     * @return AuthService Экземпляр AuthService
      */
     private function getAuthService(): AuthService
     {
@@ -46,7 +50,7 @@ class UsersController extends Controller
     /**
      * Получить экземпляр сервиса работы с аватарами (ленивая инициализация).
      *
-     * @return AvatarService
+     * @return AvatarService Экземпляр AvatarService
      */
     private function getAvatarService(): AvatarService
     {
@@ -58,7 +62,8 @@ class UsersController extends Controller
 
     /**
      * Обработка входа пользователя в систему (POST /login).
-     * Валидирует CSRF-токен, проверяет email/пароль, создаёт сессию.
+     * Валидирует CSRF-токен (через `Controller::validateCsrfToken()`), проверяет email/пароль, создаёт сессию.
+     * При успехе перенаправляет на главную, при ошибке — возвращается на /login без перезагрузки (но здесь — редирект).
      *
      * @return void
      */
@@ -69,6 +74,7 @@ class UsersController extends Controller
 
         $user = $this->getAuthService()->authenticate($email, $password);
         if (!$user) {
+            // При неудаче — редирект на форму логина (ошибки отображаются через flash-сообщения)
             header('Location: /login');
             exit;
         }
@@ -80,9 +86,11 @@ class UsersController extends Controller
     }
 
     /**
-     * Отображение формы логина (GET /login)
+     * Отображение формы логина (GET /login).
+     *
+     * @return void
      */
-    public function showLoginForm()
+    public function showLoginForm(): void
     {
         // Рендерим шаблон login.php из папки Views модуля Users
         $this->render('login', [
@@ -92,24 +100,30 @@ class UsersController extends Controller
     }
 
     /**
-     * Display the registration form (GET /register)
+     * Отображение формы регистрации (GET /register).
+     * Загружает ранее введённые данные (если были ошибки валидации), чтобы не просить пользователя вводить их заново.
+     *
+     * @return void
      */
-	public function showRegisterForm(): void
-	{
-		// Получаем старые значения из сессии (если есть)
-		$old = \App\Core\Session::get('old_input', []);
-		\App\Core\Session::delete('old_input'); // Очищаем после использования
-		
-		$this->render('register', [
-			'title' => 'Регистрация нового пользователя',
-			'request' => $this->request,
-			'old' => $old
-		]);
-	}
+    public function showRegisterForm(): void
+    {
+        // Получаем старые значения из сессии (если есть), удаляем после использования
+        $old = \App\Core\Session::get('old_input', []);
+        \App\Core\Session::delete('old_input');
+
+        $this->render('register', [
+            'title' => 'Регистрация нового пользователя',
+            'request' => $this->request,
+            'old' => $old
+        ]);
+    }
 
     /**
      * Обработка регистрации нового пользователя (POST /register).
-     * Валидирует CSRF-токен, создаёт пользователя, инициализирует профиль и настройки.
+     * Валидирует CSRF-токен, создаёт пользователя, инициализирует профиль и настройки по умолчанию.
+     *
+     * При ошибке (email/username уже заняты) — редирект на форму регистрации с сохранением ввода.
+     * При успехе — редирект на /login с сообщением о подтверждении через почту.
      *
      * @return void
      */
@@ -121,6 +135,11 @@ class UsersController extends Controller
 
         $userId = $this->getAuthService()->register($username, $email, $password);
         if (!$userId) {
+            // Сохраняем ввод в сессию для повторной отрисовки формы
+            \App\Core\Session::set('old_input', [
+                'username' => $username,
+                'email' => $email,
+            ]);
             header('Location: /register');
             exit;
         }
@@ -145,9 +164,9 @@ class UsersController extends Controller
 
     /**
      * Отображение публичного профиля пользователя (GET /user/{username}).
-     * Загружает данные пользователя, профиль, информацию о бане, статистику и карму.
+     * Загружает данные пользователя, профиль, информацию о бане, статистику (stories/comments) и карму.
      *
-     * @param string $username Имя пользователя (username)
+     * @param string $username Имя пользователя (username) — обязательный параметр маршрута
      * @return void
      */
     public function profile(string $username): void
@@ -156,12 +175,13 @@ class UsersController extends Controller
         $user = $userModel->findBy('username', trim($username));
 
         if (!$user) {
-			$errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-			if (class_exists($errorController)) {
-				(new $errorController())->notFound("Пользователь <i>{$username}</i> не найден.");
-				exit;
-			}
-			die("<h1>404 Errors</h1>");
+            // Альтернативный способ обработки 404 (если контроллер ошибок доступен)
+            $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
+            if (class_exists($errorController)) {
+                (new $errorController())->notFound("Пользователь <i>{$username}</i> не найден.");
+                exit;
+            }
+            die("<h1>404 Errors</h1>");
         }
 
         $profile = $userModel->getProfile((int)$user['id']);
@@ -180,15 +200,16 @@ class UsersController extends Controller
         $this->render('profile', [
             'title' => 'Профиль пользователя ' . e($user['username']),
             'profileUser' => $user,
-            'storiesCount' => $stats['stories_count'],
-            'commentsCount' => $stats['comments_count'],
-            'userKarma' => $userKarma
+            'storiesCount' => $stats['stories_count'] ?? 0,
+            'commentsCount' => $stats['comments_count'] ?? 0,
+            'userKarma' => $userKarma ?? 0
         ]);
     }
 
     /**
      * Отображение страницы настроек профиля (GET /account/settings).
-     * Требует авторизации. Загружает данные пользователя, профиля, настроек и уведомлений.
+     * Требует авторизации (проверяется через наличие `$_SESSION['user_id']` в `UserService::getUserWithProfile()`).
+     * Загружает данные пользователя, профиля, настроек и активные уведомления.
      *
      * @return void
      */
@@ -198,6 +219,7 @@ class UsersController extends Controller
         $user = $this->getUserService()->getUserWithProfile($userId);
 
         if (!$user) {
+            // Пользователь не авторизован или не найден — перенаправляем на главную
             header('Location: /');
             exit;
         }
@@ -215,7 +237,10 @@ class UsersController extends Controller
 
     /**
      * Обработка обновления настроек профиля (POST /account/settings).
-     * Обновляет email, bio, аватар и настройки уведомлений.
+     * Обновляет email (с проверкой уникальности), bio, аватар и настройки уведомлений.
+     *
+     * При ошибке email (неуникальный) — редирект на форму с сохранением текущих данных.
+     * При загрузке аватара — старый файл удаляется (логика в AvatarService).
      *
      * @return void
      */
@@ -234,6 +259,7 @@ class UsersController extends Controller
         $oldAvatarFilename = $user['avatar'];
         $newAvatarFilename = $oldAvatarFilename;
 
+        // Обновление email — проверка уникальности в UserService
         if ($email !== $user['email']) {
             if (!$this->getUserService()->updateEmail($userId, $email)) {
                 header('Location: ' . route('account.settings'));
@@ -241,6 +267,7 @@ class UsersController extends Controller
             }
         }
 
+        // Обработка загрузки аватара (если файл передан и без ошибок)
         if (isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
             $uploadedAvatar = $this->getAvatarService()->handleUpload($_FILES['avatar_file'], $oldAvatarFilename);
             if ($uploadedAvatar) {
@@ -248,11 +275,13 @@ class UsersController extends Controller
             }
         }
 
+        // Обновление профиля
         $this->getUserService()->updateProfile($userId, [
             'bio' => $bio,
             'avatar' => $newAvatarFilename
         ]);
 
+        // Обновление настроек уведомлений
         $this->getUserService()->updateSettings($userId, [
             'notify_on_reply' => $this->request->getParams('notify_on_reply') ? 1 : 0,
             'notify_on_story_comment' => $this->request->getParams('notify_on_story_comment') ? 1 : 0,
@@ -268,7 +297,9 @@ class UsersController extends Controller
 
     /**
      * Обработка смены пароля (POST /account/password).
-     * Проверяет текущий пароль и обновляет на новый.
+     * Проверяет текущий пароль, валидирует новую длину (минимум 6 символов), обновляет хэш в БД.
+     *
+     * Возвращает flash-сообщение (успех/ошибка), но не прерывает выполнение при ошибке.
      *
      * @return void
      */
@@ -286,10 +317,11 @@ class UsersController extends Controller
 
         if ($this->getUserService()->changePassword($userId, $currentPassword, $newPassword)) {
             AppCoreSession::setFlash('success', 'Пароль успешно изменён.');
+        } else {
+            AppCoreSession::setFlash('error', 'Текущий пароль введён неверно.');
         }
 
         header('Location: ' . route('account.settings'));
         exit;
     }
-
 }
