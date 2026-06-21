@@ -5,47 +5,94 @@ declare(strict_types=1);
 namespace App\Core\Events;
 
 /**
- * Событие восстановления удалённого комментария.
+ * Событие восстановления ранее удалённого комментария.
+ *
+ * Генерируется после успешного восстановления комментария
+ * (обнуления поля `deleted_at` в таблице `comments`).
+ * Используется слушателями для:
+ *  - Увеличения счётчика комментариев у истории (UpdateStoryCommentsCountListener)
+ *  - Логирования действий пользователя (AuditListener)
+ *
+ * Важно: событие отправляется как при восстановлении автором, так и при восстановлении модератором.
  */
 class CommentRestored extends Event
 {
     /**
-     * @param int $commentId ID восстановленного комментария
-     * @param int $storyId ID истории
-     * @param int $userId ID пользователя, который восстановил
-     * @param bool $isAuthor Является ли пользователь автором комментария
+     * @param int  $commentId Уникальный идентификатор восстановленного комментария
+     * @param int  $storyId   Идентификатор истории, к которой принадлежит комментарий
+     * @param int  $userId    Идентификатор пользователя, выполнившего восстановление
+     * @param bool $isAuthor  Признак того, что восстанавливающий является автором комментария
      */
     public function __construct(
         private int $commentId,
         private int $storyId,
         private int $userId,
         private bool $isAuthor = true
-    ) {}
+    ) {
+    }
 
+    /**
+     * Получить идентификатор восстановленного комментария.
+     *
+     * @return int
+     */
+    public function getCommentId(): int
+    {
+        return $this->commentId;
+    }
+
+    /**
+     * Получить идентификатор истории.
+     *
+     * @return int
+     */
+    public function getStoryId(): int
+    {
+        return $this->storyId;
+    }
+
+    /**
+     * Получить идентификатор пользователя, выполнившего восстановление.
+     *
+     * @return int
+     */
+    public function getUserId(): int
+    {
+        return $this->userId;
+    }
+
+    /**
+     * Проверить, является ли восстанавливающий автором комментария.
+     *
+     * @return bool
+     */
+    public function isAuthor(): bool
+    {
+        return $this->isAuthor;
+    }
+
+    /**
+     * Получить строковое имя события.
+     *
+     * @return string
+     */
     public function getName(): string
     {
-        return 'comment.restored';
+        return 'CommentRestored';
     }
 
-    public function getCategory(): string
-    {
-        return $this->isAuthor ? 'general' : 'moderation';
-    }
-
+    /**
+     * Получить массив данных события (для логирования и аудита).
+     *
+     * @return array<string, mixed>
+     */
     public function getData(): array
     {
         return [
             'comment_id' => $this->commentId,
-            'story_id' => $this->storyId,
-            'user_id' => $this->userId,
-            'is_author' => $this->isAuthor,
-            'description' => sprintf(
-                'Пользователь (ID: %d) восстановил %s (комментарий ID: %d, история ID: %d)',
-                $this->userId,
-                $this->isAuthor ? 'свой комментарий' : 'чужой комментарий',
-                $this->commentId,
-                $this->storyId
-            ),
+            'story_id'   => $this->storyId,
+            'user_id'    => $this->userId,
+            'is_author'  => $this->isAuthor,
         ];
     }
 }

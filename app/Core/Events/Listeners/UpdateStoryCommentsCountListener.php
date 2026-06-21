@@ -10,43 +10,74 @@ use App\Core\Events\CommentRestored;
 use App\Modules\Stories\Models\Story;
 
 /**
- * Слушатель для автоматического обновления счётчика комментариев в истории.
- * 
- * Реагирует на события:
- * - CommentCreated  → +1
- * - CommentDeleted  → -1 (soft delete)
- * - CommentRestored → +1
+ * Слушатель событий комментариев для синхронизации счётчика комментариев в историях.
+ *
+ * Отвечает за поддержание актуального значения поля `comments_count` в таблице `stories`.
+ * Регистрируется в `EventServiceProvider` на три события:
+ *  - CommentCreated   → увеличивает счётчик на +1
+ *  - CommentDeleted   → уменьшает счётчик на -1
+ *  - CommentRestored  → увеличивает счётчик на +1
+ *
+ * Использует атомарный SQL-запрос с GREATEST(0, ...) для защиты от отрицательных значений
+ * в случае рассинхронизации данных.
  */
 class UpdateStoryCommentsCountListener
 {
+    /**
+     * @var Story Модель историй для обновления счётчика
+     */
     private Story $storyModel;
 
+    /**
+     * Конструктор слушателя.
+     *
+     * Инициализирует модель Story для выполнения операций обновления счётчика.
+     */
     public function __construct()
     {
         $this->storyModel = new Story();
     }
 
     /**
-     * Обработка создания комментария.
+     * Обработчик события создания комментария.
+     *
+     * Увеличивает счётчик комментариев у связанной истории на единицу.
+     *
+     * @param CommentCreated $event Событие создания комментария
+     *
+     * @return void
      */
     public function handleCreated(CommentCreated $event): void
     {
-        $this->storyModel->incrementCommentsCount($event->storyId, 1);
+        $this->storyModel->incrementCommentsCount($event->getStoryId(), 1);
     }
 
     /**
-     * Обработка удаления комментария.
+     * Обработчик события удаления комментария.
+     *
+     * Уменьшает счётчик комментариев у связанной истории на единицу.
+     * Атомарный SQL-запрос гарантирует, что счётчик не станет отрицательным.
+     *
+     * @param CommentDeleted $event Событие удаления комментария
+     *
+     * @return void
      */
     public function handleDeleted(CommentDeleted $event): void
     {
-        $this->storyModel->incrementCommentsCount($event->storyId, -1);
+        $this->storyModel->incrementCommentsCount($event->getStoryId(), -1);
     }
 
     /**
-     * Обработка восстановления комментария.
+     * Обработчик события восстановления комментария.
+     *
+     * Увеличивает счётчик комментариев у связанной истории на единицу.
+     *
+     * @param CommentRestored $event Событие восстановления комментария
+     *
+     * @return void
      */
     public function handleRestored(CommentRestored $event): void
     {
-        $this->storyModel->incrementCommentsCount($event->storyId, 1);
+        $this->storyModel->incrementCommentsCount($event->getStoryId(), 1);
     }
 }

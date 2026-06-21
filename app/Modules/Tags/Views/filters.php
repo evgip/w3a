@@ -19,9 +19,7 @@
     <?php else: ?>
         <div class="filters-list">
             <?php foreach ($filters as $filter): ?>
-                <div class="filter-item"
-                     data-tag-id="<?= e($filter['tag_id']) ?>">
-                    
+                <div class="filter-item">
                     <span class="tag tag-filter">
                         #<?= e($filter['name']) ?>
                     </span>
@@ -32,17 +30,24 @@
                         </span>
                     <?php endif; ?>
                     
-                    <a class="btn-remove-filter delete">
-                         удалить
-                    </a>
+                    <form action="/filters/remove" method="POST" style="display: inline;">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="tag_id" value="<?= e($filter['tag_id']) ?>">
+                        <button type="submit" class="btn-remove-filter delete" 
+                                onclick="return confirm('Удалить этот тег из фильтров?')">
+                            удалить
+                        </button>
+                    </form>
                 </div>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
 
     <h2>Добавить фильтр</h2>
-    <div class="form-field-group form-group">
-        <select id="tag-select">
+    <form action="/filters/add" method="POST" class="form-field-group form-group">
+        <?= csrf_field() ?>
+        
+        <select name="tag_id" required>
             <option value="">Выберите тег для скрытия...</option>
             <?php foreach ($allTags as $tag): ?>
                 <?php 
@@ -63,10 +68,8 @@
             <?php endforeach; ?>
         </select>
         
-        <button type="button" 
-                id="btn-add-filter" 
-                class="btn-add-filter">
+        <button type="submit" class="btn-add-filter">
             Добавить
         </button>
-    </div>
+    </form>
 </div>

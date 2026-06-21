@@ -8,7 +8,7 @@ class CsrfMiddleware implements MiddlewareInterface
     public function handle(callable $next): mixed
     {
         $request = new Request();
-        $request->validateCsrf();  // Используем наш улучшенный validateCsrf()
+        $request->validateCsrf();
         
         return $next();
     }

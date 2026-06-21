@@ -3,7 +3,8 @@
 namespace App\Modules\Tags\Controllers;
 
 use App\Core\Controller as AppCoreController;
-use App\Core\Auth as AppCoreAuth;
+use App\Core\Auth;
+use App\Core\Session;
 use App\Modules\Tags\Models\Category;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Models\TagFilter;
@@ -113,80 +114,47 @@ class TagsController extends AppCoreController
             'title' => 'Фильтры тегов',
             'filters' => $data['filters'],
             'allTags' => $data['allTags'],
-            'request' => new AppCoreRequest()
+            'request' => $this->request
         ]);
     }
 
-    /**
-     * Добавить тег в фильтры (POST /filters/add)
-     */
-    public function addFilter(): void
-    {
-        header('Content-Type: application/json; charset=utf-8');
+	/**
+	 * Добавить тег в фильтры (POST /filters/add)
+	 */
+	public function addFilter(): void
+	{
 
-        try {
-            if (!AppCoreAuth::check()) {
-                echo json_encode(['success' => false, 'message' => 'Требуется авторизация']);
-                exit;
-            }
+		$tagId = (int)$this->request->post('tag_id', 0);
+		$userId = (int)\App\Core\Auth::id();
+		
+		$result = $this->getFilterService()->addFilter($userId, $tagId);
+		
+		if ($result['success']) {
+			Session::setFlash('success', $result['message'] ?? 'Фильтр добавлен');
+		} else {
+			Session::setFlash('error', $result['message'] ?? 'Ошибка добавления фильтра');
+		}
+		
+		$this->redirect('/filters');
+	}
 
-            if (!$this->request->isCsrfValid()) {
-                echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
-                exit;
-            }
+	/**
+	 * Удалить тег из фильтров (POST /filters/remove)
+	 */
+	public function removeFilter(): void
+	{
+		$tagId = (int)$this->request->post('tag_id', 0);
+		$userId = (int)\App\Core\Auth::id();
+		
+		$result = $this->getFilterService()->removeFilter($userId, $tagId);
+		
+		if ($result['success']) {
+			Session::setFlash('success', $result['message'] ?? 'Фильтр удалён');
+		} else {
+			Session::setFlash('error', $result['message'] ?? 'Ошибка удаления фильтра');
+		}
+		
+		$this->redirect('/filters');
+	}
 
-            $tagId = (int)$this->request->getParams('tag_id', 0);
-            $userId = (int)AppCoreAuth::id();
-
-            $result = $this->getFilterService()->addFilter($userId, $tagId);
-            echo json_encode($result);
-
-        } catch (\Throwable $e) {
-            echo json_encode(['success' => false, 'message' => 'Ошибка: ' . $e->getMessage()]);
-        }
-
-        exit;
-    }
-
-    /**
-     * Удалить тег из фильтров (POST /filters/remove)
-     */
-    public function removeFilter(): void
-    {
-        header('Content-Type: application/json; charset=utf-8');
-
-        try {
-            if (!AppCoreAuth::check()) {
-                error_log('[FILTERS] Auth failed for removeFilter');
-                echo json_encode(['success' => false, 'message' => 'Требуется авторизация']);
-                exit;
-            }
-
-            // Проверка CSRF
-            $sessionToken = $_SESSION['csrf_token'] ?? '';
-            $submittedToken = $this->request->getParams('csrf_token') ?? '';
-
-            error_log("[FILTERS] CSRF Check -> Session: '{$sessionToken}', Submitted: '{$submittedToken}'");
-
-            if (empty($sessionToken) || empty($submittedToken) || !hash_equals($sessionToken, $submittedToken)) {
-                echo json_encode(['success' => false, 'message' => 'Ошибка безопасности (CSRF). Токены не совпадают.']);
-                exit;
-            }
-
-            $tagId = (int)$this->request->getParams('tag_id', 0);
-            $userId = (int)AppCoreAuth::id();
-
-            $result = $this->getFilterService()->removeFilter($userId, $tagId);
-            echo json_encode($result);
-
-        } catch (\Throwable $e) {
-            error_log('[FILTERS] Exception in removeFilter: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-            echo json_encode([
-                'success' => false,
-                'message' => 'Ошибка сервера: ' . $e->getMessage()
-            ], 500);
-        }
-
-        exit;
-    }
 }

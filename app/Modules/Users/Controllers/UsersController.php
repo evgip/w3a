@@ -209,7 +209,7 @@ class UsersController extends Controller
             'title' => 'Настройки профиля',
             'user' => $user,
             'notifications' => $notifications,
-            'request' => new AppCoreRequest()
+            'request' => $this->request
         ]);
     }
 

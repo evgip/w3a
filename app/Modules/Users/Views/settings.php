@@ -69,7 +69,7 @@ if (!empty($notifications)) {
                      class="avatar-preview" alt="Avatar">
             <?php else: ?>
                 <div class="avatar-placeholder">
-                    <?= e(mb_substr($user['name'], 0, 1)) ?>
+                    <?= e(mb_substr($user['username'], 0, 1)) ?>
                 </div>
             <?php endif; ?>
             

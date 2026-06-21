@@ -165,7 +165,7 @@ class Request
     private function handleCsrfFailure(): void
     {
         // 1. Логируем попытку атаки через существующий Audit
-        Audit::log('security.csrf_failed', 'Неверный CSRF-токен', [
+        Audit::log('security.csrf_failed',  'security', 'Неверный CSRF-токен', [
             'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
             'url' => $_SERVER['REQUEST_URI'] ?? '/',
             'method' => $this->getMethod(),
