@@ -10,10 +10,10 @@ require_once dirname(__DIR__) . '/app/Core/Benchmark.php';
 // error_reporting(E_ALL);
 
 // Настройка безопасного поведения сессионных кук
-//ini_set('session.cookie_httponly', 1); // Браузерный JS вообще не имеет доступа к куке (защита от XSS-угона)
-//ini_set('session.cookie_secure', 1);   // Кука передается ТОЛЬКО по защищенному протоколу HTTPS
-//ini_set('session.cookie_samesite', 'Strict'); // Защита от CSRF на уровне браузера (кука не улетает на сторонние сайты)
-//ini_set('session.use_only_cookies', 1); // Исключает передачу ID сессии через URL (защита от Session Fixation)
+// ini_set('session.cookie_httponly', 1); // Браузерный JS вообще не имеет доступа к куке (защита от XSS-угона)
+// ini_set('session.cookie_secure', 1);   // Кука передается ТОЛЬКО по защищенному протоколу HTTPS
+// ini_set('session.cookie_samesite', 'Strict'); // Защита от CSRF на уровне браузера (кука не улетает на сторонние сайты)
+// ini_set('session.use_only_cookies', 1); // Исключает передачу ID сессии через URL (защита от Session Fixation)
 
 
 // 3. Подключаем Composer

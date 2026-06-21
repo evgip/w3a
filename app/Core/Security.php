@@ -77,6 +77,8 @@ class Security
 
         // Mitigation tool against MIME-Type spoofing attacks (Forces browser compliance with declared types)
         header("X-Content-Type-Options: nosniff");
+		
+		header('X-Frame-Options: SAMEORIGIN'); // Защита от clickjacking
 
         // Clickjacking safeguard covering legacy browser clients that do not parse 'frame-ancestors' natively
         header("X-Frame-Options: DENY");
