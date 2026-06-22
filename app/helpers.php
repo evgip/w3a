@@ -446,4 +446,47 @@ if (!function_exists('rparseTagsCombined')) {
         $story['tags_with_names'] = $tagsWithNames;
         unset($story['tags_combined']);
     }
-}	
+}
+
+
+/**
+ * Вычисляет confidence score по формуле Вильсона (Wilson score interval)
+ * Calculate confidence score using Wilson score interval
+ * 
+ * @param int $score Рейтинг комментария (апвоты минус флаги) / Comment rating (upvotes minus flags)
+ * @param int $flags Количество флагов / Number of flags
+ * @return float Значение от 0 до 1 / Value from 0 to 1
+ * 
+ * @see http://evanmiller.org/how-not-to-sort-by-average-rating.html
+ * @see https://github.com/reddit/reddit/blob/master/r2/r2/lib/db/_sorts.pyx
+ */
+if (!function_exists('wilson_score')) {
+    function wilson_score(int $score, int $flags): float 
+    {
+        $ups = $score + $flags;
+        $downs = $flags;
+        $n = $ups + $downs;
+        
+        if ($n === 0) {
+            return 0.0;
+        }
+        
+        if ($n < 0) {
+            throw new \InvalidArgumentException(
+                "n should count number of upvotes + flags; that can't be a negative number"
+            );
+        }
+        
+        $z = 1.281551565545;
+        $p = $ups / $n;
+        $zSquared = $z * $z;
+        
+        $left = $p + (1 / (2 * $n) * $zSquared);
+        $right = $z * sqrt(($p * ((1 - $p) / $n)) + ($zSquared / (4 * $n * $n)));
+        $under = 1.0 + ((1.0 / $n) * $zSquared);
+        
+        $confidence = ($left - $right) / $under;
+        
+        return max(0.0, min(1.0, $confidence));
+    }
+}

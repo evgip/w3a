@@ -50,6 +50,64 @@ class StoryFilterService
         return $this->storyModel->getTotalCount($tagname, $domain, $excludeTagIds);
     }
 
+
+    /**
+     * Получает комментарии для истории в виде дерева с сортировкой по Вильсону
+     */
+    public function getCommentsTree(int $storyId): array
+    {
+        $flatComments = $this->storyModel->getCommentsForStory($storyId);
+        
+        // Добавляем confidence_score к каждому комментарию, если его нет
+        foreach ($flatComments as &$comment) {
+            if (!isset($comment['confidence_score']) || $comment['confidence_score'] == 0) {
+                $comment['confidence_score'] = wilson_score(
+                    (int)$comment['score'],
+                    (int)$comment['flag_count']
+                );
+            }
+        }
+        unset($comment);
+        
+        // Строим дерево комментариев
+        $commentsTree = [];
+        foreach ($flatComments as $comment) {
+            $parentId = $comment['parent_id'] ?? 0;
+            $commentsTree[$parentId][] = $comment;
+        }
+        
+        // Сортируем дочерние комментарии по confidence_score (убывание)
+        foreach ($commentsTree as $parentId => &$children) {
+            usort($children, function($a, $b) {
+                $scoreDiff = $b['confidence_score'] <=> $a['confidence_score'];
+                if ($scoreDiff !== 0) {
+                    return $scoreDiff;
+                }
+                return strtotime($b['created_at']) <=> strtotime($a['created_at']);
+            });
+        }
+        unset($children);
+        
+        return $commentsTree;
+    }
+
+    /**
+     * Обновляет confidence_score для комментария
+     */
+    public function updateCommentConfidenceScore(int $commentId): void
+    {
+        $comment = $this->storyModel->getCommentById($commentId);
+        
+        if ($comment) {
+            $confidenceScore = wilson_score(
+                (int)$comment['score'],
+                (int)$comment['flag_count']
+            );
+            
+            $this->storyModel->updateCommentConfidenceScore($commentId, $confidenceScore);
+        }
+    }
+
     /**
      * Получает список забаненных доменов (в нижнем регистре).
      *
@@ -102,21 +160,4 @@ class StoryFilterService
         return $this->storyModel->getSingleWithAuthor($storyId, $showDeleted);
     }
 
-    /**
-     * Получает комментарии для истории в виде дерева.
-     *
-     * @return array Дерево комментариев [parent_id => [comments]]
-     */
-    public function getCommentsTree(int $storyId): array
-    {
-        $flatComments = $this->storyModel->getCommentsForStory($storyId);
-        $commentsTree = [];
-
-        foreach ($flatComments as $comment) {
-            $parentId = $comment['parent_id'] ?? 0;
-            $commentsTree[$parentId][] = $comment;
-        }
-
-        return $commentsTree;
-    }
 }

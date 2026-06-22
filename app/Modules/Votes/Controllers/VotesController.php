@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Logger;
 use App\Modules\Votes\Models\Vote;
 use App\Modules\Votes\Services\VoteService;
+use App\Modules\Stories\Models\Comment;
 use App\Modules\Users\Models\User;
 
 /**
@@ -21,13 +22,13 @@ class VotesController extends Controller
     
     private ?VoteService $voteService = null;
 
-    private function getVoteService(): VoteService
-    {
-        if ($this->voteService === null) {
-            $this->voteService = new VoteService(new Vote(), new User());
-        }
-        return $this->voteService;
-    }
+	private function getVoteService(): VoteService
+	{
+		if ($this->voteService === null) {
+			$this->voteService = new VoteService(new Vote(), new User(), new Comment());
+		}
+		return $this->voteService;
+	}
 
     public function handle(string $type, string $id, string $direction): void
     {

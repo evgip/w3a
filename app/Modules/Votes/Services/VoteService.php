@@ -6,6 +6,7 @@ namespace App\Modules\Votes\Services;
 
 use App\Modules\Votes\Models\Vote;
 use App\Modules\Users\Models\User;
+use App\Modules\Stories\Models\Comment;
 use App\Core\Logger;
 
 /**
@@ -16,12 +17,14 @@ class VoteService
 {
     private Vote $voteModel;
     private User $userModel;
+    private Comment $commentModel;
     private const DEFAULT_MIN_KARMA = 10;
 
-    public function __construct(Vote $voteModel, User $userModel)
+    public function __construct(Vote $voteModel, User $userModel, Comment $commentModel)
     {
         $this->voteModel = $voteModel;
         $this->userModel = $userModel;
+        $this->commentModel = $commentModel;
     }
 
     /**
@@ -53,6 +56,11 @@ class VoteService
             ];
         }
 
+        // ✅ НОВОЕ: Обновляем confidence_score для комментариев
+        if ($type === 'comment') {
+            $this->updateCommentConfidenceScore($targetId);
+        }
+
         return ['success' => true, 'message' => 'Голос учтён.'];
     }
 
@@ -64,6 +72,31 @@ class VoteService
     public function getUserVote(int $userId, string $type, int $targetId): ?int
     {
         return $this->voteModel->getUserVote($userId, $type, $targetId);
+    }
+
+    /**
+     * ✅ НОВОЕ: Обновить confidence_score комментария после голосования
+     */
+    private function updateCommentConfidenceScore(int $commentId): void
+    {
+        try {
+            $comment = $this->commentModel->getCommentById($commentId);
+            
+            if ($comment) {
+                $confidenceScore = wilson_score(
+                    (int)$comment['score'],
+                    (int)$comment['flag_count']
+                );
+                
+                $this->commentModel->updateConfidenceScore($commentId, $confidenceScore);
+            }
+        } catch (\Exception $e) {
+            // Логируем ошибку, но не прерываем процесс голосования
+            Logger::error('Failed to update confidence score for comment', [
+                'comment_id' => $commentId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

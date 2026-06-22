@@ -79,7 +79,7 @@ class Comment extends Model
 	 */
 	public function getWithStoryInfo(int $commentId): ?array
 	{
-		$stmt = $this->db()->prepare("
+		$stmt = static::db()->prepare("
 			SELECT 
 				c.id,
 				c.user_id as author_id,
@@ -107,12 +107,41 @@ class Comment extends Model
 	 */
 	public function getAuthorId(int $commentId): ?int
 	{
-		$stmt = $this->db()->prepare("
+		$stmt = static::db()->prepare("
 			SELECT user_id FROM comments WHERE id = :id
 		");
 		$stmt->execute(['id' => $commentId]);
 		$result = $stmt->fetch(\PDO::FETCH_ASSOC);
 
 		return $result ? (int)$result['user_id'] : null;
+	}
+	
+	/**
+	 * Получить комментарий по ID с данными для вычисления confidence_score
+	 */
+	public function getCommentById(int $commentId): ?array
+	{
+		$stmt = static::db()->prepare("
+			SELECT id, score, flag_count 
+			FROM comments 
+			WHERE id = :id AND deleted_at IS NULL
+		");
+		$stmt->execute(['id' => $commentId]);
+		$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+		return $result ?: null;
+	}
+
+	/**
+	 * Обновить confidence_score комментария
+	 */
+	public function updateConfidenceScore(int $commentId, float $confidenceScore): bool
+	{
+		$stmt = static::db()->prepare(
+			"UPDATE comments SET confidence_score = :score WHERE id = :id"
+		);
+		return $stmt->execute([
+			'score' => $confidenceScore,
+			'id' => $commentId,
+		]);
 	}
 }
