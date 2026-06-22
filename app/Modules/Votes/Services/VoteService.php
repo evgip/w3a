@@ -56,10 +56,15 @@ class VoteService
             ];
         }
 
-        // ✅ НОВОЕ: Обновляем confidence_score для комментариев
+        // Обновляем confidence_score для комментариев
         if ($type === 'comment') {
             $this->updateCommentConfidenceScore($targetId);
         }
+
+		// ✅ НОВОЕ: Обновляем hotness для историй
+		if ($type === 'story') {
+			$this->updateStoryHotness($targetId);
+		}
 
         return ['success' => true, 'message' => 'Голос учтён.'];
     }
@@ -158,4 +163,32 @@ class VoteService
     {
         return (int)(config('app.min_karma_for_downvote') ?? self::DEFAULT_MIN_KARMA);
     }
+	
+	/**
+	 * Пересчитать hotness истории после голосования.
+	 */
+	private function updateStoryHotness(int $storyId): void
+	{
+		try {
+			$stmt = \App\Core\Database::getConnection()->prepare("
+				SELECT `score`, `created_at` FROM `stories` WHERE `id` = :id
+			");
+			$stmt->execute(['id' => $storyId]);
+			$story = $stmt->fetch();
+			
+			if ($story) {
+				$hotness = calculate_hotness((int)$story['score'], $story['created_at']);
+				
+				$update = \App\Core\Database::getConnection()->prepare("
+					UPDATE `stories` SET `hotness` = :h WHERE `id` = :id
+				");
+				$update->execute(['h' => $hotness, 'id' => $storyId]);
+			}
+		} catch (\Exception $e) {
+			\App\Core\Logger::error('Failed to update story hotness', [
+				'story_id' => $storyId,
+				'error' => $e->getMessage(),
+			]);
+		}
+	}
 }

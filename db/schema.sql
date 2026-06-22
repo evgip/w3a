@@ -1080,3 +1080,21 @@ ALTER TABLE `user_settings`
 --
 ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+
+
+
+ALTER TABLE `stories`
+    ADD COLUMN `hotness` FLOAT NOT NULL DEFAULT 0 AFTER `score`,
+    ADD INDEX `idx_stories_hotness` (`hotness`);
+
+-- Пересчитать hotness для уже существующих историй
+UPDATE `stories` 
+SET `hotness` = (
+    CASE 
+        WHEN `score` > 0 THEN  1
+        WHEN `score` < 0 THEN -1
+        ELSE 0
+    END * LOG10(GREATEST(ABS(`score`), 1))
+    + (UNIX_TIMESTAMP(`created_at`) - UNIX_TIMESTAMP('2005-12-08')) / 45000
+);

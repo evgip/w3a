@@ -124,8 +124,16 @@ class StoriesController extends Controller
         $perPage = config_int('constants.pagination.stories_per_page', 15);
         $offset = ($currentPage - 1) * $perPage;
 
+		// ← НОВОЕ: читаем режим сортировки
+		$sort = $this->request->getParams('sort', 'hot');
+		if (!in_array($sort, ['hot', 'new', 'top'], true)) {
+			$sort = 'hot';
+		}
+
         // Получаем отфильтрованные истории через сервис
-        $stories = $this->getFilterService()->getFilteredStories($perPage, $offset, $tagname, $domain);
+		$stories = $this->getFilterService()->getFilteredStories(
+			$perPage, $offset, $tagname, $domain, $sort
+		);
         $totalStories = $this->getFilterService()->getTotalCount($tagname, $domain);
         $totalPages = (int)ceil($totalStories / $perPage);
 
@@ -149,6 +157,7 @@ class StoriesController extends Controller
             'totalPages' => $totalPages,
             'newCommentsMap' => $newCommentsMap,
             'bannedDomainsCache' => $bannedDomainsCache,
+			 'sort' => $sort, 
         ]);
     }
     

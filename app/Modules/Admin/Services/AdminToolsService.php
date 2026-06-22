@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Services;
 
 use App\Core\Audit;
 use App\Core\Mailer;
+use App\Modules\Stories\Models\Comment;
 
 /**
  * Сервис для инструментов разработчика.
@@ -85,4 +86,70 @@ class AdminToolsService
             return 'Ошибка при отправке письма: ' . $e->getMessage();
         }
     }
+	
+	/**
+	 * Пересчитать confidence_score для пакета комментариев
+	 * 
+	 * @param int $offset Смещение
+	 * @param int $batchSize Размер пакета
+	 * @return array ['processed' => int, 'total' => int, 'hasMore' => bool]
+	 */
+	public function recalculateConfidenceScoreBatch(int $offset, int $batchSize = 1000): array
+	{
+		try {
+			$commentModel = new \App\Modules\Stories\Models\Comment();
+			
+			// Получаем общее количество
+			$total = $commentModel->getCommentsCount();
+			
+			// Получаем пакет комментариев
+			$comments = $commentModel->getCommentsBatch($offset, $batchSize);
+			
+			$processed = 0;
+			
+			foreach ($comments as $comment) {
+				try {
+					// Проверяем существование функции
+					if (!function_exists('wilson_score')) {
+						throw new \Exception('Функция wilson_score() не найдена. Проверьте app/helpers.php');
+					}
+					
+					$confidenceScore = wilson_score(
+						(int)$comment['score'],
+						(int)$comment['flag_count']
+					);
+					
+					$commentModel->updateConfidenceScore(
+						(int)$comment['id'],
+						$confidenceScore
+					);
+					
+					$processed++;
+				} catch (\Exception $e) {
+					// Логируем ошибку, но продолжаем обработку
+					\App\Core\Logger::error('Failed to update confidence score', [
+						'comment_id' => $comment['id'],
+						'error' => $e->getMessage(),
+					]);
+				}
+			}
+			
+			$hasMore = ($offset + $processed) < $total;
+			
+			return [
+				'processed' => $processed,
+				'total' => $total,
+				'hasMore' => $hasMore,
+				'nextOffset' => $offset + $processed,
+			];
+			
+		} catch (\Exception $e) {
+			\App\Core\Logger::error('Recalculate batch error', [
+				'offset' => $offset,
+				'error' => $e->getMessage(),
+				'trace' => $e->getTraceAsString(),
+			]);
+			throw $e;
+		}
+	}
 }

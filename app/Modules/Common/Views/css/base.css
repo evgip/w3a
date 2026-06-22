@@ -1021,6 +1021,10 @@ table.data.zebra tr:nth-child(odd) td {
     color: var(--color-fg);
 }
 
+.nav.br-none {
+	border-bottom: none;
+}
+
 /* ------------------- Список уведомлений ---------- */
 ol.notification-list {
     padding: 0;

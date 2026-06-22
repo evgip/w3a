@@ -28,7 +28,7 @@ class Story extends Model
 	 * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
 	 * Получить ленту историй с пагинацией и учетом фильтров
 	 */
-	public function getFeed(int $limit, int $offset, string $tagname = '', bool $showDeleted = false, ?string $domain = '', array $excludeTagIds = []): array
+	public function getFeed(int $limit, int $offset, string $tagname = '', bool $showDeleted = false, ?string $domain = '', array $excludeTagIds = [], string $sort = 'hot'): array
 	{
 		// Возвращаем tag_list как строку для обратной совместимости с шаблоном
 		// Добавляем tags_combined для получения пары тег+имя
@@ -39,8 +39,8 @@ class Story extends Model
 				JOIN `users` u ON s.user_id = u.id
 				LEFT JOIN `user_profiles` up ON u.id = up.user_id
 				LEFT JOIN `taggings` tg ON s.id = tg.story_id
-				LEFT JOIN `tags` t ON tg.tag_id = t.id";
-
+				LEFT JOIN `tags` t ON tg.tag_id = t.id"; 
+		
 		$where = [];
 		$bindings = [];
 
@@ -78,7 +78,13 @@ class Story extends Model
 			$sql .= " WHERE " . implode(" AND ", $where);
 		}
 
-		$sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
+		$orderBy = match ($sort) {
+			'new' => 's.created_at DESC',
+			'top' => 's.score DESC, s.created_at DESC',
+			default => 's.hotness DESC',  // hot — по умолчанию
+		};
+
+		$sql .= " GROUP BY s.id ORDER BY {$orderBy} LIMIT :limit OFFSET :offset";
 
 		// Добавляем limit и offset в bindings
 		$bindings[':limit'] = $limit;
@@ -95,6 +101,29 @@ class Story extends Model
 		}
 
 		return $stories;
+	}
+
+	/**
+	 * Пересчитать и сохранить hotness для истории.
+	 */
+	public function recalculateHotness(int $storyId): void
+	{
+		$stmt = static::db()->prepare("
+			UPDATE `stories` 
+			SET `hotness` = :hotness 
+			WHERE `id` = :id
+		");
+		
+		// Получаем текущий score и created_at
+		$story = $this->find($storyId);
+		if (!$story) return;
+		
+		$hotness = calculateHotness((int)$story['score'], $story['created_at']);
+		
+		$stmt->execute([
+			'hotness' => $hotness,
+			'id'      => $storyId,
+		]);
 	}
 
 	/**

@@ -32,7 +32,18 @@ class Database
             ];
 
             try {
-                self::$instance = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
+				
+				$pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
+				
+				// ← Устанавливаем sql_mode через локальную переменную
+				$pdo->exec("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+				
+				// ← Присваиваем только после успешного выполнения
+				self::$instance = $pdo;
+				
+				//self::$instance->exec("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+
+               // self::$instance = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
             } catch (PDOException $e) {
 				\App\Core\Logger::error("Сбой подключения к БД: " . $e->getMessage());
 				http_response_code(500);

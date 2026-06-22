@@ -74,7 +74,13 @@ $router->group(['middleware' => ['web', 'admin'], 'prefix' => '/admin'], functio
     $router->add('GET', '/invitations', AdminController::class . '@invitationsIndex', 'admin.invitations');
     $router->add('POST', '/invitations/{id}/approve', AdminController::class . '@approveInvitation', 'admin.invitations.approve');
     $router->add('POST', '/invitations/{id}/reject', AdminController::class . '@rejectInvitation', 'admin.invitations.reject');
-    
+
+
+    // -------------------------------------------------------------------------
+    // Пересчет confidence_score по формуле Вильсона
+    // -------------------------------------------------------------------------
+	$router->add('POST', '/tools/recalculate-confidence-score', AdminController::class . '@recalculateConfidenceScore', 'admin.tools.recalculate_confidence_score');
+
     // -------------------------------------------------------------------------
     // Firewall (IP-блокировки)
     // -------------------------------------------------------------------------

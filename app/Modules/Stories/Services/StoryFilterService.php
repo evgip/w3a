@@ -33,12 +33,12 @@ class StoryFilterService
      * @param string $domain Фильтр по домену
      * @return array Массив историй
      */
-    public function getFilteredStories(int $perPage, int $offset, string $tagname = '', string $domain = ''): array
+    public function getFilteredStories(int $perPage, int $offset, string $tagname = '', string $domain = '', string $sort = 'hot'): array
     {
         $showDeleted = Auth::isAdmin();
         $excludeTagIds = $this->getUserExcludedTags();
 
-        return $this->storyModel->getFeed($perPage, $offset, $tagname, $showDeleted, $domain, $excludeTagIds);
+        return $this->storyModel->getFeed($perPage, $offset, $tagname, $showDeleted, $domain, $excludeTagIds, $sort);
     }
 
     /**

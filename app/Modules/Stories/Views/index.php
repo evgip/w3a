@@ -14,6 +14,24 @@ if ($currentUserId > 0) {
 }
 ?>
 
+<?php
+	$currentSort = $sort ?? 'hot';
+	$sortLinks = [
+		'hot' => ['url' => '/?sort=hot',         'label' => 'Hot'],
+		'new' => ['url' => '/?sort=new',         'label' => 'New'],
+		'top' => ['url' => '/?sort=top',         'label' => 'Top'],
+	];
+?>
+
+<nav class="nav br-none">
+    <?php foreach ($sortLinks as $key => $link): ?>
+        <a href="<?= $link['url'] ?>" 
+           class="<?= $currentSort === $key ? 'active' : '' ?>">
+            <?= $link['label'] ?>
+        </a>
+    <?php endforeach; ?>
+</nav>
+
 <?php if (!empty($stories)): ?>
     <ol class="stories">
         <?php foreach ($stories as $story): ?>
@@ -113,7 +131,7 @@ if ($currentUserId > 0) {
     <?php if (isset($totalPages) && $totalPages > 1): ?>
         <div class="page_link_buttons">
             <?php if ($currentPage > 1): ?>
-                <a href="?page=<?= $currentPage - 1 ?>">← назад</a>
+                <a href="?sort=<?= $currentSort ?>&?page=<?= $currentPage - 1 ?>">← назад</a>
             <?php endif; ?>
             <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                 <?php if ($i === $currentPage): ?>

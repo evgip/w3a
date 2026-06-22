@@ -490,3 +490,23 @@ if (!function_exists('wilson_score')) {
         return max(0.0, min(1.0, $confidence));
     }
 }
+
+/**
+ * Вычисляет "горячесть" истории (Reddit/Lobsters-style hotness).
+ *
+ * @param int      $score     Суммарный рейтинг (upvotes - downvotes)
+ * @param string   $createdAt Дата публикации (MySQL datetime)
+ * @return float
+ */
+if (!function_exists('calculate_hotness')) {
+    function calculate_hotness(int $score, string $createdAt): float
+    {
+        $order = log10(max(abs($score), 1));
+        $sign  = $score > 0 ? 1 : ($score < 0 ? -1 : 0);
+
+        $epoch   = strtotime('2005-12-08');
+        $seconds = strtotime($createdAt) - $epoch;
+
+        return round(($sign * $order) + ($seconds / 45000), 7);
+    }
+}

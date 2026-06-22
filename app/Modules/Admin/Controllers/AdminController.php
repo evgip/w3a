@@ -574,6 +574,44 @@ class AdminController extends Controller
         header('Location: /admin/tools');
         exit;
     }
+	
+	/**
+	 * Пересчитать confidence_score для комментариев (AJAX)
+	 */
+	public function recalculateConfidenceScore(): void
+	{
+		try {
+			// Очищаем буфер вывода (на случай если что-то уже выведено)
+			if (ob_get_level()) {
+				ob_clean();
+			}
+			
+			$offset = (int)$this->request->getParams('offset', 0);
+			$batchSize = 1000; // пересчет за раз (один проход)
+			
+			$result = $this->getToolsService()->recalculateConfidenceScoreBatch($offset, $batchSize);
+			
+			$this->json([
+				'success' => true,
+				'processed' => $result['processed'],
+				'total' => $result['total'],
+				'hasMore' => $result['hasMore'],
+				'nextOffset' => $result['nextOffset'],
+			]);
+			
+		} catch (\Exception $e) {
+			// Логируем ошибку
+			\App\Core\Logger::error('Recalculate confidence score error', [
+				'error' => $e->getMessage(),
+				'trace' => $e->getTraceAsString(),
+			]);
+			
+			$this->json([
+				'success' => false,
+				'error' => 'Ошибка сервера: ' . $e->getMessage(),
+			], 500);
+		}
+	}
     
     // =========================================================================
     // ПРИГЛАШЕНИЯ

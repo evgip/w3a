@@ -13,6 +13,9 @@ use App\Modules\Stories\Controllers\StoriesController;
 
 // Главная страница - лента историй
 $router->add('GET', '/', StoriesController::class . '@index', 'home');
+$router->add('GET', '/hot', StoriesController::class . '@index', 'stories.hot');
+$router->add('GET', '/new', StoriesController::class . '@index', 'stories.new');
+$router->add('GET', '/top', StoriesController::class . '@index', 'stories.top');
 
 // Просмотр конкретной истории и комментариев
 $router->add('GET', '/story/{id}', StoriesController::class . '@show', 'story.show');

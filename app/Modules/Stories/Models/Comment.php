@@ -144,4 +144,35 @@ class Comment extends Model
 			'id' => $commentId,
 		]);
 	}
+	
+	/**
+	 * Получить общее количество не удаленных комментариев
+	 */
+	public function getCommentsCount(): int
+	{
+		$stmt = static::db()->prepare(
+			"SELECT COUNT(*) FROM comments WHERE deleted_at IS NULL"
+		);
+		$stmt->execute();
+		return (int)$stmt->fetchColumn();
+	}
+
+	/**
+	 * Получить пакет комментариев для пересчета
+	 */
+	public function getCommentsBatch(int $offset, int $limit): array
+	{
+		$stmt = static::db()->prepare("
+			SELECT id, score, flag_count 
+			FROM comments 
+			WHERE deleted_at IS NULL
+			ORDER BY id ASC
+			LIMIT :limit OFFSET :offset
+		");
+		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+		$stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+	}
+
 }
