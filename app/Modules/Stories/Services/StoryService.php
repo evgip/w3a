@@ -69,7 +69,12 @@ class StoryService
             $this->storyModel->syncTags($storyId, $data['tags']);
         }
 
-        // 6. Логирование
+		// 6. Пересчет hotness после создания и привязки тегов
+		if ($storyId > 0) {
+			$this->storyModel->recalculateHotness($storyId);
+		}
+
+        // 7. Логирование
         \App\Core\Audit::log('story.created', 'Пользователь создал новую публикацию с тегами');
 
         return $storyId;

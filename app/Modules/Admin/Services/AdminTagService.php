@@ -102,6 +102,7 @@ class AdminTagService
         $description = trim($data['description'] ?? '');
         $isMedia = isset($data['is_media']) ? 1 : 0;
         $categoryId = (int)($data['category_id'] ?? 0);
+        $hotnessMod = (float)($data['hotness_mod'] ?? 0);
         
         // Валидация имени
         if (strlen($tagSlug) < 2) {
@@ -127,8 +128,21 @@ class AdminTagService
             'description' => $description,
             'is_media' => $isMedia,
             'category_id' => $categoryId,
+			'hotness_mod' => $hotnessMod,
         ]);
         
+		// Получаем ID всех историй с этим тегом
+		$db = Database::getConnection();
+		$stmt = $db->prepare("SELECT story_id FROM taggings WHERE tag_id = :tag_id");
+		$stmt->execute(['tag_id' => $tagId]);
+		$storyIds = array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), 'story_id');
+
+		// Пересчитываем hotness для каждой истории
+		$storyModel = new \App\Modules\Stories\Models\Story();
+		foreach ($storyIds as $storyId) {
+			$storyModel->recalculateHotness($storyId);
+		}
+		
         Audit::log('admin.tag_updated', "Администратор изменил параметры тега #{$tagSlug}");
         
         return true;

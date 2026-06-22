@@ -22,7 +22,7 @@ class Notification extends Model
     ];
  
 
-    // Типы уведомлений (как в Lobsters)
+    // Типы уведомлений
     public const TYPE_REPLY = 'reply';  // Ответ на ваш комментарий
     public const TYPE_MENTION = 'mention';  // Упоминание @username
     public const TYPE_MESSAGE = 'message';

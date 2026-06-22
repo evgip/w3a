@@ -492,21 +492,28 @@ if (!function_exists('wilson_score')) {
 }
 
 /**
- * Вычисляет "горячесть" истории (Reddit/Lobsters-style hotness).
- *
- * @param int      $score     Суммарный рейтинг (upvotes - downvotes)
- * @param string   $createdAt Дата публикации (MySQL datetime)
+ * @param int    $score          Суммарный рейтинг (upvotes - downvotes)
+ * @param string $createdAt      Дата публикации (MySQL datetime)
+ * @param array  $tagHotnessMods Массив модификаторов тегов (float)
  * @return float
  */
 if (!function_exists('calculate_hotness')) {
-    function calculate_hotness(int $score, string $createdAt): float
+    function calculate_hotness(int $score, string $createdAt, array $tagHotnessMods = []): float
     {
+        // 1. Сумма модификаторов тегов (base)
+        $base = array_sum($tagHotnessMods);
+        
+        // 2. Логарифмический рейтинг
         $order = log10(max(abs($score), 1));
         $sign  = $score > 0 ? 1 : ($score < 0 ? -1 : 0);
-
-        $epoch   = strtotime('2005-12-08');
+        
+        // 3. Секунды с эпохи Reddit/Lobsters (11 декабря 2005, 00:00:00 UTC)
+        $epoch   = 1134316800; 
         $seconds = strtotime($createdAt) - $epoch;
-
-        return round(($sign * $order) + ($seconds / 45000), 7);
+        
+        // 4. Финальная формула с инверсией (отрицание)
+        $hotness = -(($sign * $order + $seconds / 45000) + $base);
+        
+        return round($hotness, 7);
     }
 }

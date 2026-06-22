@@ -55,6 +55,14 @@ $categories = $categoryModel->getAllOrdered();
     </div>
 
     <div class="form-field-group">
+        <label for="hotness_mod">hotness_mod</label>
+        <input type="text" id="hotness_mod" name="hotness_mod" class="form-input-wide"
+               value="<?= e($request->getParams('hotness_mod', $tagItem['hotness_mod'] ?? '')) ?>"
+               placeholder="Например: php">
+        <div class="hint">0.5 - в топе дольше, -0.2 - для редких случаев, -5.0 - мгновенно уронит истории. <strong>Изменение повлияет на вес историй.</strong></div>
+    </div>
+
+    <div class="form-field-group">
         <label>
             <input type="checkbox" name="is_media" value="1"
                 <?= ((string)$request->getParams('is_media', (string)($tagItem['is_media'] ?? '0')) === '1') ? 'checked' : '' ?>>

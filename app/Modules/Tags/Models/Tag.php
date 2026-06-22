@@ -13,7 +13,8 @@ class Tag extends Model
         'tag', 
         'description',
         'is_media',
-        'category_id'
+        'category_id',
+		'hotness_mod'
     ];
 
     /**
@@ -25,7 +26,7 @@ class Tag extends Model
 		// Если false (по умолчанию), добавится фильтрация удаленных записей.
 		$whereClause = $withDeleted ? '' : 'WHERE t.deleted_at IS NULL';
 
-		$sql = "SELECT t.id, t.name, t.tag, t.description, t.category_id, t.is_media, t.deleted_at,
+		$sql = "SELECT t.id, t.name, t.tag, t.description, t.hotness_mod, t.category_id, t.is_media, t.deleted_at,
 					   c.name as category_name, c.slug as category_slug,
 					   COUNT(tg.story_id) as stories_count
 				FROM {$this->table} t

@@ -248,6 +248,7 @@ class AdminController extends Controller
             'description' => $this->request->getParams('description'),
             'is_media' => isset($_POST['is_media']) ? 1 : 0,
             'category_id' => $this->request->getParams('category_id'),
+			'hotness_mod' => $this->request->getParams('hotness_mod'),
         ]);
         
         if ($success) {

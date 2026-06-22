@@ -29,6 +29,7 @@
                 <th>Категория</th>
                 <th>Медиа</th>
                 <th>Историй</th>
+				<th>Вес</th>
                 <th>Действия</th>
             </tr>
         </thead>
@@ -37,7 +38,7 @@
                 <tr>
                     <td><?= (int)($tag['id'] ?? 0) ?></td>
                     <td <?php if ($tag['deleted_at']): ?>style="color: #ac130d;"<?php endif; ?>>
-                        <strong><code><?= e($tag['tag'] ?? '') ?></code></strong>
+                        <strong><code><?= e($tag['name'] ?? '') ?></code></strong>
                     </td>
                     <td>
                         <?= e($tag['description'] ?? '') ?: '<span class="hint">—</span>' ?>
@@ -53,6 +54,7 @@
                         <?= (int)($tag['is_media'] ?? 0) ? 'Да' : 'Нет' ?>
                     </td>
                     <td><?= (int)($tag['stories_count'] ?? 0) ?></td>
+					<td><?= (float)($tag['hotness_mod'] ?? 0) ?></td>
                     <td>
                         <a href="<?= route('admin.tags.edit', ['id' => $tag['id']]) ?>" class="button">
                             Изменить

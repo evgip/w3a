@@ -170,16 +170,35 @@ class VoteService
 	private function updateStoryHotness(int $storyId): void
 	{
 		try {
-			$stmt = \App\Core\Database::getConnection()->prepare("
-				SELECT `score`, `created_at` FROM `stories` WHERE `id` = :id
+			$db = \App\Core\Database::getConnection();
+			
+			// Получаем данные истории И сумму модификаторов тегов одним запросом
+			$stmt = $db->prepare("
+				SELECT 
+					s.`score`, 
+					s.`created_at`,
+					COALESCE(SUM(t.`hotness_mod`), 0.0) AS `tag_hotness_mod`
+				FROM `stories` s
+				LEFT JOIN `taggings` tg ON s.`id` = tg.`story_id`
+				LEFT JOIN `tags` t ON tg.`tag_id` = t.`id`
+				WHERE s.`id` = :id
+				GROUP BY s.`id`
 			");
 			$stmt->execute(['id' => $storyId]);
-			$story = $stmt->fetch();
+			$story = $stmt->fetch(\PDO::FETCH_ASSOC);
 			
 			if ($story) {
-				$hotness = calculate_hotness((int)$story['score'], $story['created_at']);
+				// Формируем массив модификаторов для функции calculate_hotness
+				// Поскольку нам нужна только сумма, передаём её как один элемент массива
+				$tagMods = [(float)$story['tag_hotness_mod']];
 				
-				$update = \App\Core\Database::getConnection()->prepare("
+				$hotness = calculate_hotness(
+					(int)$story['score'], 
+					$story['created_at'],
+					$tagMods
+				);
+				
+				$update = $db->prepare("
 					UPDATE `stories` SET `hotness` = :h WHERE `id` = :id
 				");
 				$update->execute(['h' => $hotness, 'id' => $storyId]);

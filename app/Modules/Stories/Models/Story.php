@@ -81,7 +81,7 @@ class Story extends Model
 		$orderBy = match ($sort) {
 			'new' => 's.created_at DESC',
 			'top' => 's.score DESC, s.created_at DESC',
-			default => 's.hotness DESC',  // hot — по умолчанию
+			default => 's.hotness ASC',  // hot — по умолчанию
 		};
 
 		$sql .= " GROUP BY s.id ORDER BY {$orderBy} LIMIT :limit OFFSET :offset";
@@ -108,22 +108,41 @@ class Story extends Model
 	 */
 	public function recalculateHotness(int $storyId): void
 	{
-		$stmt = static::db()->prepare("
-			UPDATE `stories` 
-			SET `hotness` = :hotness 
-			WHERE `id` = :id
-		");
-		
-		// Получаем текущий score и created_at
 		$story = $this->find($storyId);
 		if (!$story) return;
-		
-		$hotness = calculateHotness((int)$story['score'], $story['created_at']);
-		
+
+		// Получаем модификаторы тегов, привязанных к этой истории
+		$tagMods = $this->getTagHotnessMods($storyId);
+
+		$hotness = calculate_hotness((int)$story['score'], $story['created_at'], $tagMods);
+
+		$stmt = static::db()->prepare("
+			UPDATE `stories`
+			SET `hotness` = :hotness
+			WHERE `id` = :id
+		");
+
 		$stmt->execute([
 			'hotness' => $hotness,
-			'id'      => $storyId,
+			'id' => $storyId,
 		]);
+	}
+	
+	/**
+	 * Получить массив модификаторов hotness_mod для тегов истории.
+	 */
+	private function getTagHotnessMods(int $storyId): array
+	{
+		$stmt = static::db()->prepare("
+			SELECT COALESCE(t.hotness_mod, 0.0) as hotness_mod
+			FROM `taggings` tg
+			JOIN `tags` t ON tg.tag_id = t.id
+			WHERE tg.story_id = :story_id
+		");
+		$stmt->execute(['story_id' => $storyId]);
+		
+		// Возвращаем плоский массив чисел для array_sum()
+		return array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), 'hotness_mod');
 	}
 
 	/**

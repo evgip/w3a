@@ -2,9 +2,14 @@
  * Обновляет счетчик уведомлений в шапке
  */
 function updateHeaderNotificationCount() {
+	
+    if (!document.getElementById('header-notification-badge')) {
+        return; 
+    }
+	
     fetch('/api/notifications/count')
         .then(response => {
-            if (response.status === 401) {
+            if (response.status === 401 || response.status === 403) {
                 const badge = document.getElementById('header-notification-badge');
                 if (badge) badge.style.display = 'none';
                 return null;
@@ -16,9 +21,18 @@ function updateHeaderNotificationCount() {
             }
             
             if (!response.ok) {
-                throw new Error('HTTP ' + response.status);
+				console.warn('Счетчик уведомлений: HTTP ' + response.status);
+				return null; 
             }
             
+			// Защита от парсинга HTML (если сервер всё же редиректнул на страницу логина)
+			const contentType = response.headers.get("content-type");
+			if (!contentType || !contentType.includes("application/json")) {
+				const badge = document.getElementById('header-notification-badge');
+				if (badge) badge.style.display = 'none';
+				return null;
+			}
+			
             return response.json();
         })
         .then(data => {
