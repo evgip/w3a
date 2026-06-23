@@ -14,10 +14,10 @@ class AdminCategoryService
 {
     private Category $categoryModel;
     
-    public function __construct()
-    {
-        $this->categoryModel = new Category();
-    }
+	public function __construct(?Category $categoryModel = null)
+	{
+		$this->categoryModel = $categoryModel ?? new Category();
+	}
     
     /**
      * Получить список категорий для админки.

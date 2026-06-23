@@ -24,7 +24,7 @@ class FlagsController extends Controller
             die('Некорректные параметры жалобы');
         }
 
-        $flagModel = new Flag();
+        $flagModel = $this->service(Flag::class);
         $userId = (int) ($_SESSION['user_id'] ?? 0);
 
         if ($flagModel->hasUserFlagged($userId, $type, $targetId)) {
@@ -55,7 +55,7 @@ class FlagsController extends Controller
         $comment  = $this->request->getParams('comment');
         $userId   = (int) ($_SESSION['user_id'] ?? 0);
 
-        $flagModel = new Flag();
+        $flagModel = $this->service(Flag::class);
         $result = $flagModel->submit($userId, $type, $targetId, $reason, $comment);
 
         if (!$result['ok']) {
@@ -87,7 +87,7 @@ class FlagsController extends Controller
      */
     public function adminIndex(): void
     {
-        $flagModel = new Flag();
+        $flagModel = $this->service(Flag::class);
         $pending = $flagModel->getPendingFlags();
         $recent  = $flagModel->getAllFlags(50);
 
@@ -111,7 +111,7 @@ class FlagsController extends Controller
         $action = $this->request->getParams('action') ?: 'hide';
         $modId  = (int) ($_SESSION['user_id'] ?? 0);
 
-        $flagModel = new Flag();
+        $flagModel = $this->service(Flag::class);
         $flag = $flagModel->find((int) $id);
 
         if (!$flag) {
@@ -139,7 +139,7 @@ class FlagsController extends Controller
     public function pendingCount(): void
     {
         header('Content-Type: application/json');
-        echo json_encode(['count' => (new Flag())->getPendingCount()]);
+        echo json_encode(['count' => $this->service(Flag::class)->getPendingCount()]);
         exit;
     }
 
@@ -162,7 +162,7 @@ class FlagsController extends Controller
         }
 
         // $targetId — это ID комментария, нужно получить story_id
-        $commentModel = new Comment();
+        $commentModel = $this->service(Comment::class);
         $comment = $commentModel->find($targetId);
 
         if ($comment && !empty($comment['story_id'])) {

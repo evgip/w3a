@@ -15,11 +15,13 @@ class TagFilterService
     private TagFilter $filterModel;
     private Tag $tagModel;
 
-    public function __construct(TagFilter $filterModel, Tag $tagModel)
-    {
-        $this->filterModel = $filterModel;
-        $this->tagModel = $tagModel;
-    }
+	public function __construct(
+		?TagFilter $filterModel = null,
+		?Tag $tagModel = null
+	) {
+		$this->filterModel = $filterModel ?? new TagFilter();
+		$this->tagModel = $tagModel ?? new Tag();
+	}
 
     /**
      * Получить данные для страницы управления фильтрами.

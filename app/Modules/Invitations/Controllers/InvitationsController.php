@@ -27,8 +27,7 @@ class InvitationsController extends Controller
     private function hasEnoughKarma(int $userId): bool
     {
         $minKarma = config_int('config.app.min_karma_for_invitation', 10);
-        $userModel = new User();
-        $userKarma = $userModel->getUserKarma($userId);
+        $userKarma = $this->service(User::class)->getUserKarma($userId);
         return $userKarma >= $minKarma;
     }
 
@@ -44,7 +43,7 @@ class InvitationsController extends Controller
         }
 
         $userId = (int)$_SESSION['user_id'];
-        $invitationModel = new Invitation();
+        $invitationModel = $this->service(Invitation::class);
 
         // Получаем все приглашения пользователя
         $invitations = $invitationModel->getUserInvitations($userId);
@@ -88,7 +87,7 @@ class InvitationsController extends Controller
             exit;
         }
 
-        $invitationModel = new Invitation();
+        $invitationModel = $this->service(Invitation::class);
 
         // Проверка лимита
         $activeCount = $invitationModel->countActiveInvitations($userId);
@@ -144,9 +143,8 @@ class InvitationsController extends Controller
         $this->request->validateCsrf();
 
         $userId = (int)$_SESSION['user_id'];
-        $invitationModel = new Invitation();
 
-        if ($invitationModel->revokeInvitation($id, $userId)) {
+        if ($this->service(Invitation::class)->revokeInvitation($id, $userId)) {
             Session::setFlash('success', 'Приглашение отозвано.');
         } else {
             Session::setFlash('error', 'Не удалось отозвать приглашение.');
@@ -167,7 +165,7 @@ class InvitationsController extends Controller
             exit;
         }
 
-        $invitationModel = new Invitation();
+        $invitationModel = $this->service(Invitation::class);
         $invitation = $invitationModel->findByCode($code);
 
         if (!$invitation || !$invitationModel->isValid($invitation)) {
@@ -197,7 +195,7 @@ class InvitationsController extends Controller
 
         $this->request->validateCsrf();
 
-        $invitationModel = new Invitation();
+        $invitationModel = $this->service(Invitation::class);
         $invitation = $invitationModel->findByCode($code);
 
         if (!$invitation || !$invitationModel->isValid($invitation)) {
@@ -227,7 +225,7 @@ class InvitationsController extends Controller
         }
 
         // Проверка уникальности
-        $userModel = new User();
+        $userModel = $this->service(User::class);
         if ($userModel->findBy('username', $this->request->getParams('username'))) {
             Session::setFlash('error', 'Имя пользователя уже занято.');
             header('Location: /register/invite/' . $code);
@@ -311,7 +309,7 @@ class InvitationsController extends Controller
             exit;
         }
 
-        $requestModel = new InvitationRequest();
+        $requestModel =  $this->service(InvitationRequest::class);
 
         // Проверка на повторный запрос
         if ($requestModel->hasPendingRequest($email)) {
@@ -321,7 +319,7 @@ class InvitationsController extends Controller
         }
 
         // Проверка, не зарегистрирован ли уже
-        $userModel = new User();
+        $userModel = $this->service(User::class);
         if ($userModel->findBy('email', $email)) {
             Session::setFlash('error', 'Этот email уже зарегистрирован.');
             header('Location: /invite/request');

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Stories\Services;
 
 use App\Modules\Stories\Models\Comment;
+use App\Modules\Notifications\Services\NotificationService;
 use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Validator;
@@ -18,9 +19,9 @@ use App\Core\Audit;
 class CommentService
 {
     private Comment $commentModel;
-    private ?object $notificationService;
+	private ?NotificationService $notificationService;
 
-    public function __construct(Comment $commentModel, ?object $notificationService = null)
+    public function __construct(Comment $commentModel, ?NotificationService $notificationService = null)
     {
         $this->commentModel = $commentModel;
         $this->notificationService = $notificationService;

@@ -12,10 +12,10 @@ class AdminInvitationService
 {
     private InvitationRequest $requestModel;
     
-    public function __construct()
-    {
-        $this->requestModel = new InvitationRequest();
-    }
+	public function __construct(?InvitationRequest $requestModel = null)
+	{
+		$this->requestModel = $requestModel ?? new InvitationRequest();
+	}
     
     /**
      * Получить список запросов по статусу.

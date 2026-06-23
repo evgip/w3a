@@ -11,10 +11,10 @@ class AdminAuditService
 {
     private AuditLog $auditLogModel;
     
-    public function __construct()
-    {
-        $this->auditLogModel = new AuditLog();
-    }
+	public function __construct(?AuditLog $auditLogModel = null)
+	{
+		$this->auditLogModel = $auditLogModel ?? new AuditLog();
+	}
     
     /**
      * Получить отфильтрованные логи аудита.

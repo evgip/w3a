@@ -17,15 +17,15 @@ class MessageService
     private Conversation $conversationModel;
     private ?NotificationService $notificationService;
 
-    public function __construct(
-        Message $messageModel,
-        Conversation $conversationModel,
-        ?NotificationService $notificationService = null
-    ) {
-        $this->messageModel = $messageModel;
-        $this->conversationModel = $conversationModel;
-        $this->notificationService = $notificationService;
-    }
+	public function __construct(
+		?Message $messageModel = null,
+		?Conversation $conversationModel = null,
+		?NotificationService $notificationService = null
+	) {
+		$this->messageModel = $messageModel ?? new Message();
+		$this->conversationModel = $conversationModel ?? new Conversation();
+		$this->notificationService = $notificationService;
+	}
 
     /**
      * Отправить сообщение в диалог.

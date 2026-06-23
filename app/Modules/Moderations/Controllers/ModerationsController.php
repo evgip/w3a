@@ -25,7 +25,7 @@ class ModerationsController extends Controller
         $offset = ($page - 1) * $perPage;
         
         // ✅ Используем AuditLog с фильтром по категории 'moderation'
-        $auditLog = new AuditLog();
+        $auditLog = $this->service(AuditLog::class);
         $items = $auditLog->getByCategory('moderation', $perPage, $offset);
         $total = $auditLog->countByCategory('moderation');
         $pages = max(1, (int)ceil($total / $perPage));
@@ -51,7 +51,7 @@ class ModerationsController extends Controller
     // ==========================================
     public function notes(): void
     {
-        $model = new ModNote();
+        $model = $this->service(ModNote::class);
         $notes = $model->getRecentNotes(100);
 
         // ✅ Используем $this->request->query()
@@ -82,7 +82,7 @@ class ModerationsController extends Controller
             return;
         }
 
-        $model = new ModNote();
+        $model = $this->service(ModNote::class);
         $model->create([
             'user_id'      => $userId,
             'moderator_id' => $currentUserId,
@@ -109,7 +109,7 @@ class ModerationsController extends Controller
         // ✅ CSRF уже проверен в middleware
         // $this->request->validateCsrf();
 
-        $model = new ModNote();
+        $model = $this->service(ModNote::class);
         $model->deleteNote((int)$id);
 
         Session::setFlash('success', 'Заметка удалена.');
@@ -121,7 +121,7 @@ class ModerationsController extends Controller
     // ==========================================
     public function stats(): void
     {
-        $activity = new ModActivity();
+        $activity = $this->service(ModActivity::class);
 
         $this->render('stats', [
             'title'       => 'Активность модераторов',
@@ -152,7 +152,7 @@ class ModerationsController extends Controller
             return;
         }
 
-        $userModel = new \App\Modules\Users\Models\User();
+        $userModel = $this->service(\App\Modules\Users\Models\User::class);
         $targetUser = $userModel->find($targetUserId);
 
         if (!$targetUser) {

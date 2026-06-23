@@ -34,6 +34,8 @@ class Router
     protected string $cacheFile;
 	
 	protected ?EventDispatcher $eventDispatcher = null;
+	
+	protected Container $container;
     
     /** @var array Группы middleware (алиасы) */
 	protected array $middlewareGroups = [
@@ -64,15 +66,14 @@ class Router
     // КОНСТРУКТОР
     // ============================================
     
-    public function __construct(Request $request)
-    {
-        // Сохраняем себя как singleton
-        self::$instance = $this;
-        
-        $this->request = $request;
-        $this->cacheFile = dirname(__DIR__, 2) . '/storage/cache/routes_compiled.php';
-        $this->loadRoutes();
-    }
+	public function __construct(Request $request, Container $container)
+	{
+		self::$instance = $this;
+		$this->request = $request;
+		$this->container = $container;
+		$this->cacheFile = dirname(__DIR__, 2) . '/storage/cache/routes_compiled.php';
+		$this->loadRoutes();
+	}
     
     // ============================================
     // SINGLETON
@@ -317,6 +318,9 @@ class Router
 		if ($this->eventDispatcher === null) {
 			$this->eventDispatcher = new EventDispatcher();
 			EventServiceProvider::register($this->eventDispatcher);
+			
+			// Регистрируем EventDispatcher в контейнере
+			$this->container->singleton(EventDispatcher::class, fn() => $this->eventDispatcher);
 		}
 		
         $uri = $this->request->getUri();
@@ -415,7 +419,7 @@ class Router
         }
         
 		// ✅ Передаём Request и EventDispatcher
-		$controllerInstance = new $controllerClass($this->request, $this->eventDispatcher);
+		$controllerInstance = new $controllerClass($this->request, $this->eventDispatcher, $this->container);
 		
         if (!method_exists($controllerInstance, $method)) {
             $this->triggerError(500, "Method $method not found in $controllerClass");

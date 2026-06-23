@@ -15,11 +15,13 @@ class ConversationService
     private Conversation $conversationModel;
     private User $userModel;
 
-    public function __construct(Conversation $conversationModel, User $userModel)
-    {
-        $this->conversationModel = $conversationModel;
-        $this->userModel = $userModel;
-    }
+	public function __construct(
+		?Conversation $conversationModel = null,
+		?User $userModel = null
+	) {
+		$this->conversationModel = $conversationModel ?? new Conversation();
+		$this->userModel = $userModel ?? new User();
+	}
 
     /**
      * Получить список всех диалогов пользователя с последним сообщением.

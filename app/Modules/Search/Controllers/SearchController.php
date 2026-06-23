@@ -18,7 +18,7 @@ class SearchController extends Controller
 
         $results = [];
         if (strlen($query) >= 3) {
-            $searchModel = new SearchResult();
+            $searchModel = $this->service(SearchResult::class);
             
             // Dynamically dispatch execution routes based on type selection parameters
             if ($what === 'comments') {

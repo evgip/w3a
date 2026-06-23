@@ -13,6 +13,7 @@ use App\Core\Audit;
 class AuthService
 {
     private User $userModel;
+	private RememberToken $rememberTokenModel;
 
     // Максимальное количество неудачных попыток входа до блокировки
     private const MAX_ATTEMPTS_IP = 5;        // с одного IP-адреса
@@ -24,10 +25,16 @@ class AuthService
     private const COOKIE_NAME = 'remember_me';
     private const COOKIE_DAYS = 30;
 
-
-    public function __construct()
-    {
-        $this->userModel = new User();
+    /**
+     * @param User|null $userModel Модель пользователя
+     * @param RememberToken|null $rememberTokenModel Модель токенов "Запомнить меня"
+     */
+    public function __construct(
+        ?User $userModel = null,
+        ?RememberToken $rememberTokenModel = null
+    ) {
+        $this->userModel = $userModel ?? new User();
+        $this->rememberTokenModel = $rememberTokenModel ?? new RememberToken();
     }
 
     /**
@@ -281,8 +288,7 @@ class AuthService
         $_SESSION['last_activity_time'] = time();
 
         // Получаем аватар из профиля
-        $userModel = new User();
-        $profile = $userModel->getProfile((int)$user['id']);
+        $profile = $this->userModel->getProfile((int)$user['id']);
         $_SESSION['user_avatar'] = $profile['avatar'] ?? null;
 
         // Если отмечен чекбокс "Запомнить меня" - создаем токен
@@ -297,16 +303,14 @@ class AuthService
    /**
      * Создать cookie "Запомнить меня"
      */
-    private function createRememberCookie(int $userId): void
-    {
-        $rememberModel = new RememberToken();
-        
-        $tokenData = $rememberModel->createToken(
-            $userId,
-            self::COOKIE_DAYS,
-            $_SERVER['HTTP_USER_AGENT'] ?? null,
-            $_SERVER['REMOTE_ADDR'] ?? null
-        );
+	private function createRememberCookie(int $userId): void
+	{
+		$tokenData = $this->rememberTokenModel->createToken(
+			$userId,
+			self::COOKIE_DAYS,
+			$_SERVER['HTTP_USER_AGENT'] ?? null,
+			$_SERVER['REMOTE_ADDR'] ?? null
+		);
 
         // Устанавливаем cookie на 30 дней
         $expiry = time() + (self::COOKIE_DAYS * 86400);
@@ -331,35 +335,33 @@ class AuthService
      *
      * @return bool true если сессия восстановлена
      */
-    public function attemptRememberLogin(): bool
-    {
-        if (!isset($_COOKIE[self::COOKIE_NAME])) {
-            return false;
-        }
+	public function attemptRememberLogin(): bool
+	{
+		if (!isset($_COOKIE[self::COOKIE_NAME])) {
+			return false;
+		}
 
-        $token = $_COOKIE[self::COOKIE_NAME];
-        
-        // Разделяем токен на selector и validator
-        $parts = explode(':', $token, 2);
-        if (count($parts) !== 2) {
-            $this->clearRememberCookie();
-            return false;
-        }
+		$token = $_COOKIE[self::COOKIE_NAME];
+		
+		// Разделяем токен на selector и validator
+		$parts = explode(':', $token, 2);
+		if (count($parts) !== 2) {
+			$this->clearRememberCookie();
+			return false;
+		}
 
-        [$selector, $validator] = $parts;
+		[$selector, $validator] = $parts;
 
-        $rememberModel = new RememberToken();
-        $record = $rememberModel->validateToken($selector, $validator);
+		$record = $this->rememberTokenModel->validateToken($selector, $validator);
 
-        if (!$record) {
-            // Токен невалиден или истек - удаляем cookie
-            $this->clearRememberCookie();
-            return false;
-        }
+		if (!$record) {
+			// Токен невалиден или истек - удаляем cookie
+			$this->clearRememberCookie();
+			return false;
+		}
 
-        // Получаем данные пользователя
-        $userModel = new User();
-        $user = $userModel->find((int)$record['user_id']);
+		// Получаем данные пользователя
+		$user = $this->userModel->find((int)$record['user_id']);
 
         if (!$user) {
             $this->clearRememberCookie();
@@ -367,7 +369,7 @@ class AuthService
         }
 
         // Проверяем, не забанен ли пользователь
-        if ($userModel->isBanned((int)$user['id'])) {
+        if ($this->userModel->isBanned((int)$user['id'])) {
             $this->clearRememberCookie();
             Audit::log('auth.remember_blocked', "Попытка входа по токену забаненного пользователя", 'auth');
 			
@@ -388,16 +390,15 @@ class AuthService
     /**
      * Очистить cookie "Запомнить меня"
      */
-    private function clearRememberCookie(): void
-    {
-        if (isset($_COOKIE[self::COOKIE_NAME])) {
-            // Удаляем токен из БД
-            $token = $_COOKIE[self::COOKIE_NAME];
-            $parts = explode(':', $token, 2);
-            if (count($parts) === 2) {
-                $rememberModel = new RememberToken();
-                $rememberModel->deleteBySelector($parts[0]);
-            }
+	private function clearRememberCookie(): void
+	{
+		if (isset($_COOKIE[self::COOKIE_NAME])) {
+			// Удаляем токен из БД
+			$token = $_COOKIE[self::COOKIE_NAME];
+			$parts = explode(':', $token, 2);
+			if (count($parts) === 2) {
+				$this->rememberTokenModel->deleteBySelector($parts[0]);
+			}
 
             // Удаляем cookie
             setcookie(

@@ -37,77 +37,6 @@ use App\Modules\Notifications\Services\NotificationService;
  */
 class StoriesController extends Controller
 {
-    /** @var StoryService|null Лениво инициализируемый сервис */
-    private ?StoryService $storyService = null;
-
-    /** @var StoryFilterService|null Лениво инициализируемый сервис */
-    private ?StoryFilterService $filterService = null;
-
-    /** @var CommentService|null Лениво инициализируемый сервис */
-    private ?CommentService $commentService = null;
-
-    /** @var ReadRibbonService|null Лениво инициализируемый сервис */
-    private ?ReadRibbonService $readRibbonService = null;
-	
-    // =========================================================================
-    // ЛЕНИВЫЕ ГЕТТЕРЫ СЕРВИСОВ
-    // =========================================================================
-
-    /**
-     * Получает экземпляр StoryService (ленивая инициализация).
-     */
-    private function getStoryService(): StoryService
-    {
-        if ($this->storyService === null) {
-            $this->storyService = new StoryService(
-                new Story(),
-                new Domain()
-            );
-        }
-        return $this->storyService;
-    }
-
-    /**
-     * Получает экземпляр StoryFilterService (ленивая инициализация).
-     */
-    private function getFilterService(): StoryFilterService
-    {
-        if ($this->filterService === null) {
-            $this->filterService = new StoryFilterService(
-                new Story(),
-                new Domain()
-            );
-        }
-        return $this->filterService;
-    }
-
-    /**
-     * Получает экземпляр CommentService (ленивая инициализация).
-     */
-    private function getCommentService(): CommentService
-    {
-        if ($this->commentService === null) {
-            $this->commentService = new CommentService(
-                new Comment(),
-                new NotificationService()
-            );
-        }
-        return $this->commentService;
-    }
-
-    /**
-     * Получает экземпляр ReadRibbonService (ленивая инициализация).
-     */
-    private function getReadRibbonService(): ReadRibbonService
-    {
-        if ($this->readRibbonService === null) {
-            $this->readRibbonService = new ReadRibbonService(
-                new ReadRibbon()
-            );
-        }
-        return $this->readRibbonService;
-    }
-    
     // =========================================================================
     // ЛЕНТА ИСТОРИЙ
     // =========================================================================
@@ -131,16 +60,16 @@ class StoriesController extends Controller
 		}
 
         // Получаем отфильтрованные истории через сервис
-		$stories = $this->getFilterService()->getFilteredStories(
+		$stories = $this->service(StoryFilterService::class)->getFilteredStories(
 			$perPage, $offset, $tagname, $domain, $sort
 		);
-        $totalStories = $this->getFilterService()->getTotalCount($tagname, $domain);
+        $totalStories = $this->service(StoryFilterService::class)->getTotalCount($tagname, $domain);
         $totalPages = (int)ceil($totalStories / $perPage);
 
         // Дополнительные данные
-        $bannedDomainsCache = $this->getFilterService()->getBannedDomains();
+        $bannedDomainsCache = $this->service(StoryFilterService::class)->getBannedDomains();
         $storyIds = array_column($stories, 'id');
-        $newCommentsMap = $this->getFilterService()->getNewCommentsCounts($storyIds);
+        $newCommentsMap = $this->service(StoryFilterService::class)->getNewCommentsCounts($storyIds);
 
         // Формируем заголовок страницы
         $title = 'Лента историй';
@@ -174,7 +103,7 @@ class StoriesController extends Controller
     {
         $storyId = (int)$id;
 
-        $story = $this->getFilterService()->getStoryWithAuthor($storyId);
+        $story = $this->service(StoryFilterService::class)->getStoryWithAuthor($storyId);
         if (!$story) {
             $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
             if (class_exists($errorController)) {
@@ -186,10 +115,10 @@ class StoriesController extends Controller
         }
 
         // Получаем комментарии в виде дерева
-        $commentsTree = $this->getFilterService()->getCommentsTree($storyId);
+        $commentsTree = $this->service(StoryFilterService::class)->getCommentsTree($storyId);
 
         // Обрабатываем отметку прочитанного
-        $newCount = $this->getReadRibbonService()->handleStoryView($storyId);
+        $newCount = $this->service(ReadRibbonService::class)->handleStoryView($storyId);
 
         $this->render('show', [
             'title' => $story['title'],
@@ -234,7 +163,7 @@ class StoriesController extends Controller
         ];
 
         $userId = Auth::id();
-        $storyId = $this->getStoryService()->createStory($data, $userId);
+        $storyId = $this->service(StoryService::class)->createStory($data, $userId);
 
         if ($storyId > 0) {
             Session::setFlash('success', 'Ваша история успешно опубликована!');
@@ -260,7 +189,7 @@ class StoriesController extends Controller
         $storyModel = new Story();
         $story = $storyModel->find($storyId);
 
-        if (!$story || !$this->getStoryService()->canEditStory($story, (int)$_SESSION['user_id'])) {
+        if (!$story || !$this->service(StoryService::class)->canEditStory($story, (int)$_SESSION['user_id'])) {
             Session::setFlash('error', 'У вас нет прав для изменения этой публикации.');
             header('Location: /');
             exit;
@@ -288,7 +217,7 @@ class StoriesController extends Controller
         $storyModel = new Story();
         $story = $storyModel->find($storyId);
 
-        if (!$story || !$this->getStoryService()->canEditStory($story, (int)$_SESSION['user_id'])) {
+        if (!$story || !$this->service(StoryService::class)->canEditStory($story, (int)$_SESSION['user_id'])) {
             header('Location: /');
             exit;
         }
@@ -301,7 +230,7 @@ class StoriesController extends Controller
             'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
         ];
 
-        $this->getStoryService()->updateStory($storyId, $data);
+        $this->service(StoryService::class)->updateStory($storyId, $data);
 
         Session::setFlash('success', 'Публикация успешно отредактирована.');
         header('Location: /story/' . $storyId);
@@ -366,7 +295,7 @@ class StoriesController extends Controller
         $parentId = $this->request->getParams('parent_id') !== '' ? (int)$this->request->getParams('parent_id') : null;
         $commentText = $this->request->getParams('comment_text');
 
-        $commentId = $this->getCommentService()->createComment(
+        $commentId = $this->service(CommentService::class)->createComment(
             $storyId,
             $commentText,
             $parentId,
@@ -401,7 +330,7 @@ class StoriesController extends Controller
 		$userId = Auth::id();
 
 		//  Получаем результат обновления
-		$result = $this->getCommentService()->updateComment($commentId, $newText, $userId);
+		$result = $this->service(CommentService::class)->updateComment($commentId, $newText, $userId);
 
 		//  Проверяем успех
 		if ($result === null) {
@@ -432,7 +361,7 @@ class StoriesController extends Controller
 		$userId = Auth::id();
 
 		// Сервис возвращает данные (или null при ошибке)
-		$result = $this->getCommentService()->deleteComment($commentId, $userId);
+		$result = $this->service(CommentService::class)->deleteComment($commentId, $userId);
 
 		if ($result === null) {
 			// При ошибке flash-сообщение уже установлено в сервисе
@@ -463,7 +392,7 @@ class StoriesController extends Controller
 		$userId = Auth::id();
 
 		// Сервис возвращает данные (или null при ошибке)
-		$result = $this->getCommentService()->restoreComment($commentId, $userId);
+		$result = $this->service(CommentService::class)->restoreComment($commentId, $userId);
 
 		if ($result === null) {
 			// При ошибке flash-сообщение уже установлено в сервисе
@@ -521,7 +450,7 @@ class StoriesController extends Controller
     public function markRead(string $id): void
     {
         $storyId = (int)$id;
-        $this->getReadRibbonService()->markAsRead($storyId);
+        $this->service(ReadRibbonService::class)->markAsRead($storyId);
 
         $referer = $_SERVER['HTTP_REFERER'] ?? '/story/' . $storyId;
         header('Location: ' . $referer);

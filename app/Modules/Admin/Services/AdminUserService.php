@@ -71,11 +71,16 @@ class AdminUserService
      */
     public function updateUserProfile(int $userId, array $data): void
     {
-        $this->userModel->update($userId, [
-            'email' => trim($data['email'] ?? ''),
-            'role' => trim($data['role'] ?? 'user'),
-            'bio' => trim($data['bio'] ?? ''),
-        ]);
+		// Обновляем основные данные пользователя
+		$this->userModel->update($userId, [
+			'email' => trim($data['email'] ?? ''),
+			'role' => trim($data['role'] ?? 'user'),
+		]);
+		
+		// Обновляем профиль (bio, avatar)
+		$this->userModel->updateProfile($userId, [
+			'bio' => trim($data['bio'] ?? ''),
+		]);
     }
     
     /**
@@ -163,11 +168,22 @@ class AdminUserService
         return true;
     }
     
-    /**
-     * Найти пользователя по ID.
-     */
-    public function findUser(int $userId): ?array
-    {
-        return $this->userModel->find($userId);
-    }
+	/**
+	 * Найти пользователя по ID с данными профиля.
+	 */
+	public function findUser(int $userId): ?array
+	{
+		$user = $this->userModel->find($userId);
+		
+		if (!$user) {
+			return null;
+		}
+		
+		// Получаем данные профиля (bio, avatar)
+		$profile = $this->userModel->getProfile($userId);
+		$user['bio'] = $profile['bio'] ?? null;
+		$user['avatar'] = $profile['avatar'] ?? null;
+		
+		return $user;
+	}
 }

@@ -16,11 +16,19 @@ class CategoryService
 {
     private Category $categoryModel;
     private Tag $tagModel;
+    private TagFilter $filterModel;
+    private ReadRibbon $readRibbon;
 
-    public function __construct(Category $categoryModel, Tag $tagModel)
-    {
-        $this->categoryModel = $categoryModel;
-        $this->tagModel = $tagModel;
+    public function __construct(
+        ?Category $categoryModel = null,
+        ?Tag $tagModel = null,
+        ?TagFilter $filterModel = null,
+        ?ReadRibbon $readRibbon = null
+    ) {
+        $this->categoryModel = $categoryModel ?? new Category();
+        $this->tagModel = $tagModel ?? new Tag();
+        $this->filterModel = $filterModel ?? new TagFilter();
+        $this->readRibbon = $readRibbon ?? new ReadRibbon();
     }
 
     /**
@@ -87,31 +95,29 @@ class CategoryService
     /**
      * Получить ID тегов, которые пользователь исключил из ленты.
      */
-    private function getUserExcludeTagIds(): array
-    {
-        if (!AppCoreAuth::check()) {
-            return [];
-        }
+	private function getUserExcludeTagIds(): array
+	{
+		if (!AppCoreAuth::check()) {
+			return [];
+		}
 
-        $filterModel = new TagFilter();
-        return $filterModel->getFilteredTagIds(AppCoreAuth::id());
-    }
+		return $this->filterModel->getFilteredTagIds(AppCoreAuth::id());
+	}
 
     /**
      * Подсчитать количество новых комментариев для списка историй.
      */
-    private function getNewCommentsForStories(array $stories): array
-    {
-        if (!AppCoreAuth::check() || empty($stories)) {
-            return [];
-        }
+	private function getNewCommentsForStories(array $stories): array
+	{
+		if (!AppCoreAuth::check() || empty($stories)) {
+			return [];
+		}
 
-        $storyIds = array_column($stories, 'id');
-        $readRibbon = new ReadRibbon();
+		$storyIds = array_column($stories, 'id');
 
-        return $readRibbon->getNewCommentsCounts(
-            (int)$_SESSION['user_id'],
-            array_map('intval', $storyIds)
-        );
-    }
+		return $this->readRibbon->getNewCommentsCounts(
+			(int)$_SESSION['user_id'],
+			array_map('intval', $storyIds)
+		);
+	}
 }

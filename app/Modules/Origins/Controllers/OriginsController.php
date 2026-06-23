@@ -15,7 +15,7 @@ class OriginsController extends Controller
      */
     public function index(): void
     {
-        $domainModel = new Domain();
+        $domainModel = $this->service(Domain::class);
         $bannedDomains = $domainModel->getBannedDomains();
 
         $this->render('index', [
@@ -54,7 +54,7 @@ class OriginsController extends Controller
             exit;
         }
 
-        $domainModel = new Domain();
+        $domainModel = $this->service(Domain::class);
         $moderatorId = (int) ($_SESSION['user_id'] ?? 0);
 
         if ($domainModel->ban($domain, $reason, $moderatorId)) {
@@ -78,7 +78,7 @@ class OriginsController extends Controller
     {
         $this->request->validateCsrf();
 
-        $domainModel = new Domain();
+        $domainModel = $this->service(Domain::class);
         $domain = $domainModel->find((int) $id);
 
         if (!$domain) {
@@ -103,7 +103,7 @@ class OriginsController extends Controller
      */
     public function adminIndex(): void
     {
-        $domainModel = new Domain();
+        $domainModel = $this->service(Domain::class);
         $allDomains = $domainModel->getAllDomains();
 
         $this->render('admin_index', [

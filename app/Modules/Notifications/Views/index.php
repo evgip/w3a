@@ -75,7 +75,7 @@
                 } elseif ($notif['type'] === 'mention') {
                     $icon = '@';
                     $actionText = 'упомянул вас в комментарии';
-                    $link = '/story/' . '#comment-block-' . $notif['notifiable_id'];
+                    $link = '/story/' . $notif['story_id'] . '#comment-block-' . $notif['notifiable_id'];
                 } elseif ($notif['type'] === 'message') {
                     $icon = '✉️';
                     $actionText = 'отправил вам сообщение';

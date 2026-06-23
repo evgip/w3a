@@ -18,41 +18,6 @@ use App\Modules\Tags\Services\TagFilterService;
  */
 class TagsController extends AppCoreController
 {
-    private ?CategoryService $categoryService = null;
-    private ?TagFilterService $filterService = null;
-
-    // =========================================================================
-    // ЛЕНИВЫЕ ГЕТТЕРЫ СЕРВИСОВ
-    // =========================================================================
-
-    /**
-     * Получает экземпляр CategoryService (ленивая инициализация).
-     */
-    private function getCategoryService(): CategoryService
-    {
-        if ($this->categoryService === null) {
-            $this->categoryService = new CategoryService(
-                new Category(),
-                new Tag()
-            );
-        }
-        return $this->categoryService;
-    }
-
-    /**
-     * Получает экземпляр TagFilterService (ленивая инициализация).
-     */
-    private function getFilterService(): TagFilterService
-    {
-        if ($this->filterService === null) {
-            $this->filterService = new TagFilterService(
-                new TagFilter(),
-                new Tag()
-            );
-        }
-        return $this->filterService;
-    }
-
     // =========================================================================
     // КАТЕГОРИИ ТЕГОВ
     // =========================================================================
@@ -62,8 +27,8 @@ class TagsController extends AppCoreController
      */
     public function index(): void
     {
-        $categories = $this->getCategoryService()->getCategoriesWithTagsCount();
-        $tagsByCategory = $this->getCategoryService()->getTagsGroupedByCategory();
+        $categories = $this->service(CategoryService::class)->getCategoriesWithTagsCount();
+        $tagsByCategory = $this->service(CategoryService::class)->getTagsGroupedByCategory();
 
         $this->render('index', [
             'title' => 'Категории тегов',
@@ -81,7 +46,7 @@ class TagsController extends AppCoreController
         $currentPage = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config_int('constants.pagination.stories_per_page', 15);
 
-        $data = $this->getCategoryService()->getCategoryWithStories($slug, $currentPage, $perPage);
+        $data = $this->service(CategoryService::class)->getCategoryWithStories($slug, $currentPage, $perPage);
 
         if (!$data) {
             $this->redirectWithError('/categories', 'Категория не найдена.');
@@ -108,7 +73,7 @@ class TagsController extends AppCoreController
     public function filters(): void
     {
         $userId = (int)$_SESSION['user_id'];
-        $data = $this->getFilterService()->getFiltersData($userId);
+        $data = $this->service(TagFilterService::class)->getFiltersData($userId);
 
         $this->render('filters', [
             'title' => 'Фильтры тегов',
@@ -127,7 +92,7 @@ class TagsController extends AppCoreController
 		$tagId = (int)$this->request->post('tag_id', 0);
 		$userId = (int)\App\Core\Auth::id();
 		
-		$result = $this->getFilterService()->addFilter($userId, $tagId);
+		$result = $this->service(TagFilterService::class)->addFilter($userId, $tagId);
 		
 		if ($result['success']) {
 			Session::setFlash('success', $result['message'] ?? 'Фильтр добавлен');
@@ -146,7 +111,7 @@ class TagsController extends AppCoreController
 		$tagId = (int)$this->request->post('tag_id', 0);
 		$userId = (int)\App\Core\Auth::id();
 		
-		$result = $this->getFilterService()->removeFilter($userId, $tagId);
+		$result = $this->service(TagFilterService::class)->removeFilter($userId, $tagId);
 		
 		if ($result['success']) {
 			Session::setFlash('success', $result['message'] ?? 'Фильтр удалён');

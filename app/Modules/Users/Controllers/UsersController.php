@@ -17,49 +17,6 @@ use App\Modules\Users\Services\AvatarService;
  */
 class UsersController extends Controller
 {
-    private ?UserService $userService = null;
-    private ?AuthService $authService = null;
-    private ?AvatarService $avatarService = null;
-
-    /**
-     * Получить экземпляр сервиса работы с пользователями (ленивая инициализация).
-     *
-     * @return UserService Экземпляр UserService
-     */
-    private function getUserService(): UserService
-    {
-        if ($this->userService === null) {
-            $this->userService = new UserService();
-        }
-        return $this->userService;
-    }
-
-    /**
-     * Получить экземпляр сервиса аутентификации (ленивая инициализация).
-     *
-     * @return AuthService Экземпляр AuthService
-     */
-    private function getAuthService(): AuthService
-    {
-        if ($this->authService === null) {
-            $this->authService = new AuthService();
-        }
-        return $this->authService;
-    }
-
-    /**
-     * Получить экземпляр сервиса работы с аватарами (ленивая инициализация).
-     *
-     * @return AvatarService Экземпляр AvatarService
-     */
-    private function getAvatarService(): AvatarService
-    {
-        if ($this->avatarService === null) {
-            $this->avatarService = new AvatarService();
-        }
-        return $this->avatarService;
-    }
-
     /**
      * Обработка входа пользователя в систему (POST /login).
      * Валидирует CSRF-токен (через `Controller::validateCsrfToken()`), проверяет email/пароль, создаёт сессию.
@@ -75,7 +32,7 @@ class UsersController extends Controller
 		// Читаем параметр "Запомнить меня"
 		$remember = (bool)$this->request->getParams('remember');
 
-		$user = $this->getAuthService()->authenticate($email, $password);
+		$user = $this->service(AuthService::class)->authenticate($email, $password);
 		
 		if (!$user) {
 			// При неудаче — редирект на форму логина
@@ -84,7 +41,7 @@ class UsersController extends Controller
 		}
 
 		// Передаем параметр $remember в createSession
-		$this->getAuthService()->createSession($user, $remember);
+		$this->service(AuthService::class)->createSession($user, $remember);
 		
 		AppCoreSession::setFlash('success', 'Добро пожаловать!');
 		$this->redirect('/');
@@ -138,7 +95,7 @@ class UsersController extends Controller
         $email = trim($this->request->getParams('email'));
         $password = $this->request->getParams('password');
 
-        $userId = $this->getAuthService()->register($username, $email, $password);
+        $userId = $this->service(AuthService::class)->register($username, $email, $password);
         if (!$userId) {
             // Сохраняем ввод в сессию для повторной отрисовки формы
             \App\Core\Session::set('old_input', [
@@ -162,7 +119,7 @@ class UsersController extends Controller
      */
     public function logout(): void
     {
-        $this->getAuthService()->logout();
+        $this->service(AuthService::class)->logout();
         header('Location: /');
         exit;
     }

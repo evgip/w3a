@@ -9,13 +9,17 @@ abstract class Controller
 {
     protected Request $request;
     protected EventDispatcher $eventDispatcher;
+	protected Container $container;
     
     /**
      * Конструктор базового контроллера.
      * Параметры опциональны для обратной совместимости.
      */
-    public function __construct(?Request $request = null, ?EventDispatcher $eventDispatcher = null)
-    {
+    public function __construct(
+        ?Request $request = null, 
+        ?EventDispatcher $eventDispatcher = null,
+        ?Container $container = null
+    ) {
         $this->request = $request ?? new Request();
         
         // Если EventDispatcher передан из Router — используем его
@@ -24,8 +28,15 @@ abstract class Controller
             $this->eventDispatcher = $eventDispatcher;
         } else {
             $this->eventDispatcher = new EventDispatcher();
-            // Регистрируем слушателей только для новых экземпляров
             \App\Providers\EventServiceProvider::register($this->eventDispatcher);
+        }
+        
+        // Если контейнер передан — используем его
+        // Иначе создаём пустой (для контроллеров, созданных вручную)
+        if ($container !== null) {
+            $this->container = $container;
+        } else {
+            $this->container = new Container();
         }
     }
     
@@ -144,4 +155,12 @@ abstract class Controller
     {
         $this->redirectWithSuccess($this->getSafeBackUrl($fallback), $message);
     }
+	
+	/**
+	 * Получение сервиса из контейнера.
+	 */
+	protected function service(string $class): mixed
+	{
+		return $this->container->get($class);
+	}
 }

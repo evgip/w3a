@@ -14,6 +14,7 @@ class User extends Model
         'email',
         'password',
         'role',
+		'bio',
         'is_active'
     ];
 

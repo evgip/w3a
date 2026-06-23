@@ -16,62 +16,13 @@ use App\Modules\Admin\Services\AdminInvitationService;
 
 class AdminController extends Controller
 {
-    // Ленивые сервисы
-    private ?AdminUserService $userService = null;
-    private ?AdminTagService $tagService = null;
-    private ?AdminCategoryService $categoryService = null;
-    private ?AdminAuditService $auditService = null;
-    private ?AdminToolsService $toolsService = null;
-    private ?AdminFirewallService $firewallService = null;
-    private ?AdminInvitationService $invitationService = null;
-    
-
-    // =========================================================================
-    // ЛЕНИВЫЕ ГЕТТЕРЫ
-    // =========================================================================
-    
-    private function getUserService(): AdminUserService
-    {
-        return $this->userService ??= new AdminUserService();
-    }
-    
-    private function getTagService(): AdminTagService
-    {
-        return $this->tagService ??= new AdminTagService();
-    }
-    
-    private function getCategoryService(): AdminCategoryService
-    {
-        return $this->categoryService ??= new AdminCategoryService();
-    }
-    
-    private function getAuditService(): AdminAuditService
-    {
-        return $this->auditService ??= new AdminAuditService();
-    }
-    
-    private function getToolsService(): AdminToolsService
-    {
-        return $this->toolsService ??= new AdminToolsService();
-    }
-    
-    private function getFirewallService(): AdminFirewallService
-    {
-        return $this->firewallService ??= new AdminFirewallService();
-    }
-    
-    private function getInvitationService(): AdminInvitationService
-    {
-        return $this->invitationService ??= new AdminInvitationService();
-    }
-    
     // =========================================================================
     // DASHBOARD
     // =========================================================================
     
     public function index(): void
     {
-        $users = $this->getUserService()->getAllUsers();
+        $users = $this->service(AdminUserService::class)->getAllUsers();
         
         $this->render('dashboard', [
             'title' => 'Панель управления',
@@ -86,7 +37,7 @@ class AdminController extends Controller
     
     public function users(): void
     {
-		$user = $this->getUserService()->getAllUsers();
+		$user = $this->service(AdminUserService::class)->getAllUsers();
 		
 
         $this->render('users_list', [
@@ -99,15 +50,15 @@ class AdminController extends Controller
     {
         $this->render('users_list', [
             'title' => 'Управление пользователями',
-            'users' => $this->getUserService()->getAdminUsersList(100),
+            'users' => $this->service(AdminUserService::class)->getAdminUsersList(100),
             'request' => $this->request
         ]);
     }
     
     public function editUser(string $id): void
     {
-        $user = $this->getUserService()->findUser((int)$id);
-        
+        $user = $this->service(AdminUserService::class)->findUser((int)$id);
+
         if (!$user) {
             header('Location: /admin/users');
             exit;
@@ -122,7 +73,7 @@ class AdminController extends Controller
     
     public function updateUser(string $id): void
     {
-        $this->getUserService()->updateUserProfile((int)$id, [
+        $this->service(AdminUserService::class)->updateUserProfile((int)$id, [
             'email' => $this->request->getParams('email'),
             'role' => $this->request->getParams('role'),
             'bio' => $this->request->getParams('bio'),
@@ -135,7 +86,7 @@ class AdminController extends Controller
     
     public function archiveUser(string $id): void
     {
-        $success = $this->getUserService()->archiveUser((int)$id, (int)$_SESSION['user_id']);
+        $success = $this->service(AdminUserService::class)->archiveUser((int)$id, (int)$_SESSION['user_id']);
         
         if ($success) {
             Session::setFlash('success', 'Пользователь успешно отправлен в архив.');
@@ -147,7 +98,7 @@ class AdminController extends Controller
     
     public function restoreUser(string $id): void
     {
-        $this->getUserService()->restoreUser((int)$id);
+        $this->service(AdminUserService::class)->restoreUser((int)$id);
         Session::setFlash('success', 'Аккаунт пользователя успешно восстановлен из архива.');
         
         header('Location: /admin/users');
@@ -156,7 +107,7 @@ class AdminController extends Controller
     
     public function toggleUserStatus(string $id): void
     {
-        $result = $this->getUserService()->toggleUserStatus((int)$id, (int)$_SESSION['user_id']);
+        $result = $this->service(AdminUserService::class)->toggleUserStatus((int)$id, (int)$_SESSION['user_id']);
         
         if ($result === -2) {
             // Уже установлена ошибка в сервисе
@@ -176,7 +127,7 @@ class AdminController extends Controller
     {
         $userId = (int)$id;
         
-        if ($this->getUserService()->deleteUserAvatar($userId)) {
+        if ($this->service(AdminUserService::class)->deleteUserAvatar($userId)) {
             Session::setFlash('success', 'Аватар пользователя успешно удален.');
         }
         
@@ -192,7 +143,7 @@ class AdminController extends Controller
     {
         $this->render('tags_list', [
             'title' => 'Управление тегами',
-            'tags' => $this->getTagService()->getAllTags()
+            'tags' => $this->service(AdminTagService::class)->getAllTags()
         ]);
     }
     
@@ -206,7 +157,7 @@ class AdminController extends Controller
     
     public function createTag(): void
     {
-        $result = $this->getTagService()->createTag([
+        $result = $this->service(AdminTagService::class)->createTag([
 			'name' => $this->request->getParams('name'),
             'tag' => $this->request->getParams('tag'),
             'description' => $this->request->getParams('description'),
@@ -225,7 +176,7 @@ class AdminController extends Controller
     
     public function showTagEditForm(string $id): void
     {
-        $tag = $this->getTagService()->getTagById((int)$id);
+        $tag = $this->service(AdminTagService::class)->getTagById((int)$id);
         
         if (!$tag) {
             header('Location: /admin/tags');
@@ -242,7 +193,7 @@ class AdminController extends Controller
     public function updateTag(string $id): void
     {
         $tagId = (int)$id;
-        $success = $this->getTagService()->updateTag($tagId, [
+        $success = $this->service(AdminTagService::class)->updateTag($tagId, [
 			'name' => $this->request->getParams('name'),
             'tag' => $this->request->getParams('tag'),
             'description' => $this->request->getParams('description'),
@@ -263,7 +214,7 @@ class AdminController extends Controller
     public function deleteTag(string $id): void
     {
         $tagId = (int)$id;
-        $success = $this->getTagService()->softDeleteTag($tagId);
+        $success = $this->service(AdminTagService::class)->softDeleteTag($tagId);
         
         if ($success) {
             Session::setFlash('success', "Тег успешно удален (перемещен в архив).");
@@ -278,7 +229,7 @@ class AdminController extends Controller
     public function restoreTag(string $id): void
     {
         $tagId = (int)$id;
-        $success = $this->getTagService()->restoreTag($tagId);
+        $success = $this->service(AdminTagService::class)->restoreTag($tagId);
         
         if ($success) {
             Session::setFlash('success', "Тег успешно восстановлен.");
@@ -298,7 +249,7 @@ class AdminController extends Controller
     {
         $this->render('categories_list', [
             'title' => 'Управление категориями тегов',
-            'categories' => $this->getCategoryService()->getCategoriesList()
+            'categories' => $this->service(AdminCategoryService::class)->getCategoriesList()
         ]);
     }
     
@@ -312,7 +263,7 @@ class AdminController extends Controller
     
     public function createCategory(): void
     {
-        $result = $this->getCategoryService()->createCategory([
+        $result = $this->service(AdminCategoryService::class)->createCategory([
             'name' => $this->request->getParams('name'),
             'slug' => $this->request->getParams('slug'),
             'description' => $this->request->getParams('description'),
@@ -330,7 +281,7 @@ class AdminController extends Controller
     
     public function showCategoryEditForm(string $id): void
     {
-        $category = $this->getCategoryService()->getCategoryById((int)$id);
+        $category = $this->service(AdminCategoryService::class)->getCategoryById((int)$id);
         
         if (!$category) {
             Session::setFlash('error', 'Категория не найдена.');
@@ -348,7 +299,7 @@ class AdminController extends Controller
     public function updateCategory(string $id): void
     {
         $categoryId = (int)$id;
-        $success = $this->getCategoryService()->updateCategory($categoryId, [
+        $success = $this->service(AdminCategoryService::class)->updateCategory($categoryId, [
             'name' => $this->request->getParams('name'),
             'slug' => $this->request->getParams('slug'),
             'description' => $this->request->getParams('description'),
@@ -366,7 +317,7 @@ class AdminController extends Controller
     
     public function deleteCategory(string $id): void
     {
-        if ($this->getCategoryService()->deleteCategory((int)$id)) {
+        if ($this->service(AdminCategoryService::class)->deleteCategory((int)$id)) {
             Session::setFlash('success', "Категория успешно удалена.");
         }
         
@@ -404,10 +355,10 @@ class AdminController extends Controller
 		$perPage = 25;
 		$offset = ($currentPage - 1) * $perPage;
 		
-		$logs = $this->getAuditService()->getFilteredLogs(
+		$logs = $this->service(AdminAuditService::class)->getFilteredLogs(
 			$perPage, $offset, $filterUserId, $filterAction, $searchQuery, $filterCategory
 		);
-		$totalLogs = $this->getAuditService()->getFilteredCount(
+		$totalLogs = $this->service(AdminAuditService::class)->getFilteredCount(
 			$filterUserId, $filterAction, $searchQuery, $filterCategory
 		);
 		$totalPages = max(1, (int)ceil($totalLogs / $perPage));
@@ -415,8 +366,8 @@ class AdminController extends Controller
 		$this->render('audit_list', [
 			'title' => 'Журнал аудита системы',
 			'logs' => $logs,
-			'uniqueActions' => $this->getAuditService()->getUniqueActions(),
-			'uniqueCategories' => $this->getAuditService()->getUniqueCategories(),
+			'uniqueActions' => $this->service(AdminAuditService::class)->getUniqueActions(),
+			'uniqueCategories' => $this->service(AdminAuditService::class)->getUniqueCategories(),
 			'currentPage' => $currentPage,
 			'totalPages' => $totalPages,
 			'currentFilters' => [
@@ -442,7 +393,7 @@ class AdminController extends Controller
         
         echo json_encode([
             'status' => 'success',
-            'alerts' => $this->getAuditService()->getRecentSecurityAlerts(),
+            'alerts' => $this->service(AdminAuditService::class)->getRecentSecurityAlerts(),
             'timestamp' => time()
         ]);
         exit;
@@ -456,7 +407,7 @@ class AdminController extends Controller
     {
         $this->render('firewall', [
             'title' => 'Сетевой экран (Firewall)',
-            'bannedIps' => $this->getFirewallService()->getBannedIps(),
+            'bannedIps' => $this->service(AdminFirewallService::class)->getBannedIps(),
             'request' => $this->request
         ]);
     }
@@ -466,7 +417,7 @@ class AdminController extends Controller
         $ip = trim($this->request->getParams('ip_address'));
         $reason = trim($this->request->getParams('reason')) ?: 'Нарушение правил сообщества';
         
-        if ($this->getFirewallService()->banIp($ip, $reason)) {
+        if ($this->service(AdminFirewallService::class)->banIp($ip, $reason)) {
             Session::setFlash('success', "IP-адрес {$ip} успешно внесен в черный список.");
         } else {
             if (!filter_var($ip, FILTER_VALIDATE_IP)) {
@@ -482,7 +433,7 @@ class AdminController extends Controller
     
     public function unbanIp(string $id): void
     {
-        $ip = $this->getFirewallService()->unbanIp((int)$id);
+        $ip = $this->service(AdminFirewallService::class)->unbanIp((int)$id);
         
         if ($ip) {
             Session::setFlash('success', "IP-адрес {$ip} успешно разблокирован.");
@@ -505,7 +456,7 @@ class AdminController extends Controller
     
     public function compileAssets(): void
     {
-        $this->getToolsService()->compileAssets();
+        $this->service(AdminToolsService::class)->compileAssets();
         Session::setFlash('success', 'Все CSS файлы модулей успешно найдены, объединены и сжаты силами PHP!');
         
         header('Location: /admin/tools');
@@ -514,7 +465,7 @@ class AdminController extends Controller
     
     public function clearFileLogs(): void
     {
-        $count = $this->getToolsService()->clearFileLogs();
+        $count = $this->service(AdminToolsService::class)->clearFileLogs();
         Session::setFlash('success', "Текстовые логи успешно очищены (обнулено файлов: {$count}).");
         
         header('Location: /admin/tools');
@@ -523,7 +474,7 @@ class AdminController extends Controller
     
     public function clearDbAudit(): void
     {
-        if ($this->getAuditService()->clearAuditLogs()) {
+        if ($this->service(AdminAuditService::class)->clearAuditLogs()) {
             \App\Core\Audit::log('admin.tools_clear_db', 'Администратор выполнил полную очистку (TRUNCATE) таблицы аудита в базе данных');
             Session::setFlash('success', 'Таблица логов аудита в базе данных успешно и полностью очищена.');
         } else {
@@ -537,7 +488,7 @@ class AdminController extends Controller
     public function cacheRoutes(): void
     {
         global $router;
-        $this->getToolsService()->cacheRoutes($router);
+        $this->service(AdminToolsService::class)->cacheRoutes($router);
         Session::setFlash('success', 'Маршруты всех модулей успешно оптимизированы и сохранены в кэш-файл.');
         
         header('Location: /admin/tools');
@@ -547,7 +498,7 @@ class AdminController extends Controller
     public function clearCacheRoutes(): void
     {
         global $router;
-        $this->getToolsService()->clearCacheRoutes($router);
+        $this->service(AdminToolsService::class)->clearCacheRoutes($router);
         Session::setFlash('success', 'Кэш маршрутов успешно сброшен.');
         
         header('Location: /admin/tools');
@@ -564,7 +515,7 @@ class AdminController extends Controller
             exit;
         }
         
-        $error = $this->getToolsService()->sendTestEmail($email);
+        $error = $this->service(AdminToolsService::class)->sendTestEmail($email);
         
         if ($error === null) {
             Session::setFlash('success', 'Тестовое письмо отправлено успешно на ' . e($email));
@@ -590,7 +541,7 @@ class AdminController extends Controller
 			$offset = (int)$this->request->getParams('offset', 0);
 			$batchSize = 1000; // пересчет за раз (один проход)
 			
-			$result = $this->getToolsService()->recalculateConfidenceScoreBatch($offset, $batchSize);
+			$result = $this->service(AdminToolsService::class)->recalculateConfidenceScoreBatch($offset, $batchSize);
 			
 			$this->json([
 				'success' => true,
@@ -624,14 +575,14 @@ class AdminController extends Controller
         
         $this->render('invitations', [
             'title' => 'Запросы приглашений',
-            'requests' => $this->getInvitationService()->getRequests($status),
+            'requests' => $this->service(AdminInvitationService::class)->getRequests($status),
             'currentStatus' => $status
         ], 'Invitations');
     }
     
     public function approveInvitation(int $id): void
     {
-        if ($this->getInvitationService()->approveRequest($id)) {
+        if ($this->service(AdminInvitationService::class)->approveRequest($id)) {
             Session::setFlash('success', 'Запрос одобрен.');
         } else {
             Session::setFlash('error', 'Не удалось одобрить запрос.');
@@ -643,7 +594,7 @@ class AdminController extends Controller
     
     public function rejectInvitation(int $id): void
     {
-        if ($this->getInvitationService()->rejectRequest($id)) {
+        if ($this->service(AdminInvitationService::class)->rejectRequest($id)) {
             Session::setFlash('success', 'Запрос отклонён.');
         } else {
             Session::setFlash('error', 'Не удалось отклонить запрос.');

@@ -18,11 +18,13 @@ class AdminTagService
     private Tag $tagModel;
     private Category $categoryModel;
     
-    public function __construct()
-    {
-        $this->tagModel = new Tag();
-        $this->categoryModel = new Category();
-    }
+	public function __construct(
+		?Tag $tagModel = null,
+		?Category $categoryModel = null
+	) {
+		$this->tagModel = $tagModel ?? new Tag();
+		$this->categoryModel = $categoryModel ?? new Category();
+	}
     
     /**
      * Получить все теги.
