@@ -1046,3 +1046,36 @@ ALTER TABLE `user_settings`
 --
 ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+
+-- --------------------------------------------------------
+-- Структура таблицы `remember_tokens`
+-- --------------------------------------------------------
+
+CREATE TABLE `remember_tokens` (
+  `id` int UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED NOT NULL,
+  `selector` varchar(12) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Публичный идентификатор для поиска',
+  `hashed_validator` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Хэш валидатора',
+  `user_agent` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `expires_at` timestamp NOT NULL COMMENT 'Время истечения токена',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- Индексы таблицы `remember_tokens`
+ALTER TABLE `remember_tokens`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_selector` (`selector`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_expires_at` (`expires_at`);
+
+-- AUTO_INCREMENT для таблицы `remember_tokens`
+ALTER TABLE `remember_tokens`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+
+-- Внешний ключ для таблицы `remember_tokens`
+ALTER TABLE `remember_tokens`
+  ADD CONSTRAINT `fk_remember_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  

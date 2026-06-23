@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Users\Services;
 
 use App\Modules\Users\Models\User;
+use App\Modules\Users\Models\RememberToken;
 use App\Core\Session as AppCoreSession;
 use App\Core\Database;
 use App\Core\Audit;
@@ -19,6 +20,10 @@ class AuthService
     private const LOCKOUT_MINUTES = 15;       // длительность блокировки в минутах
     // Константный «dummy» хэш для защиты от timing-атак при несуществующем email
     private const DUMMY_HASH = '$2y$10$DummyHashForTimingProtection00000000000000000000';
+
+    private const COOKIE_NAME = 'remember_me';
+    private const COOKIE_DAYS = 30;
+
 
     public function __construct()
     {
@@ -265,23 +270,182 @@ class AuthService
      *
      * @param array $user Данные пользователя (должны содержать id, username, role и др.)
      */
-    public function createSession(array $user): void
+    public function createSession(array $user, bool $remember = false): void
     {
-        $profile = $this->userModel->getProfile((int)$user['id']);
-        
+        // Регенерируем ID сессии для безопасности
+        session_regenerate_id(true);
+
         $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_name'] = $user['username'];
-        $_SESSION['user_avatar'] = $profile['avatar'] ?? null;
+        $_SESSION['user_name'] = $user['username'] ?? $user['name'];
         $_SESSION['user_role'] = $user['role'] ?? 'user';
         $_SESSION['last_activity_time'] = time();
+
+        // Получаем аватар из профиля
+        $userModel = new User();
+        $profile = $userModel->getProfile((int)$user['id']);
+        $_SESSION['user_avatar'] = $profile['avatar'] ?? null;
+
+        // Если отмечен чекбокс "Запомнить меня" - создаем токен
+        if ($remember) {
+            $this->createRememberCookie($user['id']);
+        }
+
+        // Аудит
+        Audit::log('auth.login_success', "Пользователь вошел в систему", 'auth');
     }
+
+   /**
+     * Создать cookie "Запомнить меня"
+     */
+    private function createRememberCookie(int $userId): void
+    {
+        $rememberModel = new RememberToken();
+        
+        $tokenData = $rememberModel->createToken(
+            $userId,
+            self::COOKIE_DAYS,
+            $_SERVER['HTTP_USER_AGENT'] ?? null,
+            $_SERVER['REMOTE_ADDR'] ?? null
+        );
+
+        // Устанавливаем cookie на 30 дней
+        $expiry = time() + (self::COOKIE_DAYS * 86400);
+        
+        setcookie(
+            self::COOKIE_NAME,
+            $tokenData['token'],
+            [
+                'expires' => $expiry,
+                'path' => '/',
+                'domain' => '',
+                'secure' => isset($_SERVER['HTTPS']),
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]
+        );
+    }
+
+    /**
+     * Проверить cookie "Запомнить меня" и восстановить сессию
+     * Вызывается при каждом запросе, если сессия пуста
+     *
+     * @return bool true если сессия восстановлена
+     */
+    public function attemptRememberLogin(): bool
+    {
+        if (!isset($_COOKIE[self::COOKIE_NAME])) {
+            return false;
+        }
+
+        $token = $_COOKIE[self::COOKIE_NAME];
+        
+        // Разделяем токен на selector и validator
+        $parts = explode(':', $token, 2);
+        if (count($parts) !== 2) {
+            $this->clearRememberCookie();
+            return false;
+        }
+
+        [$selector, $validator] = $parts;
+
+        $rememberModel = new RememberToken();
+        $record = $rememberModel->validateToken($selector, $validator);
+
+        if (!$record) {
+            // Токен невалиден или истек - удаляем cookie
+            $this->clearRememberCookie();
+            return false;
+        }
+
+        // Получаем данные пользователя
+        $userModel = new User();
+        $user = $userModel->find((int)$record['user_id']);
+
+        if (!$user) {
+            $this->clearRememberCookie();
+            return false;
+        }
+
+        // Проверяем, не забанен ли пользователь
+        if ($userModel->isBanned((int)$user['id'])) {
+            $this->clearRememberCookie();
+            Audit::log('auth.remember_blocked', "Попытка входа по токену забаненного пользователя", 'auth');
+			
+            return false;
+        }
+
+        // Восстанавливаем сессию
+        $this->createSession($user, false); // false - не создавать новый remember токен
+
+        // Обновляем токен (rotation) для безопасности
+        $this->createRememberCookie($user['id']);
+
+        Audit::log('auth.remember_success', "Восстановление сессии по токену", 'auth');
+
+        return true;
+    }
+
+    /**
+     * Очистить cookie "Запомнить меня"
+     */
+    private function clearRememberCookie(): void
+    {
+        if (isset($_COOKIE[self::COOKIE_NAME])) {
+            // Удаляем токен из БД
+            $token = $_COOKIE[self::COOKIE_NAME];
+            $parts = explode(':', $token, 2);
+            if (count($parts) === 2) {
+                $rememberModel = new RememberToken();
+                $rememberModel->deleteBySelector($parts[0]);
+            }
+
+            // Удаляем cookie
+            setcookie(
+                self::COOKIE_NAME,
+                '',
+                [
+                    'expires' => time() - 3600,
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => isset($_SERVER['HTTPS']),
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]
+            );
+            unset($_COOKIE[self::COOKIE_NAME]);
+        }
+    }
+
 
     /**
      * Завершает текущую сессию пользователя.
      */
     public function logout(): void
     {
-        session_destroy();
+        // Удаляем remember токен
+        $this->clearRememberCookie();
+
+        // Если есть user_id - логируем выход
+        if (isset($_SESSION['user_id'])) {
+            Audit::log('auth.logout', "Пользователь вышел из системы", 'auth');
+        }
+
+        // Уничтожаем сессию
         $_SESSION = [];
+        
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params["path"],
+                $params["domain"],
+                $params["secure"],
+                $params["httponly"]
+            );
+        }
+        
+        session_destroy();
     }
 }

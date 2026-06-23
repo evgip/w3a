@@ -67,23 +67,28 @@ class UsersController extends Controller
      *
      * @return void
      */
-    public function login(): void
-    {
-        $email = trim($this->request->getParams('email'));
-        $password = $this->request->getParams('password');
+	public function login(): void
+	{
+		$email = trim($this->request->getParams('email'));
+		$password = $this->request->getParams('password');
+		
+		// Читаем параметр "Запомнить меня"
+		$remember = (bool)$this->request->getParams('remember');
 
-        $user = $this->getAuthService()->authenticate($email, $password);
-        if (!$user) {
-            // При неудаче — редирект на форму логина (ошибки отображаются через flash-сообщения)
-            header('Location: /login');
-            exit;
-        }
+		$user = $this->getAuthService()->authenticate($email, $password);
+		
+		if (!$user) {
+			// При неудаче — редирект на форму логина
+			$this->redirectWithError('/login', 'Неверный email или пароль');
+			return;
+		}
 
-        $this->getAuthService()->createSession($user);
-        AppCoreSession::setFlash('success', 'Добро пожаловать!');
-        header('Location: /');
-        exit;
-    }
+		// Передаем параметр $remember в createSession
+		$this->getAuthService()->createSession($user, $remember);
+		
+		AppCoreSession::setFlash('success', 'Добро пожаловать!');
+		$this->redirect('/');
+	}
 
     /**
      * Отображение формы логина (GET /login).

@@ -5,83 +5,79 @@ namespace App\Core;
 class Auth
 {
 	
-	    private static int $sessionTimeout = 900; // Время бездействия в секундах (900 секунд = 15 минут)
-		private static bool $isLoopProtect = false; // Flag to prevent infinite recursive loops
-
-    /**
-     * Безопасная инициализация сессии с защитой кук
-     */
+	private static int $sessionTimeout = 3600; // 1 час неактивностит)
+	private static bool $isLoopProtect = false; // Flag to prevent infinite recursive loops
 
     /**
      * Initializes a secure session environment safely
      */
-    public static function initSession(): void
+   public static function initSession(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            ini_set('session.cookie_httponly', 1);
-            ini_set('session.use_only_cookies', 1);
-            session_start();
-        }
-
-        // PROTECTION LAYER: Stop if we are already analyzing a timeout check
+        // Защита от рекурсии
         if (self::$isLoopProtect) {
             return;
         }
+        self::$isLoopProtect = true;
 
-        // Process session timeout checks safely only for authenticated users
-        if (isset($_SESSION['user_id'])) {
-            self::$isLoopProtect = true; // Raise lock flag
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        // Проверяем таймаут сессии
+        $currentTime = time();
+        if (isset($_SESSION['last_activity_time']) && 
+            ($currentTime - $_SESSION['last_activity_time']) > self::$sessionTimeout) {
             
-            $currentTime = time();
-            $lastActivity = $_SESSION['last_activity_time'] ?? $currentTime;
-
-			// ✅ ПРОВЕРКА БАНА: разлогин забаненных пользователей
-			if (self::isBanned()) {
-				$userName = $_SESSION['user_name'] ?? 'ID:' . $_SESSION['user_id'];
-				
-				// Логируем
-				Audit::log('auth.banned_logout', 
-					"Забаненный пользователь разлогинен: {$userName} (ID: {$_SESSION['user_id']})");
-				
-				// Очищаем сессию
-				$_SESSION = [];
-				if (ini_get("session.use_cookies")) {
-					$params = session_get_cookie_params();
-					setcookie(session_name(), '', time() - 42000,
-						$params["path"], $params["domain"],
-						$params["secure"], $params["httponly"]
-					);
-				}
-				session_destroy();
-				
-				self::$isLoopProtect = false;
-				
-				// Редирект с сообщением
-				Session::setFlash('error', 'Ваш аккаунт заблокирован. Обратитесь к администрации.');
-				header('Location: /login?banned=1');
-				exit;
-			}
-
-            if (($currentTime - $lastActivity) > self::$sessionTimeout) {
-                // Clear session tracking variables silently without invoking cascading method chains
-                $_SESSION = [];
-                if (ini_get("session.use_cookies")) {
-                    $params = session_get_cookie_params();
-                    setcookie(session_name(), '', time() - 42000,
-                        $params["path"], $params["domain"],
-                        $params["secure"], $params["httponly"]
-                    );
-                }
-                session_destroy();
-                
-                self::$isLoopProtect = false; // Reset lock flag
+            // Сессия истекла - пробуем восстановить через remember token
+            $authService = new \App\Modules\Users\Services\AuthService();
+            if ($authService->attemptRememberLogin()) {
+                self::$isLoopProtect = false;
+                return; // Сессия восстановлена
+            }
+            
+            // Не удалось восстановить - очищаем сессию
+            $_SESSION = [];
+            if (ini_get("session.use_cookies")) {
+                $params = session_get_cookie_params();
+                setcookie(
+                    session_name(),
+                    '',
+                    time() - 42000,
+                    $params["path"],
+                    $params["domain"],
+                    $params["secure"],
+                    $params["httponly"]
+                );
+            }
+            session_destroy();
+            self::$isLoopProtect = false;
+            
+            // Редирект на логин только если это не AJAX запрос
+            if (!self::isAjaxRequest()) {
                 header('Location: /login?expired=1');
                 exit;
             }
-
-            $_SESSION['last_activity_time'] = $currentTime;
-            self::$isLoopProtect = false; // Reset lock flag
+            return;
         }
+
+        // Если сессии нет, но есть remember cookie - пробуем восстановить
+        if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
+            $authService = new \App\Modules\Users\Services\AuthService();
+            $authService->attemptRememberLogin();
+        }
+
+        // Обновляем время последней активности
+        $_SESSION['last_activity_time'] = $currentTime;
+        self::$isLoopProtect = false;
+    }
+
+    /**
+     * Проверка AJAX запроса
+     */
+    private static function isAjaxRequest(): bool
+    {
+        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
 
     /**
