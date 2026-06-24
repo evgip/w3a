@@ -25,7 +25,7 @@
     <div class="form-field-group">
         <label for="login-password">
             <strong>Пароль</strong>
-            <a href="/password/recovery" class="form-field-hint-inline">(забыли пароль?)</a>
+            <a href="/password/reset" class="form-field-hint-inline">(забыли пароль?)</a>
         </label>
         <input type="password" id="login-password" name="password" required class="form-input-wide">
     </div>

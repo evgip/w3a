@@ -2,18 +2,22 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Users\Services;
+namespace App\Modules\Auth\Services;
 
 use App\Modules\Users\Models\User;
-use App\Modules\Users\Models\RememberToken;
+use App\Modules\Auth\Models\RememberToken;
+use App\Modules\Auth\Models\EmailActivation;
 use App\Core\Session as AppCoreSession;
 use App\Core\Database;
 use App\Core\Audit;
+use App\Core\Config;
+use App\Core\Mailer;
 
 class AuthService
 {
     private User $userModel;
 	private RememberToken $rememberTokenModel;
+	private EmailActivation $emailActivationModel;
 
     // Максимальное количество неудачных попыток входа до блокировки
     private const MAX_ATTEMPTS_IP = 5;        // с одного IP-адреса
@@ -31,10 +35,12 @@ class AuthService
      */
     public function __construct(
         ?User $userModel = null,
-        ?RememberToken $rememberTokenModel = null
+        ?RememberToken $rememberTokenModel = null,
+        ?EmailActivation $emailActivationModel = null
     ) {
         $this->userModel = $userModel ?? new User();
         $this->rememberTokenModel = $rememberTokenModel ?? new RememberToken();
+        $this->emailActivationModel = $emailActivationModel ?? new EmailActivation();
     }
 
     /**
@@ -229,7 +235,7 @@ class AuthService
     }
 
     /**
-     * Регистрирует нового пользователя.
+     * Регистрирует нового пользователя и отправляет письмо активации.
      *
      * @param string $username Имя пользователя
      * @param string $email    Электронная почта
@@ -252,11 +258,13 @@ class AuthService
 
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
+        // Создаём пользователя с is_active = 0 (неактивен до подтверждения email)
         $userId = $this->userModel->create([
             'username' => $username,
             'email' => $email,
             'password' => $hashedPassword,
-            'role' => 'user'
+            'role' => 'user',
+            'is_active' => 0  // ⚠️ Неактивен до активации
         ]);
 
         if ($userId > 0) {
@@ -267,9 +275,119 @@ class AuthService
                 'notify_on_story_comment' => 1,
                 'email_notifications' => 0
             ]);
+
+            // === ОТПРАВКА ПИСЬМА АКТИВАЦИИ ===
+            $activationToken = bin2hex(random_bytes(32));
+            
+            // Сохраняем токен в таблице email_activations
+            $this->emailActivationModel->createToken($userId, $activationToken);
+
+            // Отправляем письмо
+            $this->sendActivationEmail($email, $username, $activationToken);
+
+            Audit::log('auth.register', "Зарегистрирован новый пользователь", 'auth', [
+                'user_id' => $userId,
+                'email' => $email,
+                'username' => $username
+            ]);
         }
 
         return $userId > 0 ? $userId : null;
+    }
+
+	/**
+	 * Активировать аккаунт по токену из email.
+	 *
+	 * @param string $token Токен активации из ссылки
+	 * @return bool Успешность активации
+	 */
+	public function activateAccount(string $token): bool
+	{
+		if (empty($token)) {
+			return false;
+		}
+
+		// Ищем токен в таблице email_activations
+		$tokenData = $this->emailActivationModel->findByToken($token);
+
+		if (!$tokenData) {
+			return false;
+		}
+
+		// Проверяем срок действия (24 часа от created_at)
+		$createdAt = strtotime($tokenData['created_at']);
+		if ((time() - $createdAt) > 86400) { // 24 часа = 86400 секунд
+			// Токен просрочен — удаляем
+			$this->emailActivationModel->deleteByToken($token);
+			return false;
+		}
+
+		// Получаем данные пользователя
+		$user = $this->userModel->find((int)$tokenData['user_id']);
+
+		if (!$user) {
+			$this->emailActivationModel->deleteByToken($token);
+			return false;
+		}
+
+		// Активируем аккаунт
+		$success = $this->userModel->update((int)$user['id'], [
+			'is_active' => 1
+		]);
+
+		if ($success) {
+			// Удаляем токен (он одноразовый)
+			$this->emailActivationModel->deleteByToken($token);
+
+			Audit::log('auth.account_activated', "Аккаунт активирован", 'auth', [
+				'user_id' => $user['id'],
+				'email' => $user['email']
+			]);
+		}
+
+		return $success;
+	}
+
+    /**
+     * Отправить письмо активации аккаунта.
+     */
+    private function sendActivationEmail(string $email, string $username, string $token): void
+    {
+        // Получаем базовый URL
+        $baseUrl = Config::get('config.app.url');
+        if (empty($baseUrl)) {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $baseUrl = $scheme . '://' . $host;
+        }
+
+        $activationUrl = rtrim($baseUrl, '/') . '/register/activate/' . $token;
+        $siteName = Config::get('config.app.name') ?? $baseUrl;
+
+        // Формируем тему и тело через языковые ключи
+        $subject = sprintf(
+            \App\Core\Lang::get('email_activation_subject'),
+            htmlspecialchars($siteName)
+        );
+
+        $body = sprintf(
+            \App\Core\Lang::get('email_activation_body'),
+            htmlspecialchars($username),
+            htmlspecialchars($activationUrl)
+        );
+
+		Audit::log('auth.activation_email', "Отправка письма активации", 'auth', [
+			'to' => $email,
+			'subject' => $subject,
+		]);
+
+        $result = Mailer::send($email, $subject, $body);
+
+        if (!$result) {
+            Audit::log('auth.activation_email_failed', "Не удалось отправить письмо активации", 'auth', [
+				'email' => $email
+			]);
+        }
     }
 
     /**

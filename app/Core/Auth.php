@@ -29,7 +29,7 @@ class Auth
             ($currentTime - $_SESSION['last_activity_time']) > self::$sessionTimeout) {
             
             // Сессия истекла - пробуем восстановить через remember token
-            $authService = new \App\Modules\Users\Services\AuthService();
+            $authService = new \App\Modules\Auth\Services\AuthService();
             if ($authService->attemptRememberLogin()) {
                 self::$isLoopProtect = false;
                 return; // Сессия восстановлена
@@ -62,7 +62,7 @@ class Auth
 
         // Если сессии нет, но есть remember cookie - пробуем восстановить
         if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
-            $authService = new \App\Modules\Users\Services\AuthService();
+            $authService = new \App\Modules\Auth\Services\AuthService();
             $authService->attemptRememberLogin();
         }
 

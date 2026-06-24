@@ -19,6 +19,5 @@ class ModuleServiceProvider
     {
         // Request уже создан в index.php — кладём его в контейнер
         $container->singleton(Request::class, fn() => $this->request);
-
     }
 }

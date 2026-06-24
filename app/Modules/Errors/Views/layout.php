@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title><?= e($title) ?></title>
+    <title><?= e($title ?? 'error') ?></title>
     <link rel="stylesheet" href="/css/app.min.css">
 </head>
 <body>

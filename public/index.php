@@ -5,15 +5,15 @@ require_once dirname(__DIR__) . '/app/Core/Benchmark.php';
 \App\Core\Benchmark::start();
 
 // 2. Включаем отображение ошибок
-// ini_set('display_errors', 1);
-// ini_set('display_startup_errors', 1);
-// error_reporting(E_ALL);
+ ini_set('display_errors', 1);
+ ini_set('display_startup_errors', 1);
+ error_reporting(E_ALL);
 
 // Настройка безопасного поведения сессионных кук
-// ini_set('session.cookie_httponly', 1); // Браузерный JS вообще не имеет доступа к куке (защита от XSS-угона)
-// ini_set('session.cookie_secure', 1);   // Кука передается ТОЛЬКО по защищенному протоколу HTTPS
-// ini_set('session.cookie_samesite', 'Strict'); // Защита от CSRF на уровне браузера (кука не улетает на сторонние сайты)
-// ini_set('session.use_only_cookies', 1); // Исключает передачу ID сессии через URL (защита от Session Fixation)
+//ini_set('session.cookie_httponly', 1); // Браузерный JS вообще не имеет доступа к куке (защита от XSS-угона)
+//ini_set('session.cookie_secure', 1);   // Кука передается ТОЛЬКО по защищенному протоколу HTTPS
+//ini_set('session.cookie_samesite', 'Strict'); // Защита от CSRF на уровне браузера (кука не улетает на сторонние сайты)
+//ini_set('session.use_only_cookies', 1); // Исключает передачу ID сессии через URL (защита от Session Fixation)
 
 
 // 3. Подключаем Composer
@@ -30,8 +30,31 @@ try {
     // --- INTEGRATE FIREWALL BLOCKER INTERCEPTOR HERE ---
     \App\Core\Firewall::check();
     // ----------------------------------------------------
+	
+	// --- Контейнер и провайдеры ---
+	$container = new \App\Core\Container();
 
-    $router = new Router($request);
+	// 1. Регистрируем провайдер ядра
+	$coreProvider = new \App\Core\ModuleServiceProvider($request);
+	$coreProvider->register($container);
+
+	// 2. Автоматически загружаем провайдеры всех модулей
+	$modulesPath = dirname(__DIR__) . '/app/Modules';
+	if (is_dir($modulesPath)) {
+		$modules = array_diff(scandir($modulesPath), ['.', '..']);
+		
+		foreach ($modules as $module) {
+			$providerClass = "App\\Modules\\{$module}\\ModuleServiceProvider";
+			
+			if (class_exists($providerClass)) {
+				$provider = new $providerClass();
+				$provider->register($container);
+			}
+		}
+	}
+	// --------------------------------------
+
+    $router = new Router($request, $container);
     $router->dispatch();
 
 } catch (\Throwable $e) {

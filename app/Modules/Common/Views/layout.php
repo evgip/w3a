@@ -91,7 +91,11 @@
 							<?php endif; ?>
 
 							<div class="dropdown-divider"></div>
-							<a href="<?= route('auth.logout') ?>" class="dropdown-menu-item navbar-logout-link">🚪 Выйти из системы</a>
+							<form action="<?= route('auth.logout') ?>" method="POST" style="display:inline;">
+								 <?= csrf_field() ?>
+								<button type="submit" class="dropdown-menu-item navbar-logout-link">🚪  Выйти</button>
+							</form>
+														
 						</div>
 
 					</div>

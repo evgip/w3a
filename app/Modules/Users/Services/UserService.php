@@ -74,19 +74,28 @@ class UserService
     /**
      * Сменить пароль
      */
-    public function changePassword(int $userId, string $currentPassword, string $newPassword): bool
-    {
-        $user = $this->userModel->find($userId);
-        if (!$user) return false;
+	public function changePassword(int $userId, string $currentPassword, string $newPassword): bool
+	{
+		$user = $this->userModel->find($userId);
+		if (!$user) {
+			AppCoreSession::setFlash('error', 'Пользователь не найден.');
+			return false;
+		}
 
-        if (!password_verify($currentPassword, $user['password'])) {
-            AppCoreSession::setFlash('error', 'Текущий пароль введён неверно.');
-            return false;
-        }
+		if (!password_verify($currentPassword, $user['password'])) {
+			AppCoreSession::setFlash('error', 'Текущий пароль введён неверно.');
+			return false;
+		}
 
-        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-        return $this->userModel->update($userId, ['password' => $hashedPassword]);
-    }
+		$hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+		$success = $this->userModel->update($userId, ['password' => $hashedPassword]);
+		
+		if ($success) {
+			AppCoreSession::setFlash('success', 'Пароль успешно изменён.');
+		}
+		
+		return $success;
+	}
 
     /**
      * Получить список всех пользователей с информацией о бане
