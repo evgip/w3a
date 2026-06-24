@@ -11,8 +11,8 @@ class RateLimiter
      */
     public static function check(string $action): bool
     {
-        $configFile = dirname(__DIR__) . '/Config/ratelimit.php';
-        $config = file_exists($configFile) ? require $configFile : [];
+        // 🔑 Используем Config::getArray() вместо прямого require
+        $config = Config::getArray('rate_limit', []);
 
         if (!($config['enabled'] ?? false) || !isset($config['rules'][$action])) {
             return true;
@@ -26,7 +26,7 @@ class RateLimiter
         $rateLimitModel = new RateLimit();
 
         // 1. Garbage Collection: Prune database rows with a 5% lottery probability
-        $gcProbability = config_int('rate_limit.gc_probability', 5);
+        $gcProbability = Config::getInt('rate_limit.gc_probability', 5);
         if (random_int(1, 100) <= $gcProbability) {
             $rateLimitModel->clearStaleLogs($window);
         }
@@ -59,14 +59,14 @@ class RateLimiter
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 
         // Log critical rate-limiting throttle breaches down to the database for administrative alerting
-        \App\Core\Audit::log('security.rate_limited', "Превышен лимит частоты запросов. IP заблокирован.", [
+        Audit::log('security.rate_limited', "Превышен лимит частоты запросов. IP заблокирован.", [
             'ip_address' => $ip,
             'url'        => $_SERVER['REQUEST_URI'] ?? '/'
         ]);
 
         http_response_code(429); // Too Many Requests
 
-        $retryAfter = config_int('rate_limit.retry_after', 60);
+        $retryAfter = Config::getInt('rate_limit.retry_after', 60);
         header("Retry-After: {$retryAfter}");
 
         // 100% CSP compliant template framework - zero style="..." parameters used

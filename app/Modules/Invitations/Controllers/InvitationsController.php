@@ -5,7 +5,6 @@ namespace App\Modules\Invitations\Controllers;
 use App\Core\Controller;
 use App\Core\Auth;
 use App\Core\Session;
-use App\Core\Mailer;
 use App\Core\Validator;
 use App\Modules\Invitations\Models\Invitation;
 use App\Modules\Invitations\Models\InvitationRequest;
@@ -351,7 +350,7 @@ class InvitationsController extends Controller
 			e($expiresAt)
 		]);
 
-		\App\Core\Mailer::send($email, $subject, $htmlBody);
+		\App\Modules\Mail\Core\Mailer::send($email, $subject, $htmlBody);
 	}
 	
 	/**
@@ -369,7 +368,7 @@ class InvitationsController extends Controller
 			e($expiresAt)
 		]);
 
-		\App\Core\Mailer::send($email, $subject, $htmlBody);
+		\App\Modules\Mail\Core\Mailer::send($email, $subject, $htmlBody);
 	}
 
 	/**
@@ -384,6 +383,6 @@ class InvitationsController extends Controller
 			e($siteName)
 		]);
 
-		\App\Core\Mailer::send($email, $subject, $htmlBody);
+		\App\Modules\Mail\Core\Mailer::send($email, $subject, $htmlBody);
 	}
 }

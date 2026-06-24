@@ -3,21 +3,42 @@
 namespace App\Core;
 
 /**
- * Провайдер сервисов ядра.
- * Регистрирует базовые объекты, которые уже созданы в точке входа.
+ * Базовый провайдер сервисов для модулей.
+ * Все модули должны наследоваться от этого класса.
  */
 class ModuleServiceProvider
 {
-    private Request $request;
+    protected ?Request $request = null;
 
-    public function __construct(Request $request)
+    /**
+     * 🔑 Request теперь ОПЦИОНАЛЬНЫЙ!
+     * 
+     * - Ядро передаёт Request
+     * - Модули могут не передавать ничего
+     * - Модули могут переопределить конструктор, если нужен Request
+     */
+    public function __construct(?Request $request = null)
     {
         $this->request = $request;
     }
 
+    /**
+     * Зарегистрировать сервисы модуля в контейнере
+     */
     public function register(Container $container): void
     {
-        // Request уже создан в index.php — кладём его в контейнер
-        $container->singleton(Request::class, fn() => $this->request);
+        // По умолчанию ничего не делаем.
+        // Если это провайдер ядра — зарегистрируем Request.
+        if ($this->request !== null) {
+            $container->singleton(Request::class, fn() => $this->request);
+        }
+    }
+
+    /**
+     * Загрузить сервисы (вызывается после регистрации)
+     */
+    public function boot(): void
+    {
+        // По умолчанию ничего не делаем
     }
 }

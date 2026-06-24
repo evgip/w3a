@@ -21,7 +21,7 @@ class PagesController extends Controller
             die("<h1>404 Not Found</h1>");
         }
     
-		$html = \App\Core\Markdown::parse(file_get_contents($mdFile));
+		$html = markdown(file_get_contents($mdFile));
 
         $this->render('about', [
             'title'   => 'О проекте',

@@ -82,7 +82,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
             <!-- Описание -->
             <?php if (!empty($story['description'])): ?>
                 <div class="story_content">
-                    <?= \App\Core\Markdown::parse($story['description']) ?>
+                    <?= markdown($story['description']) ?>
                 </div>
             <?php endif; ?>
 
@@ -244,7 +244,7 @@ $showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
                         <?php if (!$isCommentDeleted): ?>
                             <div class="comment_text" id="comment-text-content-<?= $commentId ?>"
                                 data-raw="<?= e($comment['comment'], ENT_QUOTES, 'UTF-8') ?>">
-                                <?= \App\Core\Markdown::parse($comment['comment']) ?>
+                                <?= markdown_comment($comment['comment']) ?>
                             </div>
 
                             <!-- Действия -->

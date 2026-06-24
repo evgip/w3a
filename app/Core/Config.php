@@ -11,12 +11,19 @@ namespace App\Core;
  * - Кэширование загруженных файлов
  * - Разные типы данных (int, string, bool, array)
  * - Значения по умолчанию
+ * - 🔑 Конфигурационные файлы модулей
  * 
  * Примеры использования:
+ *   // Основной конфиг (app/Config/config.php)
  *   Config::get('config.app.name')                    // 'w3a'
  *   Config::get('config.app.min_karma_for_downvote')  // 10
  *   Config::get('constants.pagination.stories_per_page') // 15
  *   Config::get('database.host', 'localhost')         // 'localhost'
+ *   
+ *   // 🔑 Конфиг модуля (app/Modules/Captcha/Config/captcha.php)
+ *   Config::get('captcha.config.enabled')             // true
+ *   Config::get('captcha.config.driver')              // 'yandex'
+ *   Config::get('captcha.config.yandex.site_key')     // 'ysc1_...'
  */
 class Config
 {
@@ -26,12 +33,18 @@ class Config
     private static array $cache = [];
     
     /**
-     * Путь к директории с конфигурацией
+     * Путь к директории с основной конфигурацией
      */
     private static string $configPath = '';
     
     /**
-     * Инициализация пути к конфигурации
+     * 🔑 Пути к конфигам модулей
+     * Формат: ['module_name' => '/path/to/module/Config']
+     */
+    private static array $modulePaths = [];
+    
+    /**
+     * Инициализация пути к основной конфигурации
      */
     private static function initPath(): void
     {
@@ -41,31 +54,95 @@ class Config
     }
     
     /**
+     * 🔑 Зарегистрировать путь к конфигам модуля
+     * 
+     * Вызывается в ModuleServiceProvider каждого модуля для регистрации
+     * своего пути к конфигурации.
+     * 
+     * @param string $moduleName Имя модуля (например, 'captcha', 'auth')
+     * @param string $path Абсолютный путь к папке Config модуля
+     */
+    public static function addModulePath(string $moduleName, string $path): void
+    {
+        self::$modulePaths[strtolower($moduleName)] = rtrim($path, '/');
+    }
+    
+    /**
+     * 🔑 Получить все зарегистрированные пути модулей
+     * 
+     * @return array Массив путей в формате ['module_name' => '/path']
+     */
+    public static function getModulePaths(): array
+    {
+        return self::$modulePaths;
+    }
+    
+    /**
+     * 🔑 Найти путь к файлу конфигурации
+     * 
+     * Сначала ищет в зарегистрированных модулях, затем в основном Config.
+     * 
+     * Формат имени файла:
+     * - 'captcha.config' → ищет в app/Modules/Captcha/Config/captcha.php
+     * - 'config'         → ищет в app/Config/config.php
+     * 
+     * @param string $file Имя файла (может содержать префикс модуля: 'module.file')
+     * @return string|null Полный путь к файлу или null, если не найден
+     */
+    private static function resolveFilePath(string $file): ?string
+    {
+        self::initPath();
+        
+        // Проверяем, есть ли префикс модуля (формат: "module_name.file_name")
+        $parts = explode('.', $file, 2);
+        
+        if (count($parts) === 2) {
+            $moduleName = strtolower($parts[0]);
+            $fileName = $parts[1];
+            
+            // Ищем в зарегистрированных модулях
+            if (isset(self::$modulePaths[$moduleName])) {
+                $filePath = self::$modulePaths[$moduleName] . '/' . $fileName . '.php';
+                if (file_exists($filePath)) {
+                    return $filePath;
+                }
+            }
+        }
+        
+        // Если не нашли в модулях — ищем в основном Config
+        // (обратная совместимость: 'config' ищет app/Config/config.php)
+        $mainPath = self::$configPath . '/' . $file . '.php';
+        if (file_exists($mainPath)) {
+            return $mainPath;
+        }
+        
+        return null;
+    }
+    
+    /**
      * Загрузить конфигурационный файл
      * 
-     * @param string $file Имя файла без расширения (например, 'config', 'constants', 'database')
+     * @param string $file Имя файла (может быть 'module.file' или просто 'file')
      * @return array Загруженная конфигурация
      * @throws \Exception Если файл не найден
      */
     private static function loadFile(string $file): array
     {
-        // Проверяем кэш
+        // Проверяем кэш (используем полное имя файла как ключ)
         if (isset(self::$cache[$file])) {
             return self::$cache[$file];
         }
         
-        self::initPath();
+        $filePath = self::resolveFilePath($file);
         
-        $filePath = self::$configPath . '/' . $file . '.php';
-        
-        if (!file_exists($filePath)) {
-            throw new \Exception("Configuration file not found: {$filePath}");
+        if ($filePath === null) {
+            throw new \Exception("Configuration file not found: {$file}");
         }
         
         $config = require $filePath;
         
         if (!is_array($config)) {
-            throw new \Exception("Configuration file must return an array: {$file}.php");
+            throw new \Exception("Configuration file must return an array: {$file}");
         }
         
         // Кэшируем загруженный файл
@@ -77,15 +154,21 @@ class Config
     /**
      * Получить значение из конфигурации
      * 
-     * @param string $key Ключ в формате 'file.group.key' или 'file.key'
+     * @param string $key Ключ в формате 'file.group.key' или 'module.file.key'
      * @param mixed $default Значение по умолчанию
      * @return mixed
      * 
      * Примеры:
+     *   // Основной конфиг (app/Config/config.php)
      *   Config::get('config.app.name')
      *   Config::get('config.app.min_karma_for_downvote', 10)
      *   Config::get('constants.pagination.stories_per_page')
      *   Config::get('database.host', 'localhost')
+     *   
+     *   // 🔑 Конфиг модуля (app/Modules/Captcha/Config/captcha.php)
+     *   Config::get('captcha.config.enabled')
+     *   Config::get('captcha.config.driver')
+     *   Config::get('captcha.config.yandex.site_key')
      */
     public static function get(string $key, mixed $default = null): mixed
     {
@@ -95,15 +178,29 @@ class Config
             return $default;
         }
         
-        // Первый элемент - имя файла конфигурации
-        $file = array_shift($parts);
+        // 🔑 Определяем имя файла:
+        // Если первый сегмент — это зарегистрированный модуль,
+        // то файл = "module.second_segment"
+        // Иначе файл = первый сегмент (старый формат)
+        $possibleModule = strtolower($parts[0]);
+        
+        if (isset(self::$modulePaths[$possibleModule]) && count($parts) >= 3) {
+            // Формат: module.file.key...
+            $file = $parts[0] . '.' . $parts[1];
+            array_shift($parts); // убираем module
+            array_shift($parts); // убираем file
+        } else {
+            // Формат: file.key... (старый формат, обратная совместимость)
+            $file = array_shift($parts);
+        }
         
         try {
             $config = self::loadFile($file);
         } catch (\Exception $e) {
             return $default;
-        }
-        
+        } 
+	
+		
         // Проходим по вложенным ключам
         foreach ($parts as $part) {
             if (!is_array($config) || !array_key_exists($part, $config)) {
@@ -182,7 +279,7 @@ class Config
     /**
      * Получить все значения из файла конфигурации
      * 
-     * @param string $file Имя файла конфигурации
+     * @param string $file Имя файла (может быть 'module.file' или просто 'file')
      * @return array
      */
     public static function getFile(string $file): array
@@ -206,7 +303,7 @@ class Config
      * Установить значение (только в runtime, не сохраняется в файл)
      * Полезно для тестирования
      * 
-     * @param string $key Ключ в формате 'file.group.key'
+     * @param string $key Ключ в формате 'file.group.key' или 'module.file.key'
      * @param mixed $value Значение
      */
     public static function set(string $key, mixed $value): void
@@ -217,7 +314,16 @@ class Config
             return;
         }
         
-        $file = array_shift($parts);
+        // 🔑 Определяем имя файла (аналогично методу get)
+        $possibleModule = strtolower($parts[0]);
+        
+        if (isset(self::$modulePaths[$possibleModule]) && count($parts) >= 3) {
+            $file = $parts[0] . '.' . $parts[1];
+            array_shift($parts);
+            array_shift($parts);
+        } else {
+            $file = array_shift($parts);
+        }
         
         if (!isset(self::$cache[$file])) {
             try {

@@ -43,7 +43,7 @@ $paginationBaseUrl = route('categories.show', ['slug' => $category['slug']]);
             <?php 
                 $isStoryDeleted = !empty($story['deleted_at']); 
                 
-                $fullHtml = \App\Core\Markdown::parse($story['description'] ?? '');
+                $fullHtml = markdown_comment($story['description'] ?? '');
                 $needsTruncation = needsTruncation($fullHtml, 300);
                 
                 $newCount = $newCommentsMap[$story['id']] ?? 0;

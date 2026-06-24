@@ -75,7 +75,7 @@
         >
     </div>
 <div class="form-input-wide">
-		<?= \App\Core\Captcha::render() ?>
+		<?= \App\Modules\Captcha\Core\Captcha::getHtml() ?>
 </div>
     <div class="form-actions">
         <button type="submit">Зарегистрироваться</button>

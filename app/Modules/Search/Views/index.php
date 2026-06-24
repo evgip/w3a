@@ -138,7 +138,7 @@ if ($currentUserId > 0) {
                         </div>
 
                         <div class="comment_text">
-                            <?= \App\Core\Markdown::parse($comment['comment']) ?>
+                            <?= markdown_comment($comment['comment']) ?>
                         </div>
 
                         <div class="byline">

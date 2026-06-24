@@ -1,32 +1,52 @@
 <?php
 
 return [
-    // Разрешаем выполнение внешних скриптов капчи
-
+    // ═══════════════════════════════════════════
+    // 🔐 YANDEX SMARTCAPTCHA
+    // ═══════════════════════════════════════════
+    
     'default_src' => [
-         'https://smartcaptcha.cloud.yandex.ru'
+        'https://captcha-api.yandex.ru',
+        'https://smartcaptcha.yandex.ru',
+        'https://smartcaptcha.cloud.yandex.ru',
     ],
 
     'script_src' => [
-        'https://google.com',
-        'https://gstatic.com',
-        'https://smartcaptcha.cloud.yandex.ru'
+        'https://captcha-api.yandex.ru',           // ← JS капчи
+        'https://smartcaptcha.yandex.ru',          // ← Iframe капчи
+        'https://www.google.com',
+        'https://www.gstatic.com',
     ],
     
     'style_src' => [
-        'https://googleapis.com',
-		'https://smartcaptcha.cloud.yandex.ru',
+        'https://smartcaptcha.yandex.ru',
+        'https://fonts.googleapis.com',
     ],
     
     'font_src' => [
-        'https://gstatic.com',
-		'https://smartcaptcha.cloud.yandex.ru',
+        'https://smartcaptcha.yandex.ru',
+        'https://fonts.gstatic.com',
     ],
     
-    // Разрешаем загрузку картинок-пазлов капчи
     'img_src' => [
+        'https://smartcaptcha.yandex.ru',
+        'https://www.google.com',
+        'https://mc.yandex.ru',                    // ← Метрика (если нужна)
+    ],
+    
+    // 🔑 НОВОЕ: frame-src для iframe виджетов
+    'frame_src' => [
+        'https://captcha-api.yandex.ru',           // ← ← ← ДОБАВЛЕНО!
+        'https://smartcaptcha.yandex.ru',
+        'https://www.google.com',
+        'https://recaptcha.google.com',
+    ],
+    
+    // 🔑 НОВОЕ: connect-src для API
+    'connect_src' => [
+        'https://captcha-api.yandex.ru',           // ← ← ← ДОБАВЛЕНО!
         'https://smartcaptcha.cloud.yandex.ru',
-        'https://google.com'
+        'https://www.google.com',
     ],
     
     'frame_ancestors' => [

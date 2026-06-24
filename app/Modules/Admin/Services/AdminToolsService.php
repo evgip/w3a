@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Services;
 
 use App\Core\Audit;
-use App\Core\Mailer;
 use App\Modules\Stories\Models\Comment;
 
 /**
@@ -74,7 +73,7 @@ class AdminToolsService
         $message = 'Это тестовое письмо для проверки работоспособности настроек почты в системе.';
         
         try {
-            $success = Mailer::send($email, $subject, $message);
+            $success = \App\Modules\Mail\Core\Mailer::send($email, $subject, $message);
             
             if ($success) {
                 Audit::log('admin.test_email_sent', "Администратор отправил тестовое письмо на {$email}");

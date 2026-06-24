@@ -6,7 +6,6 @@ namespace App\Modules\Auth\Services;
 
 use App\Modules\Users\Models\User;
 use App\Modules\Auth\Models\PasswordResetToken;
-use App\Core\Mailer;
 
 /**
  * Сервис для управления восстановлением пароля через email.
@@ -127,6 +126,6 @@ class PasswordResetService
             htmlspecialchars($resetUrl)
         );
 
-        Mailer::send($email, $subject, $body);
+        \App\Modules\Mail\Core\Mailer::send($email, $subject, $body);
     }
 }

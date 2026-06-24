@@ -11,7 +11,6 @@ use App\Core\Session as AppCoreSession;
 use App\Core\Database;
 use App\Core\Audit;
 use App\Core\Config;
-use App\Core\Mailer;
 
 class AuthService
 {
@@ -53,8 +52,8 @@ class AuthService
     public function authenticate(string $email, string $password): ?array
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-        
-        // 1. Проверяем, не заблокирован ли IP или email (без обращения к таблице users)
+    
+         // 1. Проверяем, не заблокирован ли IP или email (без обращения к таблице users)
         $blockType = $this->checkBlockStatus($ip, $email);
         if ($blockType !== null) {
             $this->showBlockMessage($blockType);
@@ -381,7 +380,7 @@ class AuthService
 			'subject' => $subject,
 		]);
 
-        $result = Mailer::send($email, $subject, $body);
+        $result = \App\Modules\Mail\Core\Mailer::send($email, $subject, $body);
 
         if (!$result) {
             Audit::log('auth.activation_email_failed', "Не удалось отправить письмо активации", 'auth', [

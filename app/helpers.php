@@ -517,3 +517,88 @@ if (!function_exists('calculate_hotness')) {
         return round($hotness, 7);
     }
 }
+
+/**
+ * Получить значение из переменных окружения (.env)
+ *
+ * @param string $key Ключ
+ * @param mixed $default Значение по умолчанию
+ * @return mixed
+ */
+if (!function_exists('env')) {
+    function env(string $key, mixed $default = null): mixed
+    {
+        return \App\Core\Env::get($key, $default);
+    }
+}
+
+
+// ═══════════════════════════════════════════
+// 🔤 ХЕЛПЕРЫ ДЛЯ РАБОТЫ С КОНТЕНТОМ (MARKDOWN)
+// ═══════════════════════════════════════════
+
+if (!function_exists('markdown')) {
+    /**
+     * Парсинг Markdown в HTML (полный режим - для постов/историй)
+     * 
+     * @param string|null $text Markdown текст
+     * @param bool $allowImages Разрешить изображения (по умолчанию true)
+     * @return string HTML
+     * 
+     * Пример:
+     *   echo markdown('# Привет **мир**');
+     *   // <h1>Привет <strong>мир</strong></h1>
+     */
+    function markdown(?string $text, bool $allowImages = true): string
+    {
+        return \App\Modules\Content\Core\Markdown::parse($text, $allowImages);
+    }
+}
+
+if (!function_exists('markdown_comment')) {
+    /**
+     * Парсинг Markdown для комментариев (ограниченный режим - без картинок)
+     * 
+     * @param string|null $text Markdown текст
+     * @return string HTML
+     * 
+     * Пример:
+     *   echo markdown_comment('Отличный пост! ![img](http://...)');
+     *   // <p>Отличный пост! ![img](http://...)</p>  ← картинка НЕ отобразится
+     */
+    function markdown_comment(?string $text): string
+    {
+        return \App\Modules\Content\Core\Markdown::parseComment($text);
+    }
+}
+
+if (!function_exists('markdown_plain')) {
+    /**
+     * Парсинг простого текста (без Markdown, только экранирование и переносы строк)
+     * 
+     * @param string|null $text Обычный текст
+     * @return string HTML
+     * 
+     * Пример:
+     *   echo markdown_plain("Привет\nмир!");
+     *   // <p>Привет<br />мир!</p>
+     */
+    function markdown_plain(?string $text): string
+    {
+        return \App\Modules\Content\Core\Markdown::parsePlain($text);
+    }
+}
+
+if (!function_exists('markdown_clear_cache')) {
+    /**
+     * Очистить кэш Markdown
+     * 
+     * Полезно при изменении настроек парсера или после массового обновления контента
+     * 
+     * @return void
+     */
+    function markdown_clear_cache(): void
+    {
+        \App\Modules\Content\Core\Markdown::clearCache();
+    }
+}
