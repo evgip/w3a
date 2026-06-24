@@ -108,7 +108,7 @@ git clone https://github.com/evgip/w3a.git
 cd w3a
 ```
 
-### Шаг 2 — Настройка базы данных
+### Шаг 2 — Создание базы данных
 
 1. Создайте базу данных MySQL:
 
@@ -122,40 +122,9 @@ CREATE DATABASE w3a CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 mysql -u your_username -p w3a < db/schema.sql
 ```
 
-3. Обновите учётные данные в `app/Config/config.php`:
-
-```php
-'database' => [
-    'host'     => '127.0.0.1',
-    'port'     => '3306',
-    'dbname'   => 'w3a',
-    'username' => 'root',
-    'password' => '',
-    'charset'  => 'utf8mb4',
-],
-```
-
 ### Шаг 3 — Настройка приложения
 
-Отредактируйте `app/Config/config.php`:
-
-```php
-'app' => [
-    'name' => 'W3A',
-    'url'  => 'http://w3a.local',
-    'lang' => 'ru',                  // язык по умолчанию: 'en' или 'ru'
-    'env'  => 'development',         // 'development' или 'production'
-
-    // Голосование
-    'min_karma_for_downvote' => 10,
-
-    // Система приглашений
-    'invitations_enabled'      => false,  // true = регистрация только по приглашениям
-    'min_karma_for_invitation' => 10,
-    'max_invitations_per_user' => 5,
-    'invitation_expires_days'  => 7,
-],
-```
+Переименуйте файл `.env.example` в `.env` и заполните его.
 
 ### Шаг 4 — Установка прав доступа
 
@@ -207,7 +176,6 @@ w3a/
 │   │   ├── Controller.php          # Базовый контроллер
 │   │   ├── Model.php               # Базовая модель
 │   │   ├── Database.php            # Обёртка PDO
-│   │   ├── Auth.php                # Аутентификация + «Запомнить меня»
 │   │   ├── Session.php             # Управление сессиями
 │   │   ├── Request.php             # Обработка HTTP-запросов
 │   │   ├── Security.php            # Заголовки безопасности
@@ -217,8 +185,6 @@ w3a/
 │   │   ├── RateLimiter.php         # Ограничение частоты запросов
 │   │   ├── Captcha.php             # Генератор CAPTCHA
 │   │   ├── Firewall.php            # Файрвол запросов
-│   │   ├── Mailer.php              # Обёртка PHPMailer
-│   │   ├── Markdown.php            # Обёртка Parsedown
 │   │   ├── Logger.php              # Логгер приложения
 │   │   ├── Benchmark.php           # Замер производительности
 │   │   ├── SvgChart.php            # Генератор SVG-графиков
@@ -243,7 +209,10 @@ w3a/
 │   ├── Modules/                    # Модули функционала (HMVC)
 │   │   ├── Admin/                  # Панель администратора
 │   │   ├── Stories/                # Новости
-│   │   ├── Comments/               # Комментарии
+│   │   ├── Auth/               	# Auth
+│   │   ├── Captcha/               	# Captcha/
+│   │   ├── Content/               	# Markdown
+│   │   ├── Mail/               	# Mail
 │   │   ├── Votes/                  # Система голосований
 │   │   ├── Tags/                   # Теги и категории
 │   │   ├── Users/                  # Профили и настройки пользователей
@@ -329,30 +298,6 @@ w3a/
 | `rate_limits`    | Счётчики ограничения частоты запросов                 |
 
 Полная схема с индексами и внешними ключами — в файле `db/schema.sql`.
-
----
-
-## 🧪 Разработка
-
-### Режим отладки
-
-В `app/Config/config.php`:
-
-```php
-'env' => 'development',   // 'development' показывает ошибки; 'production' скрывает
-```
-
-### События
-
-Диспетчер событий позволяет подключаться к жизненному циклу приложения без изменения ядра. Регистрируйте слушателей в `app/Providers/EventServiceProvider.php`:
-
-```php
-EventDispatcher::listen(StoryCreated::class, function (StoryCreated $event) {
-    // обновить счётчики, отправить уведомления и т. д.
-});
-```
-
-Встроенные события: `StoryCreated`, `StoryDeleted`, `StoryRestored`, `CommentCreated`, `CommentUpdated`, `CommentDeleted`, `CommentRestored`, `UserBanned`, `UserUnbanned`, `FlagResolved`, `ModNoteAdded`.
 
 ---
 

@@ -12,54 +12,48 @@ class AuditLog extends Model
     /**
      * Поиск и фильтрация логов с постраничной навигацией
      */
-    public function getFilteredLogs(
-        int $limit,
-        int $offset,
-        ?int $userId,
-        ?string $action,
-        ?string $search,
-        ?string $category = null  // ✅ Новый параметр
-    ): array {
-        $sql = "SELECT * FROM `audit_logs` WHERE 1=1";
-        $bindings = [];
+	public function getFilteredLogs(
+		int $limit,
+		int $offset,
+		?int $userId,
+		?string $action,
+		?string $search,
+		?string $category = null
+	): array {
+		$sql = "SELECT * FROM `audit_logs` WHERE 1=1";
+		$bindings = [];
 
-        if ($userId !== null) {
-            $sql .= " AND `user_id` = :user_id";
-            $bindings['user_id'] = $userId;
-        }
+		if ($userId !== null) {
+			$sql .= " AND `user_id` = :user_id";
+			$bindings[':user_id'] = $userId;
+		}
 
-        if ($action !== null) {
-            $sql .= " AND `action` = :action";
-            $bindings['action'] = $action;
-        }
+		if ($action !== null) {
+			$sql .= " AND `action` = :action";
+			$bindings[':action'] = $action;
+		}
 
-        // ✅ Фильтр по категории
-        if ($category !== null && $category !== '') {
-            $sql .= " AND `category` = :category";
-            $bindings['category'] = $category;
-        }
+		if ($category !== null && $category !== '') {
+			$sql .= " AND `category` = :category";
+			$bindings[':category'] = $category;
+		}
 
-        if ($search !== null) {
-            $sql .= " AND (`description` LIKE :search_desc OR `action` LIKE :search_action OR `username` LIKE :search_username)";
-            $bindings['search_desc'] = '%' . $search . '%';
-            $bindings['search_action'] = '%' . $search . '%';
-            $bindings['search_username'] = '%' . $search . '%';
-        }
+		if ($search !== null) {
+			$sql .= " AND (`description` LIKE :search_desc OR `action` LIKE :search_action OR `username` LIKE :search_username)";
+			$bindings[':search_desc'] = '%' . $search . '%';
+			$bindings[':search_action'] = '%' . $search . '%';
+			$bindings[':search_username'] = '%' . $search . '%';
+		}
 
-        $sql .= " ORDER BY `id` DESC LIMIT :limit OFFSET :offset";
+		$limit = (int)$limit;
+		$offset = (int)$offset;
+		$sql .= " ORDER BY `id` DESC LIMIT {$limit} OFFSET {$offset}";
 
-        $stmt = static::db()->prepare($sql);
-        
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
-        
-        foreach ($bindings as $key => $val) {
-            $stmt->bindValue(':' . $key, $val);
-        }
-
-        $stmt->execute();
-        return $stmt->fetchAll();
-    }
+		$stmt = static::db()->prepare($sql);
+		$stmt->execute($bindings);
+		
+		return $stmt->fetchAll();
+	}
 
     /**
      * Подсчет общего количества строк с учетом текущих фильтров (для пагинации)
@@ -68,7 +62,7 @@ class AuditLog extends Model
         ?int $userId,
         ?string $action,
         ?string $search,
-        ?string $category = null  // ✅ Новый параметр
+        ?string $category = null
     ): int {
         $sql = "SELECT COUNT(*) FROM `audit_logs` WHERE 1=1";
         $bindings = [];
@@ -83,7 +77,6 @@ class AuditLog extends Model
             $bindings['action'] = $action;
         }
 
-        // ✅ Фильтр по категории
         if ($category !== null && $category !== '') {
             $sql .= " AND `category` = :category";
             $bindings['category'] = $category;
@@ -111,7 +104,7 @@ class AuditLog extends Model
     }
 
     /**
-     * ✅ НОВЫЙ МЕТОД: Получить список уникальных категорий
+     * Получить список уникальных категорий
      */
     public function getUniqueCategories(): array
     {
@@ -122,25 +115,26 @@ class AuditLog extends Model
     }
 
     /**
-     * ✅ НОВЫЙ МЕТОД: Получить записи по категории (для модераторского раздела)
+     * Получить записи по категории (для модераторского раздела)
      */
-    public function getByCategory(string $category, int $limit = 50, int $offset = 0): array
-    {
-        $stmt = static::db()->prepare(
-            "SELECT * FROM `audit_logs` 
-             WHERE `category` = :category 
-             ORDER BY `id` DESC 
-             LIMIT :limit OFFSET :offset"
-        );
-        $stmt->bindValue(':category', $category);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll();
-    }
+	public function getByCategory(string $category, int $limit = 50, int $offset = 0): array
+	{
+		$limit = (int)$limit;
+		$offset = (int)$offset;
+		
+		$stmt = static::db()->prepare(
+			"SELECT * FROM `audit_logs` 
+			 WHERE `category` = :category 
+			 ORDER BY `id` DESC 
+			 LIMIT {$limit} OFFSET {$offset}"
+		);
+		$stmt->execute([':category' => $category]);
+		
+		return $stmt->fetchAll();
+	}
 
     /**
-     * ✅ НОВЫЙ МЕТОД: Подсчёт записей по категории
+     * Подсчёт записей по категории
      */
     public function countByCategory(string $category): int
     {

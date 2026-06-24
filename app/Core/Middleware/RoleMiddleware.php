@@ -133,7 +133,7 @@ abstract class RoleMiddleware implements MiddlewareInterface
     protected function handleAccessDenied(int $userId, string $userRole): void
     {
         if (class_exists(\App\Core\Audit::class)) {
-            \App\Core\Audit::log('security.access_denied', 'Попытка доступа к защищённому маршруту', [
+            \App\Core\Audit::log('security.access_denied', 'Попытка доступа к защищённому маршруту', 'security',  [
                 'user_id' => $userId,
                 'user_role' => $userRole,
                 'required_role' => $this->requiredRole,

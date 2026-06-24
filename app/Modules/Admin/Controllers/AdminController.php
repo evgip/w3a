@@ -330,7 +330,6 @@ class AdminController extends Controller
     // =========================================================================
 	public function auditLogs(): void
 	{
-		// ✅ Используем query() для GET-параметров с защитой от null
 		$filterUserIdRaw = $this->request->query('filter_user_id');
 		$filterUserId = ($filterUserIdRaw !== null && $filterUserIdRaw !== '') 
 			? (int)$filterUserIdRaw 

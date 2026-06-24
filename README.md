@@ -108,7 +108,7 @@ git clone https://github.com/evgip/w3a.git
 cd w3a
 ```
 
-### Step 2 — Configure the Database
+### Step 2 — Creating a database
 
 1. Create a MySQL database:
 
@@ -122,40 +122,10 @@ CREATE DATABASE w3a CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 mysql -u your_username -p w3a < db/schema.sql
 ```
 
-3. Update credentials in `app/Config/config.php`:
-
-```php
-'database' => [
-    'host'     => '127.0.0.1',
-    'port'     => '3306',
-    'dbname'   => 'w3a',
-    'username' => 'root',
-    'password' => '',
-    'charset'  => 'utf8mb4',
-],
-```
 
 ### Step 3 — Configure the Application
 
-Edit `app/Config/config.php`:
-
-```php
-'app' => [
-    'name' => 'W3A',
-    'url'  => 'http://w3a.local',
-    'lang' => 'en',                  // default language: 'en' or 'ru'
-    'env'  => 'development',         // 'development' or 'production'
-
-    // Voting
-    'min_karma_for_downvote' => 10,
-
-    // Invitation system
-    'invitations_enabled'      => false,  // true = registration by invite only
-    'min_karma_for_invitation' => 10,
-    'max_invitations_per_user' => 5,
-    'invitation_expires_days'  => 7,
-],
-```
+Rename the `.env.example` file to `.env` and fill it in.
 
 ### Step 4 — Set Permissions
 
@@ -207,7 +177,6 @@ w3a/
 │   │   ├── Controller.php          # Base controller
 │   │   ├── Model.php               # Base model
 │   │   ├── Database.php            # PDO wrapper
-│   │   ├── Auth.php                # Authentication + "Remember me"
 │   │   ├── Session.php             # Session management
 │   │   ├── Request.php             # HTTP request handling
 │   │   ├── Security.php            # Security headers
@@ -215,10 +184,7 @@ w3a/
 │   │   ├── Validator.php           # Input validation
 │   │   ├── Audit.php               # Audit logging
 │   │   ├── RateLimiter.php         # Rate limiting
-│   │   ├── Captcha.php             # CAPTCHA generator
 │   │   ├── Firewall.php            # Request firewall
-│   │   ├── Mailer.php              # PHPMailer wrapper
-│   │   ├── Markdown.php            # Parsedown wrapper
 │   │   ├── Logger.php              # Application logger
 │   │   ├── Benchmark.php           # Performance benchmarking
 │   │   ├── SvgChart.php            # SVG chart generator
@@ -243,6 +209,10 @@ w3a/
 │   ├── Modules/                    # Feature modules (HMVC)
 │   │   ├── Admin/                  # Administration panel
 │   │   ├── Stories/                # News stories
+│   │   ├── Auth/               	# Auth
+│   │   ├── Captcha/               	# Captcha/
+│   │   ├── Content/               	# Markdown
+│   │   ├── Mail/               	# Mail
 │   │   ├── Comments/               # Comments
 │   │   ├── Votes/                  # Voting system
 │   │   ├── Tags/                   # Tags & categories
@@ -329,30 +299,6 @@ w3a/
 | `rate_limits`  | Rate-limiting counters                          |
 
 See `db/schema.sql` for the complete schema with indexes and foreign keys.
-
----
-
-## 🧪 Development
-
-### Debug Mode
-
-In `app/Config/config.php`:
-
-```php
-'env' => 'development',   // 'development' shows errors; 'production' hides them
-```
-
-### Events
-
-The event dispatcher lets you hook into the application lifecycle without modifying core code. Register listeners in `app/Providers/EventServiceProvider.php`:
-
-```php
-EventDispatcher::listen(StoryCreated::class, function (StoryCreated $event) {
-    // update counters, send notifications, etc.
-});
-```
-
-Built-in events: `StoryCreated`, `StoryDeleted`, `StoryRestored`, `CommentCreated`, `CommentUpdated`, `CommentDeleted`, `CommentRestored`, `UserBanned`, `UserUnbanned`, `FlagResolved`, `ModNoteAdded`.
 
 ---
 

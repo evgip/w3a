@@ -25,7 +25,7 @@ class AdminAuditService
         ?int $filterUserId = null,
         ?string $filterAction = null,
         ?string $searchQuery = null,
-        ?string $filterCategory = null  // ✅ Новый параметр
+        ?string $filterCategory = null
     ): array {
         $logs = $this->auditLogModel->getFilteredLogs(
             $perPage, $offset, $filterUserId, $filterAction, $searchQuery, $filterCategory
@@ -49,7 +49,7 @@ class AdminAuditService
     }
 
     /**
-     * ✅ НОВЫЙ МЕТОД: Получить уникальные категории для фильтра.
+     * Получить уникальные категории для фильтра.
      */
     public function getUniqueCategories(): array
     {
@@ -63,7 +63,7 @@ class AdminAuditService
         ?int $filterUserId = null,
         ?string $filterAction = null,
         ?string $searchQuery = null,
-        ?string $filterCategory = null  // ✅ Новый параметр
+        ?string $filterCategory = null
     ): int {
         return $this->auditLogModel->getFilteredCount(
             $filterUserId, $filterAction, $searchQuery, $filterCategory
