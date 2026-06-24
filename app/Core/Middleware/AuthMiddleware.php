@@ -1,9 +1,9 @@
 <?php
 namespace App\Core\Middleware;
 
-use App\Core\Auth;
 use App\Core\Session;
 use App\Modules\Users\Models\User;
+use App\Modules\Auth\Services\Auth;
 
 /**
  * Middleware для авторизованных пользователей.

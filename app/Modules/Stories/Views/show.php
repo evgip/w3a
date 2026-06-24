@@ -3,7 +3,7 @@
 $user_id = $_SESSION['user_id'] ?? false;
 
 $voteModel = new \App\Modules\Votes\Models\Vote();
-$currentUserId = \App\Core\Auth::check() ? (int)$user_id : 0;
+$currentUserId = \App\Modules\Auth\Services\Auth::check() ? (int)$user_id : 0;
 
 $commentsTree = $commentsTree ?? [];
 
@@ -18,12 +18,12 @@ if ($currentUserId > 0) {
 
 $isAuthor = (int)$story['user_id'] === (int)$user_id;
 $isStoryDeleted = !empty($story['deleted_at']);
-$isAdmin = \App\Core\Auth::isAdmin();
-$isModerator =  \App\Core\Auth::isModerator();
+$isAdmin = \App\Modules\Auth\Services\Auth::isAdmin();
+$isModerator =  \App\Modules\Auth\Services\Auth::isModerator();
 
 $hasNewComments = false;
 
-$showMarkReadButton = (\App\Core\Auth::check() && ($newCount ?? 0) > 0);
+$showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ?? 0) > 0);
 ?>
 
 <!-- КАРТОЧКА ПУБЛИКАЦИИ -->

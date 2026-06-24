@@ -121,7 +121,7 @@ class StoryService
     public function canEditStory(array $story, int $userId): bool
     {
         $isAuthor = (int)$story['user_id'] === $userId;
-        $isAdmin = \App\Core\Auth::isAdmin();
+        $isAdmin = \App\Modules\Auth\Services\Auth::isAdmin();
 
         return $isAuthor || $isAdmin;
     }

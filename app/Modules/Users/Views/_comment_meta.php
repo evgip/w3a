@@ -6,7 +6,7 @@
  */
 $isDeleted = !empty($comment['deleted_at']);
 $isOwner = ((int)$comment['user_id'] === $currentUserId);
-$isModerator =  \App\Core\Auth::isModerator();
+$isModerator =  \App\Modules\Auth\Services\Auth::isModerator();
 ?>
 <div class="comment_meta">
     <?php if (!$isDeleted): ?>

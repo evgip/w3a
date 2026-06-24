@@ -4,7 +4,7 @@ namespace App\Modules\Tags\Services;
 
 use App\Modules\Tags\Models\TagFilter;
 use App\Modules\Tags\Models\Tag;
-use App\Core\Auth as AppCoreAuth;
+use App\Modules\Auth\Services\Auth as AppCoreAuth;
 
 /**
  * Сервис для управления пользовательскими фильтрами тегов.

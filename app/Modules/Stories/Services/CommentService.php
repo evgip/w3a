@@ -6,7 +6,7 @@ namespace App\Modules\Stories\Services;
 
 use App\Modules\Stories\Models\Comment;
 use App\Modules\Notifications\Services\NotificationService;
-use App\Core\Auth;
+use App\Modules\Auth\Services\Auth;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Core\Audit;

@@ -3,7 +3,6 @@
 namespace App\Modules\Moderations\Controllers;
 
 use App\Core\Controller;
-use App\Core\Auth;
 use App\Core\Session;
 use App\Modules\Moderations\Models\ModNote;
 use App\Modules\Moderations\Models\Moderation;
@@ -12,6 +11,7 @@ use App\Modules\Admin\Models\AuditLog;  // ✅ Добавляем импорт
 use App\Core\Events\UserBanned;         // ✅ Для событий
 use App\Core\Events\UserUnbanned;
 use App\Core\Events\ModNoteAdded;
+use App\Modules\Auth\Services\Auth;
 
 class ModerationsController extends Controller
 {

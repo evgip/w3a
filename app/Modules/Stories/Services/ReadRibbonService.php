@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Stories\Services;
 
 use App\Modules\Stories\Models\ReadRibbon;
-use App\Core\Auth;
+use App\Modules\Auth\Services\Auth;
 use App\Core\Session;
 
 /**

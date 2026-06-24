@@ -6,7 +6,7 @@ use App\Modules\Tags\Models\Category;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Models\TagFilter;
 use App\Modules\Stories\Models\ReadRibbon;
-use App\Core\Auth as AppCoreAuth;
+use App\Modules\Auth\Services\Auth as AppCoreAuth;
 
 /**
  * Сервис для работы с категориями тегов.

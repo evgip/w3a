@@ -1,7 +1,7 @@
 <?php
 namespace App\Core\Middleware;
 
-use App\Core\Auth;
+use App\Modules\Auth\Services\Auth;
 
 class GuestMiddleware implements MiddlewareInterface
 {

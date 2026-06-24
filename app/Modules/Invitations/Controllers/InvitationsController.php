@@ -3,12 +3,12 @@
 namespace App\Modules\Invitations\Controllers;
 
 use App\Core\Controller;
-use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Modules\Invitations\Models\Invitation;
 use App\Modules\Invitations\Models\InvitationRequest;
 use App\Modules\Users\Models\User;
+use App\Modules\Auth\Services\Auth;
 
 class InvitationsController extends Controller
 {

@@ -66,7 +66,7 @@ class Moderation extends Model
 		array $comment
 	): bool
     {
-		if (!$isAuthor && \App\Core\Auth::isModerator()) {
+		if (!$isAuthor && \App\Modules\Auth\Services\Auth::isModerator()) {
 			try {
 				$history = self::formatActionReason($verb, 'comment', (int)$comment['id'], (int)$comment['story_id']);
 				

@@ -20,7 +20,7 @@
 				<a href="<?= route('tags.index') ?>">🏷️ Теги</a>
 				<a href="/search">🔍 Поиск</a>
 
-				<?php if (\App\Core\Auth::check()): ?>
+				<?php if (\App\Modules\Auth\Services\Auth::check()): ?>
 					<?php
 					$notifModel = new \App\Modules\Notifications\Models\Notification();
 					$unreadCount = $notifModel->getUnreadCount((int)$_SESSION['user_id']);
@@ -37,7 +37,7 @@
 				</a>
 					
 				<?php
-				if (\App\Core\Auth::isAdmin() || \App\Core\Auth::isModerator()):
+				if (\App\Modules\Auth\Services\Auth::isAdmin() || \App\Modules\Auth\Services\Auth::isModerator()):
 					$pendingFlagsCount = (new \App\Modules\Flags\Models\Flag())->getPendingCount();
 				?>
 					<a href="/admin/flags" class="nav-flag">
@@ -76,12 +76,12 @@
 
 							<a href="<?= route('account.settings') ?>" class="dropdown-menu-item">⚙️ Настройки</a>
 
-							<?php if (\App\Core\Auth::isAdmin()): ?>
+							<?php if (\App\Modules\Auth\Services\Auth::isAdmin()): ?>
 								<div class="dropdown-divider"></div>
 								<a href="/admin" class="dropdown-menu-item dropdown-item-admin">📊 Админка</a>
 							<?php endif; ?>
 
-							<?php if (\App\Core\Auth::isModerator()): ?>
+							<?php if (\App\Modules\Auth\Services\Auth::isModerator()): ?>
 								<div class="dropdown-divider"></div>
 								<a href="/mod/log" class="dropdown-menu-item dropdown-item-mod">📋 Лог модерации</a>
 								<a href="/mod/notes" class="dropdown-menu-item dropdown-item-mod">🔒 Заметки</a>
@@ -102,13 +102,13 @@
 				<?php else: ?>
 					<a href="<?= route('auth.login') ?>">Войти</a>
 					<?php if (config_bool('config.app.invitations_enabled', false)): ?>
-						<?php if (!\App\Core\Auth::check()): ?>
+						<?php if (!\App\Modules\Auth\Services\Auth::check()): ?>
 							<a class="nav-link" href="<?= route('home') ?>invite/request">Запросить приглашение</a>
 						<?php else: ?>
 							<a class="nav-link" href="<?= route('invitations.index') ?>">🎟️ Приглашения</a>
 						<?php endif; ?>
 					<?php else: ?>
-						<?php if (!\App\Core\Auth::check()): ?>
+						<?php if (!\App\Modules\Auth\Services\Auth::check()): ?>
 							<a class="btn-nav-create" href="<?= route('auth.register') ?>">Регистрация</a>
 						<?php endif; ?>
 					<?php endif; ?>
@@ -130,7 +130,7 @@
 				<a href="<?= route('home') ?>">Главная</a>
 				<a href="<?= route('page.about') ?>">О проекте</a>
 				<a href="<?= route('stats.index') ?>">Статистика</a>
-				<?php if (\App\Core\Auth::check()): ?>
+				<?php if (\App\Modules\Auth\Services\Auth::check()): ?>
 				  <a href="<?= route('tags.filters') ?>">Фильтры</a>
 				<?php endif; ?>
 			</nav>

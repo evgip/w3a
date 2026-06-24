@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Controllers;
 
 use App\Core\Controller;
-use App\Core\Auth;
 use App\Core\Session;
+use App\Modules\Auth\Services\Auth;
 use App\Modules\Admin\Services\AdminUserService;
 use App\Modules\Admin\Services\AdminTagService;
 use App\Modules\Admin\Services\AdminCategoryService;

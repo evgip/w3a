@@ -3,7 +3,7 @@
 namespace App\Modules\Notifications\Controllers;
 
 use App\Core\Controller;
-use App\Core\Auth;
+use App\Modules\Auth\Services\Auth;
 use App\Modules\Notifications\Models\Notification;
 use App\Modules\Notifications\Services\NotificationService;
 use App\Modules\Stories\Models\Comment;

@@ -3,7 +3,7 @@
 namespace App\Modules\Tags\Controllers;
 
 use App\Core\Controller as AppCoreController;
-use App\Core\Auth;
+use App\Modules\Auth\Services\Auth;
 use App\Core\Session;
 use App\Modules\Tags\Models\Category;
 use App\Modules\Tags\Models\Tag;
@@ -90,7 +90,7 @@ class TagsController extends AppCoreController
 	{
 
 		$tagId = (int)$this->request->post('tag_id', 0);
-		$userId = (int)\App\Core\Auth::id();
+		$userId = (int)\App\Modules\Auth\Services\Auth::id();
 		
 		$result = $this->service(TagFilterService::class)->addFilter($userId, $tagId);
 		
@@ -109,7 +109,7 @@ class TagsController extends AppCoreController
 	public function removeFilter(): void
 	{
 		$tagId = (int)$this->request->post('tag_id', 0);
-		$userId = (int)\App\Core\Auth::id();
+		$userId = (int)\App\Modules\Auth\Services\Auth::id();
 		
 		$result = $this->service(TagFilterService::class)->removeFilter($userId, $tagId);
 		

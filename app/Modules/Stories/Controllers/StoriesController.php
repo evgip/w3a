@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Stories\Controllers;
 
 use App\Core\Controller;
-use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Audit;
 use App\Core\Events\StoryDeleted;
@@ -24,6 +23,7 @@ use App\Modules\Stories\Models\ReadRibbon;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Origins\Models\Domain;
 use App\Modules\Notifications\Services\NotificationService;
+use App\Modules\Auth\Services\Auth;
 
 
 /**

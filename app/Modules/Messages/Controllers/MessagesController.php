@@ -3,7 +3,6 @@
 namespace App\Modules\Messages\Controllers;
 
 use App\Core\Controller;
-use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Modules\Messages\Models\Conversation;
@@ -14,6 +13,7 @@ use App\Modules\Notifications\Services\NotificationService;
 use App\Modules\Notifications\Models\Notification;
 use App\Modules\Stories\Models\Comment;
 use App\Modules\Users\Models\User;
+use App\Modules\Auth\Services\Auth;
 
 class MessagesController extends Controller
 {

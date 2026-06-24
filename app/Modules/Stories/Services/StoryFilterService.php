@@ -8,7 +8,7 @@ use App\Modules\Stories\Models\Story;
 use App\Modules\Stories\Models\ReadRibbon;
 use App\Modules\Origins\Models\Domain;
 use App\Modules\Tags\Models\TagFilter;
-use App\Core\Auth;
+use App\Modules\Auth\Services\Auth;
 
 /**
  * Сервис для фильтрации и получения списков историй.

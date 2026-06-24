@@ -3,9 +3,9 @@
 namespace App\Modules\Origins\Controllers;
 
 use App\Core\Controller;
-use App\Core\Auth;
 use App\Core\Session;
 use App\Core\Audit;
+use App\Modules\Auth\Services\Auth;
 use App\Modules\Origins\Models\Domain;
 
 class OriginsController extends Controller
