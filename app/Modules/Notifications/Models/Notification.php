@@ -458,4 +458,89 @@ class Notification extends Model
 			}
 		}
 	}
+
+    /**
+     * Проверить, хочет ли пользователь получать уведомления данного типа.
+     *
+     * Читает таблицу user_settings. Если записи нет — возвращает true,
+     * т.к. в схеме БД все notify_* имеют DEFAULT 1.
+     *
+     * @param int    $userId  ID пользователя
+     * @param string $setting Название колонки (notify_on_reply, notify_on_story_comment, ...)
+     * @return bool
+     */
+    public function userWantsNotification(int $userId, string $setting): bool
+    {
+        // Whitelist — защита от SQL-инъекций через имя колонки
+        $allowedSettings = [
+            'notify_on_reply',
+            'notify_on_story_comment',
+            'email_notifications',
+        ];
+
+        if (!in_array($setting, $allowedSettings, true)) {
+            return true; // Неизвестная настройка — по умолчанию уведомляем
+        }
+
+        $stmt = static::db()->prepare("
+            SELECT `{$setting}`
+            FROM `user_settings`
+            WHERE `user_id` = :user_id
+            LIMIT 1
+        ");
+
+        $stmt->execute(['user_id' => $userId]);
+        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        // Если записи нет — считаем, что пользователь хочет уведомления (default = 1)
+        if (!$result) {
+            return true;
+        }
+
+        return (bool) $result[$setting];
+    }
+
+    /**
+     * Извлечь @упоминания из текста и вернуть массив ID существующих пользователей.
+     *
+     * Паттерн аналогичен тому, что используется в App\Modules\Content\Core\Markdown::parseMentions().
+     *
+     * @param string $text Текст комментария
+     * @return array<int> Массив user_id упомянутых пользователей
+     */
+    public function extractMentions(string $text): array
+    {
+        if (empty(trim($text))) {
+            return [];
+        }
+
+        // Паттерн: @username (3–20 символов, буквы/цифры/подчёркивание)
+        $pattern = '/(?<!\w)@([a-zA-Z0-9_]{3,20})(?!\w)/';
+
+        if (!preg_match_all($pattern, $text, $matches)) {
+            return [];
+        }
+
+        $usernames = array_unique($matches[1]);
+
+        if (empty($usernames)) {
+            return [];
+        }
+
+        // Ищем реальных пользователей по username
+        $placeholders = implode(',', array_fill(0, count($usernames), '?'));
+
+        $stmt = static::db()->prepare("
+            SELECT `id`
+            FROM `users`
+            WHERE `username` IN ({$placeholders})
+            AND `deleted_at` IS NULL
+            AND `is_active` = 1
+        ");
+
+        $stmt->execute(array_values($usernames));
+
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
 }

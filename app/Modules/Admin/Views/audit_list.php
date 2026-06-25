@@ -1,11 +1,12 @@
-<?php 
+<?php
+
 /** 
  * @var array $logs 
  * @var array $uniqueActions 
  * @var array $currentFilters 
  * @var int $currentPage 
  * @var int $totalPages 
- */ 
+ */
 ?>
 
 <h1>🔒 Журнал аудита действий пользователей</h1>
@@ -21,49 +22,49 @@
     <!-- Фильтр по пользователю -->
     <label>
         User ID:
-        <input type="number" name="filter_user_id" 
-               value="<?= htmlspecialchars((string)($currentFilters['user_id'] ?? '')) ?>" 
-               placeholder="Все">
+        <input type="number" name="filter_user_id"
+            value="<?= htmlspecialchars((string)($currentFilters['user_id'] ?? '')) ?>"
+            placeholder="Все">
     </label>
-    
+
     <!-- Фильтр по действию -->
     <label>
         Действие:
         <select name="filter_action">
             <option value="">Все действия</option>
             <?php foreach ($uniqueActions as $action): ?>
-                <option value="<?= htmlspecialchars($action) ?>" 
-                        <?= ($currentFilters['action'] ?? '') === $action ? 'selected' : '' ?>>
+                <option value="<?= htmlspecialchars($action) ?>"
+                    <?= ($currentFilters['action'] ?? '') === $action ? 'selected' : '' ?>>
                     <?= htmlspecialchars($action) ?>
                 </option>
             <?php endforeach; ?>
         </select>
     </label>
-    
+
     <!-- ✅ НОВЫЙ ФИЛЬТР: Категория -->
     <label>
         Категория:
         <select name="category">
             <option value="">Все категории</option>
             <?php foreach ($categoryLabels as $value => $label): ?>
-                <option value="<?= htmlspecialchars($value) ?>" 
-                        <?= ($currentFilters['category'] ?? '') === $value ? 'selected' : '' ?>>
+                <option value="<?= htmlspecialchars($value) ?>"
+                    <?= ($currentFilters['category'] ?? '') === $value ? 'selected' : '' ?>>
                     <?= htmlspecialchars($label) ?>
                 </option>
             <?php endforeach; ?>
         </select>
     </label>
-    
+
     <!-- Поиск -->
     <label>
         Поиск:
-        <input type="text" name="search" 
-               value="<?= htmlspecialchars($currentFilters['search'] ?? '') ?>" 
-               placeholder="Поиск...">
+        <input type="text" name="search"
+            value="<?= htmlspecialchars($currentFilters['search'] ?? '') ?>"
+            placeholder="Поиск...">
     </label>
-    
+
     <button type="submit">Применить</button>
-    
+
     <?php if (!empty(array_filter($currentFilters))): ?>
         <a href="/admin/audit" class="btn-reset">Сбросить</a>
     <?php endif; ?>
@@ -73,67 +74,67 @@
 
 <!-- ТАБЛИЦА ЛОГОВ -->
 <?php if (!empty($logs)): ?>
-	<table class="audit-table">
-		<thead>
-			<tr>
-				<th>ID</th>
-				<th>Дата</th>
-				<th>Пользователь</th>
-				<th>Роль</th>
-				<th>IP</th>
-				<th>Действие</th>
-				<th>Описание</th>
-				<th>Категория</th>  <!-- ✅ НОВАЯ КОЛОНКА -->
-				<th>Данные</th>
-			</tr>
-		</thead>
-		<tbody>
-			<?php if (empty($logs)): ?>
-				<tr>
-					<td colspan="9" style="text-align: center;">Нет записей</td>
-				</tr>
-			<?php else: ?>
-				<?php foreach ($logs as $log): ?>
-					<tr>
-						<td><?= $log['id'] ?></td>
-						<td><?= date('d.m.Y H:i', strtotime($log['created_at'])) ?></td>
-						<td>
-							<?php if ($log['user_id']): ?>
-								<a href="/admin/users/<?= $log['user_id'] ?>/edit">
-									<?= htmlspecialchars($log['username']) ?>
-								</a>
-							<?php else: ?>
-								<?= htmlspecialchars($log['username']) ?>
-							<?php endif; ?>
-						</td>
-						<td>
-							<span class="role-badge role-<?= htmlspecialchars($log['role']) ?>">
-								<?= htmlspecialchars($log['role']) ?>
-							</span>
-						</td>
-						<td><code><?= htmlspecialchars($log['ip_address']) ?></code></td>
-						<td><code><?= htmlspecialchars($log['action']) ?></code></td>
-						<td><?= htmlspecialchars($log['description']) ?></td>
-						<td>
-							<span class="category-badge category-<?= htmlspecialchars($log['category']) ?>">
-								<?= htmlspecialchars($categoryLabels[$log['category']] ?? $log['category']) ?>
-							</span>
-						</td>
-						<td>
-							<?php if (!empty($log['decoded_payload'])): ?>
-								<details>
-									<summary>Показать</summary>
-									<pre><?= htmlspecialchars(json_encode($log['decoded_payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
-								</details>
-							<?php else: ?>
-								—
-							<?php endif; ?>
-						</td>
-					</tr>
-				<?php endforeach; ?>
-			<?php endif; ?>
-		</tbody>
-	</table>
+    <table class="audit-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Дата</th>
+                <th>Пользователь</th>
+                <th>Роль</th>
+                <th>IP</th>
+                <th>Действие</th>
+                <th>Описание</th>
+                <th>Категория</th> <!-- ✅ НОВАЯ КОЛОНКА -->
+                <th>Данные</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (empty($logs)): ?>
+                <tr>
+                    <td colspan="9" style="text-align: center;">Нет записей</td>
+                </tr>
+            <?php else: ?>
+                <?php foreach ($logs as $log): ?>
+                    <tr>
+                        <td><?= $log['id'] ?></td>
+                        <td><?= date('d.m.Y H:i', strtotime($log['created_at'])) ?></td>
+                        <td>
+                            <?php if ($log['user_id']): ?>
+                                <a href="/admin/users/<?= $log['user_id'] ?>/edit">
+                                    <?= htmlspecialchars($log['username']) ?>
+                                </a>
+                            <?php else: ?>
+                                <?= htmlspecialchars($log['username']) ?>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <span class="role-badge role-<?= htmlspecialchars($log['role']) ?>">
+                                <?= htmlspecialchars($log['role']) ?>
+                            </span>
+                        </td>
+                        <td><code><?= htmlspecialchars($log['ip_address']) ?></code></td>
+                        <td><code><?= htmlspecialchars($log['action']) ?></code></td>
+                        <td><?= htmlspecialchars($log['description']) ?></td>
+                        <td>
+                            <span class="category-badge category-<?= htmlspecialchars($log['category']) ?>">
+                                <?= htmlspecialchars($categoryLabels[$log['category']] ?? $log['category']) ?>
+                            </span>
+                        </td>
+                        <td>
+                            <?php if (!empty($log['decoded_payload'])): ?>
+                                <details>
+                                    <summary>Показать</summary>
+                                    <pre><?= htmlspecialchars(json_encode($log['decoded_payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
+                                </details>
+                            <?php else: ?>
+                                —
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </tbody>
+    </table>
 <?php else: ?>
     <p class="hint">
         Записи, соответствующие заданным критериям фильтрации, не найдены.
@@ -144,7 +145,7 @@
 <?php if (isset($totalPages) && $totalPages > 1): ?>
     <hr>
     <div class="form-actions">
-        <?php 
+        <?php
         // Собираем массив текущих фильтров для ссылок пагинации
         $urlParams = array_filter([
             'filter_user_id' => $currentFilters['user_id'] ?? '',

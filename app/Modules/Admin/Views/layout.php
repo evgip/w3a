@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <title>Админ-панель | <?= e($title ?? '') ?></title>
-	
-	<link rel="stylesheet" href="/css/app.min.css">
-	<link rel="stylesheet" href="/css/admin.min.css">
-	<script src="<?= \App\Core\Asset::js() ?>"></script>
+
+    <link rel="stylesheet" href="/css/app.min.css">
+    <link rel="stylesheet" href="/css/admin.min.css">
+    <script src="<?= \App\Core\Asset::js() ?>"></script>
 
 </head>
+
 <body>
 
     <aside class="sidebar">
@@ -16,12 +18,12 @@
         <nav>
             <a href="/admin">📊 Главная панель</a>
             <a href="/admin/users">👥 Пользователи</a>
-			<a href="/admin/tags">🏷️ Теги</a>
-			<a href="/admin/categories">📂 Категории</a>
-			<a href="/admin/invitations">📨 Инвайты</a> 
-			<a href="/admin/audit">🔒 Журнал аудита</a>
-			<a href="/admin/firewall">🧱 Firewall</a>
-			<a href="/admin/tools">🛠️ Инструменты</a>
+            <a href="/admin/tags">🏷️ Теги</a>
+            <a href="/admin/categories">📂 Категории</a>
+            <a href="/admin/invitations">📨 Инвайты</a>
+            <a href="/admin/audit">🔒 Журнал аудита</a>
+            <a href="/admin/firewall">🧱 Firewall</a>
+            <a href="/admin/tools">🛠️ Инструменты</a>
             <a href="/" target="_blank">🌐 Перейти на сайт</a>
         </nav>
     </aside>
@@ -30,34 +32,35 @@
         <header class="navbar">
             <div class="page-title"><strong><?= e($title ?? '') ?></strong></div>
             <div class="user-meta">
-                Добро пожаловать, <b><?= e($_SESSION['user_name'] ?? 'Администратор') ?></b> | 
+                Добро пожаловать, <b><?= e($_SESSION['user_name'] ?? 'Администратор') ?></b> |
                 <a href="/logout" class="gray">Выйти</a>
             </div>
         </header>
 
- 
-	<main class="container">
-		
-		        <!-- Success Alerts Container Notification Layout -->
-        <?php if (\App\Core\Session::hasFlash('success')): ?>
-            <div class="alert alert-success">
-                <strong>Успех:</strong> <?= e(\App\Core\Session::getFlash('success')) ?>
-            </div>
-        <?php endif; ?>
 
-        <!-- Error Alerts Container Notification Layout -->
-        <?php if (\App\Core\Session::hasFlash('error')): ?>
-            <div class="alert alert-danger">
-                <strong>Ошибка:</strong> <?= e(\App\Core\Session::getFlash('error')) ?>
-            </div>
-        <?php endif; ?>
+        <main class="container">
+
+            <!-- Success Alerts Container Notification Layout -->
+            <?php if (\App\Core\Session::hasFlash('success')): ?>
+                <div class="alert alert-success">
+                    <strong>Успех:</strong> <?= e(\App\Core\Session::getFlash('success')) ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Error Alerts Container Notification Layout -->
+            <?php if (\App\Core\Session::hasFlash('error')): ?>
+                <div class="alert alert-danger">
+                    <strong>Ошибка:</strong> <?= e(\App\Core\Session::getFlash('error')) ?>
+                </div>
+            <?php endif; ?>
 
 
-		<?= $content ?>
-	</main>
+            <?= $content ?>
+        </main>
 
         <?= \App\Core\Benchmark::renderStats() ?>
     </div>
 
 </body>
+
 </html>

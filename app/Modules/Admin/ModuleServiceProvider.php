@@ -30,18 +30,18 @@ class ModuleServiceProvider
     public function register(Container $container): void
     {
         // === МОДЕЛИ ===
-        
+
         $container->singleton(AdminUser::class, fn() => new AdminUser());
         $container->singleton(AuditLog::class, fn() => new AuditLog());
-        
+
         // Cross-module модели
         // TODO: перенести в соответствующие модули когда появятся их провайдеры
         $container->singleton(Tag::class, fn() => new Tag());
         $container->singleton(Category::class, fn() => new Category());
         $container->singleton(InvitationRequest::class, fn() => new InvitationRequest());
-        
+
         // === СЕРВИСЫ ===
-        
+
         $container->singleton(AdminUserService::class, function (Container $c) {
             return new AdminUserService(
                 $c->get(User::class),
@@ -49,30 +49,30 @@ class ModuleServiceProvider
                 $c->get(Notification::class)
             );
         });
-        
+
         $container->singleton(AdminTagService::class, function (Container $c) {
             return new AdminTagService(
                 $c->get(Tag::class),
                 $c->get(Category::class)
             );
         });
-        
+
         $container->singleton(AdminCategoryService::class, function (Container $c) {
             return new AdminCategoryService(
                 $c->get(Category::class)
             );
         });
-        
+
         $container->singleton(AdminAuditService::class, function (Container $c) {
             return new AdminAuditService(
                 $c->get(AuditLog::class)
             );
         });
-        
+
         $container->singleton(AdminToolsService::class, fn() => new AdminToolsService());
-        
+
         $container->singleton(AdminFirewallService::class, fn() => new AdminFirewallService());
-        
+
         $container->singleton(AdminInvitationService::class, function (Container $c) {
             return new AdminInvitationService(
                 $c->get(InvitationRequest::class)

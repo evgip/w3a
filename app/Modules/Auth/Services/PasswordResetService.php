@@ -37,7 +37,7 @@ class PasswordResetService
         }
 
         $token = bin2hex(random_bytes(32));
-        
+
         // ⚠️ Изменено: create() → createToken()
         $this->tokenModel->createToken($email, $token);
 

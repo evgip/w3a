@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Modules\Admin\Services;
@@ -11,26 +12,26 @@ use App\Modules\Invitations\Models\InvitationRequest;
 class AdminInvitationService
 {
     private InvitationRequest $requestModel;
-    
-	public function __construct(?InvitationRequest $requestModel = null)
-	{
-		$this->requestModel = $requestModel ?? new InvitationRequest();
-	}
-    
+
+    public function __construct(?InvitationRequest $requestModel = null)
+    {
+        $this->requestModel = $requestModel ?? new InvitationRequest();
+    }
+
     /**
      * Получить список запросов по статусу.
      */
     public function getRequests(string $status = 'pending'): array
     {
         $allowedStatuses = ['pending', 'approved', 'rejected'];
-        
+
         if (!in_array($status, $allowedStatuses)) {
             $status = 'pending';
         }
-        
+
         return $this->requestModel->getAllRequests($status);
     }
-    
+
     /**
      * Одобрить запрос.
      */
@@ -38,7 +39,7 @@ class AdminInvitationService
     {
         return $this->requestModel->approveRequest($id);
     }
-    
+
     /**
      * Отклонить запрос.
      */

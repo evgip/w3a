@@ -17,8 +17,8 @@ use App\Modules\Captcha\Core\Captcha;
 class AuthService
 {
     private User $userModel;
-	private RememberToken $rememberTokenModel;
-	private EmailActivation $emailActivationModel;
+    private RememberToken $rememberTokenModel;
+    private EmailActivation $emailActivationModel;
 
     // Максимальное количество неудачных попыток входа до блокировки
     private const MAX_ATTEMPTS_IP = 5;        // с одного IP-адреса
@@ -54,17 +54,17 @@ class AuthService
     public function authenticate(string $email, string $password): ?array
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-    
-         // 1. Проверяем, не заблокирован ли IP или email (без обращения к таблице users)
+
+        // 1. Проверяем, не заблокирован ли IP или email (без обращения к таблице users)
         $blockType = $this->checkBlockStatus($ip, $email);
         if ($blockType !== null) {
             $this->showBlockMessage($blockType);
             return null;
         }
-        
+
         // 2. Ищем пользователя по email
         $user = $this->userModel->findBy('email', $email);
-        
+
         // 3. Проверяем пароль с защитой от timing-атак
         if (!$user) {
             // Если email не найден — всё равно выполняем hash_verify с dummy-хэшем
@@ -73,22 +73,22 @@ class AuthService
             $this->logFailedAttempt($ip, $email);
             return null;
         }
-        
+
         if (!password_verify($password, $user['password'])) {
             $this->logFailedAttempt($ip, $email);
             return null;
         }
-        
+
         // 4. Проверка активности аккаунта
         if ((int)$user['is_active'] !== 1) {
             Session::setFlash('error', 'Аккаунт не активирован.');
             $this->logFailedAttempt($ip, $email, 'inactive_account');
             return null;
         }
-        
+
         // 5. При успешной аутентификации очищаем историю неудачных попыток
         $this->clearFailedAttempts($ip, $email);
-        
+
         return $user;
     }
 
@@ -228,9 +228,9 @@ class AuthService
         ");
         $stmt->execute([$ip, self::LOCKOUT_MINUTES]);
         $lastAttempt = $stmt->fetchColumn();
-        
+
         if (!$lastAttempt) return 0;
-        
+
         $lockoutUntil = strtotime($lastAttempt) + (self::LOCKOUT_MINUTES * 60);
         return max(0, $lockoutUntil - time());
     }
@@ -243,122 +243,152 @@ class AuthService
      * @param string $password Пароль в открытом виде
      * @return int|null ID зарегистрированного пользователя или null при ошибке
      */
-	public function register(): void
-	{
+    public function register(): void
+    {
         $request = new \App\Core\Request();
 
-		// === ПРОВЕРКА КАПЧИ ===
-		if (!Captcha::validate($request->post('smart-token'))) {
-			Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот.');
-			redirect(route('auth.register'));
-			return;
-		}
+        // === ПРОВЕРКА КАПЧИ ===
+        if (!Captcha::validate($request->post('smart-token'))) {
+            Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот.');
+            redirect(route('auth.register'));
+            return;
+        }
 
-		$username = trim($request->getParams('username'));
-		$email = trim($request->getParams('email'));
-		$password = $request->getParams('password');
-		$passwordConfirmation = $request->getParams('password_confirmation');
+        $username = trim($request->getParams('username'));
+        $email = trim($request->getParams('email'));
+        $password = $request->getParams('password');
+        $passwordConfirmation = $request->getParams('password_confirmation');
 
-		// === ВАЛИДАЦИЯ ВХОДНЫХ ДАННЫХ ===
-		$validator = new Validator();
-		$validator->validate([
-			'username' => $username,
-			'email' => $email,
-			'password' => $password,
-			'password_confirmation' => $passwordConfirmation
-		], [
-			'username' => 'required|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/',
-			'email' => 'required|email',
-			'password' => 'required|min:6',
-			'password_confirmation' => 'required|match:password'
-		]);
+        // === ВАЛИДАЦИЯ ВХОДНЫХ ДАННЫХ ===
+        $validator = new Validator();
+        $validator->validate([
+            'username' => $username,
+            'email' => $email,
+            'password' => $password,
+            'password_confirmation' => $passwordConfirmation
+        ], [
+            'username' => 'required|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/',
+            'email' => 'required|email',
+            'password' => 'required|min:6',
+            'password_confirmation' => 'required|match:password'
+        ]);
 
-		if (!$validator->isValid()) {
-			$errors = $validator->getErrors();
-			$errorMessages = [];
-			foreach ($errors as $fieldErrors) {
-				foreach ($fieldErrors as $error) {
-					$errorMessages[] = $error;
-				}
-			}
-			
-			Session::setFlash('error', implode('<br>', $errorMessages));
-			
-			// Сохраняем ввод в сессию для повторной отрисовки формы
-			Session::set('old_input', [
-				'username' => $username,
-				'email' => $email,
-			]);
-			
-			redirect('/register');
-		}
+        if (!$validator->isValid()) {
+            $errors = $validator->getErrors();
+            $errorMessages = [];
 
-		$userId = $this->service(AuthService::class)->register($username, $email, $password);
-		if (!$userId) {
-			// Сохраняем ввод в сессию для повторной отрисовки формы
-			Session::set('old_input', [
-				'username' => $username,
-				'email' => $email,
-			]);
-			redirect('/register');
-		}
+            foreach ($errors as $fieldErrors) {
+                foreach ($fieldErrors as $error) {
+                    $errorMessages[] = $error;
+                }
+            }
 
-		Session::setFlash('success', 'Регистрация успешна! Проверьте почту.');
-		redirect('/login');
-	}
+            Session::setFlash('error', implode('<br>', $errorMessages));
 
-	/**
-	 * Активировать аккаунт по токену из email.
-	 *
-	 * @param string $token Токен активации из ссылки
-	 * @return bool Успешность активации
-	 */
-	public function activateAccount(string $token): bool
-	{
-		if (empty($token)) {
-			return false;
-		}
+            Session::set('old_input', [
+                'username' => $username,
+                'email' => $email,
+            ]);
 
-		// Ищем токен в таблице email_activations
-		$tokenData = $this->emailActivationModel->findByToken($token);
+            redirect('/register');
+            return;
+        }
 
-		if (!$tokenData) {
-			return false;
-		}
+        // === СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ===
+        try {
+            // Хешируем пароль
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-		// Проверяем срок действия (24 часа от created_at)
-		$createdAt = strtotime($tokenData['created_at']);
-		if ((time() - $createdAt) > 86400) { // 24 часа = 86400 секунд
-			// Токен просрочен — удаляем
-			$this->emailActivationModel->deleteByToken($token);
-			return false;
-		}
+            // Создаём пользователя (неактивного до подтверждения email)
+            $userId = $this->userModel->create([
+                'username' => $username,
+                'email' => $email,
+                'password' => $hashedPassword,
+                'is_active' => 0,
+                'role' => 'user',
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
 
-		// Получаем данные пользователя
-		$user = $this->userModel->find((int)$tokenData['user_id']);
+            if (!$userId) {
+                throw new \Exception('Не удалось создать пользователя');
+            }
 
-		if (!$user) {
-			$this->emailActivationModel->deleteByToken($token);
-			return false;
-		}
+            // Генерируем токен активации
+            $token = bin2hex(random_bytes(32));
 
-		// Активируем аккаунт
-		$success = $this->userModel->update((int)$user['id'], [
-			'is_active' => 1
-		]);
+            // Сохраняем токен в БД
+            $this->emailActivationModel->createToken($userId, $token);
 
-		if ($success) {
-			// Удаляем токен (он одноразовый)
-			$this->emailActivationModel->deleteByToken($token);
+            // Отправляем письмо активации
+            $this->sendActivationEmail($email, $username, $token);
+        } catch (\Exception $e) {
+            Audit::log('auth.register_failed', "Ошибка регистрации: " . $e->getMessage(), 'auth', [
+                'email' => $email,
+                'username' => $username,
+            ]);
 
-			Audit::log('auth.account_activated', "Аккаунт активирован", 'auth', [
-				'user_id' => $user['id'],
-				'email' => $user['email']
-			]);
-		}
+            Session::setFlash('error', 'Произошла ошибка при регистрации. Попробуйте позже.');
+            redirect('/register');
+            return;
+        }
 
-		return $success;
-	}
+        // === УСПЕХ ===
+        Session::setFlash('success', 'Регистрация успешна! Проверьте почту для активации аккаунта.');
+        redirect('/login');
+    }
+
+    /**
+     * Активировать аккаунт по токену из email.
+     *
+     * @param string $token Токен активации из ссылки
+     * @return bool Успешность активации
+     */
+    public function activateAccount(string $token): bool
+    {
+        if (empty($token)) {
+            return false;
+        }
+
+        // Ищем токен в таблице email_activations
+        $tokenData = $this->emailActivationModel->findByToken($token);
+
+        if (!$tokenData) {
+            return false;
+        }
+
+        // Проверяем срок действия (24 часа от created_at)
+        $createdAt = strtotime($tokenData['created_at']);
+        if ((time() - $createdAt) > 86400) { // 24 часа = 86400 секунд
+            // Токен просрочен — удаляем
+            $this->emailActivationModel->deleteByToken($token);
+            return false;
+        }
+
+        // Получаем данные пользователя
+        $user = $this->userModel->find((int)$tokenData['user_id']);
+
+        if (!$user) {
+            $this->emailActivationModel->deleteByToken($token);
+            return false;
+        }
+
+        // Активируем аккаунт
+        $success = $this->userModel->update((int)$user['id'], [
+            'is_active' => 1
+        ]);
+
+        if ($success) {
+            // Удаляем токен (он одноразовый)
+            $this->emailActivationModel->deleteByToken($token);
+
+            Audit::log('auth.account_activated', "Аккаунт активирован", 'auth', [
+                'user_id' => $user['id'],
+                'email' => $user['email']
+            ]);
+        }
+
+        return $success;
+    }
 
     /**
      * Отправить письмо активации аккаунта.
@@ -388,17 +418,17 @@ class AuthService
             htmlspecialchars($activationUrl)
         );
 
-		Audit::log('auth.activation_email', "Отправка письма активации", 'auth', [
-			'to' => $email,
-			'subject' => $subject,
-		]);
+        Audit::log('auth.activation_email', "Отправка письма активации", 'auth', [
+            'to' => $email,
+            'subject' => $subject,
+        ]);
 
         $result = \App\Modules\Mail\Core\Mailer::send($email, $subject, $body);
 
         if (!$result) {
             Audit::log('auth.activation_email_failed', "Не удалось отправить письмо активации", 'auth', [
-				'email' => $email
-			]);
+                'email' => $email
+            ]);
         }
     }
 
@@ -430,21 +460,21 @@ class AuthService
         Audit::log('auth.login_success', "Пользователь вошел в систему", 'auth');
     }
 
-   /**
+    /**
      * Создать cookie "Запомнить меня"
      */
-	private function createRememberCookie(int $userId): void
-	{
-		$tokenData = $this->rememberTokenModel->createToken(
-			$userId,
-			self::COOKIE_DAYS,
-			$_SERVER['HTTP_USER_AGENT'] ?? null,
-			$_SERVER['REMOTE_ADDR'] ?? null
-		);
+    private function createRememberCookie(int $userId): void
+    {
+        $tokenData = $this->rememberTokenModel->createToken(
+            $userId,
+            self::COOKIE_DAYS,
+            $_SERVER['HTTP_USER_AGENT'] ?? null,
+            $_SERVER['REMOTE_ADDR'] ?? null
+        );
 
         // Устанавливаем cookie на 30 дней
         $expiry = time() + (self::COOKIE_DAYS * 86400);
-        
+
         setcookie(
             self::COOKIE_NAME,
             $tokenData['token'],
@@ -465,33 +495,33 @@ class AuthService
      *
      * @return bool true если сессия восстановлена
      */
-	public function attemptRememberLogin(): bool
-	{
-		if (!isset($_COOKIE[self::COOKIE_NAME])) {
-			return false;
-		}
+    public function attemptRememberLogin(): bool
+    {
+        if (!isset($_COOKIE[self::COOKIE_NAME])) {
+            return false;
+        }
 
-		$token = $_COOKIE[self::COOKIE_NAME];
-		
-		// Разделяем токен на selector и validator
-		$parts = explode(':', $token, 2);
-		if (count($parts) !== 2) {
-			$this->clearRememberCookie();
-			return false;
-		}
+        $token = $_COOKIE[self::COOKIE_NAME];
 
-		[$selector, $validator] = $parts;
+        // Разделяем токен на selector и validator
+        $parts = explode(':', $token, 2);
+        if (count($parts) !== 2) {
+            $this->clearRememberCookie();
+            return false;
+        }
 
-		$record = $this->rememberTokenModel->validateToken($selector, $validator);
+        [$selector, $validator] = $parts;
 
-		if (!$record) {
-			// Токен невалиден или истек - удаляем cookie
-			$this->clearRememberCookie();
-			return false;
-		}
+        $record = $this->rememberTokenModel->validateToken($selector, $validator);
 
-		// Получаем данные пользователя
-		$user = $this->userModel->find((int)$record['user_id']);
+        if (!$record) {
+            // Токен невалиден или истек - удаляем cookie
+            $this->clearRememberCookie();
+            return false;
+        }
+
+        // Получаем данные пользователя
+        $user = $this->userModel->find((int)$record['user_id']);
 
         if (!$user) {
             $this->clearRememberCookie();
@@ -502,7 +532,7 @@ class AuthService
         if ($this->userModel->isBanned((int)$user['id'])) {
             $this->clearRememberCookie();
             Audit::log('auth.remember_blocked', "Попытка входа по токену забаненного пользователя", 'auth');
-			
+
             return false;
         }
 
@@ -520,15 +550,15 @@ class AuthService
     /**
      * Очистить cookie "Запомнить меня"
      */
-	private function clearRememberCookie(): void
-	{
-		if (isset($_COOKIE[self::COOKIE_NAME])) {
-			// Удаляем токен из БД
-			$token = $_COOKIE[self::COOKIE_NAME];
-			$parts = explode(':', $token, 2);
-			if (count($parts) === 2) {
-				$this->rememberTokenModel->deleteBySelector($parts[0]);
-			}
+    private function clearRememberCookie(): void
+    {
+        if (isset($_COOKIE[self::COOKIE_NAME])) {
+            // Удаляем токен из БД
+            $token = $_COOKIE[self::COOKIE_NAME];
+            $parts = explode(':', $token, 2);
+            if (count($parts) === 2) {
+                $this->rememberTokenModel->deleteBySelector($parts[0]);
+            }
 
             // Удаляем cookie
             setcookie(
@@ -563,7 +593,7 @@ class AuthService
 
         // Уничтожаем сессию
         $_SESSION = [];
-        
+
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
             setcookie(
@@ -576,7 +606,7 @@ class AuthService
                 $params["httponly"]
             );
         }
-        
+
         session_destroy();
     }
 }

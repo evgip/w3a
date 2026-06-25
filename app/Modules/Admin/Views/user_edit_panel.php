@@ -1,8 +1,9 @@
-<?php 
+<?php
+
 /** 
  * @var array $userItem 
  * @var App\Core\Request $request 
- */ 
+ */
 ?>
 
 <h1>🔧 Панель модерации: <?= e($userItem['username'] ?? 'Пользователь') ?></h1>
@@ -17,19 +18,19 @@
     <!-- Секция аватара -->
     <div class="form-field-group">
         <label>Аватар пользователя</label>
-        
+
         <?php if (!empty($userItem['avatar'])): ?>
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                 <!-- Исправлено: было $user['avatar'], стало $userItem['avatar'] -->
-                <img src="/uploads/avatars/<?= substr($userItem['avatar'], 0, 2) ?>/<?= e($userItem['avatar']) ?>" 
-                     style="width: 64px; height: 64px; border-radius: 4px; object-fit: cover; background: #f0f0f0;" 
-                     alt="Аватар">
+                <img src="/uploads/avatars/<?= substr($userItem['avatar'], 0, 2) ?>/<?= e($userItem['avatar']) ?>"
+                    style="width: 64px; height: 64px; border-radius: 4px; object-fit: cover; background: #f0f0f0;"
+                    alt="Аватар">
                 <div>
                     <strong>Пользовательский аватар установлен</strong><br>
                     <span class="hint">Файл: <?= e($userItem['avatar']) ?></span>
                 </div>
             </div>
-            
+
             <form action="<?= route('admin.users.avatar.delete', ['id' => $userItem['id']]) ?>" method="POST" style="display:inline; margin-top: 0.5rem;">
                 <?= csrf_field() ?>
                 <button type="submit" class="button delete-link" style="color: #ac130d;" data-confirm="Вы уверены, что хотите удалить аватар этого пользователя?">
@@ -55,7 +56,7 @@
     <div class="form-field-group">
         <label for="email">Email адрес <span class="form-field-hint-inline">(обязательно)</span></label>
         <input type="email" id="email" name="email" required class="form-input-wide"
-               value="<?= e($request->getParams('email', $userItem['email'] ?? '')) ?>">
+            value="<?= e($request->getParams('email', $userItem['email'] ?? '')) ?>">
         <div class="hint">Основной адрес электронной почты для связи и уведомлений.</div>
     </div>
 
@@ -78,7 +79,7 @@
     <div class="form-field-group">
         <label for="bio">Биография пользователя (О себе)</label>
         <textarea id="bio" name="bio" rows="4" class="form-input-wide"
-                  placeholder="Краткая информация о пользователе..."><?= e($request->getParams('bio', $userItem['bio'] ?? '')) ?></textarea>
+            placeholder="Краткая информация о пользователе..."><?= e($request->getParams('bio', $userItem['bio'] ?? '')) ?></textarea>
         <div class="hint">Отображается в публичном профиле пользователя (необязательно).</div>
     </div>
 

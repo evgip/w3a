@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Modules\Admin\Services;
@@ -20,7 +21,7 @@ class AdminFirewallService
         $stmt = $db->query("SELECT * FROM `banned_ips` ORDER BY id DESC");
         return $stmt->fetchAll();
     }
-    
+
     /**
      * Заблокировать IP-адрес.
      *
@@ -31,41 +32,41 @@ class AdminFirewallService
         if (!filter_var($ip, FILTER_VALIDATE_IP)) {
             return false;
         }
-        
+
         $db = Database::getConnection();
-        
+
         try {
             $stmt = $db->prepare("INSERT INTO `banned_ips` (`ip_address`, `reason`) VALUES (:ip, :reason)");
             $stmt->execute(['ip' => $ip, 'reason' => $reason]);
-            
+
             Audit::log('admin.ip_banned', "Администратор заблокировал IP: {$ip}", 'admin');
-            
+
             return true;
         } catch (\Exception $e) {
             return false; // IP уже заблокирован
         }
     }
-    
+
     /**
      * Разблокировать IP-адрес.
      */
     public function unbanIp(int $id): ?string
     {
         $db = Database::getConnection();
-        
+
         $stmt = $db->prepare("SELECT `ip_address` FROM `banned_ips` WHERE `id` = :id");
         $stmt->execute(['id' => $id]);
         $ip = $stmt->fetchColumn();
-        
+
         if (!$ip) {
             return null;
         }
-        
+
         $stmt = $db->prepare("DELETE FROM `banned_ips` WHERE `id` = :id");
         $stmt->execute(['id' => $id]);
-        
+
         Audit::log('admin.ip_unbanned', "Администратор разблокировал IP: {$ip}", 'admin');
-        
+
         return $ip;
     }
 }

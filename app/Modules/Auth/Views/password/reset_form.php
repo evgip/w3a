@@ -20,29 +20,27 @@
 
     <div class="form-field-group">
         <label for="reset-password"><strong>Новый пароль</strong></label>
-        <input 
-            type="password" 
-            id="reset-password" 
-            name="password" 
+        <input
+            type="password"
+            id="reset-password"
+            name="password"
             minlength="6"
-            required 
-            autofocus 
+            required
+            autofocus
             class="form-input-wide"
-            placeholder="Минимум 6 символов"
-        >
+            placeholder="Минимум 6 символов">
     </div>
 
     <div class="form-field-group">
         <label for="reset-password-confirm"><strong>Подтвердите пароль</strong></label>
-        <input 
-            type="password" 
-            id="reset-password-confirm" 
-            name="password_confirm" 
+        <input
+            type="password"
+            id="reset-password-confirm"
+            name="password_confirm"
             minlength="6"
-            required 
+            required
             class="form-input-wide"
-            placeholder="Повторите пароль"
-        >
+            placeholder="Повторите пароль">
     </div>
 
     <div class="form-actions">

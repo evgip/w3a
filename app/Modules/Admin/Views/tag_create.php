@@ -13,7 +13,7 @@ $categoriesList = $categoryModel->getAllOrdered();
 	<div class="form-field-group">
 		<label for="name">Название тега <span class="form-field-hint-inline">(обязательно)</span></label>
 		<input type="text" id="name" name="name" required pattern="[a-zа-я0-9\-]+" class="form-input-wide"
-			   placeholder="Например: php">
+			placeholder="Например: php">
 		<div class="hint">Только латиница в нижнем регистре, цифры и дефис. <strong>Изменение повлияет на URL тега.</strong></div>
 	</div>
 
@@ -29,8 +29,8 @@ $categoriesList = $categoryModel->getAllOrdered();
 		<select id="category_id" name="category_id" required>
 			<option value="">— Выберите категорию —</option>
 			<?php foreach ($categoriesList as $cat): ?>
-				<option value="<?= (int)$cat['id'] ?>" 
-						<?= ($request->getParams('category_id', $tagItem['category_id'] ?? '') == $cat['id']) ? 'selected' : '' ?>>
+				<option value="<?= (int)$cat['id'] ?>"
+					<?= ($request->getParams('category_id', $tagItem['category_id'] ?? '') == $cat['id']) ? 'selected' : '' ?>>
 					<?= e($cat['name']) ?> (<?= e($cat['slug']) ?>)
 				</option>
 			<?php endforeach; ?>
@@ -38,12 +38,12 @@ $categoriesList = $categoryModel->getAllOrdered();
 		<small>Определяет колонку на странице общего каталога тегов.</small>
 	</div>
 
-    <div class="form-field-group">
-        <label for="description">Описание</label>
-        <textarea id="description" name="description" rows="3" class="form-input-wide"
-                  placeholder="Краткое описание тега..."></textarea>
-        <div class="hint">Пояснение для пользователей о содержимом тега (необязательно).</div>
-    </div>
+	<div class="form-field-group">
+		<label for="description">Описание</label>
+		<textarea id="description" name="description" rows="3" class="form-input-wide"
+			placeholder="Краткое описание тега..."></textarea>
+		<div class="hint">Пояснение для пользователей о содержимом тега (необязательно).</div>
+	</div>
 
 	<!-- CLEAN CLASS-DRIVEN CHECKBOX ROW -->
 	<div class="form-field-groupw">

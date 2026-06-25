@@ -9,21 +9,21 @@
 <!-- ФОРМА ДОБАВЛЕНИЯ IP В ЧЕРНЫЙ СПИСОК -->
 <div class="form-field-group">
     <h3>➕ Внести новый IP-адрес в черный список</h3>
-    
+
     <form action="<?= route('admin.firewall.ban') ?>" method="POST">
         <?= csrf_field() ?>
-        
+
         <div class="form-field-group">
             <label for="ip_address">IP-адрес (IPv4 / IPv6) <span class="form-field-hint-inline">(обязательно)</span></label>
             <input type="text" id="ip_address" name="ip_address" required class="form-input-wide"
-                   placeholder="например: 192.168.1.100 или 2001:db8::1">
+                placeholder="например: 192.168.1.100 или 2001:db8::1">
             <div class="hint">Введите полный IP-адрес, который нужно заблокировать.</div>
         </div>
 
         <div class="form-field-group">
             <label for="reason">Официальная причина блокировки <span class="form-field-hint-inline">(обязательно)</span></label>
             <input type="text" id="reason" name="reason" required class="form-input-wide"
-                   placeholder="например: Попытка подбора паролей (брутфорс), DDoS-атака">
+                placeholder="например: Попытка подбора паролей (брутфорс), DDoS-атака">
             <div class="hint">Краткое описание причины для журнала аудита.</div>
         </div>
 

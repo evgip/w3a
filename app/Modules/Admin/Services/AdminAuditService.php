@@ -10,12 +10,12 @@ use App\Core\Database;
 class AdminAuditService
 {
     private AuditLog $auditLogModel;
-    
-	public function __construct(?AuditLog $auditLogModel = null)
-	{
-		$this->auditLogModel = $auditLogModel ?? new AuditLog();
-	}
-    
+
+    public function __construct(?AuditLog $auditLogModel = null)
+    {
+        $this->auditLogModel = $auditLogModel ?? new AuditLog();
+    }
+
     /**
      * Получить отфильтрованные логи аудита.
      */
@@ -28,18 +28,23 @@ class AdminAuditService
         ?string $filterCategory = null
     ): array {
         $logs = $this->auditLogModel->getFilteredLogs(
-            $perPage, $offset, $filterUserId, $filterAction, $searchQuery, $filterCategory
+            $perPage,
+            $offset,
+            $filterUserId,
+            $filterAction,
+            $searchQuery,
+            $filterCategory
         );
-        
+
         // Декодируем JSON-контекст
         foreach ($logs as &$log) {
             $payloadField = $log['payload'] ?? '';
             $log['decoded_payload'] = $payloadField ? json_decode($payloadField, true) : [];
         }
-        
+
         return $logs;
     }
-    
+
     /**
      * Получить уникальные действия для фильтра.
      */
@@ -55,7 +60,7 @@ class AdminAuditService
     {
         return $this->auditLogModel->getUniqueCategories();
     }
-    
+
     /**
      * Получить общее количество логов с учётом фильтров.
      */
@@ -66,10 +71,13 @@ class AdminAuditService
         ?string $filterCategory = null
     ): int {
         return $this->auditLogModel->getFilteredCount(
-            $filterUserId, $filterAction, $searchQuery, $filterCategory
+            $filterUserId,
+            $filterAction,
+            $searchQuery,
+            $filterCategory
         );
     }
-    
+
     /**
      * Получить последние security-алерты.
      */
@@ -78,7 +86,7 @@ class AdminAuditService
         $auditModel = new \App\Modules\Admin\Models\Audit();
         return $auditModel->getRecentSecurityAlerts();
     }
-    
+
     /**
      * Полностью очистить таблицу логов аудита.
      */

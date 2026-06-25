@@ -37,19 +37,19 @@ class AuthController extends Controller
 			$this->redirect(route('password.request'));
 			return;
 		}
-		
+
 		// Валидация email
 		$email = filter_var($this->request->post('email', ''), FILTER_VALIDATE_EMAIL);
-		
+
 		if (!$email) {
 			Session::setFlash('error', 'Неверный email адрес.');
 			$this->redirect(route('password.request'));
 			return;
 		}
-		
+
 		// Здесь должна быть логика отправки письма...
 		// TODO: Реальная отправка
-		
+
 		Session::setFlash('success', 'Ссылка для восстановления отправлена на ' . $email);
 		$this->redirect(route('password.request'));
 	}
@@ -121,24 +121,24 @@ class AuthController extends Controller
 	{
 		return $this->service(\App\Modules\Auth\Services\PasswordResetService::class);
 	}
-	
-    /**
-     * Обработка входа пользователя в систему (POST /login).
-     * Валидирует CSRF-токен (через `Controller::validateCsrfToken()`), проверяет email/пароль, создаёт сессию.
-     * При успехе перенаправляет на главную, при ошибке — возвращается на /login без перезагрузки (но здесь — редирект).
-     *
-     * @return void
-     */
+
+	/**
+	 * Обработка входа пользователя в систему (POST /login).
+	 * Валидирует CSRF-токен (через `Controller::validateCsrfToken()`), проверяет email/пароль, создаёт сессию.
+	 * При успехе перенаправляет на главную, при ошибке — возвращается на /login без перезагрузки (но здесь — редирект).
+	 *
+	 * @return void
+	 */
 	public function login(): void
 	{
 		$email = trim($this->request->getParams('email'));
 		$password = $this->request->getParams('password');
-		
+
 		// Читаем параметр "Запомнить меня"
 		$remember = (bool)$this->request->getParams('remember');
 
 		$user = $this->service(AuthService::class)->authenticate($email, $password);
-		
+
 		if (!$user) {
 			// При неудаче — редирект на форму логина
 			$this->redirectWithMessage('/login', 'Неверный email или пароль', 'error');
@@ -147,98 +147,98 @@ class AuthController extends Controller
 
 		// Передаем параметр $remember в createSession
 		$this->service(AuthService::class)->createSession($user, $remember);
-		
+
 		Session::setFlash('success', 'Добро пожаловать!');
 		$this->redirect('/');
 	}
 
-    /**
-     * Отображение формы логина (GET /login).
-     *
-     * @return void
-     */
-    public function showLoginForm(): void
-    {
-        // Рендерим шаблон login.php из папки Views модуля Users
-        $this->render('login', [
-            'title' => 'Авторизация',
-            'request' => $this->request // Передаем объект запроса для вывода CSRF-поля
-        ]);
-    }
+	/**
+	 * Отображение формы логина (GET /login).
+	 *
+	 * @return void
+	 */
+	public function showLoginForm(): void
+	{
+		// Рендерим шаблон login.php из папки Views модуля Users
+		$this->render('login', [
+			'title' => 'Авторизация',
+			'request' => $this->request // Передаем объект запроса для вывода CSRF-поля
+		]);
+	}
 
-    /**
-     * Отображение формы регистрации (GET /register).
-     * Загружает ранее введённые данные (если были ошибки валидации), чтобы не просить пользователя вводить их заново.
-     *
-     * @return void
-     */
-    public function showRegisterForm(): void
-    {
+	/**
+	 * Отображение формы регистрации (GET /register).
+	 * Загружает ранее введённые данные (если были ошибки валидации), чтобы не просить пользователя вводить их заново.
+	 *
+	 * @return void
+	 */
+	public function showRegisterForm(): void
+	{
 		if (config('config.app.invitations_enabled', false, 'bool')) {
-            $this->redirect(route('home'));
-            return;
-		} 
-		
-		
-        // Получаем старые значения из сессии (если есть), удаляем после использования
-        $old = \App\Core\Session::get('old_input', []);
-        \App\Core\Session::delete('old_input');
+			$this->redirect(route('home'));
+			return;
+		}
 
-        $this->render('register', [
-            'title' => 'Регистрация нового пользователя',
-            'request' => $this->request,
-            'old' => $old
-        ]);
-    }
 
-    /**
-     * Обработка регистрации нового пользователя (POST /register).
-     * Валидирует CSRF-токен, создаёт пользователя, инициализирует профиль и настройки по умолчанию.
-     *
-     * При ошибке (email/username уже заняты) — редирект на форму регистрации с сохранением ввода.
-     * При успехе — редирект на /login с сообщением о подтверждении через почту.
-     *
-     * @return void
-     */
-    public function register(): void
-    {
-        // === ПРОВЕРКА КАПЧИ ===
+		// Получаем старые значения из сессии (если есть), удаляем после использования
+		$old = \App\Core\Session::get('old_input', []);
+		\App\Core\Session::delete('old_input');
+
+		$this->render('register', [
+			'title' => 'Регистрация нового пользователя',
+			'request' => $this->request,
+			'old' => $old
+		]);
+	}
+
+	/**
+	 * Обработка регистрации нового пользователя (POST /register).
+	 * Валидирует CSRF-токен, создаёт пользователя, инициализирует профиль и настройки по умолчанию.
+	 *
+	 * При ошибке (email/username уже заняты) — редирект на форму регистрации с сохранением ввода.
+	 * При успехе — редирект на /login с сообщением о подтверждении через почту.
+	 *
+	 * @return void
+	 */
+	public function register(): void
+	{
+		// === ПРОВЕРКА КАПЧИ ===
 		if (!Captcha::validate($this->request->post('smart-token'))) {
-            Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот.');
-            $this->redirect(route('auth.register'));
-            return;
-        }
-		
-		
-        $username = trim($this->request->getParams('username'));
-        $email = trim($this->request->getParams('email'));
-        $password = $this->request->getParams('password');
+			Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот.');
+			$this->redirect(route('auth.register'));
+			return;
+		}
 
-        $userId = $this->service(AuthService::class)->register($username, $email, $password);
-        if (!$userId) {
-            // Сохраняем ввод в сессию для повторной отрисовки формы
-            \App\Core\Session::set('old_input', [
-                'username' => $username,
-                'email' => $email,
-            ]);
+
+		$username = trim($this->request->getParams('username'));
+		$email = trim($this->request->getParams('email'));
+		$password = $this->request->getParams('password');
+
+		$userId = $this->service(AuthService::class)->register($username, $email, $password);
+		if (!$userId) {
+			// Сохраняем ввод в сессию для повторной отрисовки формы
+			\App\Core\Session::set('old_input', [
+				'username' => $username,
+				'email' => $email,
+			]);
 			$this->redirectBack('/register');
-        }
+		}
 
-        Session::setFlash('success', 'Регистрация успешна! Проверьте почту.');
-        $this->redirectBack('/login');
-    }
+		Session::setFlash('success', 'Регистрация успешна! Проверьте почту.');
+		$this->redirectBack('/login');
+	}
 
-    /**
-     * Выход пользователя из системы (POST /logout).
-     * Уничтожает сессию и перенаправляет на главную страницу.
-     *
-     * @return void
-     */
-    public function logout(): void
-    {
-        $this->service(AuthService::class)->logout();
-        $this->redirectBack('/');
-    }
+	/**
+	 * Выход пользователя из системы (POST /logout).
+	 * Уничтожает сессию и перенаправляет на главную страницу.
+	 *
+	 * @return void
+	 */
+	public function logout(): void
+	{
+		$this->service(AuthService::class)->logout();
+		$this->redirectBack('/');
+	}
 
 	/**
 	 * Активация аккаунта по токену из email (GET /register/activate/{token}).
@@ -255,7 +255,7 @@ class AuthController extends Controller
 			$this->redirect(route('auth.register'));
 		}
 	}
-	
+
 	/**
 	 * Получить AuthService из контейнера.
 	 * 
@@ -265,5 +265,4 @@ class AuthController extends Controller
 	{
 		return $this->service(\App\Modules\Auth\Services\AuthService::class);
 	}
-
 }

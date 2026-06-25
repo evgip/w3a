@@ -16,12 +16,12 @@ class ModuleServiceProvider
     public function register(Container $container): void
     {
         // === МОДЕЛИ ===
-        
+
         $container->singleton(RememberToken::class, fn() => new RememberToken());
         $container->singleton(EmailActivation::class, fn() => new EmailActivation());
 
         // === СЕРВИСЫ ===
-        
+
         $container->singleton(AuthService::class, function (Container $c) {
             return new AuthService(
                 $c->get(User::class),

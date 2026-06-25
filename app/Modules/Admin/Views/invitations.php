@@ -1,4 +1,6 @@
-<?php /** @var array $requests */ ?>
+<?php
+
+/** @var array $requests */ ?>
 <?php /** @var string $currentStatus */ ?>
 
 <div class="container mt-4">
@@ -6,21 +8,21 @@
 
     <nav class="nav">
 
-            <a class="nav-link <?= $currentStatus === 'pending' ? 'active' : '' ?>"
-               href="?status=pending">
-                Ожидают (<?= count(array_filter($requests, fn($r) => $r['status'] === 'pending')) ?>)
-            </a>
-  
-            <a class="nav-link <?= $currentStatus === 'approved' ? 'active' : '' ?>"
-               href="?status=approved">
-                Одобренные
-            </a>
-  
-            <a class="nav-link <?= $currentStatus === 'rejected' ? 'active' : '' ?>"
-               href="?status=rejected">
-                Отклонённые
-            </a>
-       
+        <a class="nav-link <?= $currentStatus === 'pending' ? 'active' : '' ?>"
+            href="?status=pending">
+            Ожидают (<?= count(array_filter($requests, fn($r) => $r['status'] === 'pending')) ?>)
+        </a>
+
+        <a class="nav-link <?= $currentStatus === 'approved' ? 'active' : '' ?>"
+            href="?status=approved">
+            Одобренные
+        </a>
+
+        <a class="nav-link <?= $currentStatus === 'rejected' ? 'active' : '' ?>"
+            href="?status=rejected">
+            Отклонённые
+        </a>
+
     </nav>
 
     <?php if (empty($requests)): ?>
@@ -47,12 +49,12 @@
                             <td>
                                 <?php if ($req['status'] === 'pending'): ?>
                                     <form method="POST" action="<?= route('admin.invitations.approve', ['id' => $req['id']]) ?>"
-                                          style="display: inline;">
+                                        style="display: inline;">
                                         <?= csrf_field() ?>
                                         <button type="submit" class="btn btn-sm btn-success">✓ Одобрить</button>
                                     </form>
                                     <form method="POST" action="<?= route('admin.invitations.reject', ['id' => $req['id']]) ?>"
-                                          style="display: inline;">
+                                        style="display: inline;">
                                         <?= csrf_field() ?>
                                         <button type="submit" class="btn btn-sm btn-danger">✖ Отклонить</button>
                                     </form>

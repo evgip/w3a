@@ -12,9 +12,9 @@ use App\Modules\Auth\Controllers\AuthController;
  * Активация аккаунта по токену из email.
  */
 $router->add(
-    'GET', 
-    '/register/activate/{token}', 
-    AuthController::class . '@activateAccount', 
+    'GET',
+    '/register/activate/{token}',
+    AuthController::class . '@activateAccount',
     'auth.activate'
 );
 
@@ -22,9 +22,9 @@ $router->add(
  * Форма запроса ссылки для восстановления пароля.
  */
 $router->add(
-    'GET', 
-    '/password/reset', 
-    AuthController::class . '@showRequestResetForm', 
+    'GET',
+    '/password/reset',
+    AuthController::class . '@showRequestResetForm',
     'password.request'
 );
 
@@ -32,9 +32,9 @@ $router->add(
  * Форма ввода нового пароля (по токену из email).
  */
 $router->add(
-    'GET', 
-    '/password/reset/{token}', 
-    AuthController::class . '@showResetPasswordForm', 
+    'GET',
+    '/password/reset/{token}',
+    AuthController::class . '@showResetPasswordForm',
     'password.reset'
 );
 
@@ -42,9 +42,9 @@ $router->add(
  * Альтернативный URL для восстановления пароля.
  */
 $router->add(
-    'GET', 
-    '/password/recovery', 
-    AuthController::class . '@showRequestResetForm', 
+    'GET',
+    '/password/recovery',
+    AuthController::class . '@showRequestResetForm',
     'password.recovery'
 );
 
@@ -52,15 +52,15 @@ $router->add(
 // POST-маршруты восстановления пароля (с CSRF-защитой)
 // -------------------------------------------------------------------------
 
-$router->group(['middleware' => ['web']], function($router) {
-    
+$router->group(['middleware' => ['web']], function ($router) {
+
     /**
      * Отправка ссылки для восстановления на email.
      */
     $router->add(
-        'POST', 
-        '/password/reset', 
-        AuthController::class . '@sendResetLink', 
+        'POST',
+        '/password/reset',
+        AuthController::class . '@sendResetLink',
         'password.request.submit'
     );
 
@@ -68,9 +68,9 @@ $router->group(['middleware' => ['web']], function($router) {
      * Обработка смены пароля.
      */
     $router->add(
-        'POST', 
-        '/password/reset/submit', 
-        AuthController::class . '@executePasswordReset', 
+        'POST',
+        '/password/reset/submit',
+        AuthController::class . '@executePasswordReset',
         'password.reset.submit'
     );
 
@@ -78,9 +78,9 @@ $router->group(['middleware' => ['web']], function($router) {
      * Альтернативный URL (POST).
      */
     $router->add(
-        'POST', 
-        '/password/recovery', 
-        AuthController::class . '@sendResetLink', 
+        'POST',
+        '/password/recovery',
+        AuthController::class . '@sendResetLink',
         'password.recovery.submit'
     );
 });
@@ -89,11 +89,11 @@ $router->group(['middleware' => ['web']], function($router) {
 // МАРШРУТЫ ДЛЯ ГОСТЕЙ (только для неавторизованных)
 // =========================================================================
 
-$router->group(['middleware' => ['web', 'guest']], function($router) {
-    
+$router->group(['middleware' => ['web', 'guest']], function ($router) {
+
     $router->add('GET', '/login', AuthController::class . '@showLoginForm', 'auth.login');
     $router->add('POST', '/login', AuthController::class . '@login', 'auth.login.submit');
-    
+
     $router->add('GET', '/register', AuthController::class . '@showRegisterForm', 'auth.register');
     $router->add('POST', '/register', AuthController::class . '@register', 'auth.register.submit');
 });
@@ -102,8 +102,8 @@ $router->group(['middleware' => ['web', 'guest']], function($router) {
 // МАРШРУТЫ ДЛЯ АВТОРИЗОВАННЫХ
 // =========================================================================
 
-$router->group(['middleware' => ['web', 'auth']], function($router) {
-    
+$router->group(['middleware' => ['web', 'auth']], function ($router) {
+
     /**
      * Выход из аккаунта (POST для защиты от CSRF).
      */

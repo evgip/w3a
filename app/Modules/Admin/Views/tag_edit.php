@@ -4,12 +4,12 @@ $categoryModel = new App\Modules\Tags\Models\Category();
 $categories = $categoryModel->getAllOrdered();
 ?>
 
-<?php 
+<?php
 /** 
  * @var array $tagItem 
  * @var array $categories 
  * @var App\Core\Request $request 
- */ 
+ */
 ?>
 
 <h1><?= e($title ?? 'Редактирование тега') ?></h1>
@@ -20,16 +20,16 @@ $categories = $categoryModel->getAllOrdered();
     <div class="form-field-group">
         <label for="name">Название тега <span class="form-field-hint-inline">(обязательно)</span></label>
         <input type="text" id="name" name="name" required pattern="[a-zа-я0-9\-]+" class="form-input-wide"
-               value="<?= e($request->getParams('name', $tagItem['name'] ?? '')) ?>"
-               placeholder="Например: php">
+            value="<?= e($request->getParams('name', $tagItem['name'] ?? '')) ?>"
+            placeholder="Например: php">
         <div class="hint">Только латиница в нижнем регистре, цифры и дефис. <strong>Изменение повлияет на URL тега.</strong></div>
     </div>
 
     <div class="form-field-group">
         <label for="tag">URL тега (slug) <span class="form-field-hint-inline">(обязательно)</span></label>
         <input type="text" id="tag" name="tag" required pattern="[a-z0-9\-]+" class="form-input-wide"
-               value="<?= e($request->getParams('tag', $tagItem['tag'] ?? '')) ?>"
-               placeholder="Например: php">
+            value="<?= e($request->getParams('tag', $tagItem['tag'] ?? '')) ?>"
+            placeholder="Например: php">
         <div class="hint">Только латиница в нижнем регистре, цифры и дефис. <strong>Изменение повлияет на URL тега.</strong></div>
     </div>
 
@@ -50,15 +50,15 @@ $categories = $categoryModel->getAllOrdered();
     <div class="form-field-group">
         <label for="description">Описание</label>
         <textarea id="description" name="description" rows="3" class="form-input-wide"
-                  placeholder="Краткое описание тега..."><?= e($request->getParams('description', $tagItem['description'] ?? '')) ?></textarea>
+            placeholder="Краткое описание тега..."><?= e($request->getParams('description', $tagItem['description'] ?? '')) ?></textarea>
         <div class="hint">Пояснение для пользователей о содержимом тега (необязательно).</div>
     </div>
 
     <div class="form-field-group">
         <label for="hotness_mod">hotness_mod</label>
         <input type="text" id="hotness_mod" name="hotness_mod" class="form-input-wide"
-               value="<?= e($request->getParams('hotness_mod', $tagItem['hotness_mod'] ?? '')) ?>"
-               placeholder="Например: php">
+            value="<?= e($request->getParams('hotness_mod', $tagItem['hotness_mod'] ?? '')) ?>"
+            placeholder="Например: php">
         <div class="hint">0.5 - в топе дольше, -0.2 - для редких случаев, -5.0 - мгновенно уронит истории. <strong>Изменение повлияет на вес историй.</strong></div>
     </div>
 
@@ -91,4 +91,3 @@ $categories = $categoryModel->getAllOrdered();
         <a href="<?= route('admin.tags') ?>" class="button">Отмена</a>
     </div>
 </form>
-

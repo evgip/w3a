@@ -9,10 +9,10 @@ class AdminUser extends Model
     // Указываем базовому ядру, что эта админ-модель оперирует таблицей пользователей
     protected string $table = 'users';
 
-	protected array $fillable = [
-		'is_active',
-		'type'
-	];
+    protected array $fillable = [
+        'is_active',
+        'type'
+    ];
 
     /**
      * Выборка реестра учетных записей для панели модератора
@@ -38,11 +38,11 @@ class AdminUser extends Model
     {
         $user = $this->find($userId);
         if (!$user) {
-            return -1; 
+            return -1;
         }
 
         $newStatus = ((int)$user['is_active'] === 1) ? 0 : 1;
-        
+
         // Используем встроенный метод обновления записи из абстракции ядра Model
         $this->update($userId, [
             'is_active' => $newStatus
