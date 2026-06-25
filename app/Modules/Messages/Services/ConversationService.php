@@ -74,15 +74,20 @@ class ConversationService
      * Создать новый диалог или получить существующий между двумя пользователями.
      * @return int ID диалога
      */
-    public function getOrCreateConversation(int $userOneId, int $userTwoId): int
-    {
-        // Нельзя создать диалог с самим собой
-        if ($userOneId === $userTwoId) {
-            throw new \InvalidArgumentException('Нельзя создать диалог с самим собой');
-        }
+	public function getOrCreateConversation(int $userOneId, int $userTwoId): ?int
+	{
+		if ($userOneId === $userTwoId) {
+			Session::setFlash('error', 'Нельзя создать диалог с самим собой');
+			return null;
+		}
 
-        return $this->conversationModel->firstOrCreate($userOneId, $userTwoId);
-    }
+		try {
+			return $this->conversationModel->firstOrCreate($userOneId, $userTwoId);
+		} catch (\Throwable $e) {
+			Session::setFlash('error', 'Ошибка при создании диалога');
+			return null;
+		}
+	}
 
     /**
      * Обновить timestamp диалога (для сортировки по активности).

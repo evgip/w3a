@@ -31,36 +31,43 @@ class MessageService
      * Отправить сообщение в диалог.
      * @return int ID созданного сообщения
      */
-    public function sendMessage(int $conversationId, int $senderId, string $messageText): int
-    {
-        // Валидация текста сообщения
-        $messageText = trim($messageText);
-        if (empty($messageText)) {
-            throw new \InvalidArgumentException('Текст сообщения не может быть пустым');
-        }
+	public function sendMessage(int $conversationId, int $senderId, string $messageText): ?int
+	{
+		$messageText = trim($messageText);
+		
+		// Валидация в сервисе
+		if (empty($messageText)) {
+			Session::setFlash('error', 'Текст сообщения не может быть пустым');
+			return null;
+		}
 
-        // Создаём сообщение
-        $messageId = $this->messageModel->create([
-            'conversation_id' => $conversationId,
-            'sender_id' => $senderId,
-            'message' => $messageText
-        ]);
+		try {
+			// Создаём сообщение
+			$messageId = $this->messageModel->create([
+				'conversation_id' => $conversationId,
+				'sender_id' => $senderId,
+				'message' => $messageText
+			]);
 
-        // Обновляем timestamp диалога для сортировки
-        $this->conversationModel->update($conversationId, [
-            'updated_at' => date('Y-m-d H:i:s')
-        ]);
+			// Обновляем timestamp
+			$this->conversationModel->update($conversationId, [
+				'updated_at' => date('Y-m-d H:i:s')
+			]);
 
-        // Отправляем уведомление получателю
-        if ($messageId > 0 && $this->notificationService !== null) {
-            $recipientId = $this->conversationModel->getRecipientId($conversationId, $senderId);
-            if ($recipientId > 0) {
-                $this->notificationService->notifyMessageSent($messageId, $recipientId, $senderId);
-            }
-        }
+			// Уведомления
+			if ($messageId > 0 && $this->notificationService !== null) {
+				$recipientId = $this->conversationModel->getRecipientId($conversationId, $senderId);
+				if ($recipientId > 0) {
+					$this->notificationService->notifyMessageSent($messageId, $recipientId, $senderId);
+				}
+			}
 
-        return (int)$messageId;
-    }
+			return (int)$messageId;
+		} catch (\Throwable $e) {
+			Session::setFlash('error', 'Ошибка при отправке сообщения');
+			return null;
+		}
+	}
 
     /**
      * Получить пагинированную историю сообщений диалога.

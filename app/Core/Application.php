@@ -2,6 +2,8 @@
 
 namespace App\Core;
 
+use App\Core\Events\EventDispatcher;
+
 class Application
 {
     private Container $container;
@@ -25,6 +27,10 @@ class Application
         $this->request = new Request();
         $this->container->singleton(Request::class, fn() => $this->request);
 
+		// ✅ СОЗДАЁМ EventDispatcher ДО загрузки провайдеров
+		$eventDispatcher = new EventDispatcher();
+		$this->container->singleton(EventDispatcher::class, fn() => $eventDispatcher);
+
         // 🔑 Регистрируем провайдеры модулей
         $this->registerProviders();
 
@@ -34,42 +40,46 @@ class Application
     /**
      * 🔑 НОВЫЙ МЕТОД: Регистрация провайдеров модулей
      */
-    private function registerProviders(): void
-    {
-        // 1. Регистрируем провайдер ядра
-        $coreProvider = new ModuleServiceProvider($this->request);
-        $coreProvider->register($this->container);
+	private function registerProviders(): void
+	{
+		// 1. Регистрируем провайдер ядра
+		$coreProvider = new ModuleServiceProvider($this->request);
+		$coreProvider->register($this->container);
 
-        // 2. Автоматически загружаем провайдеры модулей
-        $modulesPath = dirname(__DIR__) . '/Modules';
-        
-        if (!is_dir($modulesPath)) {
-            return;
-        }
+		// 2. Автоматически загружаем провайдеры модулей
+		$modulesPath = dirname(__DIR__) . '/Modules';
+		
+		if (!is_dir($modulesPath)) {
+			return;
+		}
 
-        $modules = array_diff(scandir($modulesPath), ['.', '..']);
+		$modules = array_diff(scandir($modulesPath), ['.', '..']);
+		$providers = [];
 
-        foreach ($modules as $module) {
-            $providerClass = "App\\Modules\\{$module}\\ModuleServiceProvider";
-            
-            if (class_exists($providerClass)) {
-                // 🔑 Автоматически регистрируем путь к конфигам модуля
-                $configPath = $modulesPath . '/' . $module . '/Config';
-                if (is_dir($configPath)) {
-                    Config::addModulePath(strtolower($module), $configPath);
-                }
+		// Сначала регистрируем все провайдеры
+		foreach ($modules as $module) {
+			$providerClass = "App\\Modules\\{$module}\\ModuleServiceProvider";
+			
+			if (class_exists($providerClass)) {
+				$configPath = $modulesPath . '/' . $module . '/Config';
+				if (is_dir($configPath)) {
+					Config::addModulePath(strtolower($module), $configPath);
+				}
 
-                // Регистрируем провайдер
-                $provider = new $providerClass();
-                $provider->register($this->container);
-                
-                // Вызываем boot(), если он есть
-                if (method_exists($provider, 'boot')) {
-                    $provider->boot();
-                }
-            }
-        }
-    }
+				$provider = new $providerClass();
+				$provider->register($this->container);
+				$providers[] = $provider;
+			}
+		}
+
+		// ✅ Потом вызываем boot() для всех провайдеров
+		// (когда все сервисы уже зарегистрированы)
+		foreach ($providers as $provider) {
+			if (method_exists($provider, 'boot')) {
+				$provider->boot();
+			}
+		}
+	}
 
     public function run(): void
     {

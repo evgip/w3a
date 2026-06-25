@@ -28,7 +28,6 @@ abstract class Controller
             $this->eventDispatcher = $eventDispatcher;
         } else {
             $this->eventDispatcher = new EventDispatcher();
-            \App\Providers\EventServiceProvider::register($this->eventDispatcher);
         }
         
         // Если контейнер передан — используем его

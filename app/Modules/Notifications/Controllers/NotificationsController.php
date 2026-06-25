@@ -4,32 +4,19 @@ namespace App\Modules\Notifications\Controllers;
 
 use App\Core\Controller;
 use App\Modules\Auth\Services\Auth;
-use App\Modules\Notifications\Models\Notification;
 use App\Modules\Notifications\Services\NotificationService;
-use App\Modules\Stories\Models\Comment;
-use App\Modules\Users\Models\User;
 
 /**
  * Контроллер модуля Notifications.
  * 
- * Маршруты (должны соответствовать JS):
+ * Маршруты:
  * - GET  /notifications                   → index()
  * - GET  /api/notifications/count         → getCount()
- * - POST /notifications/mark-all-read     → markAllAsRead()  (конкретный — первым!)
+ * - POST /notifications/mark-all-read     → markAllAsRead()
  * - POST /notifications/{id}/read         → markAsRead()
  */
 class NotificationsController extends Controller
 {
-    private ?NotificationService $notificationService = null;
-
-    private function getNotificationService(): NotificationService
-    {
-        if ($this->notificationService === null) {
-            $this->notificationService = new NotificationService();
-        }
-        return $this->notificationService;
-    }
-
     // =========================================================================
     // СПИСОК УВЕДОМЛЕНИЙ
     // =========================================================================
@@ -42,11 +29,8 @@ class NotificationsController extends Controller
         $page = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config('constants.pagination.notifications_per_page', 25, 'int');
 
-        $data = $this->getNotificationService()->getNotificationsForIndex(
-            $userId,
-            $type,
-            $page,
-            $perPage
+        $data = $this->service(NotificationService::class)->getNotificationsForIndex(
+            $userId, $type, $page, $perPage
         );
 
         $this->render('index', [
@@ -62,15 +46,12 @@ class NotificationsController extends Controller
 
     // =========================================================================
     // ОТМЕТКА ОДНОГО УВЕДОМЛЕНИЯ КАК ПРОЧИТАННОГО
-    // Маршрут: POST /notifications/{id}/read
-    // JS отправляет CSRF в заголовке X-CSRF-Token
     // =========================================================================
 
     public function markAsRead(string $id): void
     {
         header('Content-Type: application/json; charset=utf-8');
 
-        // Проверяем CSRF из заголовка (JS отправляет его именно так)
         if (!$this->validateCsrfFromHeader()) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
@@ -81,7 +62,7 @@ class NotificationsController extends Controller
         $userId = (int)Auth::id();
 
         try {
-            $success = $this->getNotificationService()->markAsRead($notificationId, $userId);
+            $success = $this->service(NotificationService::class)->markAsRead($notificationId, $userId);
 
             echo json_encode([
                 'success' => $success,
@@ -97,15 +78,12 @@ class NotificationsController extends Controller
 
     // =========================================================================
     // ОТМЕТКА ВСЕХ УВЕДОМЛЕНИЙ КАК ПРОЧИТАННЫХ
-    // Маршрут: POST /notifications/mark-all-read
-    // JS отправляет CSRF в заголовке X-CSRF-Token
     // =========================================================================
 
     public function markAllAsRead(): void
     {
         header('Content-Type: application/json; charset=utf-8');
 
-        // Проверяем CSRF из заголовка
         if (!$this->validateCsrfFromHeader()) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
@@ -115,7 +93,7 @@ class NotificationsController extends Controller
         $userId = (int)Auth::id();
 
         try {
-            $success = $this->getNotificationService()->markAllAsRead($userId);
+            $success = $this->service(NotificationService::class)->markAllAsRead($userId);
 
             echo json_encode([
                 'success' => $success,
@@ -131,8 +109,6 @@ class NotificationsController extends Controller
 
     // =========================================================================
     // API: СЧЁТЧИК НЕПРОЧИТАННЫХ
-    // Маршрут: GET /api/notifications/count
-    // JS ожидает: { count: number }
     // =========================================================================
 
     public function getCount(): void
@@ -141,9 +117,8 @@ class NotificationsController extends Controller
 
         try {
             $userId = (int)Auth::id();
-            $count = $this->getNotificationService()->getUnreadCount($userId);
+            $count = $this->service(NotificationService::class)->getUnreadCount($userId);
 
-            // JS ожидает именно { count: N } — без лишних полей
             echo json_encode(['count' => $count]);
 
         } catch (\Throwable $e) {
@@ -158,10 +133,6 @@ class NotificationsController extends Controller
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
 
-    /**
-     * Проверить CSRF-токен из заголовка X-CSRF-Token.
-     * JS отправляет токен именно так (см. fetch в notifications.js).
-     */
     private function validateCsrfFromHeader(): bool
     {
         $sessionToken = $_SESSION['csrf_token'] ?? '';

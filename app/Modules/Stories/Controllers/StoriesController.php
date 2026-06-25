@@ -7,6 +7,7 @@ namespace App\Modules\Stories\Controllers;
 use App\Core\Controller;
 use App\Core\Session;
 use App\Core\Audit;
+use App\Core\Events\EventDispatcher;
 use App\Core\Events\StoryDeleted;
 use App\Core\Events\StoryRestore;
 use App\Core\Events\CommentUpdated;
@@ -37,6 +38,9 @@ use App\Modules\Auth\Services\Auth;
  */
 class StoriesController extends Controller
 {
+	
+	
+	
     // =========================================================================
     // ЛЕНТА ИСТОРИЙ
     // =========================================================================
@@ -246,121 +250,109 @@ class StoriesController extends Controller
      *
      * @param string $id ID истории
      */
-    public function adminDelete(string $id): void
-    {
-        $storyId = (int)$id;
-        $storyModel = new Story();
-        $storyModel->delete($storyId);
 
-		// Отправляем событие
-		$this->dispatch(new StoryDeleted(
-			$storyId,
-			Auth::id()
-		));
-        Session::setFlash('success', 'Публикация успешно скрыта из общей ленты.');
+	public function adminDelete(string $id): void
+	{
+		$this->service(StoryService::class)->deleteStory((int)$id, Auth::id());
+		$this->redirectBack();
+	}
 
-        $this->redirectBack();
-    }
 
-    /**
-     * Восстановление истории (только для администраторов).
-     *
-     * @param string $id ID истории
-     */
-    public function adminRestore(string $id): void
-    {
-        $storyId = (int)$id;
-        $storyModel = new Story();
-        $storyModel->restore($storyId);
-
-		$this->dispatch(new StoryRestore(
-			$storyId,
-			Auth::id()
-		));
-        Session::setFlash('success', 'Публикация успешно восстановлена в общей ленте.');
-
-        $this->redirectBack();
-    }
+	/**
+	 * Восстановление истории (только для администраторов).
+	 *
+	 * @param string $id ID истории
+	 */
+	public function adminRestore(string $id): void
+	{
+		$this->service(StoryService::class)->restoreStory((int)$id, Auth::id());
+		$this->redirectBack();
+	}
+	 
     
     // =========================================================================
     // КОММЕНТАРИИ
     // =========================================================================
 
-    /**
-     * Добавление нового комментария.
-     */
-    public function addComment(): void
-    {
-        $storyId = (int)$this->request->getParams('story_id');
-        $parentId = $this->request->getParams('parent_id') !== '' ? (int)$this->request->getParams('parent_id') : null;
-        $commentText = $this->request->getParams('comment_text');
+	/**
+	 * Добавление нового комментария.
+	 *
+	 * Контроллер выполняет только:
+	 *  - Получение параметров из запроса
+	 *  - Вызов сервиса
+	 *  - Редирект
+	 */
+	public function addComment(): void
+	{
+		$storyId = (int)$this->request->getParams('story_id');
+		$parentId = $this->request->getParams('parent_id') !== '' ? (int)$this->request->getParams('parent_id') : null;
+		$commentText = $this->request->getParams('comment_text');
 
-        $commentId = $this->service(CommentService::class)->createComment(
-            $storyId,
-            $commentText,
-            $parentId,
-            (int)$_SESSION['user_id']
-        );
+		// Сервис выполняет создание, диспатчит событие и устанавливает flash
+		$result = $this->service(CommentService::class)->createComment(
+			$storyId,
+			$commentText,
+			$parentId,
+			(int)$_SESSION['user_id']
+		);
 
-        if ($commentId > 0) {
-			  $this->dispatch(new CommentCreated(
-					$commentId,
-					$storyId,
-					(int)$_SESSION['user_id'],
-					$parentId
-				));
-			
-            Session::setFlash('success', 'Ваш комментарий успешно опубликован!');
-            header('Location: ' . comment_url($storyId, $commentId));
-        } else {
-            header('Location: /story/' . $storyId);
-        }
-        exit;
-    }
+		if (!empty($result)) {
+			// Успех — редирект на комментарий
+			$this->redirect(comment_url($result['story_id'], $result['comment_id']));
+		} else {
+			// Ошибка — редирект на историю (flash уже установлен в сервисе)
+			$this->redirect('/story/' . $storyId);
+		}
+	}
 
-    /**
-     * Редактирование комментария.
-     *
-     * @param string $id ID комментария
-     */
+	/**
+	 * Редактирование комментария.
+	 *
+	 * Контроллер выполняет только:
+	 *  - Получение параметров из запроса
+	 *  - Вызов сервиса
+	 *  - Редирект
+	 *
+	 * @param string $id ID комментария
+	 */
 	public function editComment(string $id): void
 	{
 		$commentId = (int)$id;
 		$newText = $this->request->getParams('comment_text');
 		$userId = Auth::id();
 
-		//  Получаем результат обновления
+		// Сервис выполняет обновление и диспатчит событие
 		$result = $this->service(CommentService::class)->updateComment($commentId, $newText, $userId);
 
-		//  Проверяем успех
 		if ($result === null) {
+			// При ошибке flash-сообщение уже установлено в сервисе
 			$this->redirectBack();
 			return;
 		}
 
-		// Событие для аудита
-		$this->dispatch(new CommentUpdated(
-			$commentId,
-			$userId,
-			(bool) $result['is_author']
-		));
-
-		//  Используем уже полученный комментарий для редиректа (без дублирования запроса!)
+		// Редирект на комментарий
 		$this->redirect(comment_url((int)$result['comment']['story_id'], $commentId));
-	
 	}
 
 	/**
 	 * Удаление комментария.
 	 *
+	 * Контроллер выполняет только:
+	 *  - Получение параметров из запроса
+	 *  - Вызов сервиса
+	 *  - Редирект
+	 *
+	 * Вся бизнес-логика (проверка прав, удаление, событие, flash) — в сервисе.
+	 *
 	 * @param string $id ID комментария
 	 */
 	public function deleteComment(string $id): void
 	{
-		$commentId = (int)$id;
+		$commentId = (int) $id;
 		$userId = Auth::id();
 
-		// Сервис возвращает данные (или null при ошибке)
+		// Сервис выполняет удаление и диспатчит событие
+		// Возвращает данные для редиректа или null при ошибке
 		$result = $this->service(CommentService::class)->deleteComment($commentId, $userId);
 
 		if ($result === null) {
@@ -369,29 +361,27 @@ class StoriesController extends Controller
 			return;
 		}
 
-		// Отправляем событие (аудит отработает через AuditListener)
-		$this->dispatch(new CommentDeleted(
-			$commentId,
-			$result['story_id'],
-			$userId,
-			(bool) $result['is_author']
-		));
-
-		// Редирект через хелпер (используем данные из сервиса — без дублирования запроса!)
+		// ✅ Редирект на страницу истории с якорем на комментарий
+		// Используем данные из сервиса — без дублирования запроса к БД!
 		$this->redirect(comment_url($result['story_id'], $commentId));
 	}
 
 	/**
 	 * Восстановление удалённого комментария.
 	 *
+	 * Контроллер выполняет только:
+	 *  - Получение параметров из запроса
+	 *  - Вызов сервиса
+	 *  - Редирект
+	 *
 	 * @param string $id ID комментария
 	 */
 	public function restoreComment(string $id): void
 	{
-		$commentId = (int)$id;
+		$commentId = (int) $id;
 		$userId = Auth::id();
 
-		// Сервис возвращает данные (или null при ошибке)
+		// Сервис выполняет восстановление и диспатчит событие
 		$result = $this->service(CommentService::class)->restoreComment($commentId, $userId);
 
 		if ($result === null) {
@@ -400,14 +390,7 @@ class StoriesController extends Controller
 			return;
 		}
 
-		$this->dispatch(new CommentRestored(
-			$commentId,
-			$result['story_id'],
-			$userId,
-			(bool)$result['is_author']
-		));
-
-		// Редирект через хелпер (используем данные из сервиса — без дублирования запроса!)
+		// ✅ Редирект на страницу истории с якорем на комментарий
 		$this->redirect(comment_url($result['story_id'], $commentId));
 	}
     

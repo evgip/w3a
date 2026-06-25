@@ -37,7 +37,7 @@ $router->group(['middleware' => ['web', 'auth']], function($router) {
         NotificationsController::class . '@getUnread', 
         'notifications.api.unread'
     );
-    
+	
     $router->add(
         'GET', 
         '/api/notifications/count', 

@@ -4,7 +4,6 @@ namespace App\Core;
 
 use App\Core\Middleware\MiddlewarePipeline;
 use App\Core\Events\EventDispatcher;
-use App\Providers\EventServiceProvider;
 
 class Router
 {
@@ -314,15 +313,6 @@ class Router
      */
     public function dispatch(): void
     {
-		// ✅ ИНИЦИАЛИЗАЦИЯ EVENT DISPATCHER (один раз на весь запрос)
-		if ($this->eventDispatcher === null) {
-			$this->eventDispatcher = new EventDispatcher();
-			EventServiceProvider::register($this->eventDispatcher);
-			
-			// Регистрируем EventDispatcher в контейнере
-			$this->container->singleton(EventDispatcher::class, fn() => $this->eventDispatcher);
-		}
-		
         $uri = $this->request->getUri();
         $method = $this->request->getMethod();
 

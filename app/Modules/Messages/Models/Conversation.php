@@ -19,7 +19,6 @@ class Conversation extends Model
      */
 	public function getRecipientId(int $conversationId, int $senderId): int
 	{
-		// Даем уникальные имена параметрам: sender_id_1, sender_id_2, sender_id_3
 		$sql = "SELECT 
 					CASE 
 						WHEN user_one = :sender_id_1 THEN user_two 
@@ -32,7 +31,6 @@ class Conversation extends Model
 		
 		$stmt = static::db()->prepare($sql);
 		
-		// Передаем значение $senderId для каждого уникального параметра
 		$stmt->execute([
 			'conversation_id' => $conversationId,
 			'sender_id_1'     => $senderId,
@@ -42,7 +40,9 @@ class Conversation extends Model
 		
 		$result = $stmt->fetch(\PDO::FETCH_ASSOC);
 		
-		return $result ? (int)$result['recipient_id'] : 0;
+		$recipientId = $result ? (int)$result['recipient_id'] : 0;
+		
+		return $recipientId;
 	}
 
     /**

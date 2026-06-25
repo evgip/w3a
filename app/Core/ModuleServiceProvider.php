@@ -9,6 +9,7 @@ namespace App\Core;
 class ModuleServiceProvider
 {
     protected ?Request $request = null;
+	protected ?Container $container = null; 
 
     /**
      * 🔑 Request теперь ОПЦИОНАЛЬНЫЙ!
@@ -27,6 +28,8 @@ class ModuleServiceProvider
      */
     public function register(Container $container): void
     {
+		$this->container = $container; 
+		
         // По умолчанию ничего не делаем.
         // Если это провайдер ядра — зарегистрируем Request.
         if ($this->request !== null) {

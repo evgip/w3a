@@ -1,39 +1,51 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Moderations\Controllers;
 
 use App\Core\Controller;
-use App\Core\Session;
 use App\Modules\Moderations\Models\ModNote;
-use App\Modules\Moderations\Models\Moderation;
 use App\Modules\Moderations\Models\ModActivity;
-use App\Modules\Admin\Models\AuditLog;  // ✅ Добавляем импорт
-use App\Core\Events\UserBanned;         // ✅ Для событий
-use App\Core\Events\UserUnbanned;
-use App\Core\Events\ModNoteAdded;
+use App\Modules\Admin\Models\AuditLog;
+use App\Modules\Moderations\Services\ModerationService;
 use App\Modules\Auth\Services\Auth;
 
+/**
+ * Контроллер модерации.
+ *
+ * Отвечает только за:
+ *  - Получение параметров из запроса
+ *  - Вызов сервиса
+ *  - Редирект или рендеринг
+ *
+ * Вся бизнес-логика — в ModerationService.
+ */
 class ModerationsController extends Controller
 {
     // ==========================================
     // /mod/log — Публичный лог модерации
     // ==========================================
+
+    /**
+     * Отображение публичного лога модерации.
+     * Берёт записи из audit_logs с категорией 'moderation'.
+     */
     public function log(): void
     {
         $page = max(1, (int)$this->request->query('page', 1));
         $perPage = 30;
         $offset = ($page - 1) * $perPage;
-        
-        // ✅ Используем AuditLog с фильтром по категории 'moderation'
+
         $auditLog = $this->service(AuditLog::class);
         $items = $auditLog->getByCategory('moderation', $perPage, $offset);
         $total = $auditLog->countByCategory('moderation');
         $pages = max(1, (int)ceil($total / $perPage));
-        
+
         // Декодируем payload для шаблона
         foreach ($items as &$item) {
-            $item['decoded_payload'] = !empty($item['payload']) 
-                ? json_decode($item['payload'], true) 
+            $item['decoded_payload'] = !empty($item['payload'])
+                ? json_decode($item['payload'], true)
                 : [];
         }
 
@@ -49,19 +61,22 @@ class ModerationsController extends Controller
     // ==========================================
     // /mod/notes — Приватные заметки модераторов
     // ==========================================
+
+    /**
+     * Отображение списка заметок модераторов.
+     */
     public function notes(): void
     {
         $model = $this->service(ModNote::class);
         $notes = $model->getRecentNotes(100);
 
-        // ✅ Используем $this->request->query()
-        $targetUserId = $this->request->query('user_id') !== '' 
-            ? (int)$this->request->query('user_id') 
+        $targetUserId = $this->request->query('user_id') !== ''
+            ? (int)$this->request->query('user_id')
             : null;
 
         $this->render('notes', [
-            'title' => 'Модераторские заметки',
-            'notes' => $notes,
+            'title'          => 'Модераторские заметки',
+            'notes'          => $notes,
             'target_user_id' => $targetUserId,
         ]);
     }
@@ -69,56 +84,47 @@ class ModerationsController extends Controller
     // ==========================================
     // POST /mod/notes/store — Добавить заметку
     // ==========================================
+
+    /**
+     * Добавление модераторской заметки.
+     *
+     * Контроллер только получает параметры и вызывает сервис.
+     * Валидация, сохранение, событие и flash — в ModerationService.
+     */
     public function storeNote(): void
     {
-        $userId = (int)$this->request->post('user_id');
-        $noteText = trim($this->request->post('note') ?? '');
-        $isPrivate = (int)($this->request->post('is_private') ?? 1);
-        $currentUserId = Auth::id();
+        $result = $this->service(ModerationService::class)->addNote(
+            (int)$this->request->post('user_id'),
+            Auth::id(),
+            (string)($this->request->post('note') ?? ''),
+            (int)($this->request->post('is_private') ?? 1)
+        );
 
-        if ($userId <= 0 || $noteText === '') {
-            Session::setFlash('error', 'Укажите пользователя и текст заметки.');
-            $this->redirect('/mod/notes');
-            return;
-        }
-
-        $model = $this->service(ModNote::class);
-        $model->create([
-            'user_id'      => $userId,
-            'moderator_id' => $currentUserId,
-            'note'         => $noteText,
-            'is_private'   => $isPrivate,
-        ]);
-
-        // Отправляем событие вместо logAction()
-        $this->dispatch(new ModNoteAdded(
-            $currentUserId,
-            $userId,
-            mb_substr($noteText, 0, 200)
-        ));
-
-        Session::setFlash('success', 'Заметка добавлена.');
         $this->redirect('/mod/notes');
     }
 
     // ==========================================
     // POST /mod/notes/{id}/delete — Удалить заметку
     // ==========================================
+
+    /**
+     * Удаление модераторской заметки.
+     *
+     * @param string $id ID заметки
+     */
     public function deleteNote(string $id): void
     {
-        // ✅ CSRF уже проверен в middleware
-        // $this->request->validateCsrf();
-
-        $model = $this->service(ModNote::class);
-        $model->deleteNote((int)$id);
-
-        Session::setFlash('success', 'Заметка удалена.');
+        $this->service(ModerationService::class)->deleteNote((int)$id);
         $this->redirect('/mod/notes');
     }
 
     // ==========================================
-    // /mod/stats — Статистика активности (только админ/мод)
+    // /mod/stats — Статистика активности
     // ==========================================
+
+    /**
+     * Статистика активности модераторов (только админ/мод).
+     */
     public function stats(): void
     {
         $activity = $this->service(ModActivity::class);
@@ -129,10 +135,19 @@ class ModerationsController extends Controller
             'leaderboard' => $activity->getLeaderboard(30),
         ]);
     }
-    
+
     // ==========================================
     // POST /mod/ban/{id} — Бан/разбан пользователя
     // ==========================================
+
+    /**
+     * Бан или разбан пользователя.
+     *
+     * Контроллер определяет действие и вызывает нужный метод сервиса.
+     * Вся бизнес-логика (проверки, модели, события, flash) — в ModerationService.
+     *
+     * @param string $id ID целевого пользователя
+     */
     public function banUser(string $id): void
     {
         $targetUserId = (int)$id;
@@ -140,53 +155,25 @@ class ModerationsController extends Controller
         $action = $this->request->post('action') ?? '';
         $reason = trim($this->request->post('reason') ?? '');
 
-        if ($targetUserId === $currentUserId) {
-            Session::setFlash('error', 'Вы не можете применить это действие к себе.');
-            $this->redirectBack();
-            return;
-        }
+        $service = $this->service(ModerationService::class);
 
-        if (!in_array($action, ['ban', 'unban'], true)) {
+        if ($action === 'ban') {
+            $result = $service->banUser($targetUserId, $currentUserId, $reason);
+        } elseif ($action === 'unban') {
+            $result = $service->unbanUser($targetUserId, $currentUserId);
+        } else {
             Session::setFlash('error', 'Неизвестное действие.');
             $this->redirectBack();
             return;
         }
 
-        $userModel = $this->service(\App\Modules\Users\Models\User::class);
-        $targetUser = $userModel->find($targetUserId);
-
-        if (!$targetUser) {
-            Session::setFlash('error', 'Пользователь не найден.');
+        if ($result === null) {
+            // Flash-сообщение уже установлено в сервисе
             $this->redirectBack();
             return;
         }
 
-        $moderationModel = new Moderation();
-
-        if ($action === 'ban') {
-            $moderationModel->banUser($targetUserId, $currentUserId, $reason);
-
-            // ✅ Отправляем событие вместо logAction()
-            $this->dispatch(new UserBanned(
-                $targetUserId,
-                $currentUserId,
-                $reason ?: 'Без указания причины'
-            ));
-
-            Session::setFlash('success', "Пользователь «{$targetUser['username']}» забанен.");
-        } else {
-            $moderationModel->unbanUser($targetUserId);
-
-            // ✅ Отправляем событие вместо logAction()
-            $this->dispatch(new UserUnbanned(
-                $targetUserId,
-                $currentUserId,
-                'Разбан пользователя'
-            ));
-
-            Session::setFlash('success', "Пользователь «{$targetUser['username']}» разбанен.");
-        }
-
-        $this->redirect('/user/' . $targetUser['username']);
+        // Редирект на профиль пользователя
+        $this->redirect('/user/' . $result['username']);
     }
 }

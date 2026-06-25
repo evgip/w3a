@@ -72,25 +72,48 @@ class CommentCreated extends Event
     /**
      * Получить строковое имя события.
      *
+     * Используется как значение поля `action` в таблице `audit_logs`.
+     * Формат: 'moderation.comment_created' (по аналогии с StoryDeleted).
+     *
      * @return string
      */
     public function getName(): string
     {
-        return 'CommentCreated';
+        return 'moderation.comment_created';
+    }
+
+    /**
+     * Получить категорию события для фильтрации в журнале.
+     *
+     * @return string
+     */
+    public function getCategory(): string
+    {
+        return 'moderation';
     }
 
     /**
      * Получить массив данных события (для логирования и аудита).
+     *
+     * Содержит все данные о событии, включая человекочитаемое описание,
+     * которое будет записано в поле `description` таблицы `audit_logs`.
      *
      * @return array<string, mixed>
      */
     public function getData(): array
     {
         return [
-            'comment_id' => $this->commentId,
-            'story_id'   => $this->storyId,
-            'user_id'    => $this->userId,
-            'parent_id'  => $this->parentId,
+            'comment_id'  => $this->commentId,
+            'story_id'    => $this->storyId,
+            'user_id'     => $this->userId,
+            'parent_id'   => $this->parentId,
+            'description' => sprintf(
+                'Пользователь (ID: %d) добавил новый комментарий ID: %d в истории ID: %d%s',
+                $this->userId,
+                $this->commentId,
+                $this->storyId,
+                $this->parentId !== null ? " (ответ на комментарий ID: {$this->parentId})" : ''
+            ),
         ];
     }
 }

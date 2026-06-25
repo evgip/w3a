@@ -10,39 +10,67 @@ use App\Modules\Auth\Services\Auth;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Core\Audit;
+use App\Core\Events\EventDispatcher;
+use App\Core\Events\CommentCreated;
+use App\Core\Events\CommentDeleted;
+use App\Core\Events\CommentRestored;
+use App\Core\Events\CommentUpdated;
 
 /**
  * Сервис для работы с комментариями.
- * Отвечает только за CRUD комментариев, валидацию и проверку прав.
- * Уведомления обрабатываются отдельно в контроллере.
+ *
+ * Отвечает за:
+ *  - CRUD комментариев (создание, обновление, удаление, восстановление)
+ *  - Валидацию данных
+ *  - Проверку прав доступа
+ *  - Диспатч событий (аудит, счётчики, уведомления обрабатываются слушателями)
  */
 class CommentService
 {
     private Comment $commentModel;
-	private ?NotificationService $notificationService;
+    private ?NotificationService $notificationService;
+    private ?EventDispatcher $eventDispatcher;
 
-    public function __construct(Comment $commentModel, ?NotificationService $notificationService = null)
-    {
+    /**
+     * Конструктор сервиса.
+     *
+     * @param Comment $commentModel Модель комментариев
+     * @param NotificationService|null $notificationService Сервис уведомлений (опционально)
+     * @param EventDispatcher|null $eventDispatcher Диспетчер событий (опционально)
+     */
+    public function __construct(
+        Comment $commentModel,
+        ?NotificationService $notificationService = null,
+        ?EventDispatcher $eventDispatcher = null
+    ) {
         $this->commentModel = $commentModel;
         $this->notificationService = $notificationService;
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     /**
      * Создаёт новый комментарий.
      *
+     * Выполняет:
+     *  - Валидацию текста
+     *  - Создание комментария в БД
+     *  - Отправку уведомлений
+     *  - Диспатч события CommentCreated
+     *  - Установку flash-сообщения
+     *
      * @param int $storyId ID истории
      * @param string $text Текст комментария
      * @param int|null $parentId ID родительского комментария
      * @param int $userId ID пользователя
-     * @return int ID созданного комментария или 0 при ошибке
+     * @return array Данные для редиректа или пустой массив при ошибке
      */
-    public function createComment(int $storyId, string $text, ?int $parentId, int $userId): int
+    public function createComment(int $storyId, string $text, ?int $parentId, int $userId): array
     {
         // 1. Валидация текста
         if (!$this->validateCommentText($text)) {
             $minLength = config('constants.validation.comment_min_length', 2, 'int');
             Session::setFlash('error', "Текст комментария должен содержать не менее {$minLength} символов.");
-            return 0;
+            return [];
         }
 
         // 2. Создание комментария
@@ -55,18 +83,42 @@ class CommentService
 
         $commentId = $this->commentModel->saveComment($commentData);
 
-        // 3. Логирование
         if ($commentId > 0) {
+            // 3. Уведомления
             if ($this->notificationService !== null && method_exists($this->notificationService, 'notifyCommentCreated')) {
                 $this->notificationService->notifyCommentCreated($commentId);
             }
+
+            // 4. Диспатч события
+            $this->dispatchCommentEvent(new CommentCreated(
+                $commentId,
+                $storyId,
+                $userId,
+                $parentId
+            ));
+
+            // 5. Flash-сообщение
+            Session::setFlash('success', 'Ваш комментарий успешно опубликован!');
+
+            // 6. Возвращаем данные для редиректа
+            return [
+                'comment_id' => $commentId,
+                'story_id' => $storyId,
+            ];
         }
 
-        return $commentId;
+        return [];
     }
 
     /**
      * Обновляет текст комментария.
+     *
+     * Выполняет:
+     *  - Проверку существования комментария
+     *  - Проверку прав доступа
+     *  - Валидацию нового текста
+     *  - Обновление комментария в БД
+     *  - Диспатч события CommentUpdated
      *
      * @param int $commentId ID комментария
      * @param string $newText Новый текст
@@ -95,6 +147,13 @@ class CommentService
         // Обновление
         $this->commentModel->update($commentId, ['comment' => trim($newText)]);
 
+        // Диспатч события
+        $this->dispatchCommentEvent(new CommentUpdated(
+            $commentId,
+            $userId,
+            (bool) $this->checkIsAuthor($comment, $userId)
+        ));
+
         // Возвращаем данные для контроллера
         return [
             'comment' => $comment,
@@ -104,6 +163,13 @@ class CommentService
 
     /**
      * Мягко удаляет комментарий.
+     *
+     * Выполняет:
+     *  - Проверку существования комментария
+     *  - Проверку прав доступа
+     *  - Мягкое удаление (soft delete)
+     *  - Установка flash-сообщения
+     *  - Диспатч события CommentDeleted (аудит и счётчик обновляются через слушателей)
      *
      * @param int $commentId ID комментария
      * @param int $userId ID текущего пользователя
@@ -122,25 +188,45 @@ class CommentService
             return null;
         }
 
-        // Удаление
-		$this->commentModel->softDeleteComment($commentId);
-		Session::setFlash('success', 'Комментарий успешно удален.');
+        // Мягкое удаление
+        $this->commentModel->softDeleteComment($commentId);
+        Session::setFlash('success', 'Комментарий успешно удален.');
+
+        // Диспатч события
+        $this->dispatchCommentEvent(new CommentDeleted(
+            $commentId,
+            (int) $comment['story_id'],
+            $userId,
+            (bool) $this->checkIsAuthor($comment, $userId)
+        ));
 
         // Возвращаем данные для контроллера
         return [
             'comment' => $comment,
-            'story_id' => (int)$comment['story_id'],
-            'is_author' => (bool)$this->checkIsAuthor($comment, $userId),
+            'story_id' => (int) $comment['story_id'],
+            'is_author' => (bool) $this->checkIsAuthor($comment, $userId),
         ];
     }
 
     /**
      * Восстанавливает удалённый комментарий.
+     *
+     * Выполняет:
+     *  - Проверку существования комментария (включая удалённые)
+     *  - Проверку, что комментарий действительно удалён
+     *  - Проверку прав доступа
+     *  - Восстановление комментария
+     *  - Установка flash-сообщения
+     *  - Диспатч события CommentRestored
+     *
+     * @param int $commentId ID комментария
+     * @param int $userId ID текущего пользователя
+     * @return array|null Данные комментария при успехе, null при ошибке
      */
     public function restoreComment(int $commentId, int $userId): ?array
     {
         $comment = $this->commentModel->withTrashed()->find($commentId);
-        
+
         if (!$comment) {
             return null;
         }
@@ -155,23 +241,40 @@ class CommentService
             return null;
         }
 
-        // Передаём оба параметра: ID комментария и ID истории
-        $this->commentModel->restoreComment($commentId, (int)$comment['story_id']);
+        // Восстановление
+        $this->commentModel->restoreComment($commentId, (int) $comment['story_id']);
         Session::setFlash('success', 'Комментарий успешно восстановлен.');
+
+        // Диспатч события
+        $this->dispatchCommentEvent(new CommentRestored(
+            $commentId,
+            (int) $comment['story_id'],
+            $userId,
+            (bool) $this->checkIsAuthor($comment, $userId)
+        ));
 
         return [
             'comment' => $comment,
-            'story_id' => (int)$comment['story_id'],
-            'is_author' => (bool)$this->checkIsAuthor($comment, $userId),
+            'story_id' => (int) $comment['story_id'],
+            'is_author' => (bool) $this->checkIsAuthor($comment, $userId),
         ];
     }
 
     /**
      * Проверяет, может ли пользователь редактировать комментарий.
+     *
+     * Права есть у:
+     *  - Автора комментария
+     *  - Администратора
+     *  - Модератора
+     *
+     * @param array $comment Данные комментария
+     * @param int $userId ID текущего пользователя
+     * @return bool Может ли пользователь редактировать
      */
     public function canEditComment(array $comment, int $userId): bool
     {
-        $isAuthor = (int)$comment['user_id'] === $userId;
+        $isAuthor = (int) $comment['user_id'] === $userId;
         $isAdmin = Auth::isAdmin();
         $isModerator = Auth::isModerator();
 
@@ -180,6 +283,10 @@ class CommentService
 
     /**
      * Проверяет, может ли пользователь удалять/восстанавливать комментарий.
+     *
+     * @param array $comment Данные комментария
+     * @param int $userId ID текущего пользователя
+     * @return bool Может ли пользователь удалять
      */
     public function canDeleteComment(array $comment, int $userId): bool
     {
@@ -188,6 +295,9 @@ class CommentService
 
     /**
      * Валидирует текст комментария.
+     *
+     * @param string $text Текст для валидации
+     * @return bool Прошла ли валидация
      */
     private function validateCommentText(string $text): bool
     {
@@ -198,10 +308,29 @@ class CommentService
 
     /**
      * Определяет, является ли пользователь автором комментария.
-     * Возвращает 1 (автор) или 0 (не автор)
+     *
+     * @param array $comment Данные комментария
+     * @param int $userId ID пользователя для проверки
+     * @return int 1 если автор, 0 если нет
      */
     private function checkIsAuthor(array $comment, int $userId): int
     {
-        return ((int)$comment['user_id'] === $userId) ? 1 : 0;
+        return ((int) $comment['user_id'] === $userId) ? 1 : 0;
+    }
+
+    /**
+     * Безопасно диспатчит событие через EventDispatcher.
+     *
+     * Если EventDispatcher не был передан в конструктор, событие не будет отправлено.
+     *
+     * @param \App\Core\Events\Event $event Событие для диспатча
+     */
+    private function dispatchCommentEvent(\App\Core\Events\Event $event): void
+    {
+        if ($this->eventDispatcher === null) {
+            return;
+        }
+
+        $this->eventDispatcher->dispatch($event);
     }
 }

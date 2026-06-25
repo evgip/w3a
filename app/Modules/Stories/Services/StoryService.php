@@ -8,19 +8,27 @@ use App\Modules\Stories\Models\Story;
 use App\Modules\Origins\Models\Domain;
 use App\Core\Session;
 use App\Core\Validator;
+use App\Core\Events\EventDispatcher;
+use App\Core\Events\StoryDeleted;
+use App\Core\Events\StoryRestore;
 
 /**
  * Сервис для работы с историями (бизнес-логика).
  */
 class StoryService
 {
-    private Story $storyModel;
+	private Story $storyModel;
     private Domain $domainModel;
+    private ?EventDispatcher $eventDispatcher;
 
-    public function __construct(Story $storyModel, Domain $domainModel)
-    {
+    public function __construct(
+        Story $storyModel, 
+        Domain $domainModel,
+        ?EventDispatcher $eventDispatcher = null
+    ) {
         $this->storyModel = $storyModel;
         $this->domainModel = $domainModel;
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     /**
@@ -176,5 +184,56 @@ class StoryService
         ]);
 
         return false;
+    }
+	
+   /**
+     * Удаляет (скрывает) историю.
+     *
+     * @param int $storyId ID истории
+     * @param int $adminId ID администратора
+     * @param string $reason Причина удаления (опционально)
+     * @return bool Успешно ли удалено
+     */
+    public function deleteStory(int $storyId, int $adminId, string $reason = 'История скрыта модератором'): bool
+    {
+        $story = $this->storyModel->find($storyId);
+        if (!$story) {
+            Session::setFlash('error', 'Публикация не найдена.');
+            return false;
+        }
+
+        $this->storyModel->delete($storyId);
+        Session::setFlash('success', 'Публикация успешно скрыта из общей ленты.');
+
+        // ✅ Получаем EventDispatcher (через свойство или через app())
+        $dispatcher = $this->eventDispatcher ?? app(EventDispatcher::class);
+        $dispatcher->dispatch(new StoryDeleted($storyId, $adminId, $reason));
+
+        return true;
+    }
+
+    /**
+     * Восстанавливает историю.
+     *
+     * @param int $storyId ID истории
+     * @param int $adminId ID администратора
+     * @return bool Успешно ли восстановлено
+     */
+    public function restoreStory(int $storyId, int $adminId): bool
+    {
+        $story = $this->storyModel->find($storyId, withTrashed: true);
+        if (!$story) {
+            Session::setFlash('error', 'Публикация не найдена.');
+            return false;
+        }
+
+        $this->storyModel->restore($storyId);
+        Session::setFlash('success', 'Публикация успешно восстановлена в общей ленте.');
+
+        // ✅ Получаем EventDispatcher (через свойство или через app())
+        $dispatcher = $this->eventDispatcher ?? app(EventDispatcher::class);
+        $dispatcher->dispatch(new StoryRestore($storyId, $adminId));
+
+        return true;
     }
 }

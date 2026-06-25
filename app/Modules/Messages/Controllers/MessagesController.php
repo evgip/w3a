@@ -70,45 +70,33 @@ class MessagesController extends Controller
     // ОТПРАВКА СООБЩЕНИЯ
     // =========================================================================
 
-    public function sendMessage(): void
-    {
-        $conversationId = (int)$this->request->getParams('conversation_id');
-        $messageText = trim($this->request->getParams('message_text'));
-        $userId = (int)$_SESSION['user_id'];
+	public function sendMessage(): void
+	{
+		$conversationId = (int)$this->request->getParams('conversation_id');
+		$messageText = $this->request->getParams('message_text');
+		$userId = (int)$_SESSION['user_id'];
 
-        $validator = new Validator();
-        if (!$validator->validate(['text' => $messageText], ['text' => 'required'])) {
-            header('Location: /messages/chat/' . $conversationId);
-            exit;
-        }
+		$this->service(MessageService::class)->sendMessage($conversationId, $userId, $messageText);
 
-        try {
-            $this->service(MessageService::class)->sendMessage($conversationId, $userId, $messageText);
-        } catch (\InvalidArgumentException $e) {
-            Session::setFlash('error', $e->getMessage());
-        }
-
-        header('Location: /messages/chat/' . $conversationId);
-        exit;
-    }
+		$this->redirect('/messages/chat/' . $conversationId);
+	}
 
     // =========================================================================
     // СОЗДАНИЕ НОВОГО ДИАЛОГА
     // =========================================================================
 
-    public function startConversation(string $userId): void
-    {
-        $myId = (int)$_SESSION['user_id'];
-        $targetUid = (int)$userId;
+	public function startConversation(string $userId): void
+	{
+		$myId = (int)$_SESSION['user_id'];
+		$targetUid = (int)$userId;
 
-        try {
-            $roomId = $this->service(ConversationService::class)->getOrCreateConversation($myId, $targetUid);
-            header('Location: /messages/chat/' . $roomId);
-        } catch (\InvalidArgumentException $e) {
-            Session::setFlash('error', $e->getMessage());
-            header('Location: /messages');
-        }
+		$roomId = $this->service(ConversationService::class)->getOrCreateConversation($myId, $targetUid);
 
-        exit;
-    }
+		if ($roomId === null) {
+			$this->redirect('/messages');
+			return;
+		}
+
+		$this->redirect('/messages/chat/' . $roomId);
+	}
 }
