@@ -32,7 +32,7 @@ class AdminCategoryService
      */
     public function getCategoryById(int $categoryId): ?array
     {
-        return $this->categoryModel->getById($categoryId);
+        return $this->categoryModel->find($categoryId, withTrashed: true);
     }
     
     /**
@@ -80,7 +80,7 @@ class AdminCategoryService
      */
     public function updateCategory(int $categoryId, array $data): bool
     {
-        $category = $this->categoryModel->getById($categoryId);
+        $category = $this->categoryModel->find($categoryId);
         if (!$category) {
             Session::setFlash('error', 'Категория не найдена.');
             return false;
@@ -124,7 +124,7 @@ class AdminCategoryService
      */
     public function deleteCategory(int $categoryId): bool
     {
-        $category = $this->categoryModel->getById($categoryId);
+        $category = $this->categoryModel->find($categoryId);
         if (!$category) {
             Session::setFlash('error', 'Категория не найдена.');
             return false;

@@ -39,7 +39,7 @@ class AdminTagService
      */
     public function getTagById(int $tagId): ?array
     {
-        return $this->tagModel->getById($tagId);
+        return $this->tagModel->find($tagId, withTrashed: true);
     }
     
     /**
@@ -69,7 +69,7 @@ class AdminTagService
         }
         
         // Валидация категории
-        if (!$this->categoryModel->getById($categoryId)) {
+        if (!$this->categoryModel->find($categoryId)) {
             Session::setFlash('error', 'Выбранная категория не существует.');
             return false;
         }
@@ -94,7 +94,7 @@ class AdminTagService
      */
     public function updateTag(int $tagId, array $data): bool
     {
-        $tag = $this->tagModel->getById($tagId);
+        $tag = $this->tagModel->find($tagId);
         if (!$tag) {
             return false;
         }
@@ -119,7 +119,7 @@ class AdminTagService
         }
         
         // Валидация категории
-        if (!$this->categoryModel->getById($categoryId)) {
+        if (!$this->categoryModel->find($categoryId)) {
             Session::setFlash('error', 'Выбранная категория не существует.');
             return false;
         }

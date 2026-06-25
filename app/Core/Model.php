@@ -73,48 +73,57 @@ abstract class Model
         return $stmt->fetchAll();
     }
 
-    /**
-     * Найти конкретную запись по её первичному ключу ID
-     */
-    public function find($id): ?array
-    {
-        if (!is_numeric($id)) {
-            throw new \InvalidArgumentException("Invalid ID");
-        }
-
-        $db = Database::getConnection();
-
-        // Сначала пишем базовый запрос БЕЗ LIMIT 1
-        $sql = "SELECT * FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id";
-
-        // Применяем фильтр мягкого удаления (он безопасно допишет AND deleted_at IS NULL)
-        $sql = $this->applySoftDeleteConstraint($sql);
-
-        // И только в самом конце приклеиваем LIMIT 1
-        $sql .= " LIMIT 1";
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute(['id' => $id]);
-        $result = $stmt->fetch();
-        return $result ? $result : null;
-    }
-
 	/**
-	 * Найти запись по ID без учёта мягкого удаления
-	 * (для таблиц без колонки deleted_at)
+	 * Найти запись по первичному ключу (ID).
+	 *
+	 * По умолчанию учитывает мягкое удаление (soft delete) — возвращает только
+	 * неудалённые записи. Чтобы получить запись вместе с удалёнными,
+	 * передайте $withTrashed = true.
+	 *
+	 * Примеры использования:
+	 *
+	 *   // Найти активную (неудалённую) историю по ID
+	 *   $story = $storyModel->find(42);
+	 *
+	 *   // Найти историю по ID, даже если она была удалена (soft delete)
+	 *   $story = $storyModel->find(42, withTrashed: true);
+	 *
+	 *   // Найти пользователя (в таблице нет deleted_at — soft delete игнорируется)
+	 *   $user = $userModel->find(7);
+	 *
+	 * @param int|string $id           Значение первичного ключа.
+	 * @param bool       $withTrashed  Если true — включает мягко удалённые записи
+	 *                                 (игнорирует фильтр по deleted_at).
+	 *                                 По умолчанию false.
+	 *
+	 * @return array|null Найденная запись в виде ассоциативного массива,
+	 *                    или null, если запись не найдена.
+	 *
+	 * @throws \InvalidArgumentException Если $id не является числом.
 	 */
-	public function getById($id): ?array
+	public function find(int|string $id, bool $withTrashed = false): ?array
 	{
 		if (!is_numeric($id)) {
 			throw new \InvalidArgumentException("Invalid ID");
 		}
 
 		$db = Database::getConnection();
-		$sql = "SELECT * FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id LIMIT 1";
+
+		// Базовый запрос по первичному ключу
+		$sql = "SELECT * FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id";
+
+		// Применяем фильтр мягкого удаления, только если НЕ запрошены удалённые записи
+		if (!$withTrashed) {
+			$sql = $this->applySoftDeleteConstraint($sql);
+		}
+
+		$sql .= " LIMIT 1";
+
 		$stmt = $db->prepare($sql);
 		$stmt->execute(['id' => $id]);
 		$result = $stmt->fetch();
-		return $result ? $result : null;
+
+		return $result ?: null;
 	}
 
     /**
