@@ -381,7 +381,7 @@ class Story extends Model
 	 */
 	public function getFeedWithFilters(int $limit, int $offset, array $excludeTagIds = [], ?string $tagname = null): array
 	{
-		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,,
+		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar
 				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
 				FROM `stories` s
 				JOIN `users` u ON s.user_id = u.id

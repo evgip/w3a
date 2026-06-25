@@ -3,16 +3,8 @@
 namespace App\Modules\Messages\Controllers;
 
 use App\Core\Controller;
-use App\Core\Session;
-use App\Core\Validator;
-use App\Modules\Messages\Models\Conversation;
-use App\Modules\Messages\Models\Message;
 use App\Modules\Messages\Services\ConversationService;
 use App\Modules\Messages\Services\MessageService;
-use App\Modules\Notifications\Services\NotificationService;
-use App\Modules\Notifications\Models\Notification;
-use App\Modules\Stories\Models\Comment;
-use App\Modules\Users\Models\User;
 use App\Modules\Auth\Services\Auth;
 
 class MessagesController extends Controller
@@ -23,7 +15,7 @@ class MessagesController extends Controller
 
     public function index(): void
     {
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
         $chats = $this->service(ConversationService::class)->getUserConversations($userId);
 
         $this->render('index', [
@@ -39,12 +31,11 @@ class MessagesController extends Controller
     public function showDialog(string $id): void
     {
         $conversationId = (int)$id;
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
 
         $chatRoom = $this->service(ConversationService::class)->getConversationWithAccessCheck($conversationId, $userId);
         if (!$chatRoom) {
-            header('Location: /messages');
-            exit;
+            $this->redirectBack('/messages');
         }
 
         $this->service(MessageService::class)->markAsRead($conversationId, $userId);
@@ -74,7 +65,7 @@ class MessagesController extends Controller
 	{
 		$conversationId = (int)$this->request->getParams('conversation_id');
 		$messageText = $this->request->getParams('message_text');
-		$userId = (int)$_SESSION['user_id'];
+		$userId = Auth::id();
 
 		$this->service(MessageService::class)->sendMessage($conversationId, $userId, $messageText);
 
@@ -87,7 +78,7 @@ class MessagesController extends Controller
 
 	public function startConversation(string $userId): void
 	{
-		$myId = (int)$_SESSION['user_id'];
+		$myId = Auth::id();
 		$targetUid = (int)$userId;
 
 		$roomId = $this->service(ConversationService::class)->getOrCreateConversation($myId, $targetUid);

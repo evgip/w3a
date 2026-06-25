@@ -2,7 +2,7 @@
 
 namespace App\Modules\Pages\Controllers;
 
-use App\Core\{Controller, Markdown};
+use App\Core\Controller;
 
 class PagesController extends Controller
 {

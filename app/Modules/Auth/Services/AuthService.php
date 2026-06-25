@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Services;
 
-use App\Modules\Users\Models\User;
-use App\Modules\Auth\Models\RememberToken;
-use App\Modules\Auth\Models\EmailActivation;
-use App\Core\Session as AppCoreSession;
+use App\Core\Session;
+use App\Core\Validator;
 use App\Core\Database;
 use App\Core\Audit;
 use App\Core\Config;
+use App\Modules\Users\Models\User;
+use App\Modules\Auth\Models\RememberToken;
+use App\Modules\Auth\Models\EmailActivation;
+use App\Modules\Captcha\Core\Captcha;
 
 class AuthService
 {
@@ -79,7 +81,7 @@ class AuthService
         
         // 4. Проверка активности аккаунта
         if ((int)$user['is_active'] !== 1) {
-            AppCoreSession::setFlash('error', 'Аккаунт не активирован.');
+            Session::setFlash('error', 'Аккаунт не активирован.');
             $this->logFailedAttempt($ip, $email, 'inactive_account');
             return null;
         }
@@ -120,7 +122,7 @@ class AuthService
             'email' => 'Слишком много попыток входа для этого аккаунта. Подождите ' . self::LOCKOUT_MINUTES . ' минут.',
             default => 'Вход временно недоступен.',
         };
-        AppCoreSession::setFlash('error', $msg);
+        Session::setFlash('error', $msg);
     }
 
     /**
@@ -243,17 +245,19 @@ class AuthService
      */
 	public function register(): void
 	{
+        $request = new \App\Core\Request();
+
 		// === ПРОВЕРКА КАПЧИ ===
-		if (!Captcha::validate($this->request->post('smart-token'))) {
+		if (!Captcha::validate($request->post('smart-token'))) {
 			Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот.');
-			$this->redirect(route('auth.register'));
+			redirect(route('auth.register'));
 			return;
 		}
 
-		$username = trim($this->request->getParams('username'));
-		$email = trim($this->request->getParams('email'));
-		$password = $this->request->getParams('password');
-		$passwordConfirmation = $this->request->getParams('password_confirmation');
+		$username = trim($request->getParams('username'));
+		$email = trim($request->getParams('email'));
+		$password = $request->getParams('password');
+		$passwordConfirmation = $request->getParams('password_confirmation');
 
 		// === ВАЛИДАЦИЯ ВХОДНЫХ ДАННЫХ ===
 		$validator = new Validator();
@@ -286,8 +290,7 @@ class AuthService
 				'email' => $email,
 			]);
 			
-			header('Location: /register');
-			exit;
+			redirect('/register');
 		}
 
 		$userId = $this->service(AuthService::class)->register($username, $email, $password);
@@ -297,13 +300,11 @@ class AuthService
 				'username' => $username,
 				'email' => $email,
 			]);
-			header('Location: /register');
-			exit;
+			redirect('/register');
 		}
 
 		Session::setFlash('success', 'Регистрация успешна! Проверьте почту.');
-		header('Location: /login');
-		exit;
+		redirect('/login');
 	}
 
 	/**

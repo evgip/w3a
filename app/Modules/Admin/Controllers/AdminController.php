@@ -60,8 +60,7 @@ class AdminController extends Controller
         $user = $this->service(AdminUserService::class)->findUser((int)$id);
 
         if (!$user) {
-            header('Location: /admin/users');
-            exit;
+            $this->redirectBack('/admin/users');
         }
         
         $this->render('user_edit_panel', [
@@ -80,20 +79,19 @@ class AdminController extends Controller
         ]);
         
         Session::setFlash('success', 'Данные профиля пользователя успешно изменены администратором.');
-        header('Location: /admin/users');
-        exit;
+        $this->redirectBack('/admin/users');
     }
     
     public function archiveUser(string $id): void
     {
-        $success = $this->service(AdminUserService::class)->archiveUser((int)$id, (int)$_SESSION['user_id']);
+		$userId = Auth::id();
+        $success = $this->service(AdminUserService::class)->archiveUser((int)$id, $userId);
         
         if ($success) {
             Session::setFlash('success', 'Пользователь успешно отправлен в архив.');
         }
         
-        header('Location: /admin/users');
-        exit;
+        $this->redirectBack('/admin/users');
     }
     
     public function restoreUser(string $id): void
@@ -101,13 +99,13 @@ class AdminController extends Controller
         $this->service(AdminUserService::class)->restoreUser((int)$id);
         Session::setFlash('success', 'Аккаунт пользователя успешно восстановлен из архива.');
         
-        header('Location: /admin/users');
-        exit;
+        $this->redirectBack('/admin/users');
     }
     
     public function toggleUserStatus(string $id): void
     {
-        $result = $this->service(AdminUserService::class)->toggleUserStatus((int)$id, (int)$_SESSION['user_id']);
+		$userId = Auth::id();
+        $result = $this->service(AdminUserService::class)->toggleUserStatus((int)$id, $userId);
         
         if ($result === -2) {
             // Уже установлена ошибка в сервисе
@@ -119,8 +117,7 @@ class AdminController extends Controller
             Session::setFlash('success', 'Доступ для пользователя успешно восстановлен.');
         }
         
-        header('Location: /admin/users');
-        exit;
+        $this->redirectBack('/admin/users');
     }
     
     public function deleteUserAvatar(string $id): void
@@ -167,11 +164,10 @@ class AdminController extends Controller
         
         if ($result) {
             Session::setFlash('success', "Тег успешно добавлен.");
-            header('Location: /admin/tags');
-        } else {
-            header('Location: /admin/tags/create');
-        }
-        exit;
+			$this->redirectBack('/admin/tags');
+        } 
+		
+		$this->redirectBack('/admin/tags/create');
     }
     
     public function showTagEditForm(string $id): void
@@ -179,8 +175,7 @@ class AdminController extends Controller
         $tag = $this->service(AdminTagService::class)->getTagById((int)$id);
         
         if (!$tag) {
-            header('Location: /admin/tags');
-            exit;
+            $this->redirectBack('/admin/tags');
         }
         
         $this->render('tag_edit', [
@@ -204,11 +199,10 @@ class AdminController extends Controller
         
         if ($success) {
             Session::setFlash('success', "Параметры тега сохранены.");
-            header('Location: /admin/tags');
-        } else {
-            header("Location: /admin/tags/{$tagId}/edit");
-        }
-        exit;
+            $this->redirectBack('/admin/tags');
+        } 
+		
+		$this->redirectBack('/admin/tags/' . $tagId . '/edit');
     }
     
     public function deleteTag(string $id): void
@@ -222,8 +216,7 @@ class AdminController extends Controller
             Session::setFlash('error', "Не удалось удалить тег.");
         }
         
-        header('Location: /admin/tags');
-        exit;
+        $this->redirectBack('/admin/tags');
     }
     
     public function restoreTag(string $id): void
@@ -237,8 +230,7 @@ class AdminController extends Controller
             Session::setFlash('error', "Не удалось восстановить тег.");
         }
         
-        header('Location: /admin/tags');
-        exit;
+        $this->redirectBack('/admin/tags');
     }
 	
     // =========================================================================
@@ -272,11 +264,10 @@ class AdminController extends Controller
         
         if ($result) {
             Session::setFlash('success', "Категория успешно создана.");
-            header('Location: /admin/categories');
-        } else {
-            header('Location: /admin/categories/create');
-        }
-        exit;
+			$this->redirectBack('/admin/categories');
+        } 
+		
+		$this->redirectBack('/admin/categories/create');
     }
     
     public function showCategoryEditForm(string $id): void
@@ -285,8 +276,7 @@ class AdminController extends Controller
         
         if (!$category) {
             Session::setFlash('error', 'Категория не найдена.');
-            header('Location: /admin/categories');
-            exit;
+            $this->redirectBack('/admin/categories');
         }
         
         $this->render('category_edit', [
@@ -308,7 +298,7 @@ class AdminController extends Controller
         
         if ($success) {
             Session::setFlash('success', "Категория успешно обновлена.");
-            header('Location: /admin/categories');
+            $this->redirectBack('/admin/categories');
         } else {
             header("Location: /admin/categories/{$categoryId}/edit");
         }
@@ -321,8 +311,7 @@ class AdminController extends Controller
             Session::setFlash('success', "Категория успешно удалена.");
         }
         
-        header('Location: /admin/categories');
-        exit;
+        $this->redirectBack('/admin/categories');
     }
     
     // =========================================================================
@@ -426,8 +415,7 @@ class AdminController extends Controller
             }
         }
         
-        header('Location: /admin/firewall');
-        exit;
+        $this->redirectBack('/admin/firewall');
     }
     
     public function unbanIp(string $id): void
@@ -438,8 +426,7 @@ class AdminController extends Controller
             Session::setFlash('success', "IP-адрес {$ip} успешно разблокирован.");
         }
         
-        header('Location: /admin/firewall');
-        exit;
+       $this->redirectBack('/admin/firewall');
     }
     
     // =========================================================================
@@ -458,8 +445,7 @@ class AdminController extends Controller
         $this->service(AdminToolsService::class)->compileAssets();
         Session::setFlash('success', 'Все CSS файлы модулей успешно найдены, объединены и сжаты силами PHP!');
         
-        header('Location: /admin/tools');
-        exit;
+        $this->redirectBack('/admin/tools');
     }
     
     public function clearFileLogs(): void
@@ -467,8 +453,7 @@ class AdminController extends Controller
         $count = $this->service(AdminToolsService::class)->clearFileLogs();
         Session::setFlash('success', "Текстовые логи успешно очищены (обнулено файлов: {$count}).");
         
-        header('Location: /admin/tools');
-        exit;
+        $this->redirectBack('/admin/tools');
     }
     
     public function clearDbAudit(): void
@@ -480,8 +465,7 @@ class AdminController extends Controller
             Session::setFlash('error', 'Не удалось очистить таблицу в БД.');
         }
         
-        header('Location: /admin/tools');
-        exit;
+        $this->redirectBack('/admin/tools');
     }
     
     public function cacheRoutes(): void
@@ -490,8 +474,7 @@ class AdminController extends Controller
         $this->service(AdminToolsService::class)->cacheRoutes($router);
         Session::setFlash('success', 'Маршруты всех модулей успешно оптимизированы и сохранены в кэш-файл.');
         
-        header('Location: /admin/tools');
-        exit;
+        $this->redirectBack('/admin/tools');
     }
     
     public function clearCacheRoutes(): void
@@ -500,8 +483,7 @@ class AdminController extends Controller
         $this->service(AdminToolsService::class)->clearCacheRoutes($router);
         Session::setFlash('success', 'Кэш маршрутов успешно сброшен.');
         
-        header('Location: /admin/tools');
-        exit;
+        $this->redirectBack('/admin/tools');
     }
     
     public function sendTestEmail(): void
@@ -510,8 +492,7 @@ class AdminController extends Controller
         
         if (!$email) {
             Session::setFlash('error', 'Не удалось определить email администратора.');
-            header('Location: /admin/tools');
-            exit;
+            $this->redirectBack('/admin/tools');
         }
         
         $error = $this->service(AdminToolsService::class)->sendTestEmail($email);
@@ -522,8 +503,7 @@ class AdminController extends Controller
             Session::setFlash('error', $error);
         }
         
-        header('Location: /admin/tools');
-        exit;
+        $this->redirectBack('/admin/tools');
     }
 	
 	/**
@@ -587,8 +567,7 @@ class AdminController extends Controller
             Session::setFlash('error', 'Не удалось одобрить запрос.');
         }
         
-        header('Location: /admin/invitations?status=pending');
-        exit;
+        $this->redirectBack('/admin/invitations?status=pending');
     }
     
     public function rejectInvitation(int $id): void
@@ -599,7 +578,6 @@ class AdminController extends Controller
             Session::setFlash('error', 'Не удалось отклонить запрос.');
         }
         
-        header('Location: /admin/invitations?status=pending');
-        exit;
+        $this->redirectBack('/admin/invitations?status=pending');
     }
 }

@@ -2,6 +2,9 @@
 
 namespace App\Modules\Auth\Services;
 
+use App\Core\Session;
+use App\Core\Audit;
+
 class Auth
 {
 	
@@ -54,8 +57,7 @@ class Auth
             
             // Редирект на логин только если это не AJAX запрос
             if (!self::isAjaxRequest()) {
-                header('Location: /login?expired=1');
-                exit;
+                redirect('/login?expired=1');
             }
             return;
         }
@@ -121,13 +123,13 @@ class Auth
             $_SESSION['last_activity_time'] = time();
 
             // ЖУРНАЛ АУДИТА: Успешный вход
-            Audit::log('auth.login_success', "Пользователь успешно вошел в систему", ['email' => $email]);
+            Audit::log('auth.login_success', "Пользователь успешно вошел в систему", 'auth');
 
             return true;
         }
 
         // ЖУРНАЛ АУДИТА: Неверный пароль или email (сигнал о возможном подборе)
-        Audit::log('auth.login_failed', "Неудачная попытка входа в систему", ['attempted_email' => $email]);
+        Audit::log('auth.login_failed', "Неудачная попытка входа в систему", 'auth');
 
         return false;
     }

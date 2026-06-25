@@ -37,11 +37,10 @@ class InvitationsController extends Controller
     {
         if (!$this->isInvitationsEnabled()) {
             Session::setFlash('error', 'Система приглашений отключена.');
-            header('Location: /');
-            exit;
+            $this->redirectBack('/');
         }
 
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
         $invitationModel = $this->service(Invitation::class);
 
         // Получаем все приглашения пользователя
@@ -73,17 +72,15 @@ class InvitationsController extends Controller
 
         if (!$this->isInvitationsEnabled()) {
             Session::setFlash('error', 'Система приглашений отключена.');
-            header('Location: /');
-            exit;
+            $this->redirectBack('/');
         }
 
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
 
         // Проверка кармы
         if (!$this->hasEnoughKarma($userId)) {
             Session::setFlash('error', 'Недостаточно кармы для создания приглашений.');
-            header('Location: ' . route('invitations.index'));
-            exit;
+			$this->redirectBack(route('invitations.index'));
         }
 
         $invitationModel = $this->service(Invitation::class);
@@ -94,8 +91,7 @@ class InvitationsController extends Controller
 
         if ($activeCount >= $maxInvitations) {
             Session::setFlash('error', "Вы достигли лимита активных приглашений ({$maxInvitations}).");
-            header('Location: ' . route('invitations.index'));
-            exit;
+            $this->redirectBack(route('invitations.index'));
         }
 
         // Валидация email (опционально)
@@ -108,8 +104,7 @@ class InvitationsController extends Controller
 
             if (!$validator->isValid()) {
                 Session::setFlash('error', 'Некорректный email адрес.');
-                header('Location: ' . route('invitations.index'));
-                exit;
+                $this->redirectBack(route('invitations.index'));
             }
         }
 
@@ -130,8 +125,7 @@ class InvitationsController extends Controller
             Session::setFlash('error', 'Ошибка создания приглашения.');
         }
 
-        header('Location: ' . route('invitations.index'));
-        exit;
+        $this->redirectBack(route('invitations.index'));
     }
 
     /**
@@ -141,7 +135,7 @@ class InvitationsController extends Controller
     {
         $this->request->validateCsrf();
 
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
 
         if ($this->service(Invitation::class)->revokeInvitation($id, $userId)) {
             Session::setFlash('success', 'Приглашение отозвано.');
@@ -149,8 +143,7 @@ class InvitationsController extends Controller
             Session::setFlash('error', 'Не удалось отозвать приглашение.');
         }
 
-        header('Location: ' . route('invitations.index'));
-        exit;
+        $this->redirectBack(route('invitations.index'));
     }
 
     /**
@@ -160,8 +153,7 @@ class InvitationsController extends Controller
     {
         if (!$this->isInvitationsEnabled()) {
             Session::setFlash('error', 'Система приглашений отключена.');
-            header('Location: /');
-            exit;
+            $this->redirectBack('/');
         }
 
         $invitationModel = $this->service(Invitation::class);
@@ -169,8 +161,7 @@ class InvitationsController extends Controller
 
         if (!$invitation || !$invitationModel->isValid($invitation)) {
             Session::setFlash('error', 'Приглашение недействительно или истек срок действия.');
-            header('Location: /');
-            exit;
+            $this->redirectBack('/');
         }
 
         $this->render('register_invite', [
@@ -188,8 +179,7 @@ class InvitationsController extends Controller
     {
         if (!$this->isInvitationsEnabled()) {
             Session::setFlash('error', 'Система приглашений отключена.');
-            header('Location: /');
-            exit;
+            $this->redirectBack('/');
         }
 
         $this->request->validateCsrf();
@@ -199,8 +189,7 @@ class InvitationsController extends Controller
 
         if (!$invitation || !$invitationModel->isValid($invitation)) {
             Session::setFlash('error', 'Приглашение недействительно или истек срок действия.');
-            header('Location: /');
-            exit;
+            $this->redirectBack('/');
         }
 
         // Валидация
@@ -219,22 +208,19 @@ class InvitationsController extends Controller
 
         if (!$validator->isValid()) {
             Session::setFlash('error', implode('<br>', $validator->getErrors()));
-            header('Location: /register/invite/' . $code);
-            exit;
+			$this->redirectBack('/register/invite/' . $code);
         }
 
         // Проверка уникальности
         $userModel = $this->service(User::class);
         if ($userModel->findBy('username', $this->request->getParams('username'))) {
             Session::setFlash('error', 'Имя пользователя уже занято.');
-            header('Location: /register/invite/' . $code);
-            exit;
+            $this->redirectBack('/register/invite/' . $code);
         }
 
         if ($userModel->findBy('email', $this->request->getParams('email'))) {
             Session::setFlash('error', 'Email уже зарегистрирован.');
-            header('Location: /register/invite/' . $code);
-            exit;
+            $this->redirectBack('/register/invite/' . $code);
         }
 
         // Создание пользователя
@@ -251,13 +237,11 @@ class InvitationsController extends Controller
             $invitationModel->acceptInvitation($code, $newUserId);
 
             Session::setFlash('success', 'Регистрация успешна! Добро пожаловать!');
-            header('Location: ' . route('auth.login'));
-            exit;
+            $this->redirectBack(route('auth.login'));
         }
 
         Session::setFlash('error', 'Ошибка регистрации.');
-        header('Location: /register/invite/' . $code);
-        exit;
+        $this->redirectBack('/register/invite/' . $code);
     }
 
     /**
@@ -267,8 +251,7 @@ class InvitationsController extends Controller
     {
         if (!$this->isInvitationsEnabled()) {
             Session::setFlash('error', 'Система приглашений отключена.');
-            header('Location: /');
-            exit;
+            $this->redirectBack('/');
         }
 
         $this->render('request', [
@@ -284,8 +267,7 @@ class InvitationsController extends Controller
     {
         if (!$this->isInvitationsEnabled()) {
             Session::setFlash('error', 'Система приглашений отключена.');
-            header('Location: /');
-            exit;
+            $this->redirectBack('/');
         }
 
         $this->request->validateCsrf();
@@ -304,8 +286,7 @@ class InvitationsController extends Controller
 
         if (!$validator->isValid()) {
             Session::setFlash('error', implode('<br>', $validator->getErrors()));
-            header('Location: /invite/request');
-            exit;
+            $this->redirectBack('/invite/request');
         }
 
         $requestModel =  $this->service(InvitationRequest::class);
@@ -313,24 +294,21 @@ class InvitationsController extends Controller
         // Проверка на повторный запрос
         if ($requestModel->hasPendingRequest($email)) {
             Session::setFlash('error', 'Вы уже отправили запрос. Ожидайте рассмотрения.');
-            header('Location: /invite/request');
-            exit;
+            $this->redirectBack('/invite/request');
         }
 
         // Проверка, не зарегистрирован ли уже
         $userModel = $this->service(User::class);
         if ($userModel->findBy('email', $email)) {
             Session::setFlash('error', 'Этот email уже зарегистрирован.');
-            header('Location: /invite/request');
-            exit;
+            $this->redirectBack('/invite/request');
         }
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         $requestModel->createRequest($email, $reason, $ip);
 
         Session::setFlash('success', 'Ваш запрос отправлен! Мы рассмотрим его в ближайшее время.');
-        header('Location: /');
-        exit;
+        $this->redirectBack('/');
     }
 
 	/**

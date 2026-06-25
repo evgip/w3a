@@ -33,21 +33,15 @@ function is_route(string $name): bool
 }
 
 /**
- * Безопасный редирект "назад"
+ * Выполнить HTTP редирект
  */
-function back_url(string $fallback = '/'): string
-{
-    $referer = $_SERVER['HTTP_REFERER'] ?? $fallback;
-    
-    // Разрешаем только относительные URL или свой домен
-    if (str_starts_with($referer, '/') && !str_starts_with($referer, '//')) {
-        return $referer;
+if (!function_exists('redirect')) {
+    function redirect(string $url, int $code = 302): never
+    {
+        http_response_code($code);
+        header('Location: ' . $url);
+        exit;
     }
-    
-    $refererHost = parse_url($referer, PHP_URL_HOST);
-    $appHost = $_SERVER['HTTP_HOST'] ?? '';
-    
-    return ($refererHost === $appHost) ? $referer : $fallback;
 }
 
 /**

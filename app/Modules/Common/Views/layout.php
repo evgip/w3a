@@ -23,7 +23,7 @@
 				<?php if (\App\Modules\Auth\Services\Auth::check()): ?>
 					<?php
 					$notifModel = new \App\Modules\Notifications\Models\Notification();
-					$unreadCount = $notifModel->getUnreadCount((int)$_SESSION['user_id']);
+					$unreadCount = $notifModel->getUnreadCount(\App\Modules\Auth\Services\Auth::id());
 					?>
 
 					<a href="/notifications" class="header-notification-link" id="header-notifications-link" aria-label="Уведомления">

@@ -12,7 +12,6 @@ use App\Core\Events\EventDispatcher;
 use App\Core\Events\UserBanned;
 use App\Core\Events\UserUnbanned;
 use App\Core\Events\ModNoteAdded;
-use App\Core\Events\ModNoteDeleted;
 
 /**
  * Сервис для работы с модерацией.

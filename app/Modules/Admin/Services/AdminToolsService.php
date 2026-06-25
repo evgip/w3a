@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Services;
 
 use App\Core\Audit;
-use App\Modules\Stories\Models\Comment;
 
 /**
  * Сервис для инструментов разработчика.

@@ -7,7 +7,6 @@ use App\Core\Session;
 use App\Core\Audit;
 use App\Modules\Flags\Models\Flag;
 use App\Modules\Stories\Models\Comment;
-use App\Modules\Auth\Services\Auth;
 
 class FlagsController extends Controller
 {

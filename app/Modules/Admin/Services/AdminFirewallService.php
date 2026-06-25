@@ -38,7 +38,7 @@ class AdminFirewallService
             $stmt = $db->prepare("INSERT INTO `banned_ips` (`ip_address`, `reason`) VALUES (:ip, :reason)");
             $stmt->execute(['ip' => $ip, 'reason' => $reason]);
             
-            Audit::log('admin.ip_banned', "Администратор заблокировал IP: {$ip}", ['reason' => $reason], 'admin');
+            Audit::log('admin.ip_banned', "Администратор заблокировал IP: {$ip}", 'admin');
             
             return true;
         } catch (\Exception $e) {

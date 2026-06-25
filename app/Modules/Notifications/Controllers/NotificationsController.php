@@ -23,7 +23,7 @@ class NotificationsController extends Controller
 
     public function index(): void
     {
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
 
         $type = (string)$this->request->getParams('type', 'all');
         $page = max(1, (int)$this->request->getParams('page', 1));

@@ -5,7 +5,6 @@ namespace App\Modules\Origins\Controllers;
 use App\Core\Controller;
 use App\Core\Session;
 use App\Core\Audit;
-use App\Modules\Auth\Services\Auth;
 use App\Modules\Origins\Models\Domain;
 
 class OriginsController extends Controller
@@ -50,8 +49,7 @@ class OriginsController extends Controller
         // Валидация домена
         if (empty($domain) || !preg_match('/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*\.[a-z]{2,}$/i', $domain)) {
             Session::setFlash('error', 'Указан некорректный домен. Пример: example.com');
-            header('Location: /admin/domains/create');
-            exit;
+			$this->redirectBack('/admin/domains/create');
         }
 
         $domainModel = $this->service(Domain::class);
@@ -66,9 +64,8 @@ class OriginsController extends Controller
         } else {
             Session::setFlash('error', "Домен «{$domain}» уже заблокирован.");
         }
-
-        header('Location: /admin/domains');
-        exit;
+		
+		$this->redirectBack('/admin/domains');
     }
 
     /**
@@ -83,8 +80,7 @@ class OriginsController extends Controller
 
         if (!$domain) {
             Session::setFlash('error', 'Домен не найден.');
-            header('Location: /admin/domains');
-            exit;
+            $this->redirectBack('/admin/domains');
         }
 
         $domainModel->unban($domain['domain']);
@@ -94,8 +90,7 @@ class OriginsController extends Controller
         ]);
 
         Session::setFlash('success', "Домен «{$domain['domain']}» успешно разблокирован.");
-        header('Location: /admin/domains');
-        exit;
+        $this->redirectBack('/admin/domains');
     }
 
     /**

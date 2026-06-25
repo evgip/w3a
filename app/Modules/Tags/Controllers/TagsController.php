@@ -2,12 +2,9 @@
 
 namespace App\Modules\Tags\Controllers;
 
-use App\Core\Controller as AppCoreController;
-use App\Modules\Auth\Services\Auth;
+use App\Core\Controller;
 use App\Core\Session;
-use App\Modules\Tags\Models\Category;
-use App\Modules\Tags\Models\Tag;
-use App\Modules\Tags\Models\TagFilter;
+use App\Modules\Auth\Services\Auth;
 use App\Modules\Tags\Services\CategoryService;
 use App\Modules\Tags\Services\TagFilterService;
 
@@ -16,7 +13,7 @@ use App\Modules\Tags\Services\TagFilterService;
  * Отвечает за отображение категорий тегов и управление фильтрами.
  * Вся бизнес-логика вынесена в сервисы CategoryService и TagFilterService.
  */
-class TagsController extends AppCoreController
+class TagsController extends Controller
 {
     // =========================================================================
     // КАТЕГОРИИ ТЕГОВ
@@ -72,7 +69,7 @@ class TagsController extends AppCoreController
      */
     public function filters(): void
     {
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
         $data = $this->service(TagFilterService::class)->getFiltersData($userId);
 
         $this->render('filters', [

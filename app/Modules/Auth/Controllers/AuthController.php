@@ -8,7 +8,6 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Modules\Captcha\Core\Captcha;
 use App\Modules\Auth\Services\AuthService;
-use App\Modules\Auth\Services\PasswordResetService;
 
 /**
  * Контроллер для управления пользователями: аутентификация, регистрация, профиль и настройки.
@@ -222,13 +221,11 @@ class AuthController extends Controller
                 'username' => $username,
                 'email' => $email,
             ]);
-            header('Location: /register');
-            exit;
+			$this->redirectBack('/register');
         }
 
         Session::setFlash('success', 'Регистрация успешна! Проверьте почту.');
-        header('Location: /login');
-        exit;
+        $this->redirectBack('/login');
     }
 
     /**
@@ -240,8 +237,7 @@ class AuthController extends Controller
     public function logout(): void
     {
         $this->service(AuthService::class)->logout();
-        header('Location: /');
-        exit;
+        $this->redirectBack('/');
     }
 
 	/**

@@ -11,7 +11,7 @@
 
 $request = new \App\Core\Request();
 $voteModel = new \App\Modules\Votes\Models\Vote();
-$currentUserId = \App\Modules\Auth\Services\Auth::check() ? (int)$_SESSION['user_id'] : 0;
+$currentUserId = \App\Modules\Auth\Services\Auth::check() ? \App\Modules\Auth\Services\Auth::id() : 0;
 $isAdmin = \App\Modules\Auth\Services\Auth::isAdmin();
 
 $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');

@@ -4,12 +4,9 @@
 
     <ul class="messages-list">
         <?php foreach ($chats as $chat): ?>
-            <!--?php
-            $isUnread = ((int)$chat['is_read'] === 0 && !empty($chat['last_message']) && (int)$chat['last_sender_id'] !== (int)$_SESSION['user_id']);
-            ?-->
-            
+
 		<?php
-		$isUnread = ((int)$chat['unread_count'] > 0 && !empty($chat['last_message']) && (int)$chat['last_sender_id'] !== (int)$_SESSION['user_id']);
+		$isUnread = ((int)$chat['unread_count'] > 0 && !empty($chat['last_message']) && (int)$chat['last_sender_id'] !== \App\Modules\Auth\Services\Auth::id());
 		?>
 			
             <li>

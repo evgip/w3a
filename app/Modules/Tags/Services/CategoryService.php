@@ -6,7 +6,7 @@ use App\Modules\Tags\Models\Category;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Models\TagFilter;
 use App\Modules\Stories\Models\ReadRibbon;
-use App\Modules\Auth\Services\Auth as AppCoreAuth;
+use App\Modules\Auth\Services\Auth;
 
 /**
  * Сервис для работы с категориями тегов.
@@ -97,11 +97,11 @@ class CategoryService
      */
 	private function getUserExcludeTagIds(): array
 	{
-		if (!AppCoreAuth::check()) {
+		if (!Auth::check()) {
 			return [];
 		}
 
-		return $this->filterModel->getFilteredTagIds(AppCoreAuth::id());
+		return $this->filterModel->getFilteredTagIds(Auth::id());
 	}
 
     /**
@@ -109,14 +109,14 @@ class CategoryService
      */
 	private function getNewCommentsForStories(array $stories): array
 	{
-		if (!AppCoreAuth::check() || empty($stories)) {
+		if (!Auth::check() || empty($stories)) {
 			return [];
 		}
 
 		$storyIds = array_column($stories, 'id');
 
 		return $this->readRibbon->getNewCommentsCounts(
-			(int)$_SESSION['user_id'],
+			Auth::id(),
 			array_map('intval', $storyIds)
 		);
 	}

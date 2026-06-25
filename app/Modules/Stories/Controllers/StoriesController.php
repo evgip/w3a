@@ -6,24 +6,12 @@ namespace App\Modules\Stories\Controllers;
 
 use App\Core\Controller;
 use App\Core\Session;
-use App\Core\Audit;
-use App\Core\Events\EventDispatcher;
-use App\Core\Events\StoryDeleted;
-use App\Core\Events\StoryRestore;
-use App\Core\Events\CommentUpdated;
-use App\Core\Events\CommentCreated;
-use App\Core\Events\CommentDeleted;
-use App\Core\Events\CommentRestored;
 use App\Modules\Stories\Services\StoryService;
 use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Stories\Services\CommentService;
 use App\Modules\Stories\Services\ReadRibbonService;
 use App\Modules\Stories\Models\Story;
-use App\Modules\Stories\Models\Comment;
-use App\Modules\Stories\Models\ReadRibbon;
 use App\Modules\Tags\Models\Tag;
-use App\Modules\Origins\Models\Domain;
-use App\Modules\Notifications\Services\NotificationService;
 use App\Modules\Auth\Services\Auth;
 
 
@@ -38,9 +26,6 @@ use App\Modules\Auth\Services\Auth;
  */
 class StoriesController extends Controller
 {
-	
-	
-	
     // =========================================================================
     // ЛЕНТА ИСТОРИЙ
     // =========================================================================
@@ -171,11 +156,10 @@ class StoriesController extends Controller
 
         if ($storyId > 0) {
             Session::setFlash('success', 'Ваша история успешно опубликована!');
-            header('Location: /');
-        } else {
-            header('Location: /stories/create');
-        }
-        exit;
+            $this->redirectBack('/');
+        } 
+		
+		$this->redirectBack('/stories/create');
     }
     
     // =========================================================================
@@ -193,10 +177,10 @@ class StoriesController extends Controller
         $storyModel = new Story();
         $story = $storyModel->find($storyId);
 
-        if (!$story || !$this->service(StoryService::class)->canEditStory($story, (int)$_SESSION['user_id'])) {
+        $userId = Auth::id();
+        if (!$story || !$this->service(StoryService::class)->canEditStory($story, $userId)) {
             Session::setFlash('error', 'У вас нет прав для изменения этой публикации.');
-            header('Location: /');
-            exit;
+            $this->redirectBack('/');
         }
 
         $tagModel = new Tag();
@@ -220,10 +204,10 @@ class StoriesController extends Controller
         $storyId = (int)$id;
         $storyModel = new Story();
         $story = $storyModel->find($storyId);
+		$userId = Auth::id();
 
-        if (!$story || !$this->service(StoryService::class)->canEditStory($story, (int)$_SESSION['user_id'])) {
-            header('Location: /');
-            exit;
+        if (!$story || !$this->service(StoryService::class)->canEditStory($story, $userId)) {
+            $this->redirectBack('/');
         }
 
 		$data = [
@@ -237,8 +221,7 @@ class StoriesController extends Controller
         $this->service(StoryService::class)->updateStory($storyId, $data);
 
         Session::setFlash('success', 'Публикация успешно отредактирована.');
-        header('Location: /story/' . $storyId);
-        exit;
+        $this->redirectBack('/story/' . $storyId);
     }
     
     // =========================================================================
@@ -288,12 +271,14 @@ class StoriesController extends Controller
 		$parentId = $this->request->getParams('parent_id') !== '' ? (int)$this->request->getParams('parent_id') : null;
 		$commentText = $this->request->getParams('comment_text');
 
+		$userId = Auth::id();
+
 		// Сервис выполняет создание, диспатчит событие и устанавливает flash
 		$result = $this->service(CommentService::class)->createComment(
 			$storyId,
 			$commentText,
 			$parentId,
-			(int)$_SESSION['user_id']
+			$userId
 		);
 
 		if (!empty($result)) {
@@ -406,7 +391,7 @@ class StoriesController extends Controller
     public function toggleFollow(string $id): void
     {
         $storyId = (int)$id;
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
 
         $storyModel = new Story();
         $storyModel->toggleFollow($storyId, $userId);
@@ -421,8 +406,8 @@ class StoriesController extends Controller
             return;
         }
 
-        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? "/story/{$storyId}"));
-        exit;
+		$referer = $_SERVER['HTTP_REFERER'] ?? '/story/' . $storyId;
+		$this->redirectBack($referer);
     }
 
     /**
@@ -436,7 +421,6 @@ class StoriesController extends Controller
         $this->service(ReadRibbonService::class)->markAsRead($storyId);
 
         $referer = $_SERVER['HTTP_REFERER'] ?? '/story/' . $storyId;
-        header('Location: ' . $referer);
-        exit;
+        $this->redirectBack($referer);
     }
 }

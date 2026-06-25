@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Users\Controllers;
 
 use App\Core\Controller;
-use App\Core\Session as AppCoreSession;
+use App\Core\Session;
 use App\Modules\Users\Services\UserService;
 use App\Modules\Users\Services\AvatarService;
+use App\Modules\Auth\Services\Auth;
 
 /**
  * Контроллер для управления профилями пользователей и настройками аккаунта.
@@ -130,15 +131,14 @@ class UsersController extends Controller
     public function settings(): void
     {
         // Получаем ID текущего пользователя из сессии
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
         
         // Загружаем пользователя с данными профиля через сервис
         $user = $this->getUserService()->getUserWithProfile($userId);
 
         if (!$user) {
             // Пользователь не авторизован или удалён — редирект на главную
-            header('Location: /');
-            exit;
+            redirect('/');
         }
 
         // Загружаем активные уведомления для пользователя
@@ -171,15 +171,14 @@ class UsersController extends Controller
     public function updateSettings(): void
     {
         // Получаем ID текущего пользователя
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
         
         // Загружаем текущие данные пользователя
         $user = $this->getUserService()->getUserWithProfile($userId);
 
         if (!$user) {
             // Пользователь не авторизован — редирект на главную
-            header('Location: /');
-            exit;
+            redirect('/');
         }
 
         // Получаем данные из формы
@@ -194,8 +193,7 @@ class UsersController extends Controller
             // Пытаемся обновить email (сервис проверяет уникальность)
             if (!$this->getUserService()->updateEmail($userId, $email)) {
                 // Email уже занят — редирект обратно на форму
-                header('Location: ' . route('account.settings'));
-                exit;
+				redirect(route('account.settings'));
             }
         }
 
@@ -233,11 +231,10 @@ class UsersController extends Controller
         $_SESSION['user_avatar'] = $newAvatarFilename;
 
         // Показываем flash-сообщение об успехе
-        AppCoreSession::setFlash('success', 'Настройки сохранены.');
+        Session::setFlash('success', 'Настройки сохранены.');
         
         // Редирект обратно на страницу настроек
-        header('Location: ' . route('account.settings'));
-        exit;
+		redirect(route('account.settings'));
     }
 
     /**
@@ -255,7 +252,7 @@ class UsersController extends Controller
     public function updatePassword(): void
     {
         // Получаем ID текущего пользователя
-        $userId = (int)$_SESSION['user_id'];
+        $userId = Auth::id();
         
         // Получаем пароли из формы
         $currentPassword = $this->request->getParams('current_password');
@@ -263,9 +260,8 @@ class UsersController extends Controller
 
         // === Валидация длины пароля ===
         if (strlen($newPassword) < 6) {
-            AppCoreSession::setFlash('error', 'Пароль должен быть не менее 6 символов.');
-            header('Location: ' . route('account.settings'));
-            exit;
+            Session::setFlash('error', 'Пароль должен быть не менее 6 символов.');
+            redirect(route('account.settings'));
         }
 
         // === Попытка смены пароля ===
@@ -273,7 +269,6 @@ class UsersController extends Controller
         $this->getUserService()->changePassword($userId, $currentPassword, $newPassword);
 
         // Редирект обратно на страницу настроек
-        header('Location: ' . route('account.settings'));
-        exit;
+        redirect(route('account.settings'));
     }
 }
