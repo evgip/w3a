@@ -20,6 +20,14 @@
     },
     "require": {
         "php": ">=8.0",
+        "ext-mbstring": "*",
+        "ext-curl": "*",
+        "ext-fileinfo": "*",
+        "ext-gd": "*",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-json": "*",
+        "ext-openssl": "*",
         "phpmailer/phpmailer": "^7.1.1",
         "erusev/parsedown": "^1.8"
     }
