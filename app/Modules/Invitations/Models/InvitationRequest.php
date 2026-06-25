@@ -9,6 +9,16 @@ class InvitationRequest extends Model
     protected string $table = 'invitation_requests';
 
     /**
+     * Поля, разрешённые для массового присваивания
+     */
+    protected array $fillable = [
+        'email',
+        'reason',
+        'ip_address',
+        'status'
+    ];
+
+    /**
      * Создать запрос на приглашение
      */
     public function createRequest(string $email, string $reason, string $ip): int

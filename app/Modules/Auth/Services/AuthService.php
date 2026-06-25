@@ -244,7 +244,7 @@ class AuthService
 	public function register(): void
 	{
 		// === ПРОВЕРКА КАПЧИ ===
-		if (!Captcha::validate($_POST['smart-token'] ?? null)) {
+		if (!Captcha::validate($this->request->post('smart-token'))) {
 			Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот.');
 			$this->redirect(route('auth.register'));
 			return;

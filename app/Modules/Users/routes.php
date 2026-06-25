@@ -77,18 +77,4 @@ $router->group(['middleware' => ['web', 'auth']], function($router) {
         UsersController::class . '@updatePassword', 
         'account.password.submit'
     );
-    
-    // -------------------------------------------------------------------------
-    // Уведомления
-    // -------------------------------------------------------------------------
-    
-    /**
-     * Отметить все уведомления как прочитанные.
-     */
-    $router->add(
-        'POST', 
-        '/account/notifications/read', 
-        UsersController::class . '@clearNotifications', 
-        'account.notifications.read'
-    );
 });

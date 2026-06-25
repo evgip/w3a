@@ -34,7 +34,7 @@ class Audit
             $userId    = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
             $username  = $_SESSION['user_name'] ?? 'Guest';
             $role      = $_SESSION['user_role'] ?? 'guest';
-            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+            $ipAddress = IpResolver::getClientIp();
 
             $stmt = $db->prepare(
                 "INSERT INTO audit_logs 

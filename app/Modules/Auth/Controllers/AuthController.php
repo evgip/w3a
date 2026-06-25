@@ -33,14 +33,14 @@ class AuthController extends Controller
 	public function sendResetLink(): void
 	{
 		// 🔑 Проверка капчи
-		if (Captcha::isRequired() && !Captcha::validate($_POST['smart-token'] ?? null)) {
+		if (Captcha::isRequired() && !Captcha::validate($this->request->post('smart-token'))) {
 			Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот.');
 			$this->redirect(route('password.request'));
 			return;
 		}
 		
 		// Валидация email
-		$email = filter_var($_POST['email'] ?? '', FILTER_VALIDATE_EMAIL);
+		$email = filter_var($this->request->post('email', ''), FILTER_VALIDATE_EMAIL);
 		
 		if (!$email) {
 			Session::setFlash('error', 'Неверный email адрес.');
@@ -204,7 +204,7 @@ class AuthController extends Controller
     public function register(): void
     {
         // === ПРОВЕРКА КАПЧИ ===
-        if (!Captcha::validate($_POST['smart-token'] ?? null)) {
+		if (!Captcha::validate($this->request->post('smart-token'))) {
             Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот.');
             $this->redirect(route('auth.register'));
             return;

@@ -222,13 +222,13 @@ class StoriesController extends Controller
             exit;
         }
 
-        $data = [
-            'title' => $this->request->getParams('title'),
-            'url' => $this->request->getParams('url') ?: null,
-            'description' => $this->request->getParams('description') ?: null,
-            'tags' => $_POST['tags'] ?? [],
-            'user_is_following' => isset($_POST['user_is_following']) ? 1 : 0,
-        ];
+		$data = [
+			'title' => $this->request->getParams('title'),
+			'url' => $this->request->getParams('url') ?: null,
+			'description' => $this->request->getParams('description') ?: null,
+			'tags' => $this->request->post('tags', []),
+			'user_is_following' => $this->request->post('user_is_following') !== null ? 1 : 0,
+		];
 
         $this->service(StoryService::class)->updateStory($storyId, $data);
 

@@ -148,7 +148,7 @@ HTML;
      */
     private static function validateYandex(?string $token): bool
     {
-        $token = $token ?? ($_POST['smart-token'] ?? null);
+        $token = $token ?? $this->request->post('smart-token');
         
         if (empty($token)) {
             return false;
@@ -192,7 +192,7 @@ HTML;
      */
     private static function validateGoogle(?string $token): bool
     {
-        $token = $token ?? ($_POST['g-recaptcha-response'] ?? null);
+		$token = $token ?? $this->request->post('g-recaptcha-response');
         
         if (empty($token)) {
             return false;
@@ -229,7 +229,7 @@ HTML;
      */
     private static function validateCustom(?string $token): bool
     {
-        $answer = $token ?? ($_POST['captcha_answer'] ?? null);
+		$answer = $token ?? $this->request->post('captcha_answer');
         
         if ($answer === null || !isset($_SESSION['captcha_answer'])) {
             return false;

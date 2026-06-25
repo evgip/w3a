@@ -48,6 +48,25 @@ class ErrorsController extends Controller
             'statusCode' => 403,
         ]);
     }
+	
+	
+	/**
+	 * Страница ошибки 429 - Too Many Requests
+	 */
+	public function tooManyRequests(string $message = "Превышен лимит запросов"): void
+	{
+		http_response_code(429);
+		
+		$retryAfter = config('rate_limit.retry_after', 60, 'int');
+		header("Retry-After: {$retryAfter}");
+		
+		$this->render('errors/429', [
+			'title' => '429 - Слишком много запросов',
+			'message' => $message,
+			'retryAfter' => $retryAfter
+		]);
+		exit;
+	}
 }
 
  

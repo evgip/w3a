@@ -9,6 +9,14 @@ class PasswordReset extends Model
     protected string $table = 'password_resets';
 
     /**
+     * Поля, разрешённые для массового присваивания
+     */
+    protected array $fillable = [
+        'email',
+        'token'
+    ];
+
+    /**
      * Store a cryptographically safe token signature linked to a user email
      */
     public function createToken(string $email, string $token): void

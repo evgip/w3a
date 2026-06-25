@@ -9,6 +9,18 @@ class Invitation extends Model
     protected string $table = 'invitations';
 
     /**
+     * Поля, разрешённые для массового присваивания
+     */
+    protected array $fillable = [
+        'code',
+        'inviter_id',
+        'invitee_email',
+        'invitee_id',
+        'status',
+        'expires_at'
+    ];
+
+    /**
      * Генерация уникального кода приглашения
      */
     public static function generateCode(): string
