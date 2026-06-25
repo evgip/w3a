@@ -70,7 +70,7 @@ class AdminCategoryService
             'sort_order' => $sortOrder,
         ]);
         
-        Audit::log('admin.category_created', "Администратор создал категорию '{$name}' (slug: {$slug})");
+        Audit::log('admin.category_created', "Администратор создал категорию '{$name}' (slug: {$slug})", 'admin');
         
         return $categoryId;
     }
@@ -114,7 +114,7 @@ class AdminCategoryService
             'sort_order' => $sortOrder,
         ]);
         
-        Audit::log('admin.category_updated', "Администратор обновил категорию '{$name}' (ID: {$categoryId})");
+        Audit::log('admin.category_updated', "Администратор обновил категорию '{$name}' (ID: {$categoryId})", 'admin');
         
         return true;
     }
@@ -138,7 +138,7 @@ class AdminCategoryService
         
         if ($this->categoryModel->deleteCategory($categoryId)) {
             Audit::log('admin.category_deleted', 
-                "Администратор удалил категорию '{$category['name']}' (ID: {$categoryId})");
+                "Администратор удалил категорию '{$category['name']}' (ID: {$categoryId})", 'admin');
             return true;
         }
         

@@ -29,8 +29,8 @@ class AvatarService
         }
 
         // 2. Проверка размера
-        $maxSize = config_int('uploads.avatar_max_size', 5242880);
-        $maxSizeMb = config_int('uploads.avatar_max_size_mb', 5);
+        $maxSize = config('uploads.avatar_max_size', 5242880, 'int');
+        $maxSizeMb = config('uploads.avatar_max_size_mb', 5, 'int');
         
         if ($file['size'] > $maxSize) {
             AppCoreSession::setFlash('error', "Размер файла не должен превышать {$maxSizeMb} МБ.");

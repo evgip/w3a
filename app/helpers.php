@@ -166,138 +166,69 @@ if (!function_exists('render_flashes')) {
     }
 }
 
-/**
- * Retrieve configuration value(s)
- * Получение значений из конфигурации
- *
- * @param string|null $key    - Key in format 'file.group.key' or null for full file
- *                            - Ключ в формате 'файл.группа.ключ' или null для всего файла
- * @param mixed $default      - Default value if key not found
- *                            - Значение по умолчанию при отсутствии ключа
- * @return mixed
- *
- * Examples:
- *   config('config.app.name')                    // 'w3a'
- *   config('config.app.min_karma_for_downvote')  // 10
- *   config('constants.pagination.stories_per_page') // 15
- *   config('database.host', 'localhost')         // 'localhost'
- *   config('config')                             // entire config.php file
- *
- *   Примеры:
- *     config('config.app.name')                    // 'w3a'
- *     config('config.app.min_karma_for_downvote')  // 10
- *     config('constants.pagination.stories_per_page') // 15
- *     config('database.host', 'localhost')         // 'localhost'
- *     config('config')                             // весь файл config.php
- */
+    /**
+     * Универсальный хелпер для получения значений из конфигурации приложения.
+     * 
+     * Функция извлекает значение по ключу из глобального конфига (AppCoreConfig)
+     * и опционально приводит его к указанному типу. Поддерживает точечную нотацию
+     * для доступа к вложенным ключам (например, 'app.name' или 'database.host').
+     * 
+     * Примеры использования:
+     * 
+     * // Получение значения без приведения типа
+     * $appName = config('app.name');                    // 'W3A'
+     * $version = config('app.version', '1.0.0');        // '1.0.0' если ключа нет
+     * 
+     * // Получение с приведением к int
+     * $maxUpload = config('app.max_upload_size', 10, 'int');  // 10
+     * $perPage = config('pagination.per_page', 20, 'int');    // 20
+     * 
+     * // Получение с приведением к bool
+     * $debug = config('app.debug', false, 'bool');      // true/false
+     * $maintenance = config('app.maintenance', false, 'bool');
+     * 
+     * // Получение с приведением к string
+     * $locale = config('app.locale', 'ru', 'string');   // 'ru'
+     * $timezone = config('app.timezone', 'UTC', 'string');
+     * 
+     * // Получение с приведением к array
+     * $allowedHosts = config('app.allowed_hosts', [], 'array');
+     * $roles = config('auth.roles', [], 'array');
+     * 
+     * // Получение всего конфига (при вызове без параметров)
+     * $allConfig = config();
+     * 
+     * // Значение по умолчанию, если ключ не найден
+     * $secret = config('app.secret_key', 'default_secret');
+     * 
+     * @param string|null $key      Ключ конфигурации в точечной нотации (например, 'app.name').
+     *                              Если null — возвращается весь массив конфигурации.
+     * @param mixed       $default  Значение по умолчанию, если ключ не найден в конфиге.
+     *                              Может быть любого типа.
+     * @param string|null $type     Опциональный тип для приведения значения.
+     *                              Допустимые значения: 'int', 'string', 'bool', 'array'.
+     *                              Если null — значение возвращается как есть.
+     * 
+     * @return mixed Значение из конфигурации, приведённое к указанному типу (если задан).
+     *               Если ключ не найден и не задан $default — возвращает null.
+     */
 if (!function_exists('config')) {
-    function config(?string $key = null, mixed $default = null): mixed
-    {
-        if ($key === null) {
-            return \App\Core\Config::getFile('config');
-        }
-
-        return \App\Core\Config::get($key, $default);
-    }
-}
-
-/**
- * Retrieve integer configuration value
- * Получение целочисленного значения из конфигурации
- *
- * @param string $key     - Configuration key
- *                        - Ключ конфигурации
- * @param int    $default - Default value
- *                        - Значение по умолчанию
- * @return int
- */
-if (!function_exists('config_int')) {
-    function config_int(string $key, int $default = 0): int
-    {
-        return \App\Core\Config::getInt($key, $default);
-    }
-}
-
-/**
- * Retrieve string configuration value
- * Получение строкового значения из конфигурации
- *
- * @param string $key     - Configuration key
- *                        - Ключ конфигурации
- * @param string $default - Default value
- *                        - Значение по умолчанию
- * @return string
- */
-if (!function_exists('config_string')) {
-    function config_string(string $key, string $default = ''): string
-    {
-        return \App\Core\Config::getString($key, $default);
-    }
-}
-
-/**
- * Retrieve boolean configuration value
- * Получение булевого значения из конфигурации
- *
- * @param string $key     - Configuration key
- *                        - Ключ конфигурации
- * @param bool   $default - Default value
- *                        - Значение по умолчанию
- * @return bool
- */
-if (!function_exists('config_bool')) {
-    function config_bool(string $key, bool $default = false): bool
-    {
-        return \App\Core\Config::getBool($key, $default);
-    }
-}
-
-/**
- * Retrieve array configuration value
- * Получение массива из конфигурации
- *
- * @param string $key     - Configuration key
- *                        - Ключ конфигурации
- * @param array  $default - Default value
- *                        - Значение по умолчанию
- * @return array
- */
-if (!function_exists('config_array')) {
-    function config_array(string $key, array $default = []): array
-    {
-        return \App\Core\Config::getArray($key, $default);
-    }
-}
-
-/**
- * Check if configuration key exists
- * Проверка существования ключа в конфигурации
- *
- * @param string $key - Configuration key
- *                    - Ключ конфигурации
- * @return bool
- */
-if (!function_exists('config_has')) {
-    function config_has(string $key): bool
-    {
-        return \App\Core\Config::has($key);
-    }
-}
-
-/**
- * Set configuration value at runtime (not persisted)
- * Установка значения конфигурации в runtime (не сохраняется между запросами)
- *
- * @param string $key   - Key in format 'file.group.key'
- *                      - Ключ в формате 'файл.группа.ключ'
- * @param mixed  $value - Value to set
- *                      - Значение для установки
- */
-if (!function_exists('config_set')) {
-    function config_set(string $key, mixed $value): void
-    {
-        \App\Core\Config::set($key, $value);
-    }
+	function config(string $key = null, mixed $default = null, string $type = null): mixed
+	{
+		$value = \App\Core\Config::get($key, $default);
+		
+		if ($type !== null) {
+			return match($type) {
+				'int' => (int)$value,
+				'string' => (string)$value,
+				'bool' => (bool)$value,
+				'array' => (array)$value,
+				default => $value,
+			};
+		}
+		
+		return $value;
+	}
 }
 
 /**
@@ -307,7 +238,7 @@ if (!function_exists('config_set')) {
 if (!function_exists('app_name')) {
     function app_name(): string
     {
-        return config_string('config.app.name', 'w3a');
+        return config('config.app.name', 'w3a');
     }
 }
 

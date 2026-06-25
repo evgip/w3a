@@ -44,12 +44,12 @@ class TagsController extends AppCoreController
     public function categoriesShow(string $slug): void
     {
         $currentPage = max(1, (int)$this->request->getParams('page', 1));
-        $perPage = config_int('constants.pagination.stories_per_page', 15);
+        $perPage = config('constants.pagination.stories_per_page', 15, 'int');
 
         $data = $this->service(CategoryService::class)->getCategoryWithStories($slug, $currentPage, $perPage);
 
         if (!$data) {
-            $this->redirectWithError('/categories', 'Категория не найдена.');
+            $this->redirectWithMessage('/categories', 'Категория не найдена.', 'error');
             return;
         }
 

@@ -112,13 +112,13 @@ class AdminUserService
 			// $notificationModel->createDeactivatedNotification($targetUserId, $currentAdminId);
             
             Audit::log('admin.user_suspended', 
-                "Администратор принудительно ЗАБЛОКИРОВАЛ аккаунт: {$user['username']} (ID: {$targetUserId})");
+                "Администратор принудительно ЗАБЛОКИРОВАЛ аккаунт: {$user['username']} (ID: {$targetUserId})", 'admin');
         } else {
             // ✅ Активация — используем семантичный метод
 			//$notificationModel->createActivatedNotification($targetUserId, $currentAdminId);
             
             Audit::log('admin.user_unsuspended', 
-                "Администратор СНЯЛ блокировку с аккаунта: {$user['username']} (ID: {$targetUserId})");
+                "Администратор СНЯЛ блокировку с аккаунта: {$user['username']} (ID: {$targetUserId})", 'admin');
         }
         
         return $newStatus;
@@ -156,7 +156,7 @@ class AdminUserService
         $this->userModel->update($userId, ['avatar' => null]);
         
         Audit::log('admin.avatar_deleted', 
-            "Администратор принудительно удалил аватар пользователя ID: {$userId}");
+            "Администратор принудительно удалил аватар пользователя ID: {$userId}", 'admin');
         
         // Уведомляем пользователя
         $this->notificationModel->create([

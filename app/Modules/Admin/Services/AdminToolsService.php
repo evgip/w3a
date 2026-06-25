@@ -17,7 +17,7 @@ class AdminToolsService
     public function compileAssets(): void
     {
         \App\Core\Asset::forceRebuild();
-        Audit::log('admin.assets_compile', 'Администратор запустил ручную сборку CSS ассетов через панель инструментов');
+        Audit::log('admin.assets_compile', 'Администратор запустил ручную сборку CSS ассетов через панель инструментов', 'admin');
     }
     
     /**
@@ -39,7 +39,7 @@ class AdminToolsService
             }
         }
         
-        Audit::log('admin.tools_clear_files', 'Администратор очистил текстовые файлы системных логов на диске');
+        Audit::log('admin.tools_clear_files', 'Администратор очистил текстовые файлы системных логов на диске', 'admin');
         
         return $clearedCount;
     }
@@ -50,7 +50,7 @@ class AdminToolsService
     public function cacheRoutes(object $router): void
     {
         $router->compileCache();
-        Audit::log('admin.cache_routes_compiled', 'Администратор скомпилировал кэш маршрутов фреймворка');
+        Audit::log('admin.cache_routes_compiled', 'Администратор скомпилировал кэш маршрутов фреймворка', 'admin');
     }
     
     /**
@@ -59,7 +59,7 @@ class AdminToolsService
     public function clearCacheRoutes(object $router): void
     {
         $router->clearCache();
-        Audit::log('admin.cache_routes_cleared', 'Администратор полностью удалил кэш маршрутов');
+        Audit::log('admin.cache_routes_cleared', 'Администратор полностью удалил кэш маршрутов', 'admin');
     }
     
     /**
@@ -76,7 +76,7 @@ class AdminToolsService
             $success = \App\Modules\Mail\Core\Mailer::send($email, $subject, $message);
             
             if ($success) {
-                Audit::log('admin.test_email_sent', "Администратор отправил тестовое письмо на {$email}");
+                Audit::log('admin.test_email_sent', "Администратор отправил тестовое письмо на {$email}", 'admin');
                 return null;
             }
             

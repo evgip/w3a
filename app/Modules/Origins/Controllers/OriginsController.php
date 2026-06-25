@@ -58,7 +58,7 @@ class OriginsController extends Controller
         $moderatorId = (int) ($_SESSION['user_id'] ?? 0);
 
         if ($domainModel->ban($domain, $reason, $moderatorId)) {
-            Audit::log('admin.domain_banned', "Модератор заблокировал домен: {$domain}", [
+            Audit::log('admin.domain_banned', "Модератор заблокировал домен: {$domain}", 'admin', [
                 'domain' => $domain,
                 'reason' => $reason,
             ]);
@@ -89,7 +89,7 @@ class OriginsController extends Controller
 
         $domainModel->unban($domain['domain']);
 
-        Audit::log('admin.domain_unbanned', "Модератор разблокировал домен: {$domain['domain']}", [
+        Audit::log('admin.domain_unbanned', "Модератор разблокировал домен: {$domain['domain']}",  'admin', [
             'domain_id' => (int) $id,
         ]);
 

@@ -474,7 +474,7 @@ class AdminController extends Controller
     public function clearDbAudit(): void
     {
         if ($this->service(AdminAuditService::class)->clearAuditLogs()) {
-            \App\Core\Audit::log('admin.tools_clear_db', 'Администратор выполнил полную очистку (TRUNCATE) таблицы аудита в базе данных');
+            \App\Core\Audit::log('admin.tools_clear_db', 'Администратор выполнил полную очистку (TRUNCATE) таблицы аудита в базе данных', 'admin');
             Session::setFlash('success', 'Таблица логов аудита в базе данных успешно и полностью очищена.');
         } else {
             Session::setFlash('error', 'Не удалось очистить таблицу в БД.');

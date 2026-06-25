@@ -265,7 +265,7 @@ abstract class Model
      */
     public function forceDelete($id): bool
     {
-        \App\Core\Audit::log('model.force_delete', "Запись полностью уничтожена из БД", [
+        \App\Core\Audit::log('model.force_delete', "Запись полностью уничтожена из БД", 'model', [
             'table' => $this->table,
             'record_id' => $id
         ]);

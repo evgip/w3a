@@ -142,7 +142,7 @@ class AuthController extends Controller
 		
 		if (!$user) {
 			// При неудаче — редирект на форму логина
-			$this->redirectWithError('/login', 'Неверный email или пароль');
+			$this->redirectWithMessage('/login', 'Неверный email или пароль', 'error');
 			return;
 		}
 
@@ -175,6 +175,12 @@ class AuthController extends Controller
      */
     public function showRegisterForm(): void
     {
+		if (config('config.app.invitations_enabled', false, 'bool')) {
+            $this->redirect(route('home'));
+            return;
+		} 
+		
+		
         // Получаем старые значения из сессии (если есть), удаляем после использования
         $old = \App\Core\Session::get('old_input', []);
         \App\Core\Session::delete('old_input');

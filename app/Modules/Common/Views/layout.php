@@ -101,7 +101,7 @@
 					</div>
 				<?php else: ?>
 					<a href="<?= route('auth.login') ?>">Войти</a>
-					<?php if (config_bool('config.app.invitations_enabled', false)): ?>
+					<?php if (config('config.app.invitations_enabled', false, 'bool')): ?>
 						<?php if (!\App\Modules\Auth\Services\Auth::check()): ?>
 							<a class="nav-link" href="<?= route('home') ?>invite/request">Запросить приглашение</a>
 						<?php else: ?>

@@ -17,7 +17,7 @@ class InvitationsController extends Controller
      */
     private function isInvitationsEnabled(): bool
     {
-        return config_bool('config.app.invitations_enabled', false);
+		return  config('config.app.invitations_enabled', false, 'bool');
     }
 
     /**
@@ -25,7 +25,7 @@ class InvitationsController extends Controller
      */
     private function hasEnoughKarma(int $userId): bool
     {
-        $minKarma = config_int('config.app.min_karma_for_invitation', 10);
+        $minKarma = config('config.app.min_karma_for_invitation', 10, 'int');
         $userKarma = $this->service(User::class)->getUserKarma($userId);
         return $userKarma >= $minKarma;
     }
@@ -51,7 +51,7 @@ class InvitationsController extends Controller
         $activeCount = $invitationModel->countActiveInvitations($userId);
 
         // Максимум приглашений
-        $maxInvitations = config_int('config.app.max_invitations_per_user', 5);
+        $maxInvitations = config('config.app.max_invitations_per_user', 5, 'int');
 
         $this->render('index', [
             'title' => 'Управление приглашениями',
@@ -59,7 +59,7 @@ class InvitationsController extends Controller
             'activeCount' => $activeCount,
             'maxInvitations' => $maxInvitations,
             'hasEnoughKarma' => $this->hasEnoughKarma($userId),
-            'minKarma' => config_int('config.app.min_karma_for_invitation', 10),
+            'minKarma' => config('config.app.min_karma_for_invitation', 10, 'int'),
             'request' => $this->request
         ]);
     }
@@ -90,7 +90,7 @@ class InvitationsController extends Controller
 
         // Проверка лимита
         $activeCount = $invitationModel->countActiveInvitations($userId);
-        $maxInvitations = config_int('config.app.max_invitations_per_user', 5);
+        $maxInvitations = config('config.app.max_invitations_per_user', 5, 'int');
 
         if ($activeCount >= $maxInvitations) {
             Session::setFlash('error', "Вы достигли лимита активных приглашений ({$maxInvitations}).");
@@ -114,7 +114,7 @@ class InvitationsController extends Controller
         }
 
         // Создание приглашения
-        $expiresDays = config_int('config.app.invitation_expires_days', 7);
+        $expiresDays = config('config.app.invitation_expires_days', 7, 'int');
         $invitationId = $invitationModel->createInvitation($userId, $email ?: null, $expiresDays);
 
         if ($invitationId) {

@@ -5,12 +5,15 @@ namespace App\Core;
 class Validator
 {
     protected array $errors = [];
+    protected array $data = [];
 
     /**
      * Валидация входных данных по заданным правилам
      */
     public function validate(array $data, array $rules): bool
     {
+        $this->data = $data;
+
         foreach ($rules as $field => $fieldRules) {
             $rulesArray = explode('|', $fieldRules);
             $value = trim($data[$field] ?? '');
@@ -57,6 +60,29 @@ class Validator
                 }
                 break;
 
+            case 'max':
+                if ($value !== '' && mb_strlen($value) > (int)$param) {
+                    $this->errors[$field][] = "Поле {$field} должно быть не более {$param} символов.";
+                }
+                break;
+
+            case 'match':
+                if ($value !== '' && $param !== null) {
+                    $matchValue = $this->data[$param] ?? '';
+                    if ($value !== $matchValue) {
+                        $this->errors[$field][] = "Поле {$field} должно совпадать с полем {$param}.";
+                    }
+                }
+                break;
+
+			case 'regex':
+				if ($value !== '' && $param !== null) {
+					if (!preg_match($param, $value)) {
+						$this->errors[$field][] = "Поле {$field} имеет недопустимый формат.";
+					}
+				}
+				break;
+
             case 'unique':
                 if ($value !== '' && $param !== null) {
                     $commaPos = strpos($param, ',');
@@ -64,12 +90,10 @@ class Validator
                         $table = substr($param, 0, $commaPos);
                         $column = substr($param, $commaPos + 1);
 
-						// Разрешаем только буквы, цифры и подчеркивание, начиная с буквы или подчеркивания
-						if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table) || 
-							!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
-							// Логируем ошибку или прерываем выполнение, так как это ошибка разработчика
-							throw new \InvalidArgumentException("Недопустимое имя таблицы или колонки в правиле unique");
-						}
+                        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table) || 
+                            !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
+                            throw new \InvalidArgumentException("Недопустимое имя таблицы или колонки в правиле unique");
+                        }
 
                         $db = Database::getConnection();
                         $stmt = $db->prepare("SELECT COUNT(*) FROM `{$table}` WHERE `{$column}` = :val LIMIT 1");
@@ -81,7 +105,18 @@ class Validator
                     }
                 }
                 break;
+
+            default:
+                throw new \InvalidArgumentException("Неизвестное правило валидации: {$rule}");
         }
+    }
+
+    /**
+     * Проверка, прошла ли валидация успешно
+     */
+    public function isValid(): bool
+    {
+        return empty($this->errors);
     }
 
     /**

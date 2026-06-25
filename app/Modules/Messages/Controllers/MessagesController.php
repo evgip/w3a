@@ -50,7 +50,7 @@ class MessagesController extends Controller
         $this->service(MessageService::class)->markAsRead($conversationId, $userId);
 
         $currentPage = max(1, (int)$this->request->getParams('chat_page', 1));
-        $perPage = config_int('pagination.messages_per_page', 15);
+        $perPage = config('pagination.messages_per_page', 15, 'int');
 
         $messagesData = $this->service(MessageService::class)->getPaginatedMessages($conversationId, $currentPage, $perPage);
         $recipient = $this->service(ConversationService::class)->getConversationPartner($conversationId, $userId);

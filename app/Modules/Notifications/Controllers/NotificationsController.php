@@ -40,7 +40,7 @@ class NotificationsController extends Controller
 
         $type = (string)$this->request->getParams('type', 'all');
         $page = max(1, (int)$this->request->getParams('page', 1));
-        $perPage = config_int('constants.pagination.notifications_per_page', 25);
+        $perPage = config('constants.pagination.notifications_per_page', 25, 'int');
 
         $data = $this->getNotificationService()->getNotificationsForIndex(
             $userId,

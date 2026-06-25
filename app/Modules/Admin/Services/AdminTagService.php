@@ -82,7 +82,7 @@ class AdminTagService
             'category_id' => $categoryId,
         ]);
         
-        Audit::log('admin.tag_created', "Администратор создал новый тег #{$tagSlug}");
+        Audit::log('admin.tag_created', "Администратор создал новый тег #{$tagSlug}", 'admin');
         
         return $tagId;
     }
@@ -145,7 +145,7 @@ class AdminTagService
 			$storyModel->recalculateHotness($storyId);
 		}
 		
-        Audit::log('admin.tag_updated', "Администратор изменил параметры тега #{$tagSlug}");
+        Audit::log('admin.tag_updated', "Администратор изменил параметры тега #{$tagSlug}", 'admin');
         
         return true;
     }

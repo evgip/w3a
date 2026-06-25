@@ -7,7 +7,7 @@ $currentUserId = \App\Modules\Auth\Services\Auth::check() ? (int)$user_id : 0;
 
 $commentsTree = $commentsTree ?? [];
 
-$minKarmaForDownvote = config_int('config.app.min_karma_for_downvote', 10);
+$minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
 
 $canUserDownvote = false;
 if ($currentUserId > 0) {

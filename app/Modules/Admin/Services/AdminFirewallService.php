@@ -38,7 +38,7 @@ class AdminFirewallService
             $stmt = $db->prepare("INSERT INTO `banned_ips` (`ip_address`, `reason`) VALUES (:ip, :reason)");
             $stmt->execute(['ip' => $ip, 'reason' => $reason]);
             
-            Audit::log('admin.ip_banned', "Администратор заблокировал IP: {$ip}", ['reason' => $reason]);
+            Audit::log('admin.ip_banned', "Администратор заблокировал IP: {$ip}", ['reason' => $reason], 'admin');
             
             return true;
         } catch (\Exception $e) {
@@ -64,7 +64,7 @@ class AdminFirewallService
         $stmt = $db->prepare("DELETE FROM `banned_ips` WHERE `id` = :id");
         $stmt->execute(['id' => $id]);
         
-        Audit::log('admin.ip_unbanned', "Администратор разблокировал IP: {$ip}");
+        Audit::log('admin.ip_unbanned', "Администратор разблокировал IP: {$ip}", 'admin');
         
         return $ip;
     }

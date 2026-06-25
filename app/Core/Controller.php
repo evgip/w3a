@@ -134,27 +134,16 @@ abstract class Controller
         return $urlHost === $appHost;
     }
     
-    protected function redirectWithError(string $url, string $message): void
-    {
-        Session::setFlash('error', $message);
-        $this->redirect($url);
-    }
-    
-    protected function redirectWithSuccess(string $url, string $message): void
-    {
-        Session::setFlash('success', $message);
-        $this->redirect($url);
-    }
-    
-    protected function backWithError(string $message, string $fallback = '/'): void
-    {
-        $this->redirectWithError($this->getSafeBackUrl($fallback), $message);
-    }
-    
-    protected function backWithSuccess(string $message, string $fallback = '/'): void
-    {
-        $this->redirectWithSuccess($this->getSafeBackUrl($fallback), $message);
-    }
+	protected function redirectWithMessage(string $url, string $message, string $type = 'success'): void
+	{
+		Session::setFlash($type, $message);
+		$this->redirect($url);
+	}
+
+	protected function backWithMessage(string $message, string $type = 'success', string $fallback = '/'): void
+	{
+		$this->redirectWithMessage($this->getSafeBackUrl($fallback), $message, $type);
+	}
 	
 	/**
 	 * Получение сервиса из контейнера.

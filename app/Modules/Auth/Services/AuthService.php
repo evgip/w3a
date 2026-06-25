@@ -241,58 +241,70 @@ class AuthService
      * @param string $password Пароль в открытом виде
      * @return int|null ID зарегистрированного пользователя или null при ошибке
      */
-    public function register(string $username, string $email, string $password): ?int
-    {
-        // Проверка уникальности email
-        if ($this->userModel->findBy('email', $email)) {
-            AppCoreSession::setFlash('error', 'Email уже зарегистрирован.');
-            return null;
-        }
+	public function register(): void
+	{
+		// === ПРОВЕРКА КАПЧИ ===
+		if (!Captcha::validate($_POST['smart-token'] ?? null)) {
+			Session::setFlash('error', 'Пожалуйста, подтвердите, что вы не робот.');
+			$this->redirect(route('auth.register'));
+			return;
+		}
 
-        // Проверка уникальности username
-        if ($this->userModel->findByName($username)) {
-            AppCoreSession::setFlash('error', 'Имя пользователя уже занято.');
-            return null;
-        }
+		$username = trim($this->request->getParams('username'));
+		$email = trim($this->request->getParams('email'));
+		$password = $this->request->getParams('password');
+		$passwordConfirmation = $this->request->getParams('password_confirmation');
 
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+		// === ВАЛИДАЦИЯ ВХОДНЫХ ДАННЫХ ===
+		$validator = new Validator();
+		$validator->validate([
+			'username' => $username,
+			'email' => $email,
+			'password' => $password,
+			'password_confirmation' => $passwordConfirmation
+		], [
+			'username' => 'required|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/',
+			'email' => 'required|email',
+			'password' => 'required|min:6',
+			'password_confirmation' => 'required|match:password'
+		]);
 
-        // Создаём пользователя с is_active = 0 (неактивен до подтверждения email)
-        $userId = $this->userModel->create([
-            'username' => $username,
-            'email' => $email,
-            'password' => $hashedPassword,
-            'role' => 'user',
-            'is_active' => 0  // ⚠️ Неактивен до активации
-        ]);
+		if (!$validator->isValid()) {
+			$errors = $validator->getErrors();
+			$errorMessages = [];
+			foreach ($errors as $fieldErrors) {
+				foreach ($fieldErrors as $error) {
+					$errorMessages[] = $error;
+				}
+			}
+			
+			Session::setFlash('error', implode('<br>', $errorMessages));
+			
+			// Сохраняем ввод в сессию для повторной отрисовки формы
+			Session::set('old_input', [
+				'username' => $username,
+				'email' => $email,
+			]);
+			
+			header('Location: /register');
+			exit;
+		}
 
-        if ($userId > 0) {
-            // Инициализация профиля и пользовательских настроек
-            $this->userModel->updateProfile($userId, ['bio' => null, 'avatar' => null]);
-            $this->userModel->updateSettings($userId, [
-                'notify_on_reply' => 1,
-                'notify_on_story_comment' => 1,
-                'email_notifications' => 0
-            ]);
+		$userId = $this->service(AuthService::class)->register($username, $email, $password);
+		if (!$userId) {
+			// Сохраняем ввод в сессию для повторной отрисовки формы
+			Session::set('old_input', [
+				'username' => $username,
+				'email' => $email,
+			]);
+			header('Location: /register');
+			exit;
+		}
 
-            // === ОТПРАВКА ПИСЬМА АКТИВАЦИИ ===
-            $activationToken = bin2hex(random_bytes(32));
-            
-            // Сохраняем токен в таблице email_activations
-            $this->emailActivationModel->createToken($userId, $activationToken);
-
-            // Отправляем письмо
-            $this->sendActivationEmail($email, $username, $activationToken);
-
-            Audit::log('auth.register', "Зарегистрирован новый пользователь", 'auth', [
-                'user_id' => $userId,
-                'email' => $email,
-                'username' => $username
-            ]);
-        }
-
-        return $userId > 0 ? $userId : null;
-    }
+		Session::setFlash('success', 'Регистрация успешна! Проверьте почту.');
+		header('Location: /login');
+		exit;
+	}
 
 	/**
 	 * Активировать аккаунт по токену из email.

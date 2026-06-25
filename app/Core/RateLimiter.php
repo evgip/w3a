@@ -59,7 +59,7 @@ class RateLimiter
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 
         // Log critical rate-limiting throttle breaches down to the database for administrative alerting
-        Audit::log('security.rate_limited', "Превышен лимит частоты запросов. IP заблокирован.", [
+        Audit::log('security.rate_limited', "Превышен лимит частоты запросов. IP заблокирован.", 'security', [
             'ip_address' => $ip,
             'url'        => $_SERVER['REQUEST_URI'] ?? '/'
         ]);

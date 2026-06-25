@@ -75,7 +75,7 @@ class StoryService
 		}
 
         // 7. Логирование
-        \App\Core\Audit::log('story.created', 'Пользователь создал новую публикацию с тегами');
+        \App\Core\Audit::log('story.created', 'Пользователь создал новую публикацию с тегами', 'story');
 
         return $storyId;
     }
@@ -140,7 +140,7 @@ class StoryService
     private function validateTitle(string $title): bool
     {
         $validator = new Validator();
-        $minLength = config_int('validation.title_min_length', 5);
+        $minLength = config('validation.title_min_length', 5, 'int');
         return $validator->validate(['title' => $title], ['title' => "required|min:{$minLength}"]);
     }
 
@@ -168,7 +168,7 @@ class StoryService
             "Публикация отклонена: домен **" . e($domain) . "** заблокирован. Причина: " . e($reason)
         );
 
-        \App\Core\Audit::log('story.rejected_banned_domain', "Попытка публикации с забаненного домена", [
+        \App\Core\Audit::log('story.rejected_banned_domain', "Попытка публикации с забаненного домена", 'story', [
             'domain' => $domain,
             'user_id' => $userId,
             'url' => $url,

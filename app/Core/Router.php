@@ -328,7 +328,7 @@ class Router
 
         // --- RATE LIMITER ---
         if ($method === 'POST') {
-            if ($uri === 'login' || $uri === 'register') {
+            if ($uri === '/login' || $uri === '/register') {
                 if (!\App\Core\RateLimiter::check('auth.submit')) {
                     \App\Core\RateLimiter::block();
                 }

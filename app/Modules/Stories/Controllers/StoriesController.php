@@ -50,7 +50,7 @@ class StoriesController extends Controller
     public function index(string $tagname = '', string $domain = ''): void
     {
         $currentPage = max(1, (int)$this->request->getParams('page', 1));
-        $perPage = config_int('constants.pagination.stories_per_page', 15);
+        $perPage = config('constants.pagination.stories_per_page', 15, 'int');
         $offset = ($currentPage - 1) * $perPage;
 
 		// ← НОВОЕ: читаем режим сортировки

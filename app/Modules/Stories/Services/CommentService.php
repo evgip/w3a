@@ -40,7 +40,7 @@ class CommentService
     {
         // 1. Валидация текста
         if (!$this->validateCommentText($text)) {
-            $minLength = config_int('constants.validation.comment_min_length', 2);
+            $minLength = config('constants.validation.comment_min_length', 2, 'int');
             Session::setFlash('error', "Текст комментария должен содержать не менее {$minLength} символов.");
             return 0;
         }
@@ -192,7 +192,7 @@ class CommentService
     private function validateCommentText(string $text): bool
     {
         $validator = new Validator();
-        $minLength = config_int('constants.validation.comment_min_length', 2);
+        $minLength = config('constants.validation.comment_min_length', 2, 'int');
         return $validator->validate(['comment_text' => $text], ['comment_text' => "required|min:{$minLength}"]);
     }
 

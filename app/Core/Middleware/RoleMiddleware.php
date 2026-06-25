@@ -107,7 +107,7 @@ abstract class RoleMiddleware implements MiddlewareInterface
         
         // Логируем
         if (class_exists(\App\Core\Audit::class)) {
-            \App\Core\Audit::log('security.banned_access', 'Попытка доступа забаненного пользователя', [
+            \App\Core\Audit::log('security.banned_access', 'Попытка доступа забаненного пользователя', 'security', [
                 'user_id' => $userId,
                 'url' => $_SERVER['REQUEST_URI'] ?? '/',
             ]);
