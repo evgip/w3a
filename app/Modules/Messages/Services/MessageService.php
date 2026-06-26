@@ -2,6 +2,7 @@
 
 namespace App\Modules\Messages\Services;
 
+use App\Core\Session;
 use App\Modules\Messages\Models\Message;
 use App\Modules\Messages\Models\Conversation;
 use App\Modules\Notifications\Services\NotificationService;

@@ -24,15 +24,15 @@ class ModuleServiceProvider
     public function register(Container $container): void
     {
         // === МОДЕЛИ ===
-        
+
         $container->singleton(Notification::class, fn() => new Notification());
-        
+
         // Cross-module: User из модуля Users
         // TODO: перенести в Users\ModuleServiceProvider когда он появится
         $container->singleton(User::class, fn() => new User());
-        
+
         // === СЕРВИСЫ ===
-        
+
         $container->singleton(NotificationService::class, function (Container $c) {
             return new NotificationService(
                 $c->get(Notification::class),

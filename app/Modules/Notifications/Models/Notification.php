@@ -23,6 +23,7 @@ class Notification extends Model
 
     // Типы уведомлений
     public const TYPE_REPLY = 'reply';
+	public const TYPE_STORY_COMMENT = 'story_comment';  
     public const TYPE_MENTION = 'mention';
     public const TYPE_MESSAGE = 'message';
     public const TYPE_BAN = 'ban';
@@ -53,6 +54,25 @@ class Notification extends Model
             $message ?? 'Ответил на ваш комментарий'
         );
     }
+
+	/**
+	 * Создать уведомление о комментарии к посту
+	 */
+	public function createStoryCommentNotification(
+		int $userId,
+		int $commentId,
+		int $actorId,
+		string $message = null
+	): int {
+		return $this->createNotification(
+			$userId,
+			self::TYPE_STORY_COMMENT,
+			self::ENTITY_COMMENT,
+			$commentId,
+			$actorId,
+			$message ?? 'Прокомментировал вашу публикацию'
+		);
+	}
 
     /**
      * Создать уведомление об упоминании
@@ -286,4 +306,42 @@ class Notification extends Model
         $stmt->execute(['days' => $daysOld]);
         return $stmt->rowCount();
     }
+	
+	
+	public function userWantsNotification(int $userId, string $setting): bool
+	{
+		$allowedSettings = [
+			'notify_on_reply',
+			'notify_on_story_comment',
+			'notify_on_message',
+			'notify_on_mention',
+			'email_notifications',
+		];
+
+		if (!in_array($setting, $allowedSettings, true)) {
+			return true;
+		}
+
+		try {
+			$stmt = static::db()->prepare("
+				SELECT `{$setting}`
+				FROM `user_settings`
+				WHERE `user_id` = :user_id
+				LIMIT 1
+			");
+
+			$stmt->execute(['user_id' => $userId]);
+			$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+			if (!$result) {
+				return true;
+			}
+
+			return (bool) $result[$setting];
+			
+		} catch (\Throwable $e) {
+			error_log("[NOTIFICATIONS] Error checking user settings: " . $e->getMessage());
+			return true; // При ошибке — уведомляем (безопасное поведение)
+		}
+	} 
 }
