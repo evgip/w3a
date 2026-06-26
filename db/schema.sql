@@ -1083,3 +1083,7 @@ ALTER TABLE `remember_tokens`
 ALTER TABLE `user_settings` 
 ADD COLUMN `notify_on_mention` TINYINT(1) NOT NULL DEFAULT 1 
 AFTER `notify_on_story_comment`;
+
+ALTER TABLE `user_settings` 
+ADD COLUMN `notify_on_message` TINYINT(1) NOT NULL DEFAULT 1 
+AFTER `notify_on_mention`;

@@ -121,7 +121,7 @@ class User extends Model
     {
         $fields = [];
         $params = ['user_id' => $userId];
-        $allowed = ['notify_on_reply', 'notify_on_story_comment', 'email_notifications'];
+        $allowed = ['notify_on_reply', 'notify_on_story_comment', 'notify_on_mention', 'notify_on_message', 'email_notifications'];
         
         foreach ($data as $key => $value) {
             if (in_array($key, $allowed)) {

@@ -95,6 +95,32 @@
             </label>
             <p class="hint">Получать уведомления о новых комментариях к историям, на которые вы подписаны</p>
         </div>
+
+        <!-- @-уведомления -->
+        <div class="form-field-group">
+            <label class="checkbox-label">
+                <input type="checkbox" 
+                       name="notify_on_mention" 
+                       value="1"
+                       <?= !empty($settings['notify_on_mention']) ? 'checked' : '' ?>>
+                <span class="checkmark"></span>
+                <strong>Уведомления при обращение к вам @</strong>
+            </label>
+            <p class="hint">Получать уведомления, когда кто-то обращается к вам @</p>
+        </div>
+		
+		<!-- Уведомления о личных сообщениях -->
+		<div class="form-field-group">
+			<label class="checkbox-label">
+				<input type="checkbox" 
+					   name="notify_on_message" 
+					   value="1"
+					   <?= !empty($settings['notify_on_message']) ? 'checked' : '' ?>>
+				<span class="checkmark"></span>
+				<strong>Уведомления о личных сообщениях</strong>
+			</label>
+			<p class="hint">Получать уведомления, когда кто-то отправляет вам личное сообщение</p>
+		</div>
         
         <!-- Email-уведомления -->
         <div class="form-field-group">

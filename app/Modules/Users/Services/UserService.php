@@ -31,6 +31,8 @@ class UserService
         $settings = $this->userModel->getSettings($userId);
         $user['notify_on_reply'] = $settings['notify_on_reply'] ?? 1;
         $user['notify_on_story_comment'] = $settings['notify_on_story_comment'] ?? 1;
+        $user['notify_on_mention'] = $settings['notify_on_mention'] ?? 1;
+        $user['notify_on_message'] = $settings['notify_on_message'] ?? 1;
         $user['email_notifications'] = $settings['email_notifications'] ?? 0;
 
         return $user;
@@ -67,6 +69,8 @@ class UserService
         return $this->userModel->updateSettings($userId, [
             'notify_on_reply' => $data['notify_on_reply'] ?? 0,
             'notify_on_story_comment' => $data['notify_on_story_comment'] ?? 0,
+            'notify_on_mention' => $data['notify_on_mention'] ?? 0,
+            'notify_on_message' => $data['notify_on_message'] ?? 0,
             'email_notifications' => $data['email_notifications'] ?? 0,
         ]);
     }
@@ -74,50 +78,49 @@ class UserService
     /**
      * Сменить пароль
      */
-	public function changePassword(int $userId, string $currentPassword, string $newPassword): bool
-	{
-		$user = $this->userModel->find($userId);
-		if (!$user) {
-			AppCoreSession::setFlash('error', 'Пользователь не найден.');
-			return false;
-		}
+    public function changePassword(int $userId, string $currentPassword, string $newPassword): bool
+    {
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            AppCoreSession::setFlash('error', 'Пользователь не найден.');
+            return false;
+        }
 
-		if (!password_verify($currentPassword, $user['password'])) {
-			AppCoreSession::setFlash('error', 'Текущий пароль введён неверно.');
-			return false;
-		}
+        if (!password_verify($currentPassword, $user['password'])) {
+            AppCoreSession::setFlash('error', 'Текущий пароль введён неверно.');
+            return false;
+        }
 
-		$hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-		$success = $this->userModel->update($userId, ['password' => $hashedPassword]);
-		
-		if ($success) {
-			AppCoreSession::setFlash('success', 'Пароль успешно изменён.');
-		}
-		
-		return $success;
-	}
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        $success = $this->userModel->update($userId, ['password' => $hashedPassword]);
+        
+        if ($success) {
+            AppCoreSession::setFlash('success', 'Пароль успешно изменён.');
+        }
+        
+        return $success;
+    }
 
-	/**
-	 * Получить настройки уведомлений пользователя
-	 *
-	 * @param int $userId ID пользователя
-	 * @return array Настройки уведомлений
-	 */
-	public function getUserSettings(int $userId): array
-	{
-		$settings = $this->userModel->getSettings($userId);
-		
-		// Если настроек нет — возвращаем дефолтные значения
-		if (!$settings) {
-			return [
-				'notify_on_reply' => 1,
-				'notify_on_story_comment' => 1,
-				'email_notifications' => 0,
-			];
-		}
-		
-		return $settings;
-	}
+    /**
+     * Получить настройки уведомлений пользователя
+     */
+    public function getUserSettings(int $userId): array
+    {
+        $settings = $this->userModel->getSettings($userId);
+        
+        // Если настроек нет — возвращаем дефолтные значения
+        if (!$settings) {
+            return [
+                'notify_on_reply' => 1,
+                'notify_on_story_comment' => 1,
+                'notify_on_mention' => 1,
+                'notify_on_message' => 1,
+                'email_notifications' => 0,
+            ];
+        }
+        
+        return $settings;
+    }
 
     /**
      * Получить список всех пользователей с информацией о бане

@@ -220,6 +220,8 @@ class UsersController extends Controller
         $this->getUserService()->updateSettings($userId, [
             'notify_on_reply' => $this->request->getParams('notify_on_reply') ? 1 : 0,
             'notify_on_story_comment' => $this->request->getParams('notify_on_story_comment') ? 1 : 0,
+			'notify_on_mention' => $this->request->getParams('notify_on_mention') ? 1 : 0,
+			'notify_on_message' => $this->request->getParams('notify_on_message') ? 1 : 0,
             'email_notifications' => $this->request->getParams('email_notifications') ? 1 : 0,
         ]);
 

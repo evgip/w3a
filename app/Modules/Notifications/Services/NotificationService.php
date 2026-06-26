@@ -214,6 +214,11 @@ class NotificationService
             return;
         }
 
+		// ✅ Проверяем настройки пользователя
+		if (!$this->userWantsNotification($recipientId, 'notify_on_message')) {
+			return; // Пользователь отключил уведомления о личных сообщениях
+		}
+
         try {
             $this->notificationModel->createMessageNotification(
                 $recipientId,
