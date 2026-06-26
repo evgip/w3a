@@ -1079,3 +1079,7 @@ ALTER TABLE `remember_tokens`
 ALTER TABLE `remember_tokens`
   ADD CONSTRAINT `fk_remember_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
   
+
+ALTER TABLE `user_settings` 
+ADD COLUMN `notify_on_mention` TINYINT(1) NOT NULL DEFAULT 1 
+AFTER `notify_on_story_comment`;

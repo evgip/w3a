@@ -360,6 +360,11 @@ class NotificationService
                 if ($userId <= 0 || $userId === $authorId || in_array($userId, $notifiedUserIds, true)) {
                     continue;
                 }
+				
+				// ✅ Проверяем настройки пользователя
+				if (!$this->userWantsNotification($userId, 'notify_on_mention')) {
+					continue;
+				}
 
                 $this->notificationModel->createMentionNotification(
                     $userId,
