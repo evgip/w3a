@@ -97,6 +97,28 @@ class UserService
 		return $success;
 	}
 
+	/**
+	 * Получить настройки уведомлений пользователя
+	 *
+	 * @param int $userId ID пользователя
+	 * @return array Настройки уведомлений
+	 */
+	public function getUserSettings(int $userId): array
+	{
+		$settings = $this->userModel->getSettings($userId);
+		
+		// Если настроек нет — возвращаем дефолтные значения
+		if (!$settings) {
+			return [
+				'notify_on_reply' => 1,
+				'notify_on_story_comment' => 1,
+				'email_notifications' => 0,
+			];
+		}
+		
+		return $settings;
+	}
+
     /**
      * Получить список всех пользователей с информацией о бане
      */

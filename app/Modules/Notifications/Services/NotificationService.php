@@ -245,75 +245,85 @@ class NotificationService
         return null;
     }
 
-    private function notifyStoryAuthor(
-        int $storyAuthorId,
-        int $commentAuthorId,
-        int $commentId,
-        bool $isFollowing,
-        array &$notifiedUserIds
-    ): void {
-        if ($storyAuthorId === $commentAuthorId) {
-            return;
-        }
+	private function notifyStoryAuthor(
+		int $storyAuthorId,
+		int $commentAuthorId,
+		int $commentId,
+		bool $isFollowing,
+		array &$notifiedUserIds
+	): void {
+		if ($storyAuthorId === $commentAuthorId) {
+			return;
+		}
 
-        if (in_array($storyAuthorId, $notifiedUserIds, true)) {
-            return;
-        }
+		if (in_array($storyAuthorId, $notifiedUserIds, true)) {
+			return;
+		}
 
-        if (!$isFollowing) {
-            return;
-        }
+		if (!$isFollowing) {
+			return;
+		}
 
-        try {
-            $this->notificationModel->createReplyNotification(
-                $storyAuthorId,
-                $commentId,
-                $commentAuthorId,
-                'Прокомментировал вашу публикацию'
-            );
-            $notifiedUserIds[] = $storyAuthorId;
-        } catch (\Throwable $e) {
-            error_log("[NOTIFICATIONS] Error notifying story author: " . $e->getMessage());
-        }
-    }
+		// ✅ Проверяем настройки пользователя
+		if (!$this->userWantsNotification($storyAuthorId, 'notify_on_story_comment')) {
+			return; // Пользователь отключил уведомления о комментариях к историям
+		}
 
-    private function notifyParentCommentAuthor(
-        int $parentCommentId,
-        int $commentAuthorId,
-        int $commentId,
-        array &$notifiedUserIds
-    ): void {
-        try {
-            $parentAuthorId = $this->commentModel->getAuthorId($parentCommentId);
-        } catch (\Throwable $e) {
-            error_log("[NOTIFICATIONS] Error getting parent author: " . $e->getMessage());
-            return;
-        }
+		try {
+			$this->notificationModel->createReplyNotification(
+				$storyAuthorId,
+				$commentId,
+				$commentAuthorId,
+				'Прокомментировал вашу публикацию'
+			);
+			$notifiedUserIds[] = $storyAuthorId;
+		} catch (\Throwable $e) {
+			error_log("[NOTIFICATIONS] Error notifying story author: " . $e->getMessage());
+		}
+	}
 
-        if ($parentAuthorId === null || $parentAuthorId <= 0) {
-            return;
-        }
+	private function notifyParentCommentAuthor(
+		int $parentCommentId,
+		int $commentAuthorId,
+		int $commentId,
+		array &$notifiedUserIds
+	): void {
+		try {
+			$parentAuthorId = $this->commentModel->getAuthorId($parentCommentId);
+		} catch (\Throwable $e) {
+			error_log("[NOTIFICATIONS] Error getting parent author: " . $e->getMessage());
+			return;
+		}
 
-        if ($parentAuthorId === $commentAuthorId) {
-            return;
-        }
+		if ($parentAuthorId === null || $parentAuthorId <= 0) {
+			return;
+		}
 
-        if (in_array($parentAuthorId, $notifiedUserIds, true)) {
-            return;
-        }
+		if ($parentAuthorId === $commentAuthorId) {
+			return;
+		}
 
-        try {
-            $this->notificationModel->createReplyNotification(
-                $parentAuthorId,
-                $commentId,
-                $commentAuthorId,
-                'Ответил на ваш комментарий'
-            );
-            $notifiedUserIds[] = $parentAuthorId;
-        } catch (\Throwable $e) {
-            error_log("[NOTIFICATIONS] Error notifying parent author: " . $e->getMessage());
-        }
-    }
+		if (in_array($parentAuthorId, $notifiedUserIds, true)) {
+			return;
+		}
+
+		// ✅ Проверяем настройки пользователя
+		if (!$this->userWantsNotification($parentAuthorId, 'notify_on_reply')) {
+			return; // Пользователь отключил уведомления об ответах
+		}
+
+		try {
+			$this->notificationModel->createReplyNotification(
+				$parentAuthorId,
+				$commentId,
+				$commentAuthorId,
+				'Ответил на ваш комментарий'
+			);
+			$notifiedUserIds[] = $parentAuthorId;
+		} catch (\Throwable $e) {
+			error_log("[NOTIFICATIONS] Error notifying parent author: " . $e->getMessage());
+		}
+	}
 
     private function processMentions(
         string $text,
@@ -365,4 +375,47 @@ class NotificationService
             }
         }
     }
+	
+	/**
+	 * Проверить, хочет ли пользователь получать уведомления данного типа.
+	 *
+	 * @param int    $userId  ID пользователя
+	 * @param string $setting Название настройки (notify_on_reply, notify_on_story_comment)
+	 * @return bool
+	 */
+	private function userWantsNotification(int $userId, string $setting): bool
+	{
+		$allowedSettings = [
+			'notify_on_reply',
+			'notify_on_story_comment',
+			'email_notifications',
+		];
+
+		if (!in_array($setting, $allowedSettings, true)) {
+			return true;
+		}
+
+		try {
+			$stmt = \App\Core\Model::db()->prepare("
+				SELECT `{$setting}`
+				FROM `user_settings`
+				WHERE `user_id` = :user_id
+				LIMIT 1
+			");
+			
+			$stmt->execute(['user_id' => $userId]);
+			$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+			// Если записи нет — считаем, что пользователь хочет уведомления (default = 1)
+			if (!$result) {
+				return true;
+			}
+
+			return (bool) $result[$setting];
+			
+		} catch (\Throwable $e) {
+			error_log("[NOTIFICATIONS] Error checking user settings: " . $e->getMessage());
+			return true; // При ошибке — уведомляем (безопасное поведение по умолчанию)
+		}
+	}
 }

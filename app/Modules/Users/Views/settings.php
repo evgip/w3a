@@ -1,58 +1,5 @@
 <h1>Настройки аккаунта</h1>
 
-<hr>
-
-<!-- СИСТЕМНЫЕ УВЕДОМЛЕНИЯ -->
-<h2>Системные уведомления</h2>
-
-<?php
-$hasUnreadNotif = false;
-if (!empty($notifications)) {
-    foreach ($notifications as $n) {
-        if ((int)$n['is_read'] === 0) {
-            $hasUnreadNotif = true;
-            break;
-        }
-    }
-}
-?>
-
-<?php if ($hasUnreadNotif): ?>
-    <p>
-        <form action="<?= route('account.notifications.read') ?>" method="POST" class="inline-form">
-            <?= csrf_field() ?>
-            <button type="submit">✓ Прочитать все уведомления</button>
-        </form>
-    </p>
-<?php endif; ?>
-
-<?php if (!empty($notifications)): ?>
-    <table class="data">
-        <tbody>
-            <?php foreach ($notifications as $item): ?>
-                <tr class="<?= ((int)$item['is_read'] === 0) ? 'unread' : '' ?>">
-                    <td>
-                        <?= e($item['message']) ?>
-                        <br>
-                        <span class="hint">
-                            <?= e(date('d.m.Y H:i', strtotime($item['created_at']))) ?>
-                        </span>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-<?php else: ?>
-    <p class="hint">
-        У вас нет системных уведомлений. Здесь будут появляться важные сообщения о безопасности вашего аккаунта.
-    </p>
-<?php endif; ?>
-
-<hr>
-
-<!-- НАСТРОЙКИ ПРОФИЛЯ -->
-<h2>Настройки профиля</h2>
-
 <p class="hint">
     Вы можете изменить личные контактные данные, рассказать о себе и загрузить графический аватар.
     <strong>150×150px</strong> — идеальный размер.
@@ -107,6 +54,71 @@ if (!empty($notifications)) {
 </form>
 
 <hr>
+
+<!-- УПРАВЛЕНИЕ УВЕДОМЛЕНИЯМИ -->
+<h2>Настройки уведомлений</h2>
+<p class="hint">
+    Выберите, о каких событиях вы хотите получать уведомления.
+</p>
+
+<form action="<?= route('account.settings.submit') ?>" method="POST">
+    <?= csrf_field() ?>
+    
+    <!-- Скрываем поля email/bio/avatar, чтобы они не потерялись при отправке -->
+    <input type="hidden" name="email" value="<?= e($user['email']) ?>">
+    <input type="hidden" name="bio" value="<?= e($user['bio'] ?? '') ?>">
+    
+    <div class="notification-settings">
+        
+        <!-- Уведомления об ответах -->
+        <div class="form-field-group">
+            <label class="checkbox-label">
+                <input type="checkbox" 
+                       name="notify_on_reply" 
+                       value="1"
+                       <?= !empty($settings['notify_on_reply']) ? 'checked' : '' ?>>
+                <span class="checkmark"></span>
+                <strong>Уведомления об ответах на мои комментарии</strong>
+            </label>
+            <p class="hint">Получать уведомления, когда кто-то отвечает на ваш комментарий</p>
+        </div>
+        
+        <!-- Уведомления о комментариях к подписанным историям -->
+        <div class="form-field-group">
+            <label class="checkbox-label">
+                <input type="checkbox" 
+                       name="notify_on_story_comment" 
+                       value="1"
+                       <?= !empty($settings['notify_on_story_comment']) ? 'checked' : '' ?>>
+                <span class="checkmark"></span>
+                <strong>Уведомления о комментариях к моим историям</strong>
+            </label>
+            <p class="hint">Получать уведомления о новых комментариях к историям, на которые вы подписаны</p>
+        </div>
+        
+        <!-- Email-уведомления -->
+        <div class="form-field-group">
+            <label class="checkbox-label">
+                <input type="checkbox" 
+                       name="email_notifications" 
+                       value="1"
+                       <?= !empty($settings['email_notifications']) ? 'checked' : '' ?>>
+                <span class="checkmark"></span>
+                <strong>Дублировать уведомления на email</strong>
+            </label>
+            <p class="hint">Отправлять копии уведомлений на ваш email (<?= e($user['email']) ?>)</p>
+        </div>
+        
+    </div>
+    
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 Сохранить настройки уведомлений</button>
+    </div>
+</form>
+
+<hr>
+
+ 
 
 <!-- ИЗМЕНЕНИЕ ПАРОЛЯ -->
 <h2>Изменение пароля</h2>

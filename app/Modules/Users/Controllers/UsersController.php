@@ -120,7 +120,7 @@ class UsersController extends Controller
      * Загружает данные текущего авторизованного пользователя:
      * - Основная информация (email, username)
      * - Данные профиля (bio, аватар)
-     * - Настройки уведомлений
+     * - Настройки оповещений
      * - Активные уведомления для отображения
      * 
      * Требует авторизации (проверяется через наличие `$_SESSION['user_id']`).
@@ -128,31 +128,27 @@ class UsersController extends Controller
      * 
      * @return void
      */
-    public function settings(): void
-    {
-        // Получаем ID текущего пользователя из сессии
-        $userId = Auth::id();
-        
-        // Загружаем пользователя с данными профиля через сервис
-        $user = $this->getUserService()->getUserWithProfile($userId);
-
-        if (!$user) {
-            // Пользователь не авторизован или удалён — редирект на главную
-            redirect('/');
-        }
-
-        // Загружаем активные уведомления для пользователя
-        $notifModel = new \App\Modules\Users\Models\Notification();
-        $notifications = $notifModel->getActiveNotifications($userId);
-
-        // Рендерим страницу настроек
-        $this->render('settings', [
-            'title' => 'Настройки профиля',
-            'user' => $user,
-            'notifications' => $notifications,
-            'request' => $this->request // Передаём объект запроса для CSRF-токена
-        ]);
-    }
+	public function settings(): void
+	{
+		$userId = Auth::id();
+		
+		// Загружаем пользователя с данными профиля
+		$user = $this->getUserService()->getUserWithProfile($userId);
+		if (!$user) {
+			redirect('/');
+		}
+		
+		// === Загружаем настройки через сервис ===
+		$settings = $this->getUserService()->getUserSettings($userId);
+		
+		// Рендерим страницу
+		$this->render('settings', [
+			'title' => 'Настройки профиля',
+			'user' => $user,
+			'settings' => $settings,
+			'request' => $this->request
+		]);
+	}
 
     /**
      * Обработка обновления настроек профиля (POST /account/settings).
