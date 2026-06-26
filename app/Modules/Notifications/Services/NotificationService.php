@@ -393,6 +393,7 @@ class NotificationService
 		$allowedSettings = [
 			'notify_on_reply',
 			'notify_on_story_comment',
+			'notify_on_mention',
 			'email_notifications',
 		];
 
