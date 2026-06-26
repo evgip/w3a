@@ -399,6 +399,7 @@ class NotificationService
 			'notify_on_reply',
 			'notify_on_story_comment',
 			'notify_on_mention',
+			'notify_on_message',
 			'email_notifications',
 		];
 
