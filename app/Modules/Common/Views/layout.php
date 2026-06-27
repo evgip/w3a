@@ -5,7 +5,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= e($data['csrf_token'] ?? '') ?>">
-	<title><?= e($title ?? 'Лента историй') ?> | <?= e(app_name()); ?> форум</title>
+	<title><?= e($title ?? 'Лента историй') ?> | <?= e(app_name()); ?> <?= __('forum') ?></title>
 	<link rel="stylesheet" href="/css/app.min.css">
 </head>
 
@@ -16,9 +16,8 @@
 			<a href="<?= route('home') ?>" class="navbar-logo">🌐 <?= e(app_name()); ?></a>
 
 			<nav class="navbar-links">
-				<a href="<?= route('home') ?>">📋 Лента</a>
-				<a href="<?= route('tags.index') ?>">🏷️ Теги</a>
-				<a href="/search">🔍 Поиск</a>
+				<a href="<?= route('tags.index') ?>"><?= __('tags') ?></a>
+				<a href="<?= route('search.index') ?>"><?= __('search') ?></a>
 
 				<?php if (\App\Modules\Auth\Services\Auth::check()): ?>
 					<?php
@@ -68,48 +67,48 @@
 						</button>
 
 						<div class="navbar-dropdown-menu" id="user-dropdown-menu">
-							<a href="<?= route('story.create') ?>" class="dropdown-menu-item">➕ Поделиться</a>
+							<a href="<?= route('story.create') ?>" class="dropdown-menu-item">➕ <?= __('share') ?></a>
 
 							<a href="<?= route('messages.index') ?>" class="dropdown-menu-item">
-								<span>✉️ Сообщения</span>
+								<span>✉️ <?= __('messages') ?></span>
 							</a>
 
-							<a href="<?= route('account.settings') ?>" class="dropdown-menu-item">⚙️ Настройки</a>
+							<a href="<?= route('account.settings') ?>" class="dropdown-menu-item">⚙️ <?= __('settings') ?></a>
 
 							<?php if (\App\Modules\Auth\Services\Auth::isAdmin()): ?>
 								<div class="dropdown-divider"></div>
-								<a href="/admin" class="dropdown-menu-item dropdown-item-admin">📊 Админка</a>
+								<a href="/admin" class="dropdown-menu-item dropdown-item-admin">📊 <?= __('admin_panel') ?></a>
 							<?php endif; ?>
 
 							<?php if (\App\Modules\Auth\Services\Auth::isModerator()): ?>
 								<div class="dropdown-divider"></div>
-								<a href="/mod/log" class="dropdown-menu-item dropdown-item-mod">📋 Лог модерации</a>
-								<a href="/mod/notes" class="dropdown-menu-item dropdown-item-mod">🔒 Заметки</a>
-								<a href="/mod/stats" class="dropdown-menu-item dropdown-item-mod">📈 Активность</a>
-								<a href="/admin/domains" class="dropdown-menu-item dropdown-item-mod">🌐 Домены</a>
-								<a href="<?= route('domains.index') ?>" class="dropdown-menu-item dropdown-item-mod">🚫 Бан</a>
+								<a href="/mod/log" class="dropdown-menu-item dropdown-item-mod">📋 <?= __('moderation_log') ?></a>
+								<a href="/mod/notes" class="dropdown-menu-item dropdown-item-mod">🔒 <?= __('notes') ?></a>
+								<a href="/mod/stats" class="dropdown-menu-item dropdown-item-mod">📈 <?= __('activity') ?></a>
+								<a href="/admin/domains" class="dropdown-menu-item dropdown-item-mod">🌐 <?= __('domains') ?></a>
+								<a href="<?= route('domains.index') ?>" class="dropdown-menu-item dropdown-item-mod">🚫 <?= __('ban') ?></a>
 							<?php endif; ?>
 
 							<div class="dropdown-divider"></div>
 							<form action="<?= route('auth.logout') ?>" method="POST" style="display:inline;">
 								 <?= csrf_field() ?>
-								<button type="submit" class="dropdown-menu-item navbar-logout-link">🚪  Выйти</button>
+								<button type="submit" class="dropdown-menu-item navbar-logout-link">🚪 <?= __('logout') ?></button>
 							</form>
 														
 						</div>
 
 					</div>
 				<?php else: ?>
-					<a href="<?= route('auth.login') ?>">Войти</a>
+					<a href="<?= route('auth.login') ?>"><?= __('login') ?></a>
 					<?php if (config('config.app.invitations_enabled', false, 'bool')): ?>
 						<?php if (!\App\Modules\Auth\Services\Auth::check()): ?>
-							<a class="nav-link" href="<?= route('home') ?>invite/request">Запросить приглашение</a>
+							<a class="nav-link" href="<?= route('home') ?>invite/request"><?= __('request_invitation') ?></a>
 						<?php else: ?>
-							<a class="nav-link" href="<?= route('invitations.index') ?>">🎟️ Приглашения</a>
+							<a class="nav-link" href="<?= route('invitations.index') ?>">🎟️ <?= __('invitations') ?></a>
 						<?php endif; ?>
 					<?php else: ?>
 						<?php if (!\App\Modules\Auth\Services\Auth::check()): ?>
-							<a class="btn-nav-create" href="<?= route('auth.register') ?>">Регистрация</a>
+							<a class="btn-nav-create" href="<?= route('auth.register') ?>"><?= __('register') ?></a>
 						<?php endif; ?>
 					<?php endif; ?>
 				<?php endif; ?>
@@ -127,11 +126,11 @@
 		<div></div>
 		<div>
 			<nav>
-				<a href="<?= route('home') ?>">Главная</a>
-				<a href="<?= route('page.about') ?>">О проекте</a>
-				<a href="<?= route('stats.index') ?>">Статистика</a>
+				<a href="<?= route('home') ?>"><?= __('home') ?></a>
+				<a href="<?= route('page.about') ?>"><?= __('about') ?></a>
+				<a href="<?= route('stats.index') ?>"><?= __('statistics') ?></a>
 				<?php if (\App\Modules\Auth\Services\Auth::check()): ?>
-				  <a href="<?= route('tags.filters') ?>">Фильтры</a>
+				  <a href="<?= route('tags.filters') ?>"><?= __('filters') ?></a>
 				<?php endif; ?>
 			</nav>
 			<?= \App\Core\Benchmark::renderStats() ?>

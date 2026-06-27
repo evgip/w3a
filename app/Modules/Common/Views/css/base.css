@@ -88,7 +88,7 @@ html {
 body, textarea, input, button {
     font-family: "helvetica neue", arial, sans-serif;
     color: var(--color-fg);
-    line-height: 1.45em;
+    line-height: 1.6em;
 }
 
 body {
@@ -314,8 +314,7 @@ li .domain:hover {
 
 .story_content {
     margin: 0.5em 0;
-    color: var(--opacity-fg-contrast-7-5);
-    font-size: 0.9em;
+    font-size: 1em;
 }
 
 .tag {
@@ -631,9 +630,9 @@ input[type="button"]:hover {
 
 .story_content summary {
     cursor: pointer;
-    padding: 0.5em 0;
     color: #666;
     font-style: italic;
+	font-size: 0.9em;
 }
 
 .story_content summary:hover {
@@ -641,12 +640,8 @@ input[type="button"]:hover {
 }
 
 .story_content details[open] summary {
-    margin-bottom: 1em;
+    padding-bottom: 1em;
     border-bottom: 1px solid #eee;
-}
-
-.story_content .full-content {
-    padding: 1em 0;
 }
 
 /* ------------------- Layout комментариев ----------------- */
@@ -862,7 +857,7 @@ table.data.zebra tr:nth-child(odd) td {
 .navbar-links {
     display: flex;
     align-items: center;
-    gap: 0.75em;
+    gap: 2em;
     margin-left: auto;
     font-size: 0.9em;
 }
@@ -1004,7 +999,7 @@ table.data.zebra tr:nth-child(odd) td {
     color: var(--opacity-fg-contrast-6);
     font-weight: bold;
     text-decoration: none;
-    padding: 0.25em 0;
+    padding: 0.2em 0;
     display: inline-flex;
     align-items: center;
     gap: 0.3em;
@@ -1016,7 +1011,7 @@ table.data.zebra tr:nth-child(odd) td {
 }
 
 .nav a.active {
-    border-bottom: 0.25em solid var(--color-fg-accent);
+    border-bottom: 0.2em solid var(--color-fg-accent);
     padding-bottom: 0;
     color: var(--color-fg);
 }

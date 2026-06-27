@@ -8,6 +8,30 @@ return [
         '404' => 'Упс! Страница не найдена.',
     ],
 
+    'search' => 'Search',
+	'tags' => 'Tags',
+	'home' => 'Home',
+	'forum' => 'forum',
+	'login' => 'Sign in',
+	'logout' => 'Sign out',
+	'register' => 'Register',
+	'invitations' => 'Invitations',
+	'request_invitation' => 'Request invitation',
+	'settings' => 'Settings',
+	'admin_panel' => 'Admin panel',
+	'messages' => 'Messages',
+	'share' => 'Share',
+
+	'moderation_log' => 'Moderation Log',
+	'notes' => 'Notes',
+	'activity' => 'Activity',
+	'domains' => 'Domains',
+	'ban' => 'Ban',
+
+	'about' => 'About',
+	'statistics' => 'Statistics',
+	'filters' => 'Filters',
+
     // EMAIL TEMPLATE ELEMENTS
     'email_activation_subject' => '🚀 Activate your account on %s',
     'email_activation_body'    => '<h3>Welcome to the community, %s!</h3>

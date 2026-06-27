@@ -220,16 +220,6 @@ class NotificationService
 
             $notifiedUserIds = [$authorId];
 
-            if ($storyAuthorId > 0) {
-                $this->notifyStoryAuthor(
-                    $storyAuthorId,
-                    $authorId,
-                    (int)$comment['id'],
-                    (bool)($comment['user_is_following'] ?? false),
-                    $notifiedUserIds
-                );
-            }
-
             if ($parentCommentId) {
                 $this->notifyParentCommentAuthor(
                     $parentCommentId,
@@ -238,6 +228,16 @@ class NotificationService
                     $notifiedUserIds
                 );
             }
+
+           if ($storyAuthorId > 0) {
+                $this->notifyStoryAuthor(
+                    $storyAuthorId,
+                    $authorId,
+                    (int)$comment['id'],
+                    (bool)($comment['user_is_following'] ?? false),
+                    $notifiedUserIds
+                );
+            } 
 
             $commentText = (string)($comment['comment'] ?? '');
             if (!empty($commentText)) {
