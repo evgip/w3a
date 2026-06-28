@@ -25,7 +25,7 @@ use App\Core\Model;
 class ContentLog extends Model
 {
     protected string $table = 'content_logs';
-    
+
     protected array $fillable = [
         'target_type',
         'target_id',
@@ -33,13 +33,13 @@ class ContentLog extends Model
         'action_text',
         'is_community_action',
         'created_at',
-		'deleted_at' 
+        'deleted_at'
     ];
     
     // =========================================================================
     // ОСНОВНЫЕ МЕТОДЫ
     // =========================================================================
-    
+
     /**
      * Получить историю изменений для конкретного контента.
      * 
@@ -61,16 +61,16 @@ class ContentLog extends Model
                 AND cl.deleted_at IS NULL
                 ORDER BY cl.created_at DESC
                 LIMIT :limit";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':target_type', $targetType);
         $stmt->bindValue(':target_id', $targetId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Получить историю изменений с пагинацией.
      * 
@@ -93,17 +93,17 @@ class ContentLog extends Model
                 AND cl.deleted_at IS NULL
                 ORDER BY cl.created_at DESC
                 LIMIT :limit OFFSET :offset";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':target_type', $targetType);
         $stmt->bindValue(':target_id', $targetId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Подсчитать количество записей лога для конкретного контента.
      * 
@@ -119,19 +119,19 @@ class ContentLog extends Model
                 WHERE target_type = :target_type 
                 AND target_id = :target_id 
                 AND deleted_at IS NULL";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':target_type', $targetType);
         $stmt->bindValue(':target_id', $targetId, \PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return (int) $stmt->fetchColumn();
     }
     
     // =========================================================================
     // МЕТОДЫ ДЛЯ АДМИНИСТРИРОВАНИЯ И СТАТИСТИКИ
     // =========================================================================
-    
+
     /**
      * Получить последние изменения, выполненные конкретным пользователем.
      * 
@@ -151,15 +151,15 @@ class ContentLog extends Model
                 AND cl.deleted_at IS NULL
                 ORDER BY cl.created_at DESC
                 LIMIT :limit";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':actor_id', $actorId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Получить сводную статистику по типам контента.
      * 
@@ -178,10 +178,10 @@ class ContentLog extends Model
                 FROM `{$this->table}`
                 WHERE deleted_at IS NULL
                 GROUP BY target_type";
-        
+
         $stmt = static::db()->query($sql);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        
+
         $stats = [];
         foreach ($rows as $row) {
             $stats[$row['target_type']] = [
@@ -190,10 +190,10 @@ class ContentLog extends Model
                 'by_moderator' => (int) $row['by_moderator']
             ];
         }
-        
+
         return $stats;
     }
-    
+
     /**
      * Получить последние глобальные изменения контента (для админ-дашборда).
      * 
@@ -208,11 +208,11 @@ class ContentLog extends Model
                 WHERE cl.deleted_at IS NULL
                 ORDER BY cl.created_at DESC
                 LIMIT :limit";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

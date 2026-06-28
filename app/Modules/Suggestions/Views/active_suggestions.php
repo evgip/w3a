@@ -6,7 +6,7 @@ $isModerator = \App\Modules\Auth\Services\Auth::isModerator() || \App\Modules\Au
 <?php if (!empty($suggestions)): ?>
     <div class="suggestions-container">
         <h4>Активные предложения <span class="suggestions-badge"><?= count($suggestions) ?></span></h4>
-        
+
         <?php
         // Группируем одинаковые предложения
         $grouped = [];
@@ -23,7 +23,7 @@ $isModerator = \App\Modules\Auth\Services\Auth::isModerator() || \App\Modules\Au
             $grouped[$key]['users'][] = $s['suggester_name'];
         }
         ?>
-        
+
         <?php foreach ($grouped as $group): ?>
             <div class="story-row">
                 <div class="story-details">
@@ -42,7 +42,7 @@ $isModerator = \App\Modules\Auth\Services\Auth::isModerator() || \App\Modules\Au
                             <?= count($group['users']) ?> из 3
                         </div>
                     </div>
-                    
+
                     <?php if ($isModerator): ?>
                         <!-- Кнопки для модератора -->
                         <div class="moderator-actions" style="margin-top: 10px;">

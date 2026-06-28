@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Маршруты модуля Stories
  * 
@@ -30,21 +31,21 @@ $router->add('GET', '/domain/{domain}', StoriesController::class . '@index', 'do
 // МАРШРУТЫ ДЛЯ АВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ
 // =========================================================================
 
-$router->group(['middleware' => ['web', 'auth']], function($router) {
-    
+$router->group(['middleware' => ['web', 'auth']], function ($router) {
+
     // --- Создание и редактирование историй ---
     $router->add('GET', '/stories/create', StoriesController::class . '@showCreateForm', 'story.form');
     $router->add('POST', '/stories/create', StoriesController::class . '@create', 'story.create');
-    
+
     $router->add('GET', '/stories/{id}/edit', StoriesController::class . '@showEditForm', 'story.edit');
     $router->add('POST', '/stories/{id}/edit', StoriesController::class . '@update', 'story.edit.submit');
-    
+
     // --- Работа с комментариями ---
     $router->add('POST', '/comments/create', StoriesController::class . '@addComment', 'comment.create');
     $router->add('POST', '/comments/{id}/edit', StoriesController::class . '@editComment', 'comment.edit');
     $router->add('POST', '/comments/{id}/delete', StoriesController::class . '@deleteComment', 'comment.delete');
     $router->add('POST', '/comments/{id}/restore', StoriesController::class . '@restoreComment', 'comment.restore');
-    
+
     // --- Подписки и прочтение ---
     $router->add('POST', '/story/{id}/follow', StoriesController::class . '@toggleFollow', 'story.toggle.follow');
     $router->add('POST', '/story/{id}/mark-read', StoriesController::class . '@markRead', 'story.markRead');
@@ -54,8 +55,8 @@ $router->group(['middleware' => ['web', 'auth']], function($router) {
 // МАРШРУТЫ ДЛЯ АДМИНИСТРАТОРОВ
 // =========================================================================
 
-$router->group(['middleware' => ['web', 'admin']], function($router) {
-    
+$router->group(['middleware' => ['web', 'admin']], function ($router) {
+
     // Административные действия с историями
     $router->add('POST', '/admin/stories/{id}/delete', StoriesController::class . '@adminDelete', 'admin.story.delete');
     $router->add('POST', '/admin/stories/{id}/restore', StoriesController::class . '@adminRestore', 'admin.story.restore');

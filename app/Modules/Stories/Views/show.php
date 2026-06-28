@@ -38,7 +38,7 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
             'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
             'canDownvote' => $canUserDownvote,
             'isLoggedIn' => $currentUserId > 0,
-			'contentOwnerId' => $isAuthor
+            'contentOwnerId' => $isAuthor
         ]); ?>
 
         <!-- Контент публикации -->
@@ -71,64 +71,62 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
                 <?php endif; ?>
             </div>
 
-            <?php if (!empty($story['tags'])): ?>  
-			
-					<span class="tags">
-						<?php foreach ($story['tags_with_names'] as $tagData): ?>  
-							<a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
-						<?php endforeach; ?>
-					</span> 
-					
-			
+            <?php if (!empty($story['tags'])): ?>
 
-					<!-- Кнопка "Предложить правку" -->
-					<?php 
-					$isModerator = \App\Modules\Auth\Services\Auth::isModerator() || \App\Modules\Auth\Services\Auth::isAdmin();
-					$canSuggest = isset($_SESSION['user_id']) && (
-						$_SESSION['user_id'] !== $story['user_id'] || // Не автор
-						$isModerator // Или модератор
-					);
-					?>
+                <span class="tags">
+                    <?php foreach ($story['tags_with_names'] as $tagData): ?>
+                        <a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
+                    <?php endforeach; ?>
+                </span>
 
-					<?php if ($canSuggest): ?>
-						<?php
-						// Проверяем лимит предложений (только для не-модераторов)
-						if (!$isModerator) {
-							$suggestionService = $this->service(\App\Modules\Suggestions\Services\SuggestionService::class);
-							$userSuggestionsCount = $suggestionService->getUserActiveSuggestionsCount('Story', $story['id'], $_SESSION['user_id']);
-							$canSuggest = $userSuggestionsCount < \App\Modules\Suggestions\Services\SuggestionService::MAX_USER_SUGGESTIONS;
-						}
-						?>
-						
-						<?php if ($canSuggest): ?>
-							<?php partial('Suggestions::suggest_button', ['story' => $story]) ?>
-						<?php else: ?>
-							<p class="hint">Вы уже отправили максимальное количество предложений.</p>
-						<?php endif; ?>
-					<?php endif; ?>
-											 
-					<!-- Блок активных предложений (только если есть) -->
-					<?php if (isset($_SESSION['user_id']) && !empty($activeSuggestions)): ?>
-						<?php partial('Suggestions::active_suggestions', ['activeSuggestions' => $activeSuggestions ?? []]) ?>
-					<?php endif; ?>
+                <!-- Кнопка "Предложить правку" -->
+                <?php
+                $isModerator = \App\Modules\Auth\Services\Auth::isModerator() || \App\Modules\Auth\Services\Auth::isAdmin();
+                $canSuggest = isset($_SESSION['user_id']) && (
+                    $_SESSION['user_id'] !== $story['user_id'] || // Не автор
+                    $isModerator // Или модератор
+                );
+                ?>
 
-					<?php if (\App\Modules\Auth\Services\Auth::check()): ?>
+                <?php if ($canSuggest): ?>
+                    <?php
+                    // Проверяем лимит предложений (только для не-модераторов)
+                    if (!$isModerator) {
+                        $suggestionService = $this->service(\App\Modules\Suggestions\Services\SuggestionService::class);
+                        $userSuggestionsCount = $suggestionService->getUserActiveSuggestionsCount('Story', $story['id'], $_SESSION['user_id']);
+                        $canSuggest = $userSuggestionsCount < \App\Modules\Suggestions\Services\SuggestionService::MAX_USER_SUGGESTIONS;
+                    }
+                    ?>
 
-						<!-- Блок истории изменений (только если есть) -->
-						<?php if (!empty($changeLog)): ?>
-							<?php partial('Suggestions::change_log', ['changeLog' => $changeLog ?? []]) ?>
-						<?php endif; ?>
+                    <?php if ($canSuggest): ?>
+                        <?php partial('Suggestions::suggest_button', ['story' => $story]) ?>
+                    <?php else: ?>
+                        <p class="hint">Вы уже отправили максимальное количество предложений.</p>
+                    <?php endif; ?>
+                <?php endif; ?>
+
+                <!-- Блок активных предложений (только если есть) -->
+                <?php if (isset($_SESSION['user_id']) && !empty($activeSuggestions)): ?>
+                    <?php partial('Suggestions::active_suggestions', ['activeSuggestions' => $activeSuggestions ?? []]) ?>
+                <?php endif; ?>
+
+                <?php if (\App\Modules\Auth\Services\Auth::check()): ?>
+
+                    <!-- Блок истории изменений (только если есть) -->
+                    <?php if (!empty($changeLog)): ?>
+                        <?php partial('Suggestions::change_log', ['changeLog' => $changeLog ?? []]) ?>
+                    <?php endif; ?>
 
 
 
-						<!-- Модальное окно -->
-						<?php partial('Suggestions::suggest_modal', [
-							'allTags' => $allTags ?? [],
-							'currentTagIds' => $currentTagIds ?? []
-						]) ?>
-					<?php endif; ?>
+                    <!-- Модальное окно -->
+                    <?php partial('Suggestions::suggest_modal', [
+                        'allTags' => $allTags ?? [],
+                        'currentTagIds' => $currentTagIds ?? []
+                    ]) ?>
+                <?php endif; ?>
 
-			<?php endif; ?>
+            <?php endif; ?>
 
 
             <!-- Описание -->
@@ -272,7 +270,7 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
                                 'currentVoteState' => $voteModel->getUserVote($currentUserId, 'comment', $commentId),
                                 'canDownvote' => $canUserDownvote,
                                 'isLoggedIn' => true,
-								'contentOwnerId' => $isAuthor,
+                                'contentOwnerId' => $isAuthor,
                             ]); ?>
                         </div>
 

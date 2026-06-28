@@ -57,7 +57,7 @@ class StoryFilterService
     public function getCommentsTree(int $storyId): array
     {
         $flatComments = $this->storyModel->getCommentsForStory($storyId);
-        
+
         // Добавляем confidence_score к каждому комментарию, если его нет
         foreach ($flatComments as &$comment) {
             if (!isset($comment['confidence_score']) || $comment['confidence_score'] == 0) {
@@ -68,17 +68,17 @@ class StoryFilterService
             }
         }
         unset($comment);
-        
+
         // Строим дерево комментариев
         $commentsTree = [];
         foreach ($flatComments as $comment) {
             $parentId = $comment['parent_id'] ?? 0;
             $commentsTree[$parentId][] = $comment;
         }
-        
+
         // Сортируем дочерние комментарии по confidence_score (убывание)
         foreach ($commentsTree as $parentId => &$children) {
-            usort($children, function($a, $b) {
+            usort($children, function ($a, $b) {
                 $scoreDiff = $b['confidence_score'] <=> $a['confidence_score'];
                 if ($scoreDiff !== 0) {
                     return $scoreDiff;
@@ -87,25 +87,8 @@ class StoryFilterService
             });
         }
         unset($children);
-        
-        return $commentsTree;
-    }
 
-    /**
-     * Обновляет confidence_score для комментария
-     */
-    public function updateCommentConfidenceScore(int $commentId): void
-    {
-        $comment = $this->storyModel->getCommentById($commentId);
-        
-        if ($comment) {
-            $confidenceScore = wilson_score(
-                (int)$comment['score'],
-                (int)$comment['flag_count']
-            );
-            
-            $this->storyModel->updateCommentConfidenceScore($commentId, $confidenceScore);
-        }
+        return $commentsTree;
     }
 
     /**
@@ -159,5 +142,4 @@ class StoryFilterService
         $showDeleted = Auth::isAdmin();
         return $this->storyModel->getSingleWithAuthor($storyId, $showDeleted);
     }
-
 }

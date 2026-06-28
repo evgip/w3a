@@ -9,7 +9,6 @@ use App\Modules\Notifications\Services\NotificationService;
 use App\Modules\Auth\Services\Auth;
 use App\Core\Session;
 use App\Core\Validator;
-use App\Core\Audit;
 use App\Core\Events\EventDispatcher;
 use App\Core\Events\CommentCreated;
 use App\Core\Events\CommentDeleted;

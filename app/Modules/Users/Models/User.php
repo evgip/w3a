@@ -69,6 +69,17 @@ class User extends Model
         return $result ?: null;
     }
 
+    /**
+     * Находит username, role по id.
+     */
+    public function getUser(int $userId): ?array
+    {
+        $stmt = static::db()->prepare("SELECT username, role FROM `users` WHERE `id` = :id LIMIT 1");
+        $stmt->execute(['id' => $userId]);
+        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+    }
+
+
     // ==========================================
     // Методы для работы с user_profiles
     // ==========================================

@@ -18,7 +18,7 @@ class Story extends Model
 		'description',
 		'rejected_fields',
 		'user_is_following',
-		'domain', 
+		'domain',
 		'score',
 		'comments_count',
 		'deleted_at'
@@ -39,8 +39,8 @@ class Story extends Model
 				JOIN `users` u ON s.user_id = u.id
 				LEFT JOIN `user_profiles` up ON u.id = up.user_id
 				LEFT JOIN `taggings` tg ON s.id = tg.story_id
-				LEFT JOIN `tags` t ON tg.tag_id = t.id"; 
-		
+				LEFT JOIN `tags` t ON tg.tag_id = t.id";
+
 		$where = [];
 		$bindings = [];
 
@@ -127,7 +127,7 @@ class Story extends Model
 			'id' => $storyId,
 		]);
 	}
-	
+
 	/**
 	 * Получить массив модификаторов hotness_mod для тегов истории.
 	 */
@@ -140,7 +140,7 @@ class Story extends Model
 			WHERE tg.story_id = :story_id
 		");
 		$stmt->execute(['story_id' => $storyId]);
-		
+
 		// Возвращаем плоский массив чисел для array_sum()
 		return array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), 'hotness_mod');
 	}
@@ -256,8 +256,8 @@ class Story extends Model
 		}
 		return null;
 	}
-	
-	
+
+
 	/**
 	 * Выгрузить ВСЕ комментарии к истории за ОДИН запрос
 	 */
@@ -299,7 +299,7 @@ class Story extends Model
 	{
 		// Дедупликация и приведение к int
 		$tagIds = array_unique(array_map('intval', $tagIds));
-		
+
 		// Если после дедупликации пусто — просто очищаем привязки
 		if (empty($tagIds)) {
 			try {
@@ -310,7 +310,7 @@ class Story extends Model
 				return false;
 			}
 		}
-		
+
 		try {
 			static::db()->beginTransaction();
 
@@ -321,13 +321,13 @@ class Story extends Model
 			// 2. Множественный INSERT с позиционными плейсхолдерами
 			$placeholders = [];
 			$params = [];
-			
+
 			foreach ($tagIds as $tagId) {
 				$placeholders[] = "(?, ?)";
 				$params[] = $storyId;
 				$params[] = (int)$tagId;
 			}
-			
+
 			$sql = "INSERT INTO `taggings` (`story_id`, `tag_id`) VALUES " . implode(', ', $placeholders);
 			$stmt = static::db()->prepare($sql);
 			$stmt->execute($params);
@@ -500,7 +500,7 @@ class Story extends Model
 
 		return (int)$stmt->fetchColumn();
 	}
-	
+
 	/**
 	 * Атомарно изменяет счётчик комментариев.
 	 */
@@ -525,5 +525,4 @@ class Story extends Model
 		");
 		$stmt->execute([$storyId]);
 	}
-
 }

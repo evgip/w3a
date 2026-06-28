@@ -29,7 +29,7 @@ class ModuleServiceProvider
         // === МОДЕЛИ ЭТОГО МОДУЛЯ ===
         $container->singleton(Suggestion::class, fn() => new Suggestion());
         $container->singleton(ContentLog::class, fn() => new ContentLog());
-        
+
         // === СЕРВИСЫ ===
         $container->singleton(SuggestionService::class, function (Container $c) {
             // Модели из других модулей создаем напрямую через new,

@@ -24,20 +24,20 @@ use App\Core\Model;
 class Suggestion extends Model
 {
     protected string $table = 'content_suggestions';
-    
+
     protected array $fillable = [
         'target_type',
         'target_id',
         'user_id',
         'proposed_data',
         'created_at',
-		'deleted_at' 
+        'deleted_at'
     ];
     
     // =========================================================================
     // МЕТОДЫ ДЛЯ ПУБЛИЧНОГО ИСПОЛЬЗОВАНИЯ
     // =========================================================================
-    
+
     /**
      * Получить все активные предложения для конкретного контента.
      * 
@@ -57,16 +57,16 @@ class Suggestion extends Model
                 AND s.target_id = :target_id
                 AND s.deleted_at IS NULL
                 ORDER BY s.created_at DESC";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->execute([
             'target_type' => $targetType,
             'target_id' => $targetId
         ]);
-        
+
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Подсчитать количество уникальных пользователей с точно такими же proposed_data.
      * 
@@ -86,18 +86,18 @@ class Suggestion extends Model
                 AND target_id = :target_id
                 AND proposed_data = :proposed_data
                 AND deleted_at IS NULL";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->execute([
             'target_type' => $targetType,
             'target_id' => $targetId,
             'proposed_data' => $proposedDataJson
         ]);
-        
+
         $result = $stmt->fetch(\PDO::FETCH_ASSOC);
         return (int) ($result['count'] ?? 0);
     }
-    
+
     /**
      * Мягко удалить все предложения для конкретного контента.
      * 
@@ -115,14 +115,14 @@ class Suggestion extends Model
                 WHERE target_type = :target_type
                 AND target_id = :target_id
                 AND deleted_at IS NULL";
-        
+
         $stmt = static::db()->prepare($sql);
         return $stmt->execute([
             'target_type' => $targetType,
             'target_id' => $targetId
         ]);
     }
-    
+
     /**
      * Подсчитать количество активных предложений от конкретного пользователя.
      * 
@@ -142,14 +142,14 @@ class Suggestion extends Model
                 AND target_id = :target_id
                 AND user_id = :user_id
                 AND deleted_at IS NULL";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->execute([
             'target_type' => $targetType,
             'target_id' => $targetId,
             'user_id' => $userId
         ]);
-        
+
         $result = $stmt->fetch(\PDO::FETCH_ASSOC);
         return (int) ($result['count'] ?? 0);
     }
@@ -157,7 +157,7 @@ class Suggestion extends Model
     // =========================================================================
     // МЕТОДЫ ДЛЯ МОДЕРАТОРОВ
     // =========================================================================
-    
+
     /**
      * Получить все активные предложения для страницы модерации.
      * 
@@ -181,30 +181,30 @@ class Suggestion extends Model
                 JOIN `users` u ON s.user_id = u.id
                 LEFT JOIN `comments` c ON s.target_type = 'Comment' AND s.target_id = c.id
                 WHERE s.deleted_at IS NULL";
-        
+
         $params = [];
-        
+
         if (!empty($filter)) {
             $sql .= " AND s.target_type = :filter";
             $params['filter'] = $filter;
         }
-        
+
         $sql .= " ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
-        
+
         $stmt = static::db()->prepare($sql);
-        
+
         // Привязываем параметры
         foreach ($params as $key => $value) {
             $stmt->bindValue(":{$key}", $value);
         }
-        
+
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Подсчитать количество всех активных предложений.
      * 
@@ -220,22 +220,22 @@ class Suggestion extends Model
     {
         $sql = "SELECT COUNT(*) FROM `{$this->table}` WHERE deleted_at IS NULL";
         $params = [];
-        
+
         if (!empty($filter)) {
             $sql .= " AND target_type = :filter";
             $params['filter'] = $filter;
         }
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->execute($params);
-        
+
         return (int) $stmt->fetchColumn();
     }
     
     // =========================================================================
     // ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
-    
+
     /**
      * Получить предложение по ID с данными пользователя.
      * 
@@ -252,14 +252,14 @@ class Suggestion extends Model
                 WHERE s.id = :id
                 AND s.deleted_at IS NULL
                 LIMIT 1";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->execute(['id' => $id]);
-        
+
         $result = $stmt->fetch(\PDO::FETCH_ASSOC);
         return $result ?: null;
     }
-    
+
     /**
      * Получить предложения пользователя (для профиля или статистики).
      * 
@@ -275,15 +275,15 @@ class Suggestion extends Model
                 AND s.deleted_at IS NULL
                 ORDER BY s.created_at DESC
                 LIMIT :limit";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->bindValue(':user_id', $userId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Проверить, существует ли уже такое предложение от этого пользователя.
      * 
@@ -304,7 +304,7 @@ class Suggestion extends Model
                 AND user_id = :user_id
                 AND proposed_data = :proposed_data
                 AND deleted_at IS NULL";
-        
+
         $stmt = static::db()->prepare($sql);
         $stmt->execute([
             'target_type' => $targetType,
@@ -312,11 +312,11 @@ class Suggestion extends Model
             'user_id' => $userId,
             'proposed_data' => $proposedDataJson
         ]);
-        
+
         $result = $stmt->fetch(\PDO::FETCH_ASSOC);
         return (int) ($result['count'] ?? 0) > 0;
     }
-    
+
     /**
      * Получить статистику предложений для модераторов.
      * 
@@ -333,17 +333,17 @@ class Suggestion extends Model
                     SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) AS processed
                 FROM `{$this->table}`
                 GROUP BY target_type";
-        
+
         $stmt = static::db()->query($sql);
         $results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        
+
         $stats = [
             'total' => 0,
             'active' => 0,
             'processed' => 0,
             'by_type' => []
         ];
-        
+
         foreach ($results as $row) {
             $stats['by_type'][$row['target_type']] = [
                 'total' => (int) $row['total'],
@@ -354,7 +354,7 @@ class Suggestion extends Model
             $stats['active'] += (int) $row['active'];
             $stats['processed'] += (int) $row['processed'];
         }
-        
+
         return $stats;
     }
 }

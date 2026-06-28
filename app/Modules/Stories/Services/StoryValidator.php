@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Stories\Services;
 
-use App\Core\Validator;
 use App\Modules\Tags\Services\TagValidator;
 use App\Modules\Origins\Models\Domain;
 
@@ -82,7 +81,7 @@ class StoryValidator
     public function validateTitle(string $title, bool $isUpdate = false): ?string
     {
         $minLength = config('validation.title_min_length', 5, 'int');
-        
+
         if (empty($title)) {
             return $isUpdate ? null : 'Заголовок обязателен.';
         }
@@ -123,7 +122,7 @@ class StoryValidator
     public function validateDomain(string $url): ?string
     {
         $domain = parse_url($url, PHP_URL_HOST);
-        
+
         if (empty($domain)) {
             return null;
         }

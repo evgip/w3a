@@ -7,7 +7,6 @@ namespace App\Modules\Stories\Services;
 use App\Modules\Stories\Models\Story;
 use App\Modules\Stories\Services\StoryValidator;
 use App\Modules\Origins\Models\Domain;
-use App\Modules\Tags\Services\TagValidator;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Core\Events\EventDispatcher;
@@ -20,21 +19,21 @@ use App\Core\Events\StoryRestore;
  */
 class StoryService
 {
-	private Story $storyModel;
+    private Story $storyModel;
     private Domain $domainModel;
     private ?EventDispatcher $eventDispatcher;
-	private StoryValidator $storyValidator;
+    private StoryValidator $storyValidator;
 
     public function __construct(
-        Story $storyModel, 
+        Story $storyModel,
         Domain $domainModel,
         ?EventDispatcher $eventDispatcher = null,
-		?StoryValidator $storyValidator = null
+        ?StoryValidator $storyValidator = null
     ) {
         $this->storyModel = $storyModel;
         $this->domainModel = $domainModel;
         $this->eventDispatcher = $eventDispatcher;
-		$this->storyValidator = $storyValidator ?? new StoryValidator();
+        $this->storyValidator = $storyValidator ?? new StoryValidator();
     }
 
     /**
@@ -73,10 +72,10 @@ class StoryService
             $this->storyModel->syncTags($storyId, $data['tags']);
         }
 
-		// 4. Пересчет hotness после создания и привязки тегов
-		if ($storyId > 0) {
-			$this->storyModel->recalculateHotness($storyId);
-		}
+        // 4. Пересчет hotness после создания и привязки тегов
+        if ($storyId > 0) {
+            $this->storyModel->recalculateHotness($storyId);
+        }
 
         // 5. Логирование
         \App\Core\Audit::log('story.created', 'Пользователь создал новую публикацию с тегами', 'story');
@@ -111,7 +110,7 @@ class StoryService
             'title' => $data['title'] ?? $story['title'],
             'url' => $data['url'] ?? $story['url'],
             'description' => $data['description'] ?? $story['description'],
-			'domain' => $domain,
+            'domain' => $domain,
             'user_is_following' => isset($data['user_is_following']) ? 1 : 0,
         ];
 
@@ -191,8 +190,8 @@ class StoryService
 
         return false;
     }
-	
-   /**
+
+    /**
      * Удаляет (скрывает) историю.
      *
      * @param int $storyId ID истории
@@ -211,9 +210,7 @@ class StoryService
         $this->storyModel->delete($storyId);
         Session::setFlash('success', 'Публикация успешно скрыта из общей ленты.');
 
-        // ✅ Получаем EventDispatcher (через свойство или через app())
-        $dispatcher = $this->eventDispatcher ?? app(EventDispatcher::class);
-        $dispatcher->dispatch(new StoryDeleted($storyId, $adminId, $reason));
+        $this->eventDispatcher->dispatch(new StoryDeleted($storyId, $adminId, $reason));
 
         return true;
     }
@@ -236,11 +233,8 @@ class StoryService
         $this->storyModel->restore($storyId);
         Session::setFlash('success', 'Публикация успешно восстановлена в общей ленте.');
 
-        // ✅ Получаем EventDispatcher (через свойство или через app())
-        $dispatcher = $this->eventDispatcher ?? app(EventDispatcher::class);
-        $dispatcher->dispatch(new StoryRestore($storyId, $adminId));
+        $this->eventDispatcher->dispatch(new StoryRestore($storyId, $adminId));
 
         return true;
     }
-	
 }

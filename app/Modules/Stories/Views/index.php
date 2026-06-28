@@ -15,18 +15,18 @@ if ($currentUserId > 0) {
 ?>
 
 <?php
-	$currentSort = $sort ?? 'hot';
-	$sortLinks = [
-		'hot' => ['url' => '/?sort=hot',         'label' => 'Hot'],
-		'new' => ['url' => '/?sort=new',         'label' => 'New'],
-		'top' => ['url' => '/?sort=top',         'label' => 'Top'],
-	];
+$currentSort = $sort ?? 'hot';
+$sortLinks = [
+    'hot' => ['url' => '/?sort=hot',         'label' => 'Hot'],
+    'new' => ['url' => '/?sort=new',         'label' => 'New'],
+    'top' => ['url' => '/?sort=top',         'label' => 'Top'],
+];
 ?>
 
 <nav class="nav br-none">
     <?php foreach ($sortLinks as $key => $link): ?>
-        <a href="<?= $link['url'] ?>" 
-           class="<?= $currentSort === $key ? 'active' : '' ?>">
+        <a href="<?= $link['url'] ?>"
+            class="<?= $currentSort === $key ? 'active' : '' ?>">
             <?= $link['label'] ?>
         </a>
     <?php endforeach; ?>
@@ -54,7 +54,7 @@ if ($currentUserId > 0) {
                     'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
                     'canDownvote' => $canUserDownvote,
                     'isLoggedIn' => $currentUserId > 0,
-					'contentOwnerId' => (int)$story['user_id'],
+                    'contentOwnerId' => (int)$story['user_id'],
                 ]); ?>
 
                 <div class="story_liner">
@@ -92,13 +92,13 @@ if ($currentUserId > 0) {
                             <?php endif; ?>
                         <?php endif; ?>
 
-						<?php if (!empty($story['tags'])): ?>  
-							<span class="tags">
-								<?php foreach ($story['tags_with_names'] as $tagData): ?>  
-									<a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
-								<?php endforeach; ?>
-							</span> 
-						<?php endif; ?>
+                        <?php if (!empty($story['tags'])): ?>
+                            <span class="tags">
+                                <?php foreach ($story['tags_with_names'] as $tagData): ?>
+                                    <a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
+                                <?php endforeach; ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
 
                     <div class="story_content">

@@ -573,6 +573,20 @@ input[type="button"]:hover {
     background-color: var(--color-button-bg-shaded);
 }
 
+button.button-no
+{
+  border: 0;
+  background-color: #fff; 
+  color: var(--opacity-fg-contrast-6);
+  text-decoration: none;
+}
+
+
+button.button-no:hover {
+  color: var(--opacity-fg-contrast-6);
+  background-color: #fff; 
+}
+
 /* Кнопка-ссылка (без фона и рамки) */
 .btn-link {
     background: none;
@@ -1402,6 +1416,10 @@ table.data tr.unread td {
 
 .green {
   color: var(--color-fg-affirmative);
+}
+
+.bold {
+  font-weight: bold;
 }
 
 .delete:hover {

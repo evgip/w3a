@@ -115,7 +115,7 @@ class Comment extends Model
 
 		return $result ? (int)$result['user_id'] : null;
 	}
-	
+
 	/**
 	 * Получить комментарий по ID с данными для вычисления confidence_score
 	 */
@@ -144,7 +144,7 @@ class Comment extends Model
 			'id' => $commentId,
 		]);
 	}
-	
+
 	/**
 	 * Получить общее количество не удаленных комментариев
 	 */
@@ -174,5 +174,4 @@ class Comment extends Model
 		$stmt->execute();
 		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
 	}
-
 }

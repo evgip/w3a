@@ -113,7 +113,7 @@
 							<div class="dropdown-divider"></div>
 							<form action="<?= route('auth.logout') ?>" method="POST" style="display:inline;">
 								 <?= csrf_field() ?>
-								<button type="submit" class="dropdown-menu-item navbar-logout-link">🚪 <?= __('logout') ?></button>
+								<button type="submit" class="button-no bold">🚪 <?= __('logout') ?></button>
 							</form>
 														
 						</div>
