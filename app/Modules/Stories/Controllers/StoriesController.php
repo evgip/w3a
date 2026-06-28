@@ -42,7 +42,7 @@ class StoriesController extends Controller
         $perPage = config('constants.pagination.stories_per_page', 15, 'int');
         $offset = ($currentPage - 1) * $perPage;
 
-		// ← НОВОЕ: читаем режим сортировки
+		// Читаем режим сортировки
 		$sort = $this->request->getParams('sort', 'hot');
 		if (!in_array($sort, ['hot', 'new', 'top'], true)) {
 			$sort = 'hot';

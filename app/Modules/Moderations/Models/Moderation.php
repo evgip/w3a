@@ -6,7 +6,7 @@ use App\Core\Model;
 
 class Moderation extends Model
 {
-    protected string $table = 'moderations';
+    protected string $table = 'audit_logs';
 
     protected array $fillable = [
         'moderator_id',
@@ -14,6 +14,13 @@ class Moderation extends Model
         'target_type',
         'target_id',
         'reason',
+        'user_id',
+        'username',
+        'role',
+        'ip_address',
+        'description',
+        'category',
+        'payload',
     ];
 
     // У moderations нет deleted_at — это неизменяемый лог

@@ -7,7 +7,7 @@
  * @var int    $currentVoteState
  * @var bool   $canDownvote
  * @var bool   $isLoggedIn
- * @var int    $contentOwnerId  ← НОВОЕ: ID автора контента
+ * @var int    $contentOwnerId 
  */
 
 $request = new \App\Core\Request();

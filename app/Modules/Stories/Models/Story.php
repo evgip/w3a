@@ -286,33 +286,57 @@ class Story extends Model
 	}
 
 	/**
-	 * Atomically sync and bind tags to a story inside a secure database transaction
+	 * Atomically sync and bind tags to a story inside a secure database transaction.
+	 * 
+	 * Валидация количества тегов выполняется на уровне сервиса (TagValidator).
+	 * Модель отвечает только за целостность данных в БД.
+	 * 
+	 * @param int   $storyId ID истории
+	 * @param array $tagIds  Массив ID тегов (должен быть провалидирован вызывающим кодом)
+	 * @return bool Успешно ли выполнено
 	 */
 	public function syncTags(int $storyId, array $tagIds): bool
 	{
+		// Дедупликация и приведение к int
+		$tagIds = array_unique(array_map('intval', $tagIds));
+		
+		// Если после дедупликации пусто — просто очищаем привязки
+		if (empty($tagIds)) {
+			try {
+				$stmt = static::db()->prepare("DELETE FROM `taggings` WHERE `story_id` = ?");
+				return $stmt->execute([$storyId]);
+			} catch (\Exception $e) {
+				\App\Core\Logger::error("Failed to clear tags: " . $e->getMessage());
+				return false;
+			}
+		}
+		
 		try {
 			static::db()->beginTransaction();
 
-			// 1. Flush any stale existing tags bound to this story row
-			$stmt = static::db()->prepare("DELETE FROM `taggings` WHERE `story_id` = :id");
-			$stmt->execute(['id' => $storyId]);
+			// 1. Удаляем старые теги
+			$stmt = static::db()->prepare("DELETE FROM `taggings` WHERE `story_id` = ?");
+			$stmt->execute([$storyId]);
 
-			// 2. Insert the new checkbox parameters mapping safely
-			if (!empty($tagIds)) {
-				$stmt = static::db()->prepare("INSERT INTO `taggings` (`story_id`, `tag_id`) VALUES (:sid, :tid)");
-				foreach ($tagIds as $tagId) {
-					$stmt->execute([
-						'sid' => $storyId,
-						'tid' => (int)$tagId
-					]);
-				}
+			// 2. Множественный INSERT с позиционными плейсхолдерами
+			$placeholders = [];
+			$params = [];
+			
+			foreach ($tagIds as $tagId) {
+				$placeholders[] = "(?, ?)";
+				$params[] = $storyId;
+				$params[] = (int)$tagId;
 			}
+			
+			$sql = "INSERT INTO `taggings` (`story_id`, `tag_id`) VALUES " . implode(', ', $placeholders);
+			$stmt = static::db()->prepare($sql);
+			$stmt->execute($params);
 
 			static::db()->commit();
 			return true;
 		} catch (\Exception $e) {
 			static::db()->rollBack();
-			\App\Core\Logger::error("Failed to execute tag synchronization mapping transaction: " . $e->getMessage());
+			\App\Core\Logger::error("Failed to sync tags for story #{$storyId}: " . $e->getMessage());
 			return false;
 		}
 	}
@@ -501,52 +525,5 @@ class Story extends Model
 		");
 		$stmt->execute([$storyId]);
 	}
-	
-	/**
-	 * Обновить теги статьи (заменяет старые на новые).
-	 * 
-	 * Использует транзакцию для атомарности операции.
-	 * Если хоть один INSERT упадет - вся операция откатится.
-	 * 
-	 * @param int   $storyId ID статьи
-	 * @param array $tagIds  Массив ID тегов
-	 * @return bool Успешно ли выполнено
-	 */
-	public function updateStoryTags(int $storyId, array $tagIds): bool
-	{
-		// Убираем дубликаты и приводим к int
-		$tagIds = array_unique(array_map('intval', $tagIds));
-		
-		try {
-			static::db()->beginTransaction();
-			
-			// 1. Удаляем старые теги
-			$stmt = static::db()->prepare("DELETE FROM `taggings` WHERE `story_id` = :story_id");
-			$stmt->execute(['story_id' => $storyId]);
-			
-			// 2. Добавляем новые теги (если есть)
-			if (!empty($tagIds)) {
-				// Множественный INSERT - эффективнее, чем по одному
-				$placeholders = [];
-				$params = ['story_id' => $storyId];
-				
-				foreach ($tagIds as $index => $tagId) {
-					$placeholders[] = "(:story_id, :tag_id_{$index})";
-					$params["tag_id_{$index}"] = $tagId;
-				}
-				
-				$sql = "INSERT INTO `taggings` (`story_id`, `tag_id`) VALUES " . implode(', ', $placeholders);
-				$stmt = static::db()->prepare($sql);
-				$stmt->execute($params);
-			}
-			
-			static::db()->commit();
-			return true;
-			
-		} catch (\Exception $e) {
-			static::db()->rollBack();
-			error_log("Failed to update story tags: " . $e->getMessage());
-			return false;
-		}
-	}
+
 }

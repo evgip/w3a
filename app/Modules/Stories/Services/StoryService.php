@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Modules\Stories\Services;
 
 use App\Modules\Stories\Models\Story;
+use App\Modules\Stories\Services\StoryValidator;
 use App\Modules\Origins\Models\Domain;
+use App\Modules\Tags\Services\TagValidator;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Core\Events\EventDispatcher;
 use App\Core\Events\StoryDeleted;
 use App\Core\Events\StoryRestore;
+
 
 /**
  * Сервис для работы с историями (бизнес-логика).
@@ -20,15 +23,18 @@ class StoryService
 	private Story $storyModel;
     private Domain $domainModel;
     private ?EventDispatcher $eventDispatcher;
+	private StoryValidator $storyValidator;
 
     public function __construct(
         Story $storyModel, 
         Domain $domainModel,
-        ?EventDispatcher $eventDispatcher = null
+        ?EventDispatcher $eventDispatcher = null,
+		?StoryValidator $storyValidator = null
     ) {
         $this->storyModel = $storyModel;
         $this->domainModel = $domainModel;
         $this->eventDispatcher = $eventDispatcher;
+		$this->storyValidator = $storyValidator ?? new StoryValidator();
     }
 
     /**
@@ -40,25 +46,15 @@ class StoryService
      */
     public function createStory(array $data, int $userId): int
     {
-        // 1. Валидация URL
-        if (!empty($data['url']) && !$this->validateUrl($data['url'])) {
-            Session::setFlash('error', 'Пожалуйста, укажите корректный URL-адрес.');
+        // 1. Централизованная валидация через StoryValidator
+        $validation = $this->storyValidator->validate($data, false);
+        if (!$validation['valid']) {
+            Session::setFlash('error', implode(' ', $validation['errors']));
             return 0;
         }
 
-        // 2. Валидация заголовка
-        if (!$this->validateTitle($data['title'] ?? '')) {
-            Session::setFlash('error', 'Заголовок должен содержать как минимум 5 символов.');
-            return 0;
-        }
-
-        // 3. Проверка забаненных доменов
+        // 2. Создание истории
         $domain = !empty($data['url']) ? parse_url($data['url'], PHP_URL_HOST) : null;
-        if (!$this->checkBannedDomain($domain, $userId, $data['url'] ?? '')) {
-            return 0; // Домен забанен, ошибка уже установлена в flash
-        }
-
-        // 4. Создание истории
         $storyData = [
             'user_id' => $userId,
             'title' => $data['title'],
@@ -72,17 +68,17 @@ class StoryService
 
         $storyId = $this->storyModel->create($storyData);
 
-        // 5. Привязка тегов
+        // 3. Привязка тегов
         if ($storyId > 0 && !empty($data['tags'])) {
             $this->storyModel->syncTags($storyId, $data['tags']);
         }
 
-		// 6. Пересчет hotness после создания и привязки тегов
+		// 4. Пересчет hotness после создания и привязки тегов
 		if ($storyId > 0) {
 			$this->storyModel->recalculateHotness($storyId);
 		}
 
-        // 7. Логирование
+        // 5. Логирование
         \App\Core\Audit::log('story.created', 'Пользователь создал новую публикацию с тегами', 'story');
 
         return $storyId;
@@ -102,10 +98,20 @@ class StoryService
             return false;
         }
 
+        // 1. Централизованная валидация через StoryValidator
+        $validation = $this->storyValidator->validate($data, true);
+        if (!$validation['valid']) {
+            Session::setFlash('error', implode(' ', $validation['errors']));
+            return false;
+        }
+
+        // 2. Обновление данных
+        $domain = !empty($data['url']) ? parse_url($data['url'], PHP_URL_HOST) : null;
         $updateData = [
             'title' => $data['title'] ?? $story['title'],
             'url' => $data['url'] ?? $story['url'],
             'description' => $data['description'] ?? $story['description'],
+			'domain' => $domain,
             'user_is_following' => isset($data['user_is_following']) ? 1 : 0,
         ];
 
@@ -236,4 +242,5 @@ class StoryService
 
         return true;
     }
+	
 }

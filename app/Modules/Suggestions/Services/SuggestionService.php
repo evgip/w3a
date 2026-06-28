@@ -7,8 +7,11 @@ namespace App\Modules\Suggestions\Services;
 use App\Modules\Suggestions\Models\Suggestion;
 use App\Modules\Suggestions\Models\ContentLog;
 use App\Modules\Stories\Models\Story;
+use App\Modules\Stories\Services\StoryValidator;
 use App\Modules\Comments\Models\Comment;
 use App\Modules\Tags\Models\Tag;
+use App\Modules\Tags\Services\TagValidator;
+use App\Core\Session;
 use App\Core\Events\EventDispatcher;
 use App\Core\Events\ContentUpdated;
 use App\Modules\Auth\Services\Auth;
@@ -29,19 +32,25 @@ class SuggestionService
     private Story $storyModel;
     private Tag $tagModel;
     private EventDispatcher $eventDispatcher;
+	private TagValidator $tagValidator;
+	private StoryValidator $storyValidator; 
     
     public function __construct(
         Suggestion $suggestionModel,
         ContentLog $contentLogModel,
         Story $storyModel,
         Tag $tagModel,
-        EventDispatcher $eventDispatcher
+        EventDispatcher $eventDispatcher,
+		?TagValidator $tagValidator = null,
+		?StoryValidator $storyValidator = null 
     ) {
         $this->suggestionModel = $suggestionModel;
         $this->contentLogModel = $contentLogModel;
         $this->storyModel = $storyModel;
         $this->tagModel = $tagModel;
         $this->eventDispatcher = $eventDispatcher;
+		$this->tagValidator = $tagValidator ?? new TagValidator();
+		$this->storyValidator = $storyValidator ?? new StoryValidator(); 
     }
     
     // =========================================================================
@@ -274,33 +283,40 @@ class SuggestionService
     /**
      * Применить изменения к контенту
      */
-    private function applyChanges(
-        string $targetType,
-        int $targetId,
-        array $proposedData,
-        int $actorId = null,
-        bool $isModeratorAction = false
-    ): void {
-        $model = $this->findModel($targetType);
-        $currentData = $model->find($targetId);
-        
-        if (!$currentData) {
-            throw new Exception("Target not found");
-        }
-        
-        // Собираем старые значения для лога
-        $oldValues = $this->collectOldValues($targetType, $targetId, $proposedData);
-        
-        // Применяем изменения
-        foreach ($proposedData as $key => $value) {
-            if ($key === 'tag_ids') {
-                // Используем метод из модели Story (таблица taggings)
-                $this->storyModel->updateStoryTags($targetId, $value);
-            } else {
-                $model->update($targetId, [$key => $value]);
-            }
-        }
-        
+	private function applyChanges(
+		string $targetType,
+		int $targetId,
+		array $proposedData,
+		int $actorId = null,
+		bool $isModeratorAction = false
+	): void {
+		$model = $this->findModel($targetType);
+		$currentData = $model->find($targetId);
+		
+		if (!$currentData) {
+			throw new Exception("Target not found");
+		}
+		
+		// Страховочная валидация перед применением
+		if (isset($proposedData['tag_ids'])) {
+			$validation = $this->tagValidator->validateForSuggestion($proposedData['tag_ids']);
+			if (!$validation['valid']) {
+				throw new Exception("Cannot apply suggestion: " . $validation['error']);
+			}
+		}
+		
+		// Собираем старые значения для лога
+		$oldValues = $this->collectOldValues($targetType, $targetId, $proposedData);
+		
+		// Применяем изменения
+		foreach ($proposedData as $key => $value) {
+			if ($key === 'tag_ids') {
+				$this->storyModel->syncTags($targetId, $value);
+			} else {
+				$model->update($targetId, [$key => $value]);
+			}
+		}
+			
         // Диспатчим событие
 		$this->dispatchContentEvent(new ContentUpdated(
 			$targetType,
@@ -317,7 +333,8 @@ class SuggestionService
             'target_id' => $targetId,
             'actor_id' => $actorId,
             'action_text' => $logText,
-            'is_community_action' => $isModeratorAction ? 0 : 1  // ← 0 или 1
+			// is_community_action: 0 = действие модератора, 1 = действие сообщества
+            'is_community_action' => $isModeratorAction ? 0 : 1
         ]);
         
         // Удаляем все предложения для этого контента
@@ -361,17 +378,38 @@ class SuggestionService
 		string $reason = ''
 	): void {
 		try {
+			// Получаем данные модератора
+			$userModel = new \App\Modules\Users\Models\User();
+			$moderator = $userModel->getProfile($moderatorId); // адаптируйте под ваш код
+			
+			// Получаем IP из запроса
+			$ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+			// Или если есть Request-объект: $ipAddress = $this->request->getIp();
+
 			$modLog = new \App\Modules\Moderations\Models\Moderation();
 			$modLog->create([
-				'moderator_id' => $moderatorId,
-				'action' => $action,
-				'target_type' => strtolower($suggestion['target_type']),
-				'target_id' => (int) $suggestion['target_id'],
-				'reason' => $reason ?: "Модератор {$action} предложение #{$suggestion['id']}",
+				'user_id'     => $moderatorId,
+				'username'    => $moderator['username'] ?? 'Unknown',
+				'role'        => $moderator['role'] ?? 'moderator',
+				'ip_address'  => $ipAddress,
+				'action'      => 'moderation.' . $action,       // например: moderation.approve_suggestion
+				'description' => $reason ?: "Модератор {$action} предложение #{$suggestion['id']}",
+				'category'    => 'moderation',
+				'payload'     => json_encode([
+					'target_type' => strtolower($suggestion['target_type']),
+					'target_id'   => (int) $suggestion['target_id'],
+					'suggestion_id' => (int) $suggestion['id'],
+				], JSON_UNESCAPED_UNICODE),
 			]);
-		} catch (\Exception $e) {
-			// Логируем ошибку, но не прерываем выполнение
-			error_log("Moderation log failed: " . $e->getMessage());
+		} catch (\Throwable $e) {
+			// Логируем в файл, чтобы не терять информацию
+			\App\Core\Logger::error('Failed to write moderation log: ' . $e->getMessage(), [
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString(),
+			]);
+			// Флеш-сообщение пользователю показывать не стоит — 
+			// одобрение уже прошло, а лог — это служебная информация
 		}
 	}
     
@@ -386,14 +424,14 @@ class SuggestionService
             if ($key === 'tag_ids') {
                 $oldTags = $oldValues['tags'] ?? [];
                 $newTags = $this->tagModel->getNamesByIds($newValue);
-                $parts[] = "changed tags from [" . implode(', ', $oldTags) . "] to [" . implode(', ', $newTags) . "]";
+                $parts[] = "изменены теги с [" . implode(', ', $oldTags) . "] на [" . implode(', ', $newTags) . "]";
             } else {
                 $oldValue = $oldValues[$key] ?? 'null';
-                $parts[] = "changed {$key} from \"{$oldValue}\" to \"{$newValue}\"";
+                $parts[] = "изменил {$key} с \"{$oldValue}\" на \"{$newValue}\"";
             }
         }
         
-        $source = $isModeratorAction ? "(by moderator)" : "(via community quorum)";
+        $source = $isModeratorAction ? "(модератор)" : "(через кворум сообщества)";
         return implode(", ", $parts) . " {$source}";
     }
     
@@ -441,24 +479,32 @@ class SuggestionService
     /**
      * Валидация данных
      */
-    private function validateProposedData(string $targetType, array $proposedData): void
-    {
-        if (empty($proposedData)) {
-            throw new Exception("Proposed data cannot be empty");
-        }
-        
-        $allowedKeys = match ($targetType) {
-            'Story' => ['title', 'url', 'description', 'tag_ids'],
-            'Comment' => ['text'],
-            default => throw new Exception("Invalid target type: {$targetType}")
-        };
-        
-        foreach (array_keys($proposedData) as $key) {
-            if (!in_array($key, $allowedKeys)) {
-                throw new Exception("Invalid field for {$targetType} suggestion: {$key}");
+	private function validateProposedData(string $targetType, array $proposedData): void
+	{
+		if (empty($proposedData)) {
+			throw new Exception("Proposed data cannot be empty");
+		}
+		
+		$allowedKeys = match ($targetType) {
+			'Story' => ['title', 'url', 'description', 'tag_ids'],
+			'Comment' => ['text'],
+			default => throw new Exception("Invalid target type: {$targetType}")
+		};
+		
+		foreach (array_keys($proposedData) as $key) {
+			if (!in_array($key, $allowedKeys)) {
+				throw new Exception("Invalid field for {$targetType} suggestion: {$key}");
+			}
+		}
+		
+		// Валидация количества тегов
+        if ($targetType === 'Story') {
+            $validation = $this->storyValidator->validateForSuggestion($proposedData);
+            if (!$validation['valid']) {
+                throw new Exception(implode(' ', $validation['errors']));
             }
         }
-    }
+	}
     
     // =========================================================================
     // НОРМАЛИЗАЦИЯ JSON

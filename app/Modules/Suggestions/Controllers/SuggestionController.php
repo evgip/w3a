@@ -125,7 +125,7 @@ class SuggestionController extends Controller
 			Session::setFlash('success', 'Предложение одобрено и применено.');
 			$this->redirectBack();
 			
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			Session::setFlash('error', $e->getMessage());
 			$this->redirectBack();
 		}

@@ -112,18 +112,21 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
 						<?php partial('Suggestions::active_suggestions', ['activeSuggestions' => $activeSuggestions ?? []]) ?>
 					<?php endif; ?>
 
-					<!-- Блок истории изменений (только если есть) -->
-					<?php if (!empty($changeLog)): ?>
-						<?php partial('Suggestions::change_log', ['changeLog' => $changeLog ?? []]) ?>
+					<?php if (\App\Modules\Auth\Services\Auth::check()): ?>
+
+						<!-- Блок истории изменений (только если есть) -->
+						<?php if (!empty($changeLog)): ?>
+							<?php partial('Suggestions::change_log', ['changeLog' => $changeLog ?? []]) ?>
+						<?php endif; ?>
+
+
+
+						<!-- Модальное окно -->
+						<?php partial('Suggestions::suggest_modal', [
+							'allTags' => $allTags ?? [],
+							'currentTagIds' => $currentTagIds ?? []
+						]) ?>
 					<?php endif; ?>
-
-
-
-					<!-- Модальное окно -->
-					<?php partial('Suggestions::suggest_modal', [
-						'allTags' => $allTags ?? [],
-						'currentTagIds' => $currentTagIds ?? []
-					]) ?>
 
 			<?php endif; ?>
 
