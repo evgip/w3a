@@ -177,4 +177,95 @@ class ModerationsController extends Controller
         // Редирект на профиль пользователя
         $this->redirect('/user/' . $result['username']);
     }
+	
+	// ==========================================
+	// /mod/suggestions — Список предложений
+	// ==========================================
+
+	/**
+	 * Отображение списка активных предложений (только для модераторов).
+	 */
+	public function suggestions(): void
+	{
+	 
+		$page = max(1, (int)$this->request->query('page', 1));
+		$perPage = 30;
+		$offset = ($page - 1) * $perPage;
+		$filter = $this->request->query('type', '');
+
+		$suggestionService = $this->service(\App\Modules\Suggestions\Services\SuggestionService::class);
+		
+		// Получаем предложения с фильтром
+		$suggestions = $suggestionService->getAllActiveSuggestions($perPage, $offset, $filter);
+		$total = $suggestionService->countAllActiveSuggestions($filter);
+		$pages = max(1, (int)ceil($total / $perPage));
+
+		// Счетчики для фильтров
+		$totalCount = $suggestionService->countAllActiveSuggestions('');
+		$storiesCount = $suggestionService->countAllActiveSuggestions('Story');
+		$commentsCount = $suggestionService->countAllActiveSuggestions('Comment');
+		
+		$this->render('suggestions', [
+			'title' => 'Предложения на рассмотрении',
+			'suggestions' => $suggestions,
+			'total' => $total,
+			'pages' => $pages,
+			'current_page' => $page,
+			'filter' => $filter,
+			'totalCount' => $totalCount,
+			'storiesCount' => $storiesCount,
+			'commentsCount' => $commentsCount
+		]);
+	}
+
+	// ==========================================
+	// POST /mod/suggestions/{id}/approve
+	// ==========================================
+
+	/**
+	 * Одобрить предложение (только для модераторов).
+	 *
+	 * @param string $id ID предложения
+	 */
+	public function approveSuggestion(string $id): void
+	{
+		$suggestionId = (int)$id;
+		
+		try {
+			$this->service(\App\Modules\Suggestions\Services\SuggestionService::class)
+				->approveSuggestion($suggestionId, \App\Modules\Auth\Services\Auth::id());
+			
+			Session::setFlash('success', 'Предложение одобрено и применено.');
+		} catch (\Exception $e) {
+			Session::setFlash('error', $e->getMessage());
+		}
+		
+		$this->redirect('/mod/suggestions');
+	}
+
+	// ==========================================
+	// POST /mod/suggestions/{id}/reject
+	// ==========================================
+
+	/**
+	 * Отклонить предложение (только для модераторов).
+	 *
+	 * @param string $id ID предложения
+	 */
+	public function rejectSuggestion(string $id): void
+	{
+		$suggestionId = (int)$id;
+		$reason = trim($this->request->post('reason', ''));
+		
+		try {
+			$this->service(\App\Modules\Suggestions\Services\SuggestionService::class)
+				->rejectSuggestion($suggestionId, \App\Modules\Auth\Services\Auth::id(), $reason);
+			
+			Session::setFlash('success', 'Предложение отклонено.');
+		} catch (\Exception $e) {
+			Session::setFlash('error', $e->getMessage());
+		}
+		
+		$this->redirect('/mod/suggestions');
+	}
 }

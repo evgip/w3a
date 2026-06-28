@@ -72,12 +72,61 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
             </div>
 
             <?php if (!empty($story['tags'])): ?>  
-							<span class="tags">
-								<?php foreach ($story['tags_with_names'] as $tagData): ?>  
-									<a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
-								<?php endforeach; ?>
-							</span> 
+			
+					<span class="tags">
+						<?php foreach ($story['tags_with_names'] as $tagData): ?>  
+							<a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
+						<?php endforeach; ?>
+					</span> 
+					
+			
+
+					<!-- Кнопка "Предложить правку" -->
+					<?php 
+					$isModerator = \App\Modules\Auth\Services\Auth::isModerator() || \App\Modules\Auth\Services\Auth::isAdmin();
+					$canSuggest = isset($_SESSION['user_id']) && (
+						$_SESSION['user_id'] !== $story['user_id'] || // Не автор
+						$isModerator // Или модератор
+					);
+					?>
+
+					<?php if ($canSuggest): ?>
+						<?php
+						// Проверяем лимит предложений (только для не-модераторов)
+						if (!$isModerator) {
+							$suggestionService = $this->service(\App\Modules\Suggestions\Services\SuggestionService::class);
+							$userSuggestionsCount = $suggestionService->getUserActiveSuggestionsCount('Story', $story['id'], $_SESSION['user_id']);
+							$canSuggest = $userSuggestionsCount < \App\Modules\Suggestions\Services\SuggestionService::MAX_USER_SUGGESTIONS;
+						}
+						?>
+						
+						<?php if ($canSuggest): ?>
+							<?php partial('Suggestions::suggest_button', ['story' => $story]) ?>
+						<?php else: ?>
+							<p class="hint">Вы уже отправили максимальное количество предложений.</p>
 						<?php endif; ?>
+					<?php endif; ?>
+											 
+					<!-- Блок активных предложений (только если есть) -->
+					<?php if (isset($_SESSION['user_id']) && !empty($activeSuggestions)): ?>
+						<?php partial('Suggestions::active_suggestions', ['activeSuggestions' => $activeSuggestions ?? []]) ?>
+					<?php endif; ?>
+
+					<!-- Блок истории изменений (только если есть) -->
+					<?php if (!empty($changeLog)): ?>
+						<?php partial('Suggestions::change_log', ['changeLog' => $changeLog ?? []]) ?>
+					<?php endif; ?>
+
+
+
+					<!-- Модальное окно -->
+					<?php partial('Suggestions::suggest_modal', [
+						'allTags' => $allTags ?? [],
+						'currentTagIds' => $currentTagIds ?? []
+					]) ?>
+
+			<?php endif; ?>
+
 
             <!-- Описание -->
             <?php if (!empty($story['description'])): ?>

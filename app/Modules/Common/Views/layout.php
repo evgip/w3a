@@ -81,12 +81,33 @@
 							<?php endif; ?>
 
 							<?php if (\App\Modules\Auth\Services\Auth::isModerator()): ?>
+							
+							    <?php
+								// Получаем количество активных предложений
+								$suggestionsCount = 0;
+								try {
+									$suggestionsCount = (new \App\Modules\Suggestions\Models\Suggestion())->countAllActive();
+								} catch (\Exception $e) {
+									// Игнорируем, если модуль недоступен
+								}
+								?>
+							
 								<div class="dropdown-divider"></div>
 								<a href="/mod/log" class="dropdown-menu-item dropdown-item-mod">📋 <?= __('moderation_log') ?></a>
 								<a href="/mod/notes" class="dropdown-menu-item dropdown-item-mod">🔒 <?= __('notes') ?></a>
 								<a href="/mod/stats" class="dropdown-menu-item dropdown-item-mod">📈 <?= __('activity') ?></a>
 								<a href="/admin/domains" class="dropdown-menu-item dropdown-item-mod">🌐 <?= __('domains') ?></a>
 								<a href="<?= route('domains.index') ?>" class="dropdown-menu-item dropdown-item-mod">🚫 <?= __('ban') ?></a>
+								
+								<a href="/mod/suggestions" class="dropdown-menu-item dropdown-item-mod">
+									💡 Предложения
+									<?php if ($suggestionsCount > 0): ?>
+										<span class="red">
+											<?= $suggestionsCount ?>
+										</span>
+									<?php endif; ?>
+								</a>
+								
 							<?php endif; ?>
 
 							<div class="dropdown-divider"></div>

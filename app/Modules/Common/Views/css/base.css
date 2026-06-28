@@ -630,7 +630,6 @@ input[type="button"]:hover {
 
 .story_content summary {
     cursor: pointer;
-    color: #666;
     font-style: italic;
 	font-size: 0.9em;
 }
@@ -1392,13 +1391,46 @@ table.data tr.unread td {
     display: inline;
 }
 
+.delete,
+.red {
+  color: var(--color-fg-negative);
+}
+
 .delete {
-	color: var(--color-fg-negative);
 	font-size: 0.85em;
+}
+
+.green {
+  color: var(--color-fg-affirmative);
 }
 
 .delete:hover {
     opacity: 0.8;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--color-box-bg, white);
+    padding: 20px;
+    border: 1px solid var(--color-box-border, #ccc);
+    border-radius: 3px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 /* ---------- Адаптивность (мобильные) ---------- */

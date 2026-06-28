@@ -109,11 +109,28 @@ class StoriesController extends Controller
         // Обрабатываем отметку прочитанного
         $newCount = $this->service(ReadRibbonService::class)->handleStoryView($storyId);
 
+		// Получаем данные предложений
+		$suggestionService = $this->service(\App\Modules\Suggestions\Services\SuggestionService::class);
+		$activeSuggestions = $suggestionService->getActiveSuggestions('Story', $storyId);
+		$changeLog = $suggestionService->getChangeLog('Story', $storyId, 10);
+		
+		// Получаем теги для модалки
+		$tagModel = new \App\Modules\Tags\Models\Tag();
+		$allTags = $tagModel->getAllTags();
+		
+		$storyModel = new \App\Modules\Stories\Models\Story();
+		$currentTagIds = $storyModel->getStoryTagIds($storyId);
+		
+
         $this->render('show', [
             'title' => $story['title'],
             'story' => $story,
             'commentsTree' => $commentsTree,
             'newCount' => $newCount,
+			'activeSuggestions' => $activeSuggestions,
+			'changeLog' => $changeLog,
+			'allTags' => $allTags,
+			'currentTagIds' => $currentTagIds
         ]);
     }
     

@@ -94,4 +94,45 @@ $router->group(['middleware' => ['web', 'moderator'], 'prefix' => '/mod'], funct
         ModerationsController::class . '@banUser', 
         'mod.ban'
     );
+    
+    // -------------------------------------------------------------------------
+    // ПРЕДЛОЖЕНИЯ ИЗМЕНЕНИЙ КОНТЕНТА
+    // -------------------------------------------------------------------------
+    
+    /**
+     * Список активных предложений от пользователей.
+     * Модераторы могут одобрять или отклонять их.
+     */
+    $router->add(
+        'GET', 
+        '/suggestions', 
+        ModerationsController::class . '@suggestions', 
+        'mod.suggestions'
+    );
+    
+    /**
+     * Одобрение предложения.
+     * Изменения применяются немедленно, предложение удаляется.
+     * 
+     * @param int $id ID предложения
+     */
+    $router->add(
+        'POST', 
+        '/suggestions/{id}/approve', 
+        ModerationsController::class . '@approveSuggestion', 
+        'mod.suggestions.approve'
+    );
+    
+    /**
+     * Отклонение предложения.
+     * Предложение удаляется без применения изменений.
+     * 
+     * @param int $id ID предложения
+     */
+    $router->add(
+        'POST', 
+        '/suggestions/{id}/reject', 
+        ModerationsController::class . '@rejectSuggestion', 
+        'mod.suggestions.reject'
+    );
 });

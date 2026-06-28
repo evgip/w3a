@@ -501,4 +501,52 @@ class Story extends Model
 		");
 		$stmt->execute([$storyId]);
 	}
+	
+	/**
+	 * Обновить теги статьи (заменяет старые на новые).
+	 * 
+	 * Использует транзакцию для атомарности операции.
+	 * Если хоть один INSERT упадет - вся операция откатится.
+	 * 
+	 * @param int   $storyId ID статьи
+	 * @param array $tagIds  Массив ID тегов
+	 * @return bool Успешно ли выполнено
+	 */
+	public function updateStoryTags(int $storyId, array $tagIds): bool
+	{
+		// Убираем дубликаты и приводим к int
+		$tagIds = array_unique(array_map('intval', $tagIds));
+		
+		try {
+			static::db()->beginTransaction();
+			
+			// 1. Удаляем старые теги
+			$stmt = static::db()->prepare("DELETE FROM `taggings` WHERE `story_id` = :story_id");
+			$stmt->execute(['story_id' => $storyId]);
+			
+			// 2. Добавляем новые теги (если есть)
+			if (!empty($tagIds)) {
+				// Множественный INSERT - эффективнее, чем по одному
+				$placeholders = [];
+				$params = ['story_id' => $storyId];
+				
+				foreach ($tagIds as $index => $tagId) {
+					$placeholders[] = "(:story_id, :tag_id_{$index})";
+					$params["tag_id_{$index}"] = $tagId;
+				}
+				
+				$sql = "INSERT INTO `taggings` (`story_id`, `tag_id`) VALUES " . implode(', ', $placeholders);
+				$stmt = static::db()->prepare($sql);
+				$stmt->execute($params);
+			}
+			
+			static::db()->commit();
+			return true;
+			
+		} catch (\Exception $e) {
+			static::db()->rollBack();
+			error_log("Failed to update story tags: " . $e->getMessage());
+			return false;
+		}
+	}
 }
