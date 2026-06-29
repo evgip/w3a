@@ -204,3 +204,131 @@ document.addEventListener('DOMContentLoaded', function() {
 		});
 
 });
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const STORAGE_KEY = 'w3a_collapsed_comments';
+    
+    // Загружаем сохранённое состояние
+    let collapsedIds = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    
+    // Применяем сохранённое состояние к текущей странице
+    collapsedIds.forEach(id => {
+        const thread = document.querySelector(`[data-comment-id="${id}"]`);
+        if (thread) {
+            thread.classList.add('collapsed');
+            const toggle = thread.querySelector('.collapse-toggle');
+            if (toggle) {
+                toggle.textContent = '[+]';
+            }
+            
+            // Добавляем счётчик скрытых
+            const hiddenCount = thread.querySelectorAll('.comment-thread').length;
+            if (hiddenCount > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'collapsed-count';
+                badge.textContent = `(+${hiddenCount})`;
+                thread.querySelector('.comment-header').appendChild(badge);
+            }
+        }
+    });
+    
+    // Обработчик клика на сворачивание
+    document.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('collapse-toggle')) return;
+        
+        const thread = e.target.closest('.comment-thread');
+        if (!thread) return;
+        
+        const commentId = thread.dataset.commentId;
+        const isCollapsed = thread.classList.toggle('collapsed');
+        
+        // Обновляем иконку
+        e.target.textContent = isCollapsed ? '[+]' : '[–]';
+        
+        // Считаем скрытые комментарии
+        if (isCollapsed) {
+            const hiddenCount = thread.querySelectorAll('.comment-thread').length;
+            if (hiddenCount > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'collapsed-count';
+                badge.textContent = `(+${hiddenCount})`;
+                thread.querySelector('.comment-header').appendChild(badge);
+            }
+        } else {
+            const badge = thread.querySelector('.collapsed-count');
+            if (badge) badge.remove();
+        }
+        
+        // Сохраняем состояние
+        if (isCollapsed) {
+            if (!collapsedIds.includes(commentId)) {
+                collapsedIds.push(commentId);
+            }
+        } else {
+            collapsedIds = collapsedIds.filter(id => id !== commentId);
+        }
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(collapsedIds));
+    });
+    
+    // Горячая клавиша: C для сворачивания комментария под курсором
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'c' || e.key === 'C') {
+            // Проверяем, что не в текстовом поле
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            const hovered = document.querySelector('.comment-thread:hover');
+            if (hovered) {
+                const toggle = hovered.querySelector('.collapse-toggle');
+                if (toggle) {
+                    toggle.click();
+                }
+            }
+        }
+    });
+});
+
+
+// Кнопка "Свернуть все / Развернуть все"
+const collapseAllBtn = document.getElementById('collapse-all-comments');
+if (collapseAllBtn) {
+    collapseAllBtn.addEventListener('click', () => {
+        const threads = document.querySelectorAll('.comment-thread');
+        const allCollapsed = Array.from(threads).every(t => t.classList.contains('collapsed'));
+        
+        threads.forEach(thread => {
+            const toggle = thread.querySelector('.collapse-toggle');
+            if (allCollapsed) {
+                // Развернуть все
+                thread.classList.remove('collapsed');
+                if (toggle) toggle.textContent = '[–]';
+                const badge = thread.querySelector('.collapsed-count');
+                if (badge) badge.remove();
+            } else {
+                // Свернуть все
+                thread.classList.add('collapsed');
+                if (toggle) toggle.textContent = '[+]';
+                
+                const hiddenCount = thread.querySelectorAll('.comment-thread').length;
+                if (hiddenCount > 0 && !thread.querySelector('.collapsed-count')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'collapsed-count';
+                    badge.textContent = `(+${hiddenCount})`;
+                    thread.querySelector('.comment-header').appendChild(badge);
+                }
+            }
+        });
+        
+        // Обновляем localStorage
+        if (allCollapsed) {
+            localStorage.removeItem(STORAGE_KEY);
+        } else {
+            const allIds = Array.from(threads).map(t => t.dataset.commentId);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(allIds));
+        }
+        
+        // Меняем текст кнопки
+        collapseAllBtn.textContent = allCollapsed ? 'Свернуть все ветки' : 'Развернуть все ветки';
+    });
+}

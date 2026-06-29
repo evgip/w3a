@@ -240,7 +240,15 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
 <hr>
 
 <!-- КОММЕНТАРИИ -->
-<h3 id="comments">Комментарии (<?= (int)$story['comments_count'] ?>)</h3>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h3 id="comments" style="margin: 0;">Комментарии (<?= (int)$story['comments_count'] ?>)</h3>
+    <?php if (!empty($commentsTree)): ?>
+        <button type="button" id="collapse-all-comments" class="btn btn-sm btn-outline-secondary">
+            Свернуть все ветки
+        </button>
+    <?php endif; ?>
+</div>
+
 
 <?php if (empty($commentsTree)): ?>
     <p class="hint">Здесь пока нет комментариев. Будьте первым!</p>
@@ -258,7 +266,7 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
                 $commentId = (int)$comment['id'];
                 $isCommentDeleted = !empty($comment['deleted_at']);
                 ?>
-                <li class="comment <?= $isCommentDeleted ? 'deleted' : '' ?>" id="comment-block-<?= $commentId ?>">
+                <li class="comment comment-thread <?= $isCommentDeleted ? 'deleted' : '' ?>" data-comment-id="<?= $commentId ?>"  id="comment-block-<?= $commentId ?>">
 
                     <!-- Голосование -->
                     <?php if (!$isCommentDeleted): ?>
@@ -284,11 +292,16 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
                     <div class="comment_body">
 
                         <!-- Метаданные комментария -->
+						
+<div class="comment-header">
+<span class="collapse-toggle" title="Свернуть ветку">[–]</span>
                         <?php partial('Users::_comment_meta', [
                             'comment' => $comment,
                             'currentUserId' => $currentUserId,
                             'isAdmin' => $isAdmin,
                         ]); ?>
+</div>
+
 
                         <!-- Тело комментария -->
                         <?php if (!$isCommentDeleted): ?>

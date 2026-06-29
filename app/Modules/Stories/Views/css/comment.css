@@ -1,0 +1,53 @@
+/* Сворачивание веток комментариев */
+.comment-thread {
+    position: relative;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.collapse-toggle {
+    cursor: pointer;
+    user-select: none;
+    color: #666;
+    font-family: monospace;
+    font-size: 14px;
+    margin-bottom: 0.3em;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.collapse-toggle:hover {
+    background-color: #f0f0f0;
+    color: #000;
+}
+
+/* Свёрнутое состояние */
+.comment-thread.collapsed > .comment_body > .comment_text,
+.comment-thread.collapsed > .comment_body > .comment_actions,
+.comment-thread.collapsed > .comments {
+    display: none;
+}
+
+.comment-thread.collapsed > .comment-header::after {
+    content: " [+]";
+    color: #888;
+    font-size: 0.9em;
+    font-family: monospace;
+}
+
+/* Счётчик скрытых комментариев */
+.collapsed-count {
+    color: #0066cc;
+    font-size: 0.85em;
+    margin-left: 5px;
+	margin-bottom: 0.3em;
+}
+
+/* Удалённые комментарии */
+.comment-thread.deleted {
+    opacity: 0.6;
+}
