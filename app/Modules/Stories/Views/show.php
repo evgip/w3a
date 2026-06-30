@@ -75,7 +75,7 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
 
                 <span class="tags">
                     <?php foreach ($story['tags_with_names'] as $tagData): ?>
-                        <a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
+                        <a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag tag-<?= e($tagData['tag']); ?>"><?= e($tagData['name']) ?></a>
                     <?php endforeach; ?>
                 </span>
 

@@ -32,6 +32,16 @@ $sortLinks = [
     <?php endforeach; ?>
 </nav>
 
+<?php if (!empty($tagInfo['tag'])): ?>
+	<div class="hint">
+		Статьи, <a href="/tags#<?= e($tagInfo['tag']); ?>">помеченные</a> как <a href="<?= route('tags.filter', ['tagname' => $tagInfo['tag']]) ?>" class="tag tag-<?= e($tagInfo['tag']); ?>"><?= e($tagInfo['name']); ?></a>. 
+		<br>
+		<?php if ($wikiPagesCount > 0 || $primaryWikiPage): ?>
+			Wiki статья привязанная к тегу   <?= e($tagInfo['name']); ?>: <a href="/t/<?= e($tagInfo['tag']) ?>/wiki/<?= e($primaryWikiPage['slug']) ?>"><?= e($primaryWikiPage['title']) ?></a>
+		<?php endif; ?>
+	</div>
+<?php endif; ?>
+
 <?php if (!empty($stories)): ?>
     <ol class="stories">
         <?php foreach ($stories as $story): ?>
@@ -95,7 +105,7 @@ $sortLinks = [
                         <?php if (!empty($story['tags'])): ?>
                             <span class="tags">
                                 <?php foreach ($story['tags_with_names'] as $tagData): ?>
-                                    <a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
+                                    <a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag tag-<?= e($tagData['tag']); ?>"><?= e($tagData['name']) ?></a>
                                 <?php endforeach; ?>
                             </span>
                         <?php endif; ?>
@@ -105,7 +115,7 @@ $sortLinks = [
                         <?php if ($needsTruncation): ?>
                             <details>
                                 <summary>
-                                    <?= truncateDescription($fullHtml, 300) ?>
+                                    <?= truncateDescription($fullHtml, 150) ?>
                                 </summary>
                                 <div class="full-content">
                                     <?= $fullHtml ?>

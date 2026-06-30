@@ -22,6 +22,21 @@ class ErrorsController extends Controller
     }
 
     /**
+     * Ошибка 500 —  Ошибка сервера
+     */
+    public function serverError(string $message = "Ошибка сервера"): void
+    {
+		 http_response_code(500);
+		
+		$this->render('errors/500', [
+            'title' => 'Ошибка 400 — cтраница не найдена',
+            'message' => $message,
+			'statusCode' => 500,
+        ]);
+    }
+
+
+    /**
      * Ошибка 419 — CSRF-токен недействителен (срок действия формы истёк)
      */
     public function csrf(string $message = "Срок действия формы истёк"): void

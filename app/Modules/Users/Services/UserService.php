@@ -129,4 +129,18 @@ class UserService
     {
         return $this->userModel->getAllUsersWithBanStatus(withTrashed: true);
     }
+	
+	public function getUserOpenGraphData(string $username): array
+	{
+		$user = $this->getProfile($username);
+		if (!$user) return [];
+		
+		return [
+			'title' => $user['username'],
+			'description' => $user['bio'] ?? 'Пользователь ' . $user['username'],
+			'image' => !empty($user['avatar']) 
+				? 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/uploads/avatars/' . $user['avatar']
+				: null,
+		];
+	}
 }

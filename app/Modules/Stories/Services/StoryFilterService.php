@@ -142,4 +142,43 @@ class StoryFilterService
         $showDeleted = Auth::isAdmin();
         return $this->storyModel->getSingleWithAuthor($storyId, $showDeleted);
     }
+	
+	/**
+	 * Подготовить данные для Open Graph мета-тегов.
+	 * 
+	 * @return array Массив с ключами: title, description, image, author_url
+	 */
+	public function getStoryOpenGraphData(int $storyId): array
+	{
+		$story = $this->getStoryWithAuthor($storyId);
+		if (!$story) {
+			return [];
+		}
+		
+		// Описание: либо из текста, либо кол-во комментариев
+		$description = '';
+		if (!empty($story['description'])) {
+			$description = mb_substr(strip_tags($story['description']), 0, 200);
+			if (mb_strlen($story['description']) > 200) {
+				$description .= '...';
+			}
+		} else {
+			$description = (int)$story['comments_count'] . ' комментариев';
+		}
+		
+		// Изображение: превью ссылки или дефолтное
+		$image = null;
+		if (!empty($story['url'])) {
+			// $image = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/' . $story['id'] . '.png';
+			$image = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/' . $story['id'] . '.png';
+		}
+		
+		return [
+			'title' => $story['title'],
+			'description' => $description,
+			'image' => $image,
+			'author_name' => $story['author_name'],
+			'author_url' => route('user.profile', ['username' => $story['author_name']]),
+		];
+	}
 }

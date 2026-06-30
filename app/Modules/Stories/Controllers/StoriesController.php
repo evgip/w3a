@@ -11,6 +11,8 @@ use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Stories\Services\CommentService;
 use App\Modules\Stories\Services\ReadRibbonService;
 use App\Modules\Stories\Models\Story;
+
+use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Auth\Services\Auth;
 
@@ -66,10 +68,45 @@ class StoriesController extends Controller
 
         // Формируем заголовок страницы
         $title = 'Лента историй';
+		$tagInfo = '';
         if ($tagname) {
             $title = "Публикации с тегом # " . e($tagname);
+			
+			// Получаем OG-данные из сервиса
+			$ogData = $this->service(TagFilterService::class)->getTagOpenGraphData($tagname);
+			$this->setOpenGraph([
+				'type' => 'article',
+				'title' => $ogData['title'],
+				'description' => $ogData['description'],
+				'image' => config('config.app.url') . '/',
+			]);
+			
+			// Инфа по тегу для инфы над постами
+			$tagInfo =  $this->service(TagFilterService::class)->getByInfoSlug($tagname);
+	
+			// Получаем данные о wiki для этого тега
+			$wikiService = $this->service(\App\Modules\Wiki\Services\WikiService::class);
+			$wikiPages = $wikiService->getPagesForTag($tagInfo['id']);
+			$primaryWikiPage = $wikiService->getPrimaryPageForTag($tagInfo['id']);
+			$wikiPagesCount = count($wikiPages);
+
+			/*// Проверяем права на создание wiki
+			$canCreateWiki = false;
+			if (\App\Modules\Auth\Services\Auth::check()) {
+				$permissionService = $this->service(\App\Modules\Wiki\Services\WikiPermissionService::class);
+				$canCreateWiki = $permissionService->canCreateWikiForTag($tagInfo['id'], \App\Modules\Auth\Services\Auth::id());
+			} */
+			
+
         } elseif ($domain) {
             $title = "Публикации с домена " . e($domain);
+			
+			$this->setOpenGraph([
+				'type' => 'article',
+				'title' => $title,
+				'description' => null,
+				'image' => config('config.app.url') . '/',
+			]);
         }
 
         $this->render('index', [
@@ -77,9 +114,13 @@ class StoriesController extends Controller
             'stories' => $stories,
             'currentPage' => $currentPage,
             'totalPages' => $totalPages,
+			'tagInfo' => $tagInfo,
             'newCommentsMap' => $newCommentsMap,
             'bannedDomainsCache' => $bannedDomainsCache,
             'sort' => $sort,
+			'wikiPages' => $wikiPages ?? false,
+			'primaryWikiPage' => $primaryWikiPage ?? false,
+			'wikiPagesCount' => $wikiPagesCount ?? false,
         ]);
     }
     
@@ -125,6 +166,17 @@ class StoriesController extends Controller
         $storyModel = new \App\Modules\Stories\Models\Story();
         $currentTagIds = $storyModel->getStoryTagIds($storyId);
 
+		// Получаем OG-данные из сервиса
+		$ogData = $this->service(StoryFilterService::class)->getStoryOpenGraphData($storyId);
+		
+		// Контроллер устанавливает OG-теги (презентация)
+		$this->setOpenGraph([
+			'type' => 'article',
+			'title' => $ogData['title'],
+			'description' => $ogData['description'],
+			'image' => $ogData['image'],
+			'article:author' => $ogData['author_url'],
+		]);
 
         $this->render('show', [
             'title' => $story['title'],

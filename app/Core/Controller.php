@@ -151,4 +151,28 @@ abstract class Controller
 	{
 		return $this->container->get($class);
 	}
+	
+    /**
+     * Установить Open Graph данные для текущей страницы.
+     * 
+     * @param array $data Массив OG-свойств
+     * 
+     * Пример:
+     *   $this->setOpenGraph([
+     *       'type' => 'article',
+     *       'title' => $story['title'],
+     *       'description' => $story['description'],
+     *       'image' => '/path/to/image.png',
+     *       'article:author' => route('user.profile', ['username' => $author])
+     *   ]);
+     */
+    protected function setOpenGraph(array $data): void
+    {
+        // Автоматически добавляем URL текущей страницы
+        if (!isset($data['url'])) {
+            $data['url'] = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . ($_SERVER['REQUEST_URI'] ?? '/');
+        }
+        
+        OpenGraph::set($data);
+    }
 }

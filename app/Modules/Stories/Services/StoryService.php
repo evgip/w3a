@@ -237,4 +237,5 @@ class StoryService
 
         return true;
     }
+
 }

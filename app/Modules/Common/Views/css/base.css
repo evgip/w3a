@@ -37,6 +37,8 @@
     --color-table-row-border: #e0e0e0;
     --color-tag-bg: #fffcd7;
     --color-tag-border: #d5d458;
+	--color-tag-meta-bg: #ddebf9;
+    --color-tag-meta-border: #b2ccf0;
     --color-flash-bg-error: #fdcfcc;
     --color-flash-bg-success: #dff0d8;
     --color-flash-bg-notice: #cce6ee;
@@ -71,6 +73,8 @@
         --color-table-row-border: #333;
         --color-tag-bg: #3a3a20;
         --color-tag-border: #6a6a30;
+		--color-tag-meta-bg: #ddebf9;
+		--color-tag-meta-border: #b2ccf0;
         --color-flash-bg-error: #4a2020;
         --color-flash-bg-success: #204a20;
         --color-flash-bg-notice: #203a4a;
@@ -338,6 +342,17 @@ li .domain:hover {
 }
 
 .tag:visited { color: var(--opacity-fg-contrast-10); }
+
+.tag-meta {
+	background-color: var(--color-tag-meta-bg);
+    border-color: var(--color-tag-meta-border);
+    color: var(--opacity-fg-contrast-7-5);
+}
+
+/* + оранжевый
+#f9ddde
+#f0b2b8
+*/
 
 li .byline {
     color: var(--opacity-fg-contrast-4-5);
@@ -646,6 +661,7 @@ button.button-no:hover {
     cursor: pointer;
     font-style: italic;
 	font-size: 0.9em;
+    color: var(--opacity-fg-contrast-5);
 }
 
 .story_content summary:hover {
@@ -850,17 +866,21 @@ table.data.zebra tr:nth-child(odd) td {
     display: flex;
     align-items: center;
     padding: 0.5em 0;
-    margin: 0.5em 0;
     border-bottom: 1px solid var(--color-fg-shape);
 }
 
-.navbar-logo {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: var(--color-fg-accent);
-    text-decoration: none;
-    margin-right: 1em;
-    flex-shrink: 0;
+a.navbar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 55px;
+    height: 30px;
+    color: var(--color-box-bg);
+    background-color: var(--color-fg-accent);
+	text-decoration: none;
+    color: white;
+    font-size: 1.1em;
+    font-weight: normal;
 }
 
 .navbar-logo:hover {

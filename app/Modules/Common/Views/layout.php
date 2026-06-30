@@ -6,6 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= e($data['csrf_token'] ?? '') ?>">
 	<title><?= e($title ?? 'Лента историй') ?> | <?= e(app_name()); ?> <?= __('forum') ?></title>
+	 <?= \App\Core\OpenGraph::render() ?>
 	<link rel="stylesheet" href="/css/app.min.css">
 </head>
 
@@ -13,7 +14,7 @@
 
 	<header>
 		<div class="navbar-container">
-			<a href="<?= route('home') ?>" class="navbar-logo">🌐 <?= e(app_name()); ?></a>
+			<a href="<?= route('home') ?>" class="navbar-logo"><?= e(app_name()); ?></a>
 
 			<nav class="navbar-links">
 				<a href="<?= route('tags.index') ?>"><?= __('tags') ?></a>

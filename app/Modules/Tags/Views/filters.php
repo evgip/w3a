@@ -20,9 +20,9 @@
         <div class="filters-list">
             <?php foreach ($filters as $filter): ?>
                 <div class="filter-item">
-                    <span class="tag tag-filter">
+					 <a href="<?= route('tags.filter', ['tagname' => $filter['tag']]) ?>" class="tag tag-<?= e($filter['tag']); ?>">
                         #<?= e($filter['name']) ?>
-                    </span>
+                    </a>
                     
                     <?php if (!empty($filter['description'])): ?>
                         <span class="tag-description hint">

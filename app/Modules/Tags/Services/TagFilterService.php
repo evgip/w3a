@@ -89,4 +89,24 @@ class TagFilterService
     {
         return $userId > 0 && $tagId > 0;
     }
+	
+	public function getTagOpenGraphData(string $tagSlug): array
+	{
+		$tag = $this->tagModel->getBySlug($tagSlug);
+		if (!$tag) return [];
+
+		return [
+			'title' => '#' . $tag['tag'] . ' — ' . ($tag['name'] ?? ''),
+			'description' => $tag['description'] ?? 'Публикации с тегом #' . $tag['tag'],
+			'image' => null,
+		];
+	}
+	
+    /**
+     * Массив данных для инфы по тегу
+     */
+	public function getByInfoSlug(string $tagSlug): array
+	{
+		return $this->tagModel->getBySlug($tagSlug);
+	}
 }

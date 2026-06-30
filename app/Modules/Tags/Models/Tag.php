@@ -59,6 +59,32 @@ class Tag extends Model
         return (int)$stmt->fetchColumn() > 0;
     }
 	
+	
+	/**
+	 * Получить тег по его slug (полю `tag`).
+	 * 
+	 * @param string $tagSlug Slug тега (например, 'php')
+	 * @return array|null Данные тега или null, если не найден
+	 */
+	public function getBySlug(string $tagSlug): ?array
+	{
+		$tagSlug = mb_strtolower(trim($tagSlug));
+		
+		if ($tagSlug === '') {
+			return null;
+		}
+		
+		$sql = "SELECT * FROM `tags` WHERE `tag` = :tag LIMIT 1";
+		
+		$stmt = static::db()->prepare($sql);
+		$stmt->execute(['tag' => $tagSlug]);
+		
+		$tag = $stmt->fetch(\PDO::FETCH_ASSOC);
+		
+		return $tag ?: null;  // вернёт null, если ничего не найдено
+	}
+		
+	
 	/**
 	 * Получить полную информацию о тегах по их ID.
 	 * 
