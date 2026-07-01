@@ -36,6 +36,9 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
     // --- Создание и редактирование историй ---
     $router->add('GET', '/stories/create', StoriesController::class . '@showCreateForm', 'story.form');
     $router->add('POST', '/stories/create', StoriesController::class . '@create', 'story.create');
+	
+	$router->add('POST', '/stories/fetch-url-title', StoriesController::class . '@fetchUrlTitle', 'story.fetch_url_title');
+
 
     $router->add('GET', '/stories/{id}/edit', StoriesController::class . '@showEditForm', 'story.edit');
     $router->add('POST', '/stories/{id}/edit', StoriesController::class . '@update', 'story.edit.submit');

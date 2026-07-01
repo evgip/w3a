@@ -10,6 +10,7 @@ use App\Modules\Stories\Services\StoryService;
 use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Stories\Services\CommentService;
 use App\Modules\Stories\Services\ReadRibbonService;
+use App\Modules\Stories\Services\UrlFetcherService;
 use App\Modules\Stories\Models\Story;
 
 use App\Modules\Tags\Services\TagFilterService;
@@ -496,4 +497,22 @@ class StoriesController extends Controller
         $referer = $_SERVER['HTTP_REFERER'] ?? '/story/' . $storyId;
         $this->redirectBack($referer);
     }
+	
+	/**
+	 * AJAX endpoint для извлечения заголовка из URL
+	 */
+	public function fetchUrlTitle(): void
+	{
+		$url = $this->request->getParams('url');
+		
+		if (empty($url)) {
+			$this->json(['title' => '', 'url' => '']);
+			return;
+		}
+
+		$fetcher = new UrlFetcherService();
+		$attributes = $fetcher->fetchAttributes($url);
+
+		$this->json($attributes);
+	}
 }
