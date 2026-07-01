@@ -17,7 +17,7 @@ CREATE TABLE `wiki_pages` (
     `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted_at` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `wiki_pages_slug_unique` (`slug`),
+    UNIQUE KEY `idx_tag_slug` (`tag_id`, `slug`),
     KEY `wiki_pages_tag_id` (`tag_id`),
     KEY `wiki_pages_author_id` (`author_id`),
     KEY `wiki_pages_status` (`status`),

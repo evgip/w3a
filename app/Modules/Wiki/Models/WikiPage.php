@@ -93,8 +93,8 @@ class WikiPage extends Model
                 FROM {$this->table} wp
                 LEFT JOIN users u ON wp.author_id = u.id
                 WHERE wp.tag_id = :tag_id 
-                  AND wp.status = 'published'
-                  AND wp.deleted_at IS NULL
+                AND wp.status = 'published'
+
                 ORDER BY wp.is_primary DESC, wp.title ASC";
 
         $stmt = static::db()->prepare($sql);
@@ -102,6 +102,32 @@ class WikiPage extends Model
 
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
+
+	/**
+	 * Найти страницу включая удалённые (soft deleted)
+	 * 
+	 * @param int $id ID страницы
+	 * @return array|null Данные страницы или null
+	 */
+	public function findWithDeleted(int $id): ?array
+	{
+		if ($id <= 0) {
+			return null;
+		}
+		
+		$sql = "SELECT wp.*, u.username as author_name
+				FROM {$this->table} wp
+				LEFT JOIN users u ON wp.author_id = u.id
+				WHERE wp.id = :id
+				LIMIT 1";
+		
+		$stmt = static::db()->prepare($sql);
+		$stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+		$stmt->execute();
+		
+		$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+		return $result ?: null;
+	}
 
     /**
      * Получить основную страницу тега
@@ -134,24 +160,35 @@ class WikiPage extends Model
         $stmt->execute(['id' => $pageId]);
     }
 
-    /**
-     * Проверить существование slug
-     */
-    public function slugExists(string $slug, ?int $excludeId = null): bool
-    {
-        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE slug = :slug";
-        $params = ['slug' => $slug];
+	/**
+	 * Проверить существование slug в пределах тега
+	 * 
+	 * @param string $slug Slug для проверки
+	 * @param int $tagId ID тега
+	 * @param int|null $excludeId ID страницы для исключения (при редактировании)
+	 * @return bool true если slug существует
+	 */
+	public function slugExists(string $slug, int $tagId, ?int $excludeId = null): bool
+	{
+		$sql = "SELECT COUNT(*) FROM {$this->table} 
+				WHERE slug = :slug AND tag_id = :tag_id";
+		
+		$params = [
+			'slug' => $slug,
+			'tag_id' => $tagId
+		];
 
-        if ($excludeId !== null) {
-            $sql .= " AND id != :id";
-            $params['id'] = $excludeId;
-        }
+		if ($excludeId !== null) {
+			$sql .= " AND id != :id";
+			$params['id'] = $excludeId;
+		}
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute($params);
+		$stmt = static::db()->prepare($sql);
+		$stmt->execute($params);
 
-        return (int)$stmt->fetchColumn() > 0;
-    }
+		return (int)$stmt->fetchColumn() > 0;
+	}
+
 
     /**
      * Поиск по wiki страницам (глобальный)
@@ -175,29 +212,32 @@ class WikiPage extends Model
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Поиск по wiki страницам тега
-     */
-    public function searchInTag(int $tagId, string $query, int $limit = 20): array
-    {
-        $sql = "SELECT wp.*, u.username as author_name
-                FROM {$this->table} wp
-                LEFT JOIN users u ON wp.author_id = u.id
-                WHERE wp.tag_id = :tag_id
-                  AND wp.status = 'published'
-                  AND wp.deleted_at IS NULL
-                  AND (wp.title LIKE :query OR wp.content LIKE :query)
-                ORDER BY wp.updated_at DESC
-                LIMIT :limit";
+	/**
+	 * Поиск по wiki страницам тега
+	 */
+	public function searchInTag(int $tagId, string $query, int $limit = 20): array
+	{
+		$sql = "SELECT wp.*, u.username as author_name
+				FROM {$this->table} wp
+				LEFT JOIN users u ON wp.author_id = u.id
+				WHERE wp.tag_id = :tag_id
+				AND wp.status = 'published'
+				AND wp.deleted_at IS NULL
+				AND (wp.title LIKE :query_title OR wp.content LIKE :query_content)
+				ORDER BY wp.updated_at DESC
+				LIMIT :limit";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->bindValue(':tag_id', $tagId, \PDO::PARAM_INT);
-        $stmt->bindValue(':query', '%' . $query . '%', \PDO::PARAM_STR);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->execute();
-
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
+		$stmt = static::db()->prepare($sql);
+		$searchTerm = '%' . $query . '%';
+		
+		$stmt->bindValue(':tag_id', $tagId, \PDO::PARAM_INT);
+		$stmt->bindValue(':query_title', $searchTerm, \PDO::PARAM_STR);
+		$stmt->bindValue(':query_content', $searchTerm, \PDO::PARAM_STR);
+		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+		$stmt->execute();
+		
+		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+	}
 
     /**
      * Сбросить флаг is_primary для всех страниц тега
@@ -224,4 +264,68 @@ class WikiPage extends Model
 
         return (int)$stmt->fetchColumn();
     }
+	
+	/**
+	 * Восстановить удалённую страницу (soft delete)
+	 */
+	public function restore($id): bool
+	{
+		$id = (int)$id;
+		
+		if ($id <= 0) {
+			return false;
+		}
+		
+		try {
+			$sql = "UPDATE {$this->table} 
+					SET deleted_at = NULL 
+					WHERE id = :id AND deleted_at IS NOT NULL";
+			
+			$stmt = static::db()->prepare($sql);
+			$stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+			$stmt->execute();
+			
+			// Возвращаем true только если действительно обновили строку
+			return $stmt->rowCount() > 0;
+			
+		} catch (\Throwable $e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Получить список удалённых страниц
+	 * 
+	 * @param int|null $tagId ID тега (опционально)
+	 * @param int $limit Максимальное количество
+	 * @return array Массив удалённых страниц
+	 */
+	public function getDeleted(?int $tagId = null, int $limit = 50): array
+	{
+		$sql = "SELECT wp.*, u.username as author_name, t.tag as tag_name
+				FROM {$this->table} wp
+				LEFT JOIN users u ON wp.author_id = u.id
+				LEFT JOIN tags t ON wp.tag_id = t.id
+				WHERE wp.deleted_at IS NOT NULL";
+		
+		$params = [];
+		
+		if ($tagId !== null) {
+			$sql .= " AND wp.tag_id = :tag_id";
+			$params[':tag_id'] = $tagId;
+		}
+		
+		$sql .= " ORDER BY wp.deleted_at DESC LIMIT :limit";
+		
+		$stmt = static::db()->prepare($sql);
+		
+		foreach ($params as $key => $value) {
+			$stmt->bindValue($key, $value, \PDO::PARAM_INT);
+		}
+		
+		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+		$stmt->execute();
+		
+		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+	}
 }

@@ -1,93 +1,57 @@
-<div class="wiki-index">
-    <!-- Хлебные крошки -->
-    <nav class="breadcrumbs">
-        <a href="/">Главная</a> →
-        <a href="/t/<?= e($tag['tag']) ?>">#<?= e($tag['name']) ?></a> →
-        <span>Wiki</span>
-    </nav>
+<?php
+/**
+ * Wiki index - список wiki страниц тега
+ * Дизайн в стиле Stories index
+ */
+?>
 
-    <header class="wiki-header">
-        <h1>📚 Wiki: #<?= e($tag['name']) ?></h1>
+<?= $breadcrumbs ?>
 
-        <?php if ($tag['description']): ?>
-            <p class="tag-description"><?= e($tag['description']) ?></p>
-        <?php endif; ?>
-    </header>
-
-    <div class="wiki-actions">
-        <a href="<?= route('wiki.tag.create', ['tag' => $tag['tag']]) ?>" class="btn btn-primary">
-            ➕ Создать страницу
-        </a>
-
-        <form action="<?= route('wiki.tag.search', ['tag' => $tag['tag']]) ?>" method="GET" class="wiki-search">
-            <input type="text" name="q" placeholder="Поиск по wiki..." required>
-            <button type="submit" class="btn">🔍 Найти</button>
-        </form>
-    </div>
-
-    <!-- Основная страница -->
-    <?php if ($primaryPage): ?>
-        <section class="primary-wiki">
-            <h2>📖 Основная документация</h2>
-            <article class="wiki-item primary">
-                <h3>
-                    <a href="<?= route('wiki.tag.show', ['tag' => $tag['tag'], 'slug' => $primaryPage['slug']]) ?>">
-                        <?= e($primaryPage['title']) ?>
-                    </a>
-                </h3>
-
-                <div class="wiki-meta">
-                    <span class="author">👤 <?= e($primaryPage['author_name']) ?></span>
-                    <span class="date">📅 <?= dt($primaryPage['updated_at']) ?></span>
-                    <span class="views">👁️ <?= $primaryPage['view_count'] ?></span>
-                </div>
-
-                <div class="wiki-excerpt">
-                    <?= truncateDescription($primaryPage['rendered_content'], 300) ?>
-                </div>
-
-                <a href="<?= route('wiki.tag.show', ['tag' => $tag['tag'], 'slug' => $primaryPage['slug']]) ?>" class="read-more">
-                    Читать полностью →
-                </a>
-            </article>
-        </section>
-    <?php endif; ?>
-
-    <!-- Остальные страницы -->
-    <?php
-    $otherPages = array_filter($pages, fn($p) => $p['id'] != ($primaryPage['id'] ?? 0));
-    ?>
-
-    <?php if (!empty($otherPages)): ?>
-        <section class="wiki-list">
-            <h2>📄 Все страницы</h2>
-
-            <?php foreach ($otherPages as $page): ?>
-                <article class="wiki-item">
-                    <h3>
-                        <a href="<?= route('wiki.tag.show', ['tag' => $tag['tag'], 'slug' => $page['slug']]) ?>">
-                            <?= e($page['title']) ?>
-                        </a>
-                    </h3>
-
-                    <div class="wiki-meta">
-                        <span class="author">👤 <?= e($page['author_name']) ?></span>
-                        <span class="date">📅 <?= dt($page['updated_at']) ?></span>
-                        <span class="views">👁️ <?= $page['view_count'] ?></span>
-                    </div>
-
-                    <div class="wiki-excerpt">
-                        <?= truncateDescription($page['rendered_content'], 200) ?>
-                    </div>
-                </article>
-            <?php endforeach; ?>
-        </section>
-    <?php endif; ?>
-
-    <?php if (empty($pages)): ?>
-        <div class="empty-state">
-            <p>Для этого тега еще нет wiki страниц.</p>
-            <p><a href="<?= route('wiki.tag.create', ['tag' => $tag['tag']]) ?>">Создайте первую страницу!</a></p>
-        </div>
+<div class="hint">
+    Wiki страницы тега <a href="/t/<?= e($tag['tag']) ?>" class="tag tag-<?= e($tag['tag']) ?>"><?= e($tag['name']) ?></a>.
+    <?php if (!empty($tag['description'])): ?>
+        <br><?= e($tag['description']) ?>
     <?php endif; ?>
 </div>
+
+<div class="form-actions" style="margin-bottom: 1em;">
+    <a href="<?= route('wiki.tag.create', ['tag' => $tag['tag']]) ?>" class="btn-nav-create">
+        ➕ Создать страницу
+    </a>
+    
+    <form action="<?= route('wiki.tag.search', ['tag' => $tag['tag']]) ?>" method="GET" class="inline-form" style="margin-left: 1em; display: inline-block;">
+        <input type="text" name="q" placeholder="Поиск по wiki..." required style="width: 200px;">
+        <button type="submit">🔍 Найти</button>
+    </form>
+</div>
+
+<?php if (!empty($primaryPage) && is_array($primaryPage)): ?>
+    <h2>📖 Основная документация</h2>
+    <ol class="stories">
+        <?= \App\Modules\Wiki\Components\WikiCard::render($primaryPage, $tag, true) ?>
+    </ol>
+<?php endif; ?>
+
+<?php
+// Безопасная фильтрация остальных страниц
+$primaryId = isset($primaryPage['id']) ? (int)$primaryPage['id'] : 0;
+$otherPages = array_filter($pages, function($p) use ($primaryId) {
+    return is_array($p) && !empty($p) && (int)($p['id'] ?? 0) !== $primaryId;
+});
+?>
+
+<?php if (!empty($otherPages)): ?>
+    <h2>📄 Все страницы</h2>
+    <ol class="stories">
+        <?php foreach ($otherPages as $page): ?>
+            <?= \App\Modules\Wiki\Components\WikiCard::render($page, $tag, false, $canSeeDeleted, $request) ?>
+        <?php endforeach; ?>
+    </ol>
+<?php endif; ?>
+
+<?php if (empty($pages)): ?>
+    <div class="hint" style="text-align: center; padding: 2em 0;">
+        <p>Для этого тега еще нет wiki страниц.</p>
+        <p><a href="<?= route('wiki.tag.create', ['tag' => $tag['tag']]) ?>" class="btn-nav-create">Создайте первую страницу!</a></p>
+    </div>
+<?php endif; ?>

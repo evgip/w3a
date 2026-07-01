@@ -1,0 +1,42 @@
+<?= $breadcrumbs ?>
+
+<div class="hint">
+    Удалённые wiki страницы тега <a href="/t/<?= e($tag['tag']) ?>" class="tag tag-<?= e($tag['tag']) ?>"><?= e($tag['name']) ?></a>.
+    <br>Удалённые страницы можно восстановить в течение неограниченного времени.
+</div>
+
+<?php if (empty($deletedPages)): ?>
+    <div class="hint" style="text-align: center; padding: 2em 0;">
+        <p>Нет удалённых wiki страниц.</p>
+    </div>
+<?php else: ?>
+    <ol class="stories">
+        <?php foreach ($deletedPages as $page): ?>
+            <li class="story">
+                <div class="story_liner">
+                    <div class="link">
+                        <a href="/t/<?= e($tag['tag']) ?>/wiki/<?= e($page['slug']) ?>"><?= e($page['title']) ?></a>
+                        <span class="tag tag-meta">Удалена</span>
+                    </div>
+                    
+                    <div class="byline">
+                        👤 <a href="/user/<?= e($page['author_name']) ?>"><?= e($page['author_name']) ?></a>
+                        <span class="divider">|</span>
+                        <span title="<?= dt($page['deleted_at'], 'd.m.Y H:i:s') ?>">
+                            🗑️ Удалена: <?= dt($page['deleted_at']) ?>
+                        </span>
+                        <span class="divider">|</span>
+                        <form action="/t/<?= e($tag['tag']) ?>/wiki/<?= $page['id'] ?>/restore" 
+                              method="POST" 
+                              class="inline-form js-confirm-delete"
+                              data-confirm-message="Восстановить эту страницу?"
+                              style="display: inline;">
+                            <?= $request->csrfField() ?>
+                            <button type="submit" class="btn-link">♻️ Восстановить</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+        <?php endforeach; ?>
+    </ol>
+<?php endif; ?>

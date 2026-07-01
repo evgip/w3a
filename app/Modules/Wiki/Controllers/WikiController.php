@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Modules\Wiki\Services\WikiService;
 use App\Modules\Wiki\Services\WikiPermissionService;
+use App\Modules\Wiki\Models\WikiPage;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Auth\Services\Auth;
 
@@ -42,13 +43,32 @@ class WikiController extends Controller
         $pages = $wikiService->getPagesForTag($tagData['id']);
         $primaryPage = $wikiService->getPrimaryPageForTag($tagData['id']);
 
+		// Определяем, может ли пользователь видеть удалённые страницы
+		$canSeeDeleted = \App\Modules\Auth\Services\Auth::check() 
+			&& (\App\Modules\Auth\Services\Auth::isAdmin() || \App\Modules\Auth\Services\Auth::isModerator());
+		
+		// Фильтруем удалённые страницы для обычных пользователей
+		if (!$canSeeDeleted) {
+			$pages = array_filter($pages, fn($p) => empty($p['deleted_at']));
+			if (!empty($primaryPage) && !empty($primaryPage['deleted_at'])) {
+				$primaryPage = null;
+			}
+		}
+
         $title = 'Wiki: ' . e($tagData['name']);
 
         $this->render('index', [
             'title' => $title,
             'tag' => $tagData,
             'pages' => $pages,
-            'primaryPage' => $primaryPage
+            'primaryPage' => $primaryPage,
+			'canSeeDeleted' => $canSeeDeleted,
+			'request' => $this->request,
+ 		    'breadcrumbs' => $this->renderBreadcrumbs([
+                ['url' => '/', 'label' => 'Главная'],
+                ['url' => "/t/{$tag}", 'label' => "#{$tagData['name']}", 'active_pattern' => "/t/{$tag}"],
+                ['url' => "/t/{$tag}/wiki", 'label' => 'Wiki'],
+            ])
         ]);
     }
 
@@ -83,7 +103,14 @@ class WikiController extends Controller
         $this->render('show', [
             'title' => $title,
             'tag' => $tagData,
-            'page' => $page
+            'page' => $page,
+			'request' => $this->request,
+			'breadcrumbs' => $this->renderBreadcrumbs([
+                ['url' => '/', 'label' => 'Главная'],
+                ['url' => "/t/{$tag}", 'label' => "#{$tagData['name']}", 'active_pattern' => "/t/{$tag}"],
+                ['url' => "/t/{$tag}/wiki", 'label' => 'Wiki', 'active_pattern' => "/t/{$tag}/wiki"],
+                ['url' => "#", 'label' => $page['title']],
+            ])
         ]);
     }
 
@@ -158,8 +185,17 @@ class WikiController extends Controller
             $this->redirect('/t/' . $tag . '/wiki/' . $page['slug']);
         }
 
+		// Проверка уникальности slug в пределах тега
+		$wikiPage = new WikiPage();
+		$slug = trim($this->request->post('slug', ''));
+		if ($wikiPage->slugExists($slug, (int)$tagData['id'])) {
+			Session::setFlash('error', 'Страница с таким URL уже существует в этом теге');
+			$this->redirect("/t/{$tag}/wiki/create");
+		}
+
+
         // Сохраняем старые данные для повторного отображения формы
-        Session::setFlash('old_input', $data);
+       //  Session::setFlash('old_input', $data);
         $this->redirectBack('/t/' . $tag . '/wiki/create');
     }
 
@@ -244,6 +280,17 @@ class WikiController extends Controller
             'status' => $this->request->getParams('status', 'published')
         ];
 
+
+	    $slug = trim($this->request->post('slug', ''));
+		
+		// Проверка уникальности slug (исключая текущую страницу)
+		$wikiPage = new WikiPage();
+		if ($wikiPage->slugExists($slug, (int)$tagData['id'], $id)) {
+			Session::setFlash('error', 'Страница с таким URL уже существует в этом теге');
+			$this->redirect("/t/{$tag}/wiki/{$id}/edit");
+		}
+
+
         if ($wikiService->updatePage($pageId, $data, $userId)) {
             Session::setFlash('success', 'Wiki страница успешно обновлена!');
             $page = $wikiService->getById($pageId);
@@ -297,6 +344,43 @@ class WikiController extends Controller
 
         $this->redirectBack('/t/' . $tag . '/wiki');
     }
+
+	/**
+	 * Восстановить удалённую wiki страницу
+	 */
+	public function restore(string $tag, int $id): void
+	{
+		$userId = \App\Modules\Auth\Services\Auth::id();
+		
+		if ($userId <= 0) {
+			Session::setFlash('error', 'Необходима авторизация');
+			$this->redirect('/login');
+		}
+		
+		// Проверка прав (только админы и модераторы)
+		if (!\App\Modules\Auth\Services\Auth::isAdmin() && !\App\Modules\Auth\Services\Auth::isModerator()) {
+			Session::setFlash('error', 'Недостаточно прав для восстановления');
+			$this->redirect("/t/{$tag}/wiki");
+		}
+		
+		$wikiService = $this->service(WikiService::class);
+		
+		try {
+			$success = $wikiService->restorePage($id, $userId);
+			
+			if ($success) {
+				Session::setFlash('success', 'Wiki страница успешно восстановлена');
+			} else {
+				Session::setFlash('error', 'Не удалось восстановить страницу');
+			}
+			
+		} catch (\Throwable $e) {
+			error_log("[WIKI] Error in restore controller: " . $e->getMessage());
+			Session::setFlash('error', 'Произошла ошибка при восстановлении страницы');
+		}
+		
+		$this->redirect("/t/{$tag}/wiki");
+	}
 
     // =========================================================================
     // ПОИСК ПО WIKИ

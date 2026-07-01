@@ -7,6 +7,7 @@ namespace App\Modules\Wiki\Services;
 use App\Modules\Wiki\Models\WikiPage;
 use App\Modules\Wiki\Models\WikiRevision;
 use App\Core\Session;
+use App\Core\Audit;
 use App\Core\Events\EventDispatcher;
 use App\Core\Events\WikiPageCreated;
 use App\Core\Events\WikiPageUpdated;
@@ -60,7 +61,7 @@ class WikiService
         }
 
         // Проверка уникальности slug
-        if ($this->wikiPage->slugExists($slug)) {
+        if ($this->wikiPage->slugExists($slug, (int)$data['tag_id'])) {
             Session::setFlash('error', 'Страница с таким URL уже существует. Попробуйте другой slug.');
             return 0;
         }
@@ -150,11 +151,19 @@ class WikiService
             return false; // Ошибка уже установлена в prepareSlug
         }
 
-        // Проверка уникальности slug (исключая текущую страницу)
-        if ($this->wikiPage->slugExists($slug, $pageId)) {
-            Session::setFlash('error', 'Страница с таким URL уже существует. Попробуйте другой slug.');
-            return false;
-        }
+		// Получаем текущую страницу для tag_id
+		$currentPage = $this->wikiPage->find($pageId);
+		if (!$currentPage) {
+			return false;
+		}
+		
+		// Проверка уникальности slug в пределах тега (исключая текущую страницу)
+		if (isset($data['slug']) && $data['slug'] !== $currentPage['slug']) {
+			if ($this->wikiPage->slugExists($data['slug'], (int)$currentPage['tag_id'], $pageId)) {
+				Session::setFlash('error', 'Страница с таким URL уже существует в этом теге.');
+				return false;
+			}
+		}
 
         // 3. Рендеринг markdown
         $renderedContent = markdown($data['content']);
@@ -434,4 +443,51 @@ class WikiService
 
         return true;
     }
+	
+	/**
+	 * Восстановить удалённую wiki страницу
+	 * 
+	 * @param int $pageId ID страницы
+	 * @param int $userId ID пользователя, восстанавливающего страницу
+	 * @return bool true, если восстановление успешно
+	 */
+	public function restorePage(int $pageId, int $userId): bool
+	{
+		if ($pageId <= 0 || $userId <= 0) {
+			return false;
+		}
+		
+		try {
+			// Находим страницу включая удалённые
+			$page = $this->wikiPage->findWithDeleted($pageId);
+			
+			if (!$page) {
+				return false;
+			}
+			
+			// Проверяем, что страница действительно удалена
+			if (empty($page['deleted_at'])) {
+				return false;
+			}
+			
+			// Восстанавливаем
+			$result = $this->wikiPage->restore($pageId);
+			
+			if ($result) {
+				Audit::log('wiki.restored', 'Восстановлена wiki страница', 'wiki', [
+					'page_id' => $pageId,
+					'user_id' => $userId,
+					'title' => $page['title'],
+				]);
+				
+				return true;
+			}
+			
+			return false;
+			
+		} catch (\Throwable $e) {
+			error_log("[WIKI] Error restoring page {$pageId}: " . $e->getMessage());
+			return false;
+		}
+	}
 }

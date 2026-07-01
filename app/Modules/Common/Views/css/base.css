@@ -1043,7 +1043,7 @@ a.navbar-logo {
     color: var(--color-fg);
 }
 
-.nav a.active {
+.nav .active {
     border-bottom: 0.2em solid var(--color-fg-accent);
     padding-bottom: 0;
     color: var(--color-fg);

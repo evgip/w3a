@@ -175,4 +175,36 @@ abstract class Controller
         
         OpenGraph::set($data);
     }
+	
+	/**
+	 * Генерация навигации breadcrumbs с разделителями
+	 * 
+	 * @param array $items Массив элементов [['url' => '/', 'label' => 'Главная'], ...]
+	 * @return string HTML навигации
+	 */
+	protected function renderBreadcrumbs(array $items): string
+	{
+		$currentPath = $this->request->getUri();
+		$html = '<nav class="nav br-none">';
+		
+		$lastIndex = array_key_last($items);
+		
+		foreach ($items as $index => $item) {
+			// Добавляем разделитель перед каждым элементом кроме первого
+			if ($index > 0) {
+				$html .= ' <span class="divider">/</span> ';
+			}
+			
+			// Последний элемент - текущая страница (не ссылка)
+			if ($index === $lastIndex) {
+				$html .= sprintf('<span class="active">%s</span>', e($item['label']));
+			} else {
+				// Остальные элементы - ссылки
+				$html .= sprintf('<a href="%s">%s</a>', e($item['url']), e($item['label']));
+			}
+		}
+		
+		$html .= '</nav>';
+		return $html;
+	}
 }

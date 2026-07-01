@@ -84,6 +84,16 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
     );
 
     /**
+     * Восстановление удалённой wiki страницы
+     */
+    $router->add(
+        'POST',
+        '/t/{tag}/wiki/{id}/restore',
+        WikiController::class . '@restore',
+        'wiki.tag.restore'
+    );
+
+    /**
      * Обновление wiki страницы
      */
     $router->add(

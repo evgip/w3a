@@ -36,8 +36,10 @@ $sortLinks = [
 	<div class="hint">
 		Статьи, <a href="/tags#<?= e($tagInfo['tag']); ?>">помеченные</a> как <a href="<?= route('tags.filter', ['tagname' => $tagInfo['tag']]) ?>" class="tag tag-<?= e($tagInfo['tag']); ?>"><?= e($tagInfo['name']); ?></a>. 
 		<br>
-		<?php if ($wikiPagesCount > 0 || $primaryWikiPage): ?>
-			Wiki статья привязанная к тегу   <?= e($tagInfo['name']); ?>: <a href="/t/<?= e($tagInfo['tag']) ?>/wiki/<?= e($primaryWikiPage['slug']) ?>"><?= e($primaryWikiPage['title']) ?></a>
+		<?php if (!empty($primaryWikiPage['title'])): ?>
+			<?php if ($wikiPagesCount > 0 || $primaryWikiPage): ?>
+				Wiki статья привязанная к тегу   <?= e($tagInfo['name']); ?>: <a href="/t/<?= e($tagInfo['tag']) ?>/wiki/<?= e($primaryWikiPage['slug']) ?>"><?= e($primaryWikiPage['title']) ?></a>
+			<?php endif; ?>
 		<?php endif; ?>
 	</div>
 <?php endif; ?>

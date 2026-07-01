@@ -27,6 +27,8 @@
 
 ```
 app/Modules/Wiki/
+├── Components/
+│   └── WikiCard.php				# Компонент карточки wiki страницы
 ├── Controllers/
 │   └── WikiController.php          # Контроллер (обработка запросов)
 ├── Models/

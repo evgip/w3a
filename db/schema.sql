@@ -1153,7 +1153,7 @@ ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 -- =========================================================================
--- WIKI 
+-- WIKI PAGES - Wiki страницы
 -- =========================================================================
 
 CREATE TABLE `wiki_pages` (
@@ -1171,13 +1171,17 @@ CREATE TABLE `wiki_pages` (
     `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted_at` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `wiki_pages_slug_unique` (`slug`),
+    UNIQUE KEY `idx_tag_slug` (`tag_id`, `slug`),
     KEY `wiki_pages_tag_id` (`tag_id`),
     KEY `wiki_pages_author_id` (`author_id`),
     KEY `wiki_pages_status` (`status`),
     CONSTRAINT `fk_wiki_pages_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_wiki_pages_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================================
+-- WIKI REVISIONS - История изменений wiki страниц
+-- =========================================================================
 
 CREATE TABLE `wiki_revisions` (
     `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -1194,6 +1198,9 @@ CREATE TABLE `wiki_revisions` (
     CONSTRAINT `fk_wiki_revisions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- =========================================================================
+-- WIKI PERMISSIONS - Права доступа к wiki для тегов
+-- =========================================================================
 
 CREATE TABLE `wiki_permissions` (
     `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
