@@ -157,7 +157,7 @@ class AdminController extends Controller
     {
         $result = $this->service(AdminTagService::class)->createTag([
             'name' => $this->request->getParams('name'),
-            'tag' => $this->request->getParams('tag'),
+            'slug' => $this->request->getParams('slug'),
             'description' => $this->request->getParams('description'),
             'is_media' => $this->request->post('is_media') !== null ? 1 : 0,
             'category_id' => $this->request->getParams('category_id'),
@@ -191,7 +191,7 @@ class AdminController extends Controller
         $tagId = (int)$id;
         $success = $this->service(AdminTagService::class)->updateTag($tagId, [
             'name' => $this->request->getParams('name'),
-            'tag' => $this->request->getParams('tag'),
+            'slug' => $this->request->getParams('slug'),
             'description' => $this->request->getParams('description'),
             'is_media' => $this->request->post('is_media') !== null ? 1 : 0,
             'category_id' => $this->request->getParams('category_id'),

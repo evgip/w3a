@@ -12,15 +12,15 @@ $categoriesList = $categoryModel->getAllOrdered();
 
 	<div class="form-field-group">
 		<label for="name">Название тега <span class="form-field-hint-inline">(обязательно)</span></label>
-		<input type="text" id="name" name="name" required pattern="[a-zа-я0-9\-]+" class="form-input-wide"
-			placeholder="Например: php">
+		<input type="text" id="name" name="name" required class="form-input-wide"
+			placeholder="Например: видео">
 		<div class="hint">Только латиница в нижнем регистре, цифры и дефис. <strong>Изменение повлияет на URL тега.</strong></div>
 	</div>
 
 
 	<div class="form-field-group">
 		<label>URL тега (slug):</label>
-		<input type="text" name="slug" required placeholder="например: laravel">
+		<input type="text" name="slug" required placeholder="например: video">
 		<small class="text-muted">Только латиница в нижнем регистре, без пробелов.</small>
 	</div>
 

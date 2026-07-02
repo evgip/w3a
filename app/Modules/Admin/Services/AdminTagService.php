@@ -51,15 +51,20 @@ class AdminTagService
     public function createTag(array $data)
     {
         $tagName = strtolower(trim($data['name'] ?? ''));
-        $tagSlug = strtolower(trim($data['tag'] ?? ''));
+        $tagSlug = strtolower(trim($data['slug'] ?? ''));
         $description = trim($data['description'] ?? '');
         $isMedia = isset($data['is_media']) ? 1 : 0;
         $categoryId = (int)($data['category_id'] ?? 0);
 
         // Валидация имени
         $validator = new Validator();
-        if (!$validator->validate(['tag' => $tagSlug], ['tag' => 'required|min:2'])) {
-            Session::setFlash('error', 'Имя тега должно содержать не менее 2 символов.');
+        if (!$validator->validate(['slug' => $tagSlug], ['slug' => 'required|min:3'])) {
+            Session::setFlash('error', 'Slug тега должно содержать не менее 3 символов.');
+            return false;
+        }
+
+        if (!$validator->validate(['name' => $tagName], ['name' => 'required|min:3'])) {
+            Session::setFlash('error', 'Название тега должно содержать не менее 3 символов.');
             return false;
         }
 
@@ -77,7 +82,7 @@ class AdminTagService
 
         $tagId = $this->tagModel->create([
             'name' => $tagName,
-            'tag' => $tagSlug,
+            'slug' => $tagSlug,
             'description' => $description,
             'is_media' => $isMedia,
             'category_id' => $categoryId,
@@ -101,15 +106,21 @@ class AdminTagService
         }
 
         $tagName = strtolower(trim($data['name'] ?? ''));
-        $tagSlug = strtolower(trim($data['tag'] ?? ''));
+        $tagSlug = strtolower(trim($data['slug'] ?? ''));
         $description = trim($data['description'] ?? '');
         $isMedia = isset($data['is_media']) ? 1 : 0;
         $categoryId = (int)($data['category_id'] ?? 0);
         $hotnessMod = (float)($data['hotness_mod'] ?? 0);
 
         // Валидация имени
-        if (strlen($tagSlug) < 2) {
-            Session::setFlash('error', 'Имя тега должно содержать не менее 2 символов.');
+        $validator = new Validator();
+        if (!$validator->validate(['slug' => $tagSlug], ['slug' => 'required|min:3'])) {
+            Session::setFlash('error', 'Slug тега должно содержать не менее 3 символов.');
+            return false;
+        }
+
+        if (!$validator->validate(['name' => $tagName], ['name' => 'required|min:3'])) {
+            Session::setFlash('error', 'Название тега должно содержать не менее 3 символов.');
             return false;
         }
 
