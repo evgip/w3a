@@ -81,7 +81,7 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
 
         // Аудит событий комментариев
         $dispatcher->listen(CommentCreated::class, [$auditListener, 'handle']);
-        $dispatcher->listen(CommentUpdated::class, [$auditListener, 'handle']);   // ← ДОБАВИТЬ!
+        $dispatcher->listen(CommentUpdated::class, [$auditListener, 'handle']); 
         $dispatcher->listen(CommentDeleted::class, [$auditListener, 'handle']);
         $dispatcher->listen(CommentRestored::class, [$auditListener, 'handle']);
 

@@ -66,7 +66,7 @@
                                 action="<?= route('admin.tags.restore', ['id' => $tag['id']]) ?>"
                                 style="display:inline;"
                                 class="delete-link"
-                                data-confirm="Вы уверены, что хотите восстановить тег «<?= e($tag['tag']) ?>»?">
+                                data-confirm="Вы уверены, что хотите восстановить тег «<?= e($tag['slug']) ?>»?">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="button">
                                     Восстановить
@@ -78,7 +78,7 @@
                                 action="<?= route('admin.tags.delete', ['id' => $tag['id']]) ?>"
                                 style="display:inline;"
                                 class="delete-link"
-                                data-confirm="Вы уверены, что хотите удалить тег «<?= e($tag['tag']) ?>»? Это действие также удалит связи с историями.">
+                                data-confirm="Вы уверены, что хотите удалить тег «<?= e($tag['slug']) ?>»? Это действие также удалит связи с историями.">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="button" style="color: #ac130d;">
                                     Удалить

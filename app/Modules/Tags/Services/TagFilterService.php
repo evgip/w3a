@@ -96,8 +96,8 @@ class TagFilterService
 		if (!$tag) return [];
 
 		return [
-			'title' => '#' . $tag['tag'] . ' — ' . ($tag['name'] ?? ''),
-			'description' => $tag['description'] ?? 'Публикации с тегом #' . $tag['tag'],
+			'title' => '#' . $tag['slug'] . ' — ' . ($tag['name'] ?? ''),
+			'description' => $tag['description'] ?? 'Публикации с тегом #' . $tag['slug'],
 			'image' => null,
 		];
 	}

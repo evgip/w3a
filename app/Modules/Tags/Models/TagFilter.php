@@ -18,11 +18,11 @@ class TagFilter extends Model
      */
     public function getUserFilters(int $userId): array
     {
-        $sql = "SELECT tf.*, t.tag, t.name, t.description 
+        $sql = "SELECT tf.*, t.slug, t.name, t.description 
                 FROM {$this->table} tf
                 JOIN tags t ON t.id = tf.tag_id
                 WHERE tf.user_id = :user_id
-                ORDER BY t.tag ASC";
+                ORDER BY t.slug ASC";
         
         $stmt = static::db()->prepare($sql);
         $stmt->execute(['user_id' => $userId]);

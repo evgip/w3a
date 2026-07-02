@@ -29,7 +29,7 @@ class WikiCard
         $html .= '<div class="link">';
         $html .= sprintf(
             '<a href="/t/%s/wiki/%s">%s</a>',
-            e($tag['tag']),
+            e($tag['slug']),
             e($page['slug']),
             e($page['title'])
         );
@@ -64,7 +64,7 @@ class WikiCard
             $html .= ' <span class="divider">|</span> ';
             $html .= sprintf(
                 '<form action="/t/%s/wiki/%d/restore" method="POST" class="inline-form js-confirm-delete" data-confirm-message="Восстановить эту страницу?" style="display:inline;">%s<button type="submit" class="btn-link">♻️ Восстановить</button></form>',
-                e($tag['tag']),
+                e($tag['slug']),
                 (int)$page['id'],
                 $request->csrfField()
             );

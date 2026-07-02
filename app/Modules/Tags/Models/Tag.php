@@ -10,7 +10,7 @@ class Tag extends Model
 	
     protected array $fillable = [
         'name',
-        'tag', 
+        'slug', 
         'description',
         'is_media',
         'category_id',
@@ -26,16 +26,16 @@ class Tag extends Model
 		// Если false (по умолчанию), добавится фильтрация удаленных записей.
 		$whereClause = $withDeleted ? '' : 'WHERE t.deleted_at IS NULL';
 
-		$sql = "SELECT t.id, t.name, t.tag, t.description, t.hotness_mod, t.category_id, t.is_media, t.deleted_at,
+		$sql = "SELECT t.id, t.name, t.slug, t.description, t.hotness_mod, t.category_id, t.is_media, t.deleted_at,
 					   c.name as category_name, c.slug as category_slug,
 					   COUNT(tg.story_id) as stories_count
 				FROM {$this->table} t
 				LEFT JOIN categories c ON t.category_id = c.id
 				LEFT JOIN taggings tg ON t.id = tg.tag_id
 				$whereClause
-				GROUP BY t.id, t.tag, t.description, t.category_id, 
+				GROUP BY t.id, t.slug, t.description, t.category_id, 
 						 c.name, c.slug, t.is_media
-				ORDER BY t.tag ASC";
+				ORDER BY t.slug ASC";
 	 
 		$stmt = static::db()->query($sql);
 		return $stmt->fetchAll();
@@ -44,10 +44,10 @@ class Tag extends Model
     /**
      * Check if a tag string slug already exists matching another ID (for safe edits)
      */
-    public function exists(string $tagName, ?int $excludeId = null): bool
+    public function exists(string $tagSlug, ?int $excludeId = null): bool
     {
-        $sql = "SELECT COUNT(*) FROM `tags` WHERE `tag` = :tag";
-        $params = ['tag' => trim($tagName)];
+        $sql = "SELECT COUNT(*) FROM `tags` WHERE `slug` = :slug";
+        $params = ['slug' => trim($tagSlug)];
 
         if ($excludeId !== null) {
             $sql .= " AND `id` != :id";
@@ -61,7 +61,7 @@ class Tag extends Model
 	
 	
 	/**
-	 * Получить тег по его slug (полю `tag`).
+	 * Получить тег по его slug (полю `slug`).
 	 * 
 	 * @param string $tagSlug Slug тега (например, 'php')
 	 * @return array|null Данные тега или null, если не найден
@@ -74,10 +74,10 @@ class Tag extends Model
 			return null;
 		}
 		
-		$sql = "SELECT * FROM `tags` WHERE `tag` = :tag LIMIT 1";
+		$sql = "SELECT * FROM `tags` WHERE `slug` = :slug LIMIT 1";
 		
 		$stmt = static::db()->prepare($sql);
-		$stmt->execute(['tag' => $tagSlug]);
+		$stmt->execute(['slug' => $tagSlug]);
 		
 		$tag = $stmt->fetch(\PDO::FETCH_ASSOC);
 		
@@ -88,7 +88,7 @@ class Tag extends Model
 	/**
 	 * Получить полную информацию о тегах по их ID.
 	 * 
-	 * Возвращает ассоциативный массив: id => ['name' => ..., 'tag' => ...]
+	 * Возвращает ассоциативный массив: id => ['name' => ..., 'slug' => ...]
 	 * Используется когда нужны и название, и URL-слаг тега.
 	 * 
 	 * @param array $tagIds Массив ID тегов
@@ -106,7 +106,7 @@ class Tag extends Model
 		// Создаем плейсхолдеры для IN clause
 		$placeholders = implode(',', array_fill(0, count($tagIds), '?'));
 		
-		$sql = "SELECT id, name, tag FROM `{$this->table}` WHERE id IN ({$placeholders})";
+		$sql = "SELECT id, name, slug FROM `{$this->table}` WHERE id IN ({$placeholders})";
 		$stmt = static::db()->prepare($sql);
 		$stmt->execute(array_values($tagIds));
 		
@@ -115,7 +115,7 @@ class Tag extends Model
 		while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
 			$result[(int) $row['id']] = [
 				'name' => $row['name'],
-				'tag' => $row['tag']
+				'slug' => $row['slug']
 			];
 		}
 		

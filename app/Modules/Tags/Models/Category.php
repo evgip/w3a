@@ -48,8 +48,8 @@ class Category extends Model
 
 		// Получаем истории с тегами из этой категории
 		$sql = "SELECT DISTINCT s.*, u.username as author_name, up.avatar as author_avatar,
-					   GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
-					   GROUP_CONCAT(CONCAT(t.tag, '||', t.name) ORDER BY t.tag ASC) as tags_combined
+					   GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
+					   GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
 				FROM stories s
 				JOIN users u ON s.user_id = u.id
 				LEFT JOIN `user_profiles` up ON u.id = up.user_id

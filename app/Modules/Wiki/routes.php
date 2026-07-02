@@ -24,7 +24,7 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
      */
     $router->add(
         'GET',
-        '/t/{tag}/wiki/create',
+        '/t/{tagslug}/wiki/create',
         WikiController::class . '@showCreateForm',
         'wiki.tag.create'
     );
@@ -34,7 +34,7 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
      */
     $router->add(
         'POST',
-        '/t/{tag}/wiki/store',
+        '/t/{tagslug}/wiki/store',
         WikiController::class . '@create',
         'wiki.tag.store'
     );
@@ -44,7 +44,7 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
      */
     $router->add(
         'GET',
-        '/t/{tag}/wiki/search',
+        '/t/{tagslug}/wiki/search',
         WikiController::class . '@search',
         'wiki.tag.search'
     );
@@ -54,21 +54,21 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
      */
     $router->add(
         'GET',
-        '/t/{tag}/wiki/permissions',
+        '/t/{tagslug}/wiki/permissions',
         WikiController::class . '@permissions',
         'wiki.tag.permissions'
     );
 
     $router->add(
         'POST',
-        '/t/{tag}/wiki/permissions/grant',
+        '/t/{tagslug}/wiki/permissions/grant',
         WikiController::class . '@grantPermission',
         'wiki.tag.permissions.grant'
     );
 
     $router->add(
         'POST',
-        '/t/{tag}/wiki/permissions/revoke',
+        '/t/{tagslug}/wiki/permissions/revoke',
         WikiController::class . '@revokePermission',
         'wiki.tag.permissions.revoke'
     );
@@ -78,7 +78,7 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
      */
     $router->add(
         'GET',
-        '/t/{tag}/wiki/{id}/edit',
+        '/t/{tagslug}/wiki/{id}/edit',
         WikiController::class . '@showEditForm',
         'wiki.tag.edit'
     );
@@ -88,7 +88,7 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
      */
     $router->add(
         'POST',
-        '/t/{tag}/wiki/{id}/restore',
+        '/t/{tagslug}/wiki/{id}/restore',
         WikiController::class . '@restore',
         'wiki.tag.restore'
     );
@@ -98,7 +98,7 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
      */
     $router->add(
         'POST',
-        '/t/{tag}/wiki/{id}/update',
+        '/t/{tagslug}/wiki/{id}/update',
         WikiController::class . '@update',
         'wiki.tag.update'
     );
@@ -108,7 +108,7 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
      */
     $router->add(
         'POST',
-        '/t/{tag}/wiki/{id}/delete',
+        '/t/{tagslug}/wiki/{id}/delete',
         WikiController::class . '@delete',
         'wiki.tag.delete'
     );
@@ -123,7 +123,7 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
  */
 $router->add(
     'GET',
-    '/t/{tag}/wiki',
+    '/t/{tagslug}/wiki',
     WikiController::class . '@index',
     'wiki.tag.index'
 );
@@ -133,7 +133,7 @@ $router->add(
  */
 $router->add(
     'GET',
-    '/t/{tag}/wiki/{slug}',
+    '/t/{tagslug}/wiki/{slug}',
     WikiController::class . '@show',
     'wiki.tag.show'
 );

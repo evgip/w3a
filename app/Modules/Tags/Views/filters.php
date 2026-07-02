@@ -20,7 +20,7 @@
         <div class="filters-list">
             <?php foreach ($filters as $filter): ?>
                 <div class="filter-item">
-					 <a href="<?= route('tags.filter', ['tagname' => $filter['tag']]) ?>" class="tag tag-<?= e($filter['tag']); ?>">
+					 <a href="<?= route('tags.filter', ['tagslug' => $filter['slug']]) ?>" class="tag tag-<?= e($filter['slug']); ?>">
                         #<?= e($filter['name']) ?>
                     </a>
                     

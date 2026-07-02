@@ -10,7 +10,7 @@
     </div>
 <?php endif; ?>
 
-<form action="/t/<?= e($tag['tag']) ?>/wiki/<?= $page['id'] ?>/update" method="POST">
+<form action="/t/<?= e($tag['slug']) ?>/wiki/<?= $page['id'] ?>/update" method="POST">
     <?= csrf_field() ?>
 
     <?php $isEdit = true; ?>
@@ -18,6 +18,6 @@
 
     <div class="form-actions">
         <button type="submit">Сохранить изменения</button>
-        <a href="/t/<?= e($tag['tag']) ?>/wiki/<?= e($page['slug']) ?>">Отмена</a>
+        <a href="/t/<?= e($tag['slug']) ?>/wiki/<?= e($page['slug']) ?>">Отмена</a>
     </div>
 </form>

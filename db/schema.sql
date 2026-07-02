@@ -20,11 +20,11 @@ CREATE TABLE `audit_logs` (
 --
 
 INSERT INTO `audit_logs` (`id`, `user_id`, `username`, `role`, `ip_address`, `action`, `description`, `category`, `payload`, `created_at`) VALUES
-(4, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #libarea', 'general', NULL, '2026-06-19 02:47:20'),
-(5, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #php', 'general', NULL, '2026-06-19 02:47:29'),
-(6, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #security', 'general', NULL, '2026-06-19 02:47:39'),
-(7, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #show', 'general', NULL, '2026-06-19 02:47:51'),
-(8, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #video', 'general', NULL, '2026-06-19 02:47:59');
+(4, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #libarea', 'general', NULL, '2026-06-18 23:47:20'),
+(5, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #php', 'general', NULL, '2026-06-18 23:47:29'),
+(6, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #security', 'general', NULL, '2026-06-18 23:47:39'),
+(7, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #show', 'general', NULL, '2026-06-18 23:47:51'),
+(8, 1, 'Admin', 'admin', '127.0.0.1', 'admin.tag_updated', 'Администратор изменил параметры тега #video', 'general', NULL, '2026-06-18 23:47:59');
 
 -- --------------------------------------------------------
 
@@ -61,10 +61,10 @@ CREATE TABLE `categories` (
 --
 
 INSERT INTO `categories` (`id`, `name`, `slug`, `description`, `sort_order`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Языки программирования', 'languages', 'PHP, Python, JavaScript и другие', 10, '2026-06-16 10:10:39', '2026-06-16 10:10:39', NULL),
-(2, 'Практики', 'practices', 'Безопасность, архитектура, методологии', 20, '2026-06-16 10:10:39', '2026-06-16 10:10:39', NULL),
-(3, 'Формат', 'format', 'Видео, демонстрации проектов, подкасты', 30, '2026-06-16 10:10:39', '2026-06-16 10:10:39', NULL),
-(4, 'Разное', 'other', 'Общие темы и обсуждения', 99, '2026-06-16 10:10:39', '2026-06-16 10:10:39', NULL);
+(1, 'Языки программирования', 'languages', 'PHP, Python, JavaScript и другие', 10, '2026-06-16 07:10:39', '2026-06-16 07:10:39', NULL),
+(2, 'Практики', 'practices', 'Безопасность, архитектура, методологии', 20, '2026-06-16 07:10:39', '2026-06-16 07:10:39', NULL),
+(3, 'Формат', 'format', 'Видео, демонстрации проектов, подкасты', 30, '2026-06-16 07:10:39', '2026-06-16 07:10:39', NULL),
+(4, 'Разное', 'other', 'Общие темы и обсуждения', 99, '2026-06-16 07:10:39', '2026-06-16 07:10:39', NULL);
 
 -- --------------------------------------------------------
 
@@ -92,12 +92,12 @@ CREATE TABLE `comments` (
 --
 
 INSERT INTO `comments` (`id`, `story_id`, `user_id`, `parent_id`, `comment`, `score`, `flag_count`, `is_hidden_by_flags`, `created_at`, `updated_at`, `deleted_at`, `confidence_score`) VALUES
-(1, 1, 1, NULL, 'Отличная архитектура у фреймворка!', 1, 0, 0, '2026-06-07 22:20:16', '2026-06-21 17:48:02', NULL, 0.37844750),
-(2, 1, 1, 1, 'Согласен, один SQL-запрос на дерево — это быстро.', 1, 0, 0, '2026-06-07 22:20:16', '2026-06-21 17:48:02', NULL, 0.37844750),
-(3, 1, 1, 2, 'И рекурсия на анонимных функциях PHP выглядит лаконично.', 1, 0, 0, '2026-06-07 22:20:16', '2026-06-21 17:48:02', NULL, 0.37844750),
-(4, 1, 1, NULL, 'А когда мы добавим форму отправки нового комментария?', 1, 0, 0, '2026-06-07 22:20:16', '2026-06-21 17:48:02', NULL, 0.37844750),
-(5, 2, 1, NULL, 'Добавим первые комментарий 333', 1, 0, 0, '2026-06-07 22:51:00', '2026-06-21 17:48:02', NULL, 0.37844750),
-(6, 2, 1, 5, 'Добавим ответ Админу', 2, 0, 0, '2026-06-07 22:51:12', '2026-06-21 17:48:02', NULL, 0.54909237);
+(1, 1, 1, NULL, 'Отличная архитектура у фреймворка!', 1, 0, 0, '2026-06-07 19:20:16', '2026-06-21 14:48:02', NULL, 0.37844750),
+(2, 1, 1, 1, 'Согласен, один SQL-запрос на дерево — это быстро.', 1, 0, 0, '2026-06-07 19:20:16', '2026-06-21 14:48:02', NULL, 0.37844750),
+(3, 1, 1, 2, 'И рекурсия на анонимных функциях PHP выглядит лаконично.', 1, 0, 0, '2026-06-07 19:20:16', '2026-06-21 14:48:02', NULL, 0.37844750),
+(4, 1, 1, NULL, 'А когда мы добавим форму отправки нового комментария?', 1, 0, 0, '2026-06-07 19:20:16', '2026-06-21 14:48:02', NULL, 0.37844750),
+(5, 2, 1, NULL, 'Добавим первые комментарий 333', 1, 0, 0, '2026-06-07 19:51:00', '2026-06-21 14:48:02', NULL, 0.37844750),
+(6, 2, 1, 5, 'Добавим ответ Админу', 2, 0, 0, '2026-06-07 19:51:12', '2026-06-21 14:48:02', NULL, 0.54909237);
 
 -- --------------------------------------------------------
 
@@ -107,10 +107,10 @@ INSERT INTO `comments` (`id`, `story_id`, `user_id`, `parent_id`, `comment`, `sc
 
 CREATE TABLE `content_logs` (
   `id` bigint UNSIGNED NOT NULL,
-  `target_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `target_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `target_id` bigint UNSIGNED NOT NULL,
   `actor_id` bigint UNSIGNED DEFAULT NULL COMMENT 'NULL если действие от сообщества',
-  `action_text` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Человекочитаемое описание изменения',
+  `action_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Человекочитаемое описание изменения',
   `is_community_action` tinyint(1) DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `deleted_at` timestamp NULL DEFAULT NULL
@@ -124,11 +124,11 @@ CREATE TABLE `content_logs` (
 
 CREATE TABLE `content_suggestions` (
   `id` bigint UNSIGNED NOT NULL,
-  `target_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Story или Comment',
+  `target_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Story или Comment',
   `target_id` bigint UNSIGNED NOT NULL,
   `user_id` bigint UNSIGNED NOT NULL,
   `proposed_data` json NOT NULL COMMENT 'JSON с предлагаемыми изменениями (нормализованный)',
-  `proposed_data_hash` char(32) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (md5(cast(`proposed_data` as char charset utf8mb4))) STORED,
+  `proposed_data_hash` char(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (md5(cast(`proposed_data` as char charset utf8mb4))) STORED,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `deleted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -311,24 +311,24 @@ CREATE TABLE `rate_limits` (
 --
 
 INSERT INTO `rate_limits` (`id`, `ip_address`, `endpoint_action`, `created_at`) VALUES
-(729, '127.0.0.1', 'global.get', '2026-06-22 11:53:13'),
-(730, '127.0.0.1', 'global.get', '2026-06-22 11:53:13'),
-(731, '127.0.0.1', 'global.get', '2026-06-22 11:53:23'),
-(732, '127.0.0.1', 'global.get', '2026-06-22 11:53:23'),
-(733, '127.0.0.1', 'global.get', '2026-06-22 11:53:34'),
-(734, '127.0.0.1', 'global.get', '2026-06-22 11:53:34'),
-(735, '127.0.0.1', 'global.get', '2026-06-22 11:53:45'),
-(736, '127.0.0.1', 'global.get', '2026-06-22 11:53:45'),
-(737, '127.0.0.1', 'global.get', '2026-06-22 11:53:55'),
-(738, '127.0.0.1', 'global.get', '2026-06-22 11:53:55'),
-(739, '127.0.0.1', 'global.get', '2026-06-22 11:54:02'),
-(740, '127.0.0.1', 'global.get', '2026-06-22 11:54:04'),
-(741, '127.0.0.1', 'global.get', '2026-06-22 11:54:05'),
-(742, '127.0.0.1', 'global.get', '2026-06-22 11:54:05'),
-(744, '127.0.0.1', 'global.get', '2026-06-22 11:54:07'),
-(745, '127.0.0.1', 'global.get', '2026-06-22 11:54:07'),
-(746, '127.0.0.1', 'global.get', '2026-06-22 11:54:16'),
-(743, '127.0.0.1', 'global.post', '2026-06-22 11:54:07');
+(729, '127.0.0.1', 'global.get', '2026-06-22 08:53:13'),
+(730, '127.0.0.1', 'global.get', '2026-06-22 08:53:13'),
+(731, '127.0.0.1', 'global.get', '2026-06-22 08:53:23'),
+(732, '127.0.0.1', 'global.get', '2026-06-22 08:53:23'),
+(733, '127.0.0.1', 'global.get', '2026-06-22 08:53:34'),
+(734, '127.0.0.1', 'global.get', '2026-06-22 08:53:34'),
+(735, '127.0.0.1', 'global.get', '2026-06-22 08:53:45'),
+(736, '127.0.0.1', 'global.get', '2026-06-22 08:53:45'),
+(737, '127.0.0.1', 'global.get', '2026-06-22 08:53:55'),
+(738, '127.0.0.1', 'global.get', '2026-06-22 08:53:55'),
+(739, '127.0.0.1', 'global.get', '2026-06-22 08:54:02'),
+(740, '127.0.0.1', 'global.get', '2026-06-22 08:54:04'),
+(741, '127.0.0.1', 'global.get', '2026-06-22 08:54:05'),
+(742, '127.0.0.1', 'global.get', '2026-06-22 08:54:05'),
+(744, '127.0.0.1', 'global.get', '2026-06-22 08:54:07'),
+(745, '127.0.0.1', 'global.get', '2026-06-22 08:54:07'),
+(746, '127.0.0.1', 'global.get', '2026-06-22 08:54:16'),
+(743, '127.0.0.1', 'global.post', '2026-06-22 08:54:07');
 
 -- --------------------------------------------------------
 
@@ -349,8 +349,8 @@ CREATE TABLE `read_ribbons` (
 --
 
 INSERT INTO `read_ribbons` (`id`, `user_id`, `story_id`, `last_read_comment_id`, `updated_at`) VALUES
-(1, 1, 2, 6, '2026-06-16 16:32:51'),
-(2, 1, 1, 4, '2026-06-19 02:48:40');
+(1, 1, 2, 6, '2026-06-16 13:32:51'),
+(2, 1, 1, 4, '2026-06-18 23:48:40');
 
 -- --------------------------------------------------------
 
@@ -398,8 +398,8 @@ CREATE TABLE `stories` (
 --
 
 INSERT INTO `stories` (`id`, `user_id`, `title`, `url`, `domain`, `description`, `score`, `hotness`, `flag_count`, `is_hidden_by_flags`, `comments_count`, `created_at`, `updated_at`, `deleted_at`, `user_is_following`) VALUES
-(1, 1, 'Первый пост, написал статью про этот движок.', 'https://libarea.ru/articles/2222/reshil-napisat-lobsters-na-php', 'libarea.ru', 'Редирект будет на LibArea, а если нажать на домен, то сортировка публикаций тут по этому домену.', 15, 14376.8, 0, 0, 4, '2026-06-07 21:53:33', '2026-06-22 11:53:51', NULL, 1),
-(2, 1, 'Это второй пост для теста', NULL, NULL, 'Заполните, если это чисто текстовый пост, либо как дополнение к ссылке. 333', 2, 14375.9, 0, 0, 2, '2026-06-07 22:14:37', '2026-06-22 11:53:51', NULL, 0);
+(1, 1, 'Первый пост, написал статью про этот движок.', 'https://libarea.ru/articles/2222/reshil-napisat-lobsters-na-php', 'libarea.ru', 'Редирект будет на LibArea, а если нажать на домен, то сортировка публикаций тут по этому домену.', 15, 14376.8, 0, 0, 4, '2026-06-07 18:53:33', '2026-06-22 08:53:51', NULL, 1),
+(2, 1, 'Это второй пост для теста', NULL, NULL, 'Заполните, если это чисто текстовый пост, либо как дополнение к ссылке. 333', 2, 14375.9, 0, 0, 2, '2026-06-07 19:14:37', '2026-06-22 08:53:51', NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -432,7 +432,7 @@ CREATE TABLE `tags` (
   `id` int UNSIGNED NOT NULL,
   `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `hotness_mod` float NOT NULL DEFAULT '0' COMMENT 'Модификатор горячести для тега',
-  `tag` varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_media` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -444,12 +444,12 @@ CREATE TABLE `tags` (
 -- Дамп данных таблицы `tags`
 --
 
-INSERT INTO `tags` (`id`, `name`, `hotness_mod`, `tag`, `description`, `is_media`, `created_at`, `deleted_at`, `category_id`) VALUES
-(1, 'php', 0, 'php', 'Язык1 программирования PHP и фреймворки', 1, '2026-06-08 01:08:44', NULL, 1),
-(2, 'безопасность', 0, 'security', 'Уязвимости, безопасность и CSP политики', 1, '2026-06-08 01:08:44', NULL, 2),
-(3, 'личное', 0, 'show', 'Демонстрация личных проектов разработчиков', 1, '2026-06-08 01:08:44', NULL, 3),
-(4, 'видео', 0, 'video', 'Материал содержит видеоролик', 1, '2026-06-08 01:08:44', NULL, 3),
-(5, 'libarea', 0, 'libarea', 'Обсуждение сайта...', 1, '2026-06-08 01:46:26', NULL, 4);
+INSERT INTO `tags` (`id`, `name`, `hotness_mod`, `slug`, `description`, `is_media`, `created_at`, `deleted_at`, `category_id`) VALUES
+(1, 'php', 0, 'php', 'Язык1 программирования PHP и фреймворки', 1, '2026-06-07 22:08:44', NULL, 1),
+(2, 'безопасность', 0, 'security', 'Уязвимости, безопасность и CSP политики', 1, '2026-06-07 22:08:44', NULL, 2),
+(3, 'личное', 0, 'show', 'Демонстрация личных проектов разработчиков', 1, '2026-06-07 22:08:44', NULL, 3),
+(4, 'видео', 0, 'video', 'Материал содержит видеоролик', 1, '2026-06-07 22:08:44', NULL, 3),
+(5, 'libarea', 0, 'libarea', 'Обсуждение сайта...', 1, '2026-06-07 22:46:26', NULL, 4);
 
 -- --------------------------------------------------------
 
@@ -487,8 +487,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `email`, `password`, `role`, `created_at`, `updated_at`, `deleted_at`, `is_active`) VALUES
-(1, 'Admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2026-06-07 14:28:55', '2026-06-16 10:15:11', NULL, 1),
-(2, 'test', 'test@test.ru', '$2y$10$xKEu8vvztJ/yoA2yaHHque9z4el8tdWKZDI4SY/AvX3HyyojdHFva', 'user', '2026-06-13 00:31:51', '2026-06-16 10:15:14', NULL, 1);
+(1, 'Admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2026-06-07 11:28:55', '2026-06-16 07:15:11', NULL, 1),
+(2, 'test', 'test@test.ru', '$2y$10$xKEu8vvztJ/yoA2yaHHque9z4el8tdWKZDI4SY/AvX3HyyojdHFva', 'user', '2026-06-12 21:31:51', '2026-06-16 07:15:14', NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -544,8 +544,8 @@ CREATE TABLE `user_profiles` (
 --
 
 INSERT INTO `user_profiles` (`user_id`, `bio`, `avatar`, `updated_at`) VALUES
-(1, 'О себе я расскажуыва ыва ыва 3', 'a6fa1e10b80411629030d4079a5d2253.jpg', '2026-06-16 10:15:11'),
-(2, 'sdfsdfsdf', NULL, '2026-06-16 10:15:14');
+(1, 'О себе я расскажуыва ыва ыва 3', 'a6fa1e10b80411629030d4079a5d2253.jpg', '2026-06-16 07:15:11'),
+(2, 'sdfsdfsdf', NULL, '2026-06-16 07:15:14');
 
 -- --------------------------------------------------------
 
@@ -568,8 +568,8 @@ CREATE TABLE `user_settings` (
 --
 
 INSERT INTO `user_settings` (`user_id`, `notify_on_reply`, `notify_on_story_comment`, `notify_on_mention`, `notify_on_message`, `email_notifications`, `updated_at`) VALUES
-(1, 1, 1, 1, 1, 1, '2026-06-16 10:15:11'),
-(2, 1, 1, 1, 1, 1, '2026-06-16 10:15:14');
+(1, 1, 1, 1, 1, 1, '2026-06-16 07:15:11'),
+(2, 1, 1, 1, 1, 1, '2026-06-16 07:15:14');
 
 -- --------------------------------------------------------
 
@@ -591,8 +591,62 @@ CREATE TABLE `votes` (
 --
 
 INSERT INTO `votes` (`id`, `user_id`, `votable_type`, `votable_id`, `vote_type`, `created_at`) VALUES
-(5, 1, 'comment', 6, 1, '2026-06-07 23:28:01'),
-(6, 1, 'story', 2, 1, '2026-06-07 23:28:05');
+(5, 1, 'comment', 6, 1, '2026-06-07 20:28:01'),
+(6, 1, 'story', 2, 1, '2026-06-07 20:28:05');
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `wiki_pages`
+--
+
+CREATE TABLE `wiki_pages` (
+  `id` int UNSIGNED NOT NULL,
+  `tag_id` int UNSIGNED DEFAULT NULL COMMENT 'Связь с тегом (опционально)',
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Markdown контент',
+  `rendered_content` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Кэшированный HTML',
+  `author_id` int UNSIGNED NOT NULL COMMENT 'Автор страницы',
+  `is_primary` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Основная страница тега',
+  `status` enum('draft','published','archived') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
+  `view_count` int UNSIGNED NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `wiki_permissions`
+--
+
+CREATE TABLE `wiki_permissions` (
+  `id` int UNSIGNED NOT NULL,
+  `tag_id` int UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED NOT NULL,
+  `can_edit` tinyint(1) NOT NULL DEFAULT '1',
+  `can_delete` tinyint(1) NOT NULL DEFAULT '0',
+  `granted_by` int UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `wiki_revisions`
+--
+
+CREATE TABLE `wiki_revisions` (
+  `id` int UNSIGNED NOT NULL,
+  `wiki_page_id` int UNSIGNED NOT NULL,
+  `revision_number` int UNSIGNED NOT NULL,
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `edit_summary` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_id` int UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Индексы сохранённых таблиц
@@ -800,7 +854,7 @@ ALTER TABLE `taggings`
 --
 ALTER TABLE `tags`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `tag` (`tag`),
+  ADD UNIQUE KEY `slug` (`slug`) USING BTREE,
   ADD KEY `idx_tags_category_id` (`category_id`);
 
 --
@@ -856,6 +910,33 @@ ALTER TABLE `votes`
   ADD UNIQUE KEY `uid_type_id_unique` (`user_id`,`votable_type`,`votable_id`),
   ADD KEY `idx_votable_lookup` (`votable_type`,`votable_id`),
   ADD KEY `idx_votes_votable` (`votable_type`,`votable_id`);
+
+--
+-- Индексы таблицы `wiki_pages`
+--
+ALTER TABLE `wiki_pages`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_tag_slug` (`tag_id`,`slug`),
+  ADD KEY `wiki_pages_tag_id` (`tag_id`),
+  ADD KEY `wiki_pages_author_id` (`author_id`),
+  ADD KEY `wiki_pages_status` (`status`);
+
+--
+-- Индексы таблицы `wiki_permissions`
+--
+ALTER TABLE `wiki_permissions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `wiki_permissions_unique` (`tag_id`,`user_id`),
+  ADD KEY `wiki_permissions_user_id` (`user_id`),
+  ADD KEY `fk_wiki_permissions_granted_by` (`granted_by`);
+
+--
+-- Индексы таблицы `wiki_revisions`
+--
+ALTER TABLE `wiki_revisions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `wiki_revisions_unique` (`wiki_page_id`,`revision_number`),
+  ADD KEY `wiki_revisions_user_id` (`user_id`);
 
 --
 -- AUTO_INCREMENT для сохранённых таблиц
@@ -1024,6 +1105,24 @@ ALTER TABLE `votes`
   MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
+-- AUTO_INCREMENT для таблицы `wiki_pages`
+--
+ALTER TABLE `wiki_pages`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT для таблицы `wiki_permissions`
+--
+ALTER TABLE `wiki_permissions`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT для таблицы `wiki_revisions`
+--
+ALTER TABLE `wiki_revisions`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- Ограничения внешнего ключа сохраненных таблиц
 --
 
@@ -1152,68 +1251,25 @@ ALTER TABLE `user_settings`
 ALTER TABLE `votes`
   ADD CONSTRAINT `fk_poly_votes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
--- =========================================================================
--- WIKI PAGES - Wiki страницы
--- =========================================================================
+--
+-- Ограничения внешнего ключа таблицы `wiki_pages`
+--
+ALTER TABLE `wiki_pages`
+  ADD CONSTRAINT `fk_wiki_pages_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_wiki_pages_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE SET NULL;
 
-CREATE TABLE `wiki_pages` (
-    `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
-    `tag_id` int UNSIGNED DEFAULT NULL COMMENT 'Связь с тегом (опционально)',
-    `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Markdown контент',
-    `rendered_content` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Кэшированный HTML',
-    `author_id` int UNSIGNED NOT NULL COMMENT 'Автор страницы',
-    `is_primary` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Основная страница тега',
-    `status` enum('draft','published','archived') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-    `view_count` int UNSIGNED NOT NULL DEFAULT '0',
-    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `deleted_at` timestamp NULL DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `idx_tag_slug` (`tag_id`, `slug`),
-    KEY `wiki_pages_tag_id` (`tag_id`),
-    KEY `wiki_pages_author_id` (`author_id`),
-    KEY `wiki_pages_status` (`status`),
-    CONSTRAINT `fk_wiki_pages_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_wiki_pages_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+--
+-- Ограничения внешнего ключа таблицы `wiki_permissions`
+--
+ALTER TABLE `wiki_permissions`
+  ADD CONSTRAINT `fk_wiki_permissions_granted_by` FOREIGN KEY (`granted_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_wiki_permissions_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_wiki_permissions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
--- =========================================================================
--- WIKI REVISIONS - История изменений wiki страниц
--- =========================================================================
+--
+-- Ограничения внешнего ключа таблицы `wiki_revisions`
+--
+ALTER TABLE `wiki_revisions`
+  ADD CONSTRAINT `fk_wiki_revisions_page` FOREIGN KEY (`wiki_page_id`) REFERENCES `wiki_pages` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_wiki_revisions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
-CREATE TABLE `wiki_revisions` (
-    `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
-    `wiki_page_id` int UNSIGNED NOT NULL,
-    `revision_number` int UNSIGNED NOT NULL,
-    `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `edit_summary` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `user_id` int UNSIGNED NOT NULL,
-    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `wiki_revisions_unique` (`wiki_page_id`, `revision_number`),
-    KEY `wiki_revisions_user_id` (`user_id`),
-    CONSTRAINT `fk_wiki_revisions_page` FOREIGN KEY (`wiki_page_id`) REFERENCES `wiki_pages` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_wiki_revisions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =========================================================================
--- WIKI PERMISSIONS - Права доступа к wiki для тегов
--- =========================================================================
-
-CREATE TABLE `wiki_permissions` (
-    `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
-    `tag_id` int UNSIGNED NOT NULL,
-    `user_id` int UNSIGNED NOT NULL,
-    `can_edit` tinyint(1) NOT NULL DEFAULT '1',
-    `can_delete` tinyint(1) NOT NULL DEFAULT '0',
-    `granted_by` int UNSIGNED NOT NULL,
-    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `wiki_permissions_unique` (`tag_id`, `user_id`),
-    KEY `wiki_permissions_user_id` (`user_id`),
-    CONSTRAINT `fk_wiki_permissions_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_wiki_permissions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_wiki_permissions_granted_by` FOREIGN KEY (`granted_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

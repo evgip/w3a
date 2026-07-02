@@ -36,7 +36,7 @@ class WikiPage extends Model
         $sql = "SELECT wp.*, 
                        u.username as author_name,
                        t.name as tag_name,
-                       t.tag as tag_slug
+                       t.slug as tag_slug
                 FROM {$this->table} wp
                 LEFT JOIN users u ON wp.author_id = u.id
                 LEFT JOIN tags t ON wp.tag_id = t.id
@@ -61,7 +61,7 @@ class WikiPage extends Model
         $sql = "SELECT wp.*, 
                        u.username as author_name,
                        t.name as tag_name,
-                       t.tag as tag_slug
+                       t.slug as tag_slug
                 FROM {$this->table} wp
                 LEFT JOIN users u ON wp.author_id = u.id
                 LEFT JOIN tags t ON wp.tag_id = t.id
@@ -302,7 +302,7 @@ class WikiPage extends Model
 	 */
 	public function getDeleted(?int $tagId = null, int $limit = 50): array
 	{
-		$sql = "SELECT wp.*, u.username as author_name, t.tag as tag_name
+		$sql = "SELECT wp.*, u.username as author_name, t.slug as tag_slug
 				FROM {$this->table} wp
 				LEFT JOIN users u ON wp.author_id = u.id
 				LEFT JOIN tags t ON wp.tag_id = t.id
@@ -327,5 +327,81 @@ class WikiPage extends Model
 		$stmt->execute();
 		
 		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+	}
+	
+	/**
+	 * Получить все wiki страницы с информацией о тегах (для админки)
+	 * Включая удалённые
+	 * 
+	 * @param int $limit Максимальное количество
+	 * @param int $offset Смещение
+	 * @return array Массив страниц с данными тегов
+	 */
+	public function getAllPagesWithTags(int $limit = 100, int $offset = 0): array
+	{
+		$sql = "SELECT wp.*, 
+					   t.name as tag_name, 
+					   t.slug as tag_slug,
+					   u.username as author_name
+				FROM {$this->table} wp
+				LEFT JOIN tags t ON wp.tag_id = t.id
+				LEFT JOIN users u ON wp.author_id = u.id
+				ORDER BY wp.created_at DESC
+				LIMIT :limit OFFSET :offset";
+		
+		$stmt = static::db()->prepare($sql);
+		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+		$stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+		$stmt->execute();
+		
+		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+	}
+
+	/**
+	 * Получить общее количество wiki страниц (включая удалённые)
+	 */
+	public function getTotalPagesCount(): int
+	{
+		$sql = "SELECT COUNT(*) FROM {$this->table}";
+		return (int)static::db()->query($sql)->fetchColumn();
+	}
+
+	/**
+	 * Получить количество удалённых wiki страниц
+	 */
+	public function getDeletedPagesCount(): int
+	{
+		$sql = "SELECT COUNT(*) FROM {$this->table} WHERE deleted_at IS NOT NULL";
+		return (int)static::db()->query($sql)->fetchColumn();
+	}
+
+	/**
+	 * Мягкое удаление wiki страницы
+	 * 
+	 * @param int $id ID страницы
+	 * @return bool true, если успешно
+	 */
+	public function softDelete($id): bool
+	{
+		$id = (int)$id;
+		
+		if ($id <= 0) {
+			return false;
+		}
+		
+		try {
+			$sql = "UPDATE {$this->table} 
+					SET deleted_at = NOW() 
+					WHERE id = :id AND deleted_at IS NULL";
+			
+			$stmt = static::db()->prepare($sql);
+			$stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+			$stmt->execute();
+			
+			return $stmt->rowCount() > 0;
+			
+		} catch (\Throwable $e) {
+			return false;
+		}
 	}
 }

@@ -10,7 +10,7 @@
     </div>
 <?php endif; ?>
 
-<form action="/t/<?= e($tag['tag']) ?>/wiki/store" method="POST">
+<form action="/t/<?= e($tag['slug']) ?>/wiki/store" method="POST">
     <?= csrf_field() ?>
 
     <div class="form-field-group">
@@ -24,6 +24,6 @@
 
     <div class="form-actions">
         <button type="submit">Создать страницу</button>
-        <a href="/t/<?= e($tag['tag']) ?>/wiki">Отмена</a>
+        <a href="/t/<?= e($tag['slug']) ?>/wiki">Отмена</a>
     </div>
 </form>

@@ -8,18 +8,18 @@
 <?= $breadcrumbs ?>
 
 <div class="hint">
-    Wiki страницы тега <a href="/t/<?= e($tag['tag']) ?>" class="tag tag-<?= e($tag['tag']) ?>"><?= e($tag['name']) ?></a>.
+    Wiki страницы тега <a href="/t/<?= e($tag['slug']) ?>" class="tag tag-<?= e($tag['slug']) ?>"><?= e($tag['name']) ?></a>.
     <?php if (!empty($tag['description'])): ?>
         <br><?= e($tag['description']) ?>
     <?php endif; ?>
 </div>
 
 <div class="form-actions" style="margin-bottom: 1em;">
-    <a href="<?= route('wiki.tag.create', ['tag' => $tag['tag']]) ?>" class="btn-nav-create">
+    <a href="<?= route('wiki.tag.create', ['tagslug' => $tag['slug']]) ?>" class="btn-nav-create">
         ➕ Создать страницу
     </a>
     
-    <form action="<?= route('wiki.tag.search', ['tag' => $tag['tag']]) ?>" method="GET" class="inline-form" style="margin-left: 1em; display: inline-block;">
+    <form action="<?= route('wiki.tag.search', ['tagslug' => $tag['slug']]) ?>" method="GET" class="inline-form" style="margin-left: 1em; display: inline-block;">
         <input type="text" name="q" placeholder="Поиск по wiki..." required style="width: 200px;">
         <button type="submit">🔍 Найти</button>
     </form>
@@ -52,6 +52,6 @@ $otherPages = array_filter($pages, function($p) use ($primaryId) {
 <?php if (empty($pages)): ?>
     <div class="hint" style="text-align: center; padding: 2em 0;">
         <p>Для этого тега еще нет wiki страниц.</p>
-        <p><a href="<?= route('wiki.tag.create', ['tag' => $tag['tag']]) ?>" class="btn-nav-create">Создайте первую страницу!</a></p>
+        <p><a href="<?= route('wiki.tag.create', ['tagslug' => $tag['slug']]) ?>" class="btn-nav-create">Создайте первую страницу!</a></p>
     </div>
 <?php endif; ?>

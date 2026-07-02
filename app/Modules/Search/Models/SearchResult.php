@@ -12,8 +12,8 @@ class SearchResult extends Model
     public function searchStories(string $keywords, string $sortBy = 'relevance'): array
     {
         $sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
-                       GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
-                       GROUP_CONCAT(CONCAT(t.tag, '||', t.name) ORDER BY t.tag ASC) as tags_combined,
+                       GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
+                       GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined,
                        MATCH(s.title, s.description) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
                 FROM `stories` s
                 JOIN `users` u ON s.user_id = u.id

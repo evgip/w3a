@@ -180,7 +180,7 @@ class AdminController extends Controller
         }
 
         $this->render('tag_edit', [
-            'title' => 'Редактирование тега #' . e($tag['tag']),
+            'title' => 'Редактирование тега #' . e($tag['slug']),
             'tagItem' => $tag,
             'request' => $this->request
         ]);
@@ -314,6 +314,93 @@ class AdminController extends Controller
 
         $this->redirectBack('/admin/categories');
     }
+
+	// =========================================================================
+	// WIKI СТРАНИЦЫ
+	// =========================================================================
+
+	/**
+	 * Список всех wiki страниц
+	 */
+	public function wikiIndex(): void
+	{
+		$wikiPage = new \App\Modules\Wiki\Models\WikiPage();
+		
+		$page = max(1, (int)$this->request->query('page', 1));
+		$perPage = 50;
+		$offset = ($page - 1) * $perPage;
+		
+		$pages = $wikiPage->getAllPagesWithTags($perPage, $offset);
+		$totalPages = $wikiPage->getTotalPagesCount();
+		$deletedPages = $wikiPage->getDeletedPagesCount();
+		
+		$this->render('wiki_list', [
+			'title' => 'Управление Wiki страницами',
+			'pages' => $pages,
+			'currentPage' => $page,
+			'perPage' => $perPage,
+			'totalPages' => $totalPages,
+			'deletedPages' => $deletedPages,
+			'totalPagesCount' => ceil($totalPages / $perPage),
+		]);
+	}
+
+	/**
+	 * Мягкое удаление wiki страницы
+	 */
+	public function deleteWikiPage(string $id): void
+	{
+		$wikiPage = new \App\Modules\Wiki\Models\WikiPage();
+		$page = $wikiPage->findWithDeleted((int)$id);
+		
+		if (!$page) {
+			Session::setFlash('error', 'Wiki страница не найдена');
+			$this->redirectBack('/admin/wiki');
+		}
+		
+		if ($wikiPage->softDelete((int)$id)) {
+			\App\Core\Audit::log('admin.wiki.deleted', 'Wiki страница удалена администратором', 'wiki', [
+				'page_id' => (int)$id,
+				'title' => $page['title'],
+				'admin_id' => \App\Modules\Auth\Services\Auth::id(),
+			]);
+			
+			Session::setFlash('success', "Wiki страница «{$page['title']}» удалена");
+		} else {
+			Session::setFlash('error', 'Ошибка при удалении wiki страницы');
+		}
+		
+		$this->redirectBack('/admin/wiki');
+	}
+
+	/**
+	 * Восстановить wiki страницу
+	 */
+	public function restoreWikiPage(string $id): void
+	{
+		$wikiPage = new \App\Modules\Wiki\Models\WikiPage();
+		$page = $wikiPage->findWithDeleted((int)$id);
+		
+		if (!$page) {
+			Session::setFlash('error', 'Wiki страница не найдена');
+			$this->redirectBack('/admin/wiki');
+		}
+		
+		if ($wikiPage->restore((int)$id)) {
+			\App\Core\Audit::log('admin.wiki.restored', 'Wiki страница восстановлена администратором', 'wiki', [
+				'page_id' => (int)$id,
+				'title' => $page['title'],
+				'admin_id' => \App\Modules\Auth\Services\Auth::id(),
+			]);
+			
+			Session::setFlash('success', "Wiki страница «{$page['title']}» восстановлена");
+		} else {
+			Session::setFlash('error', 'Ошибка при восстановлении wiki страницы');
+		}
+		
+		$this->redirectBack('/admin/wiki');
+	}
+
 
     // =========================================================================
     // АУДИТ

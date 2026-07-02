@@ -36,11 +36,11 @@ class StoriesController extends Controller
     /**
      * Отображение главной ленты историй.
      *
-     * @param string $tagname Фильтр по тегу (опционально)
+     * @param string $tagslug Фильтр по тегу (опционально)
      * @param string $domain Фильтр по домену (опционально)
      */
-    public function index(string $tagname = '', string $domain = ''): void
-    {
+    public function index(string $tagslug = '', string $domain = ''): void
+    {  
         $currentPage = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config('constants.pagination.stories_per_page', 15, 'int');
         $offset = ($currentPage - 1) * $perPage;
@@ -55,11 +55,11 @@ class StoriesController extends Controller
         $stories = $this->service(StoryFilterService::class)->getFilteredStories(
             $perPage,
             $offset,
-            $tagname,
+            $tagslug,
             $domain,
             $sort
         );
-        $totalStories = $this->service(StoryFilterService::class)->getTotalCount($tagname, $domain);
+        $totalStories = $this->service(StoryFilterService::class)->getTotalCount($tagslug, $domain);
         $totalPages = (int)ceil($totalStories / $perPage);
 
         // Дополнительные данные
@@ -70,11 +70,11 @@ class StoriesController extends Controller
         // Формируем заголовок страницы
         $title = 'Лента историй';
 		$tagInfo = '';
-        if ($tagname) {
-            $title = "Публикации с тегом # " . e($tagname);
+        if ($tagslug) {
+            $title = "Публикации с тегом # " . e($tagslug);
 			
 			// Получаем OG-данные из сервиса
-			$ogData = $this->service(TagFilterService::class)->getTagOpenGraphData($tagname);
+			$ogData = $this->service(TagFilterService::class)->getTagOpenGraphData($tagslug);
 			$this->setOpenGraph([
 				'type' => 'article',
 				'title' => $ogData['title'],
@@ -83,7 +83,7 @@ class StoriesController extends Controller
 			]);
 			
 			// Инфа по тегу для инфы над постами
-			$tagInfo =  $this->service(TagFilterService::class)->getByInfoSlug($tagname);
+			$tagInfo =  $this->service(TagFilterService::class)->getByInfoSlug($tagslug);
 	
 			// Получаем данные о wiki для этого тега
 			$wikiService = $this->service(\App\Modules\Wiki\Services\WikiService::class);

@@ -20,6 +20,7 @@
             <a href="/admin/users">👥 Пользователи</a>
             <a href="/admin/tags">🏷️ Теги</a>
             <a href="/admin/categories">📂 Категории</a>
+			 <a href="/admin/wiki">📖 Wiki</a>
             <a href="/admin/invitations">📨 Инвайты</a>
             <a href="/admin/audit">🔒 Журнал аудита</a>
             <a href="/admin/firewall">🧱 Firewall</a>

@@ -361,9 +361,9 @@ if (!function_exists('rparseTagsCombined')) {
         $tagsWithNames = [];
         if (!empty($story['tags_combined'])) {
             foreach (explode(',', $story['tags_combined']) as $pair) {
-                list($tag, $name) = explode('||', $pair);
+                list($slug, $name) = explode('||', $pair);
                 $tagsWithNames[] = [
-                    'tag' => $tag,
+                    'slug' => $slug,
                     'name' => $name
                 ];
             }

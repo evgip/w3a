@@ -2,8 +2,8 @@
     <!-- Хлебные крошки -->
     <nav class="breadcrumbs">
         <a href="/">Главная</a> →
-        <a href="/t/<?= e($tag['tag']) ?>">#<?= e($tag['name']) ?></a> →
-        <a href="<?= route('wiki.tag.index', ['tag' => $tag['tag']]) ?>">Wiki</a> →
+        <a href="/t/<?= e($tag['slug']) ?>">#<?= e($tag['name']) ?></a> →
+        <a href="<?= route('wiki.tag.index', ['slug' => $tag['slug']]) ?>">Wiki</a> →
         <span>Управление правами</span>
     </nav>
 
@@ -40,7 +40,7 @@
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <form action="<?= route('wiki.tag.permissions.revoke', ['tag' => $tag['tag']]) ?>"
+                                <form action="<?= route('wiki.tag.permissions.revoke', ['slug' => $tag['slug']]) ?>"
                                     method="POST"
                                     onsubmit="return confirm('Отозвать права?')"
                                     style="display: inline;">
@@ -58,7 +58,7 @@
     <section class="add-editor">
         <h2>Добавить редактора</h2>
 
-        <form action="<?= route('wiki.tag.permissions.grant', ['tag' => $tag['tag']]) ?>"
+        <form action="<?= route('wiki.tag.permissions.grant', ['slug' => $tag['slug']]) ?>"
             method="POST"
             class="permission-form">
             <div class="form-group">

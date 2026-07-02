@@ -107,4 +107,12 @@ $router->group(['middleware' => ['web', 'admin'], 'prefix' => '/admin'], functio
 
     // Тестирование почты
     $router->add('POST', '/tools/send-test-email', AdminController::class . '@sendTestEmail', 'admin.tools.send_test_email');
+	
+	
+	// -------------------------------------------------------------------------
+	// Управление Wiki страницами
+	// -------------------------------------------------------------------------
+	$router->add('GET', '/wiki', AdminController::class . '@wikiIndex', 'admin.wiki');
+	$router->add('POST', '/wiki/{id}/delete', AdminController::class . '@deleteWikiPage', 'admin.wiki.delete');
+	$router->add('POST', '/wiki/{id}/restore', AdminController::class . '@restoreWikiPage', 'admin.wiki.restore');
 });

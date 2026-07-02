@@ -28,13 +28,13 @@ class Story extends Model
 	 * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
 	 * Получить ленту историй с пагинацией и учетом фильтров
 	 */
-	public function getFeed(int $limit, int $offset, string $tagname = '', bool $showDeleted = false, ?string $domain = '', array $excludeTagIds = [], string $sort = 'hot'): array
+	public function getFeed(int $limit, int $offset, string $tagslug = '', bool $showDeleted = false, ?string $domain = '', array $excludeTagIds = [], string $sort = 'hot'): array
 	{
 		// Возвращаем tag_list как строку для обратной совместимости с шаблоном
 		// Добавляем tags_combined для получения пары тег+имя
 		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar, 
-				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
-				GROUP_CONCAT(CONCAT(t.tag, '||', t.name) ORDER BY t.tag ASC) as tags_combined
+				GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
+				GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
 				FROM `stories` s
 				JOIN `users` u ON s.user_id = u.id
 				LEFT JOIN `user_profiles` up ON u.id = up.user_id
@@ -48,9 +48,9 @@ class Story extends Model
 			$where[] = "s.deleted_at IS NULL";
 		}
 
-		if ($tagname) {
-			$where[] = "t.tag = :tag";
-			$bindings[':tag'] = $tagname;
+		if ($tagslug) {
+			$where[] = "t.slug = :slug";
+			$bindings[':slug'] = $tagslug;
 		}
 
 		if ($domain) {
@@ -150,14 +150,14 @@ class Story extends Model
 	 */
 	public function getAllTags(): array
 	{
-		$stmt = static::db()->query("SELECT * FROM `tags` ORDER BY `tag` ASC");
+		$stmt = static::db()->query("SELECT * FROM `tags` ORDER BY `slug` ASC");
 		return $stmt->fetchAll();
 	}
 
 	/**
 	 * Получить общее количество историй с учетом фильтров
 	 */
-	public function getTotalCount(string $tagname = '', ?string $domain = '', array $excludeTagIds = []): int
+	public function getTotalCount(string $tagslug = '', ?string $domain = '', array $excludeTagIds = []): int
 	{
 		$sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
 				LEFT JOIN `taggings` tg ON s.id = tg.story_id
@@ -166,9 +166,9 @@ class Story extends Model
 		$where = ["s.deleted_at IS NULL"];
 		$bindings = [];
 
-		if ($tagname) {
-			$where[] = "t.tag = :tag";
-			$bindings[':tag'] = $tagname;
+		if ($tagslug) {
+			$where[] = "t.slug = :slug";
+			$bindings[':slug'] = $tagslug;
 		}
 
 		if ($domain) {
@@ -176,7 +176,7 @@ class Story extends Model
 			$bindings[':domain'] = $domain;
 		}
 
-		// ✅ ИСПРАВЛЕНИЕ: Генерируем именованные параметры для каждого исключаемого тега
+		// Генерируем именованные параметры для каждого исключаемого тега
 		if (!empty($excludeTagIds)) {
 			$namedPlaceholders = [];
 			foreach ($excludeTagIds as $index => $tagId) {
@@ -213,8 +213,8 @@ class Story extends Model
 		// Возвращаем tag_list как строку для обратной совместимости
 		// Добавляем tags_combined для получения пары тег+имя
 		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
-                       GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list,
-                       GROUP_CONCAT(CONCAT(t.tag, '||', t.name) ORDER BY t.tag ASC) as tags_combined
+                       GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
+                       GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
                 FROM `stories` s
 					JOIN `users` u ON s.user_id = u.id
 					LEFT JOIN `user_profiles` up ON u.id = up.user_id
@@ -240,9 +240,9 @@ class Story extends Model
 			$tagsWithNames = [];
 			if (!empty($story['tags_combined'])) {
 				foreach (explode(',', $story['tags_combined']) as $pair) {
-					list($tag, $name) = explode('||', $pair);
+					list($slug, $name) = explode('||', $pair);
 					$tagsWithNames[] = [
-						'tag' => $tag,
+						'slug' => $slug,
 						'name' => $name
 					];
 				}
@@ -403,10 +403,10 @@ class Story extends Model
 	/**
 	 * Получить ленту историй с учётом фильтров тегов
 	 */
-	public function getFeedWithFilters(int $limit, int $offset, array $excludeTagIds = [], ?string $tagname = null): array
+	public function getFeedWithFilters(int $limit, int $offset, array $excludeTagIds = [], ?string $tagslug = null): array
 	{
 		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar
-				GROUP_CONCAT(t.tag ORDER BY t.tag ASC) as tag_list
+				GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list
 				FROM `stories` s
 				JOIN `users` u ON s.user_id = u.id
 				LEFT JOIN `user_profiles` up ON u.id = up.user_id 
@@ -426,9 +426,9 @@ class Story extends Model
 			$bindings = array_merge($bindings, $excludeTagIds);
 		}
 
-		if ($tagname) {
-			$where[] = "t.tag = :tag";
-			$bindings['tag'] = $tagname;
+		if ($tagslug) {
+			$where[] = "t.slug = :slug";
+			$bindings['slug'] = $tagslug;
 		}
 
 		$sql .= " WHERE " . implode(" AND ", $where);
@@ -442,8 +442,8 @@ class Story extends Model
 			$stmt->bindValue($paramIndex++, $tagId, \PDO::PARAM_INT);
 		}
 
-		if (isset($bindings['tag'])) {
-			$stmt->bindValue(':tag', $bindings['tag']);
+		if (isset($bindings['slug'])) {
+			$stmt->bindValue(':slug', $bindings['slug']);
 		}
 
 		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
@@ -462,7 +462,7 @@ class Story extends Model
 	/**
 	 * Получить общее количество историй с учётом фильтров
 	 */
-	public function getTotalCountWithFilters(array $excludeTagIds = [], ?string $tagname = null): int
+	public function getTotalCountWithFilters(array $excludeTagIds = [], ?string $tagslug = null): int
 	{
 		$sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
 				LEFT JOIN `taggings` tg ON s.id = tg.story_id
@@ -480,9 +480,9 @@ class Story extends Model
 			$bindings = array_merge($bindings, $excludeTagIds);
 		}
 
-		if ($tagname) {
-			$sql .= " AND t.tag = :tag";
-			$bindings['tag'] = $tagname;
+		if ($tagslug) {
+			$sql .= " AND t.slug = :slug";
+			$bindings['slug'] = $tagslug;
 		}
 
 		$stmt = static::db()->prepare($sql);
@@ -492,8 +492,8 @@ class Story extends Model
 			$stmt->bindValue($paramIndex++, $tagId, \PDO::PARAM_INT);
 		}
 
-		if (isset($bindings['tag'])) {
-			$stmt->bindValue(':tag', $bindings['tag']);
+		if (isset($bindings['slug'])) {
+			$stmt->bindValue(':slug', $bindings['slug']);
 		}
 
 		$stmt->execute();

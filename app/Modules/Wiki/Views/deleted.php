@@ -1,7 +1,7 @@
 <?= $breadcrumbs ?>
 
 <div class="hint">
-    Удалённые wiki страницы тега <a href="/t/<?= e($tag['tag']) ?>" class="tag tag-<?= e($tag['tag']) ?>"><?= e($tag['name']) ?></a>.
+    Удалённые wiki страницы тега <a href="/t/<?= e($tag['slug']) ?>" class="tag tag-<?= e($tag['slug']) ?>"><?= e($tag['name']) ?></a>.
     <br>Удалённые страницы можно восстановить в течение неограниченного времени.
 </div>
 
@@ -15,7 +15,7 @@
             <li class="story">
                 <div class="story_liner">
                     <div class="link">
-                        <a href="/t/<?= e($tag['tag']) ?>/wiki/<?= e($page['slug']) ?>"><?= e($page['title']) ?></a>
+                        <a href="/t/<?= e($tag['slug']) ?>/wiki/<?= e($page['slug']) ?>"><?= e($page['title']) ?></a>
                         <span class="tag tag-meta">Удалена</span>
                     </div>
                     
@@ -26,7 +26,7 @@
                             🗑️ Удалена: <?= dt($page['deleted_at']) ?>
                         </span>
                         <span class="divider">|</span>
-                        <form action="/t/<?= e($tag['tag']) ?>/wiki/<?= $page['id'] ?>/restore" 
+                        <form action="/t/<?= e($tag['slug']) ?>/wiki/<?= $page['id'] ?>/restore" 
                               method="POST" 
                               class="inline-form js-confirm-delete"
                               data-confirm-message="Восстановить эту страницу?"

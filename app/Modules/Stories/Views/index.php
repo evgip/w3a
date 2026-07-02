@@ -32,13 +32,13 @@ $sortLinks = [
     <?php endforeach; ?>
 </nav>
 
-<?php if (!empty($tagInfo['tag'])): ?>
-	<div class="hint">
-		Статьи, <a href="/tags#<?= e($tagInfo['tag']); ?>">помеченные</a> как <a href="<?= route('tags.filter', ['tagname' => $tagInfo['tag']]) ?>" class="tag tag-<?= e($tagInfo['tag']); ?>"><?= e($tagInfo['name']); ?></a>. 
+<?php if (!empty($tagInfo['slug'])): ?>
+	<div class="hint mb-1">
+		Статьи, <a href="/tags#<?= e($tagInfo['slug']); ?>">помеченные</a> как <a href="<?= route('tags.filter', ['tagslug' => $tagInfo['slug']]) ?>" class="tag tag-<?= e($tagInfo['slug']); ?>"><?= e($tagInfo['name']); ?></a>. 
 		<br>
 		<?php if (!empty($primaryWikiPage['title'])): ?>
 			<?php if ($wikiPagesCount > 0 || $primaryWikiPage): ?>
-				Wiki статья привязанная к тегу   <?= e($tagInfo['name']); ?>: <a href="/t/<?= e($tagInfo['tag']) ?>/wiki/<?= e($primaryWikiPage['slug']) ?>"><?= e($primaryWikiPage['title']) ?></a>
+				Wiki статья привязанная к тегу   <?= e($tagInfo['name']); ?>: <a href="/t/<?= e($tagInfo['slug']) ?>/wiki/<?= e($primaryWikiPage['slug']) ?>"><?= e($primaryWikiPage['title']) ?></a>
 			<?php endif; ?>
 		<?php endif; ?>
 	</div>
@@ -107,7 +107,7 @@ $sortLinks = [
                         <?php if (!empty($story['tags'])): ?>
                             <span class="tags">
                                 <?php foreach ($story['tags_with_names'] as $tagData): ?>
-                                    <a href="<?= route('tags.filter', ['tagname' => e($tagData['tag'])]) ?>" class="tag tag-<?= e($tagData['tag']); ?>"><?= e($tagData['name']) ?></a>
+                                    <a href="<?= route('tags.filter', ['tagslug' => e($tagData['slug'])]) ?>" class="tag tag-<?= e($tagData['slug']); ?>"><?= e($tagData['name']) ?></a>
                                 <?php endforeach; ?>
                             </span>
                         <?php endif; ?>

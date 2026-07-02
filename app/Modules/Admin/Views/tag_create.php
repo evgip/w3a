@@ -20,7 +20,7 @@ $categoriesList = $categoryModel->getAllOrdered();
 
 	<div class="form-field-group">
 		<label>URL тега (slug):</label>
-		<input type="text" name="tag" required placeholder="например: laravel">
+		<input type="text" name="slug" required placeholder="например: laravel">
 		<small class="text-muted">Только латиница в нижнем регистре, без пробелов.</small>
 	</div>
 

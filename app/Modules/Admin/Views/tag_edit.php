@@ -26,9 +26,9 @@ $categories = $categoryModel->getAllOrdered();
     </div>
 
     <div class="form-field-group">
-        <label for="tag">URL тега (slug) <span class="form-field-hint-inline">(обязательно)</span></label>
-        <input type="text" id="tag" name="tag" required pattern="[a-z0-9\-]+" class="form-input-wide"
-            value="<?= e($request->getParams('tag', $tagItem['tag'] ?? '')) ?>"
+        <label for="slug">URL тега (slug) <span class="form-field-hint-inline">(обязательно)</span></label>
+        <input type="text" id="slug" name="slug" required pattern="[a-z0-9\-]+" class="form-input-wide"
+            value="<?= e($request->getParams('slug', $tagItem['slug'] ?? '')) ?>"
             placeholder="Например: php">
         <div class="hint">Только латиница в нижнем регистре, цифры и дефис. <strong>Изменение повлияет на URL тега.</strong></div>
     </div>

@@ -47,11 +47,11 @@ if ($userId > 0) {
                 <?php if ($canEdit || $canDelete): ?>
                     <span class="divider">|</span>
                     <?php if ($canEdit): ?>
-                        <a href="/t/<?= e($tag['tag']) ?>/wiki/<?= $page['id'] ?>/edit">✏️ Редактировать</a>
+                        <a href="/t/<?= e($tag['slug']) ?>/wiki/<?= $page['id'] ?>/edit">✏️ Редактировать</a>
                     <?php endif; ?>
                     <?php if ($canDelete): ?>
                         <span class="divider">|</span>
-                        <form action="/t/<?= e($tag['tag']) ?>/wiki/<?= $page['id'] ?>/delete" 
+                        <form action="/t/<?= e($tag['slug']) ?>/wiki/<?= $page['id'] ?>/delete" 
                               method="POST" 
                               class="inline-form js-confirm-delete"
                               data-confirm-message="Вы уверены, что хотите удалить эту страницу?"
@@ -66,9 +66,9 @@ if ($userId > 0) {
             <div class="story_content">
                 <?= $page['rendered_content'] ?>
             </div>
-            
+
             <div class="byline" style="margin-top: 1em; padding-top: 0.5em; border-top: 1px solid var(--color-box-bg-shaded);">
-                <a href="/t/<?= e($tag['tag']) ?>/wiki">← Назад к wiki тега #<?= e($tag['name']) ?></a>
+                <a href="/t/<?= e($tag['slug']) ?>/wiki">← Назад к wiki тега #<?= e($tag['name']) ?></a>
                 
                 <?php if ($page['created_at'] != $page['updated_at']): ?>
                     <span class="divider">|</span>

@@ -22,7 +22,7 @@ $router->add('GET', '/top', StoriesController::class . '@index', 'stories.top');
 $router->add('GET', '/story/{id}', StoriesController::class . '@show', 'story.show');
 
 // Фильтр по тегу
-$router->add('GET', '/t/{tagname}', StoriesController::class . '@index', 'tags.filter');
+$router->add('GET', '/t/{tagslug}', StoriesController::class . '@index', 'tags.filter');
 
 // Фильтр по домену
 $router->add('GET', '/domain/{domain}', StoriesController::class . '@index', 'domain.show');
