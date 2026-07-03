@@ -39,6 +39,8 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
 	
 	$router->add('POST', '/stories/fetch-url-title', StoriesController::class . '@fetchUrlTitle', 'story.fetch_url_title');
 
+    // Предпросмотр Markdown
+    $router->add('POST', '/stories/preview', StoriesController::class . '@preview', 'story.preview');
 
     $router->add('GET', '/stories/{id}/edit', StoriesController::class . '@showEditForm', 'story.edit');
     $router->add('POST', '/stories/{id}/edit', StoriesController::class . '@update', 'story.edit.submit');

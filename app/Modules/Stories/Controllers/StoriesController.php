@@ -549,4 +549,27 @@ class StoriesController extends Controller
 		
 		return $user ? $username : '';
 	}
+	
+	/**
+	 * AJAX endpoint для предпросмотра Markdown
+	 */
+	public function preview(): void
+	{
+		// Проверяем CSRF
+		if (!$this->request->isCsrfValid()) {
+			$this->json(['error' => 'Неверный CSRF токен'], 419);
+			return;
+		}
+
+		$text = $this->request->post('text', '');
+		$allowImages = (bool)$this->request->post('allow_images', true);
+
+		// Используем ваш существующий Markdown парсер
+		$html = \App\Modules\Content\Core\Markdown::parse($text, $allowImages);
+
+		$this->json([
+			'html' => $html,
+			'success' => true
+		]);
+	}
 }

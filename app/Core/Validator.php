@@ -130,7 +130,7 @@ class Validator
     /**
      * Получить первую ошибку для конкретного поля
      */
-    public function getFirstError(string $field): string
+    public function getFirstError(string $field): array
     {
         return isset($this->errors[$field]) ? $this->errors[$field] : '';
     }
