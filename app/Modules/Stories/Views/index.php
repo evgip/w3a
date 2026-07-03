@@ -44,6 +44,22 @@ $sortLinks = [
 	</div>
 <?php endif; ?>
 
+<?php if (!empty($author)): ?>
+<div class="hint mb-1">
+    Публикации пользователя: <?= e($author) ?>
+	<br>
+    <a href="/">× Сбросить фильтр</a>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($domain)): ?>
+<div class="hint mb-1">
+    Публикации по домену: <?= e($domain) ?>
+	<br>
+    <a href="/">× Сбросить фильтр</a>
+</div>
+<?php endif; ?>
+
 <?php if (!empty($stories)): ?>
     <ol class="stories">
         <?php foreach ($stories as $story): ?>

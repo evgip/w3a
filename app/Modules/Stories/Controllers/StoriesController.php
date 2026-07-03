@@ -45,6 +45,9 @@ class StoriesController extends Controller
         $perPage = config('constants.pagination.stories_per_page', 15, 'int');
         $offset = ($currentPage - 1) * $perPage;
 
+		// Получаем и фильтруем параметр author из GET-запроса
+		$author = $this->validateAuthor($this->request->getParams('author', ''));
+
         // Читаем режим сортировки
         $sort = $this->request->getParams('sort', 'hot');
         if (!in_array($sort, ['hot', 'new', 'top'], true)) {
@@ -57,7 +60,8 @@ class StoriesController extends Controller
             $offset,
             $tagslug,
             $domain,
-            $sort
+            $sort,
+			$author
         );
         $totalStories = $this->service(StoryFilterService::class)->getTotalCount($tagslug, $domain);
         $totalPages = (int)ceil($totalStories / $perPage);
@@ -99,7 +103,9 @@ class StoriesController extends Controller
 			} */
 			
 
-        } elseif ($domain) {
+        } elseif ($author) {
+			 $title = "Публикации пользователя " . e($author);
+		} elseif ($domain) {	
             $title = "Публикации с домена " . e($domain);
 			
 			$this->setOpenGraph([
@@ -122,6 +128,8 @@ class StoriesController extends Controller
 			'wikiPages' => $wikiPages ?? false,
 			'primaryWikiPage' => $primaryWikiPage ?? false,
 			'wikiPagesCount' => $wikiPagesCount ?? false,
+			'author' => $author,
+			'domain' => $domain
         ]);
     }
     
@@ -514,5 +522,31 @@ class StoriesController extends Controller
 		$attributes = $fetcher->fetchAttributes($url);
 
 		$this->json($attributes);
+	}
+	
+	private function validateAuthor(string $username): string
+	{
+		$username = trim($username);
+		
+		if ($username === '') {
+			return '';
+		}
+		
+		$validator = new \App\Core\Validator();
+		$validator->validate(
+			['username' => $username],
+			['username' => 'required|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/']
+		);
+		
+		// Если невалиден — возвращаем пустую строку (фильтр не применяется)
+		if (!$validator->isValid()) {
+			return '';
+		}
+		
+		// Проверка существования
+		$userModel = new \App\Modules\Users\Models\User();
+		$user = $userModel->findByName($username);
+		
+		return $user ? $username : '';
 	}
 }

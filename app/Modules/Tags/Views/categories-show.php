@@ -59,6 +59,7 @@ $paginationBaseUrl = route('categories.show', ['slug' => $category['slug']]);
                     'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
                     'canDownvote' => $canUserDownvote,
                     'isLoggedIn' => $currentUserId > 0,
+					'contentOwnerId' => (int)$story['user_id']
                 ]); ?>
 
                 <div class="story_liner">

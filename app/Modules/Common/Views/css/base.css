@@ -113,7 +113,6 @@ a:visited {
 
 h1, h2, h3, h4 {
     font-weight: bold;
-    margin: 0.5em 0 0.5em 0;
     padding: 0;
 }
 
@@ -251,7 +250,7 @@ li.story:last-child {
     margin-right: 10px;
 }
 
-/* ✅ Единая кнопка голосования (объединены два блока) */
+/* Единая кнопка голосования (объединены два блока) */
 .upvoter {
     color: var(--opacity-fg-contrast-4-5);
     display: flex;
@@ -349,10 +348,11 @@ li .domain:hover {
     color: var(--opacity-fg-contrast-7-5);
 }
 
-/* + оранжевый
-#f9ddde
-#f0b2b8
-*/
+.tag-ask {
+	background-color: #f9ddde;
+    border-color: #f0b2b8;
+    color: var(--opacity-fg-contrast-7-5);
+}
 
 li .byline {
     color: var(--opacity-fg-contrast-4-5);
@@ -565,7 +565,7 @@ textarea {
     resize: vertical;
 }
 
-/* ✅ Объединённые кнопки: button, input[type="submit"], input[type="button"], a.button */
+/* Объединённые кнопки: button, input[type="submit"], input[type="button"], a.button */
 button,
 input[type="submit"],
 input[type="button"],

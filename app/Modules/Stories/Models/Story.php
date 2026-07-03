@@ -28,7 +28,16 @@ class Story extends Model
 	 * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
 	 * Получить ленту историй с пагинацией и учетом фильтров
 	 */
-	public function getFeed(int $limit, int $offset, string $tagslug = '', bool $showDeleted = false, ?string $domain = '', array $excludeTagIds = [], string $sort = 'hot'): array
+	public function getFeed(
+		int $limit, 
+		int $offset, 
+		string $tagslug = '', 
+		bool $showDeleted = false, 
+		?string $domain = '', 
+		array $excludeTagIds = [], 
+		string $sort = 'hot',
+		string $author = ''
+	): array
 	{
 		// Возвращаем tag_list как строку для обратной совместимости с шаблоном
 		// Добавляем tags_combined для получения пары тег+имя
@@ -56,6 +65,11 @@ class Story extends Model
 		if ($domain) {
 			$where[] = "s.domain = :domain";
 			$bindings[':domain'] = $domain;
+		}
+
+		if ($author) {
+			$where[] = "u.username = :author";
+			$bindings[':author'] = $author;
 		}
 
 		// Генерируем именованные параметры для каждого исключаемого тега
@@ -157,9 +171,15 @@ class Story extends Model
 	/**
 	 * Получить общее количество историй с учетом фильтров
 	 */
-	public function getTotalCount(string $tagslug = '', ?string $domain = '', array $excludeTagIds = []): int
+	public function getTotalCount(
+			string $tagslug = '', 
+			?string $domain = '', 
+			array $excludeTagIds = [],
+			string $author = ''
+		): int
 	{
 		$sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
+				JOIN `users` u ON s.user_id = u.id 
 				LEFT JOIN `taggings` tg ON s.id = tg.story_id
 				LEFT JOIN `tags` t ON tg.tag_id = t.id";
 
@@ -174,6 +194,11 @@ class Story extends Model
 		if ($domain) {
 			$where[] = "s.domain = :domain";
 			$bindings[':domain'] = $domain;
+		}
+
+		if ($author) {
+			$where[] = "u.username = :author";
+			$bindings[':author'] = $author;
 		}
 
 		// Генерируем именованные параметры для каждого исключаемого тега

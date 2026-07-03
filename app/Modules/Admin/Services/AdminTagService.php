@@ -58,13 +58,13 @@ class AdminTagService
 
         // Валидация имени
         $validator = new Validator();
-        if (!$validator->validate(['slug' => $tagSlug], ['slug' => 'required|min:3'])) {
-            Session::setFlash('error', 'Slug тега должно содержать не менее 3 символов.');
+        if (!$validator->validate(['slug' => $tagSlug], ['slug' => 'required|min:2'])) {
+            Session::setFlash('error', 'Slug тега должно содержать не менее 2 символов.');
             return false;
         }
 
-        if (!$validator->validate(['name' => $tagName], ['name' => 'required|min:3'])) {
-            Session::setFlash('error', 'Название тега должно содержать не менее 3 символов.');
+        if (!$validator->validate(['name' => $tagName], ['name' => 'required|min:2'])) {
+            Session::setFlash('error', 'Название тега должно содержать не менее 2 символов.');
             return false;
         }
 
@@ -114,13 +114,13 @@ class AdminTagService
 
         // Валидация имени
         $validator = new Validator();
-        if (!$validator->validate(['slug' => $tagSlug], ['slug' => 'required|min:3'])) {
-            Session::setFlash('error', 'Slug тега должно содержать не менее 3 символов.');
+        if (!$validator->validate(['slug' => $tagSlug], ['slug' => 'required|min:2'])) {
+            Session::setFlash('error', 'Slug тега должно содержать не менее 2 символов.');
             return false;
         }
 
-        if (!$validator->validate(['name' => $tagName], ['name' => 'required|min:3'])) {
-            Session::setFlash('error', 'Название тега должно содержать не менее 3 символов.');
+        if (!$validator->validate(['name' => $tagName], ['name' => 'required|min:2'])) {
+            Session::setFlash('error', 'Название тега должно содержать не менее 2 символов.');
             return false;
         }
 
@@ -138,7 +138,7 @@ class AdminTagService
 
         $this->tagModel->update($tagId, [
             'name' => $tagName,
-            'tag' => $tagSlug,
+            'slug' => $tagSlug,
             'description' => $description,
             'is_media' => $isMedia,
             'category_id' => $categoryId,

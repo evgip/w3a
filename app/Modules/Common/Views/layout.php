@@ -149,7 +149,7 @@
 		<div>
 			<nav>
 				<a href="<?= route('home') ?>"><?= __('home') ?></a>
-				<a href="<?= route('page.about') ?>"><?= __('about') ?></a>
+				<a href="/t/meta/wiki/about"><?= __('about') ?></a>
 				<a href="<?= route('stats.index') ?>"><?= __('statistics') ?></a>
 				<?php if (\App\Modules\Auth\Services\Auth::check()): ?>
 				  <a href="<?= route('tags.filters') ?>"><?= __('filters') ?></a>

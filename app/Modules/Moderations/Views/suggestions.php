@@ -70,7 +70,7 @@
 								<strong>Новые теги:</strong><br>
 								<span class="tags">
 									<?php foreach ($suggestion['tags_details'] as $tagData): ?>
-										<a href="/t/<?= e($tagData['tag']) ?>" class="tag"><?= e($tagData['name']) ?></a>
+										<a href="/t/<?= e($tagData['slug']) ?>" class="tag"><?= e($tagData['name']) ?></a>
 									<?php endforeach; ?>
 								</span>
 							</div>

@@ -428,7 +428,7 @@ class Router
         http_response_code($code);
         
         if ($code === 404) {
-            Logger::error("Ошибка 404: " . $message, ['url' => $_SERVER['REQUEST_URI'] ?? '/']);
+          //  Logger::error("Ошибка 404: " . $message, ['url' => $_SERVER['REQUEST_URI'] ?? '/']);
         }
         
         $errorControllerClass = "App\\Modules\\Errors\\Controllers\\ErrorsController";
