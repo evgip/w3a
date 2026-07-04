@@ -230,14 +230,14 @@ class Application
         echo '</div>';
     }
 
-    private function showProductionError(): void
-    {
-        $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-        if (class_exists($errorController)) {
-            $controller = $this->container->make($errorController);
-            $controller->internalError("Извините, на сервере произошла внутренняя ошибка. Инженеры уже уведомлены.");
-            exit;
-        }
-        echo "<h1>500 Internal Server Error</h1><p>Извините, на сервере произошла непредвиденная ошибка.</p>";
-    }
+	private function showProductionError(): void
+	{
+		$errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
+		if (class_exists($errorController)) {
+			$controller = $this->container->make($errorController);
+			$controller->serverError("Извините, на сервере произошла внутренняя ошибка. Инженеры уже уведомлены.");
+			exit;
+		}
+		echo "<h1>500 Internal Server Error</h1><p>Извините, на сервере произошла непредвиденная ошибка.</p>";
+	}
 }

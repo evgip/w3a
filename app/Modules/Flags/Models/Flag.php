@@ -1,13 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Flags\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 use App\Core\Config;
 
 class Flag extends Model
 {
     protected string $table = 'flags';
+    private Config $config;
 
     protected array $fillable = [
         'user_id',
@@ -21,27 +26,44 @@ class Flag extends Model
     ];
 
     /**
+     * Конструктор с инъекцией Database, Logger и Config
+     */
+    public function __construct(Database $db, Logger $logger, Config $config)
+    {
+        parent::__construct($db, $logger);
+        $this->config = $config;
+    }
+
+    /**
      * Получить порог авто-скрытия из конфига
      */
-    public static function getHideThreshold(): int
+    public function getHideThreshold(): int
     {
-        return (int) Config::get('flags.hide_threshold', 3);
+        return (int) $this->config->getInt('flags.hide_threshold', 3);
     }
 
     /**
      * Получить список причин жалобы из конфига
      */
-    public static function getReasons(): array
+    public function getReasons(): array
     {
-        return (array) Config::get('flags.reasons', []);
+        return (array) $this->config->getArray('flags.reasons', []);
     }
 
     /**
-     * Получить кулдаун (в минутах)
+     * Получить кулдаун в минутах
      */
-    public static function getCooldownMinutes(): int
+    public function getCooldownMinutes(): int
     {
-        return (int) Config::get('flags.cooldown_minutes', 60);
+        return (int) $this->config->getInt('flags.cooldown_minutes', 60);
+    }
+
+    /**
+     * Получить максимальную длину комментария
+     */
+    public function getCommentMaxLength(): int
+    {
+        return (int) $this->config->getInt('flags.comment_max_length', 500);
     }
 
     /**
@@ -49,7 +71,6 @@ class Flag extends Model
      */
     public function hasUserFlagged(int $userId, string $type, int $targetId): bool
     {
-        // ✅ Используем $this->db->fetchColumn()
         $count = (int)$this->db->fetchColumn(
             "SELECT COUNT(*) FROM `{$this->table}`
              WHERE `user_id` = :uid
@@ -74,8 +95,8 @@ class Flag extends Model
             return ['ok' => false, 'error' => 'Неизвестный тип контента'];
         }
 
-        // Валидация причины
-        $reasons = static::getReasons();
+        // Валидация причины через нестатический метод
+        $reasons = $this->getReasons();
         if (!array_key_exists($reason, $reasons)) {
             return ['ok' => false, 'error' => 'Неизвестная причина жалобы'];
         }
@@ -90,8 +111,8 @@ class Flag extends Model
             return ['ok' => false, 'error' => 'Контент не найден'];
         }
 
-        // Максимальная длина пояснения
-        $maxLength = (int) Config::get('flags.comment_max_length', 500);
+        // Ограничение длины комментария через нестатический метод
+        $maxLength = $this->getCommentMaxLength();
         $commentClean = $comment ? trim(mb_substr($comment, 0, $maxLength)) : null;
 
         // Создаём жалобу
@@ -122,7 +143,6 @@ class Flag extends Model
     private function incrementFlagCount(string $type, int $targetId): void
     {
         $table = $type === 'story' ? 'stories' : 'comments';
-        // ✅ Используем $this->db->execute()
         $this->db->execute(
             "UPDATE `{$table}` SET `flag_count` = `flag_count` + 1 WHERE `id` = :id",
             ['id' => $targetId]
@@ -135,9 +155,8 @@ class Flag extends Model
     private function checkAndHideIfNeeded(string $type, int $targetId): bool
     {
         $table = $type === 'story' ? 'stories' : 'comments';
-        $threshold = static::getHideThreshold();
+        $threshold = $this->getHideThreshold();
 
-        // ✅ Используем $this->db->fetchOne()
         $row = $this->db->fetchOne(
             "SELECT `flag_count`, `is_hidden_by_flags` FROM `{$table}` WHERE `id` = :id LIMIT 1",
             ['id' => $targetId]
@@ -176,7 +195,6 @@ class Flag extends Model
      */
     public function getPendingFlags(): array
     {
-        // ✅ Используем $this->db->fetchAll()
         return $this->db->fetchAll(
             "SELECT f.*,
                     u.username AS reporter_name,
@@ -203,7 +221,6 @@ class Flag extends Model
                 ORDER BY f.created_at DESC
                 LIMIT :lim";
 
-        // ✅ Используем prepare() для bindValue с LIMIT
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':lim', $limit, \PDO::PARAM_INT);
         $stmt->execute();
@@ -215,7 +232,6 @@ class Flag extends Model
      */
     public function getPendingCount(): int
     {
-        // ✅ Используем $this->db->fetchColumn()
         return (int)$this->db->fetchColumn(
             "SELECT COUNT(*) FROM `flags` WHERE `status` = 'pending'"
         );
@@ -231,7 +247,6 @@ class Flag extends Model
             return false;
         }
 
-        // ✅ Используем $this->db->execute()
         $this->db->execute(
             "UPDATE `flags`
              SET `status` = 'resolved', `resolved_by` = :mid, `resolved_at` = NOW()

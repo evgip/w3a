@@ -14,7 +14,7 @@
 <body>
 
     <aside class="sidebar">
-        <h3><?= e(\App\Core\Config::get('app.name', 'Панель')) ?></h3>
+        <h3><?= __('admin_panel') ?></h3>
         <nav>
             <a href="/admin">📊 Главная панель</a>
             <a href="/admin/users">👥 Пользователи</a>
@@ -38,24 +38,8 @@
             </div>
         </header>
 
-
         <main class="container">
-
-            <!-- Success Alerts Container Notification Layout -->
-            <?php if (\App\Core\Session::hasFlash('success')): ?>
-                <div class="alert alert-success">
-                    <strong>Успех:</strong> <?= e(\App\Core\Session::getFlash('success')) ?>
-                </div>
-            <?php endif; ?>
-
-            <!-- Error Alerts Container Notification Layout -->
-            <?php if (\App\Core\Session::hasFlash('error')): ?>
-                <div class="alert alert-danger">
-                    <strong>Ошибка:</strong> <?= e(\App\Core\Session::getFlash('error')) ?>
-                </div>
-            <?php endif; ?>
-
-
+            <?= render_flashes() ?>
             <?= $content ?>
         </main>
 

@@ -6,45 +6,26 @@ use App\Core\Model;
 use App\Core\Database;
 use App\Core\Logger;
 
-class AdminUser extends Model
+class Audit extends Model
 {
-    protected string $table = 'users';
-
-    protected array $fillable = [
-        'is_active',
-        'type'
-    ];
+    protected string $table = 'audit_logs';
 
     /**
-     * Выборка реестра учетных записей для панели модератора
+     * Pulls critical security alert events logged within the last 5 minutes
+     * 
+     * @return array
      */
-    public function getAdminUsersList(int $limit = 100): array
+    public function getRecentSecurityAlerts(): array
     {
-        $sql = "SELECT id, name, email, role, is_active, created_at FROM `users` ORDER BY id DESC LIMIT :limit";
-        
+        // Highly optimized index scan locating specific operational severity markers
+        $sql = "SELECT id, user_id, action, description, ip_address, created_at 
+                FROM `audit_logs` 
+                WHERE `action` IN ('security.csrf_failed', 'security.rate_limited', 'auth.failed_bruteforce')
+                  AND `created_at` >= NOW() - INTERVAL 5 MINUTE
+                ORDER BY id DESC LIMIT 10";
+
         $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
-        
         return $stmt->fetchAll();
-    }
-
-    /**
-     * Инвертирование флага активации аккаунта на уровне СУБД
-     */
-    public function toggleActivationStatus(int $userId): int
-    {
-        $user = $this->find($userId);
-        if (!$user) {
-            return -1;
-        }
-
-        $newStatus = ((int)$user['is_active'] === 1) ? 0 : 1;
-
-        $this->update($userId, [
-            'is_active' => $newStatus
-        ]);
-
-        return $newStatus;
     }
 }

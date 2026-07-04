@@ -10,10 +10,11 @@ use App\Core\Database;
 use App\Core\Logger;
 use App\Core\Audit;
 use App\Core\Config;
+use App\Core\Lang;
+use App\Core\Request;
 use App\Modules\Users\Models\User;
 use App\Modules\Auth\Models\RememberToken;
 use App\Modules\Auth\Models\EmailActivation;
-use App\Modules\Captcha\Core\Captcha;
 use App\Modules\Mail\Core\Mailer; 
 
 class AuthService
@@ -25,6 +26,9 @@ class AuthService
     private Logger $logger;
     private Session $session;
     private Audit $audit;
+    private Mailer $mailer;
+    private Config $config;
+    private Request $request;
 
     private const MAX_ATTEMPTS_IP = 5;
     private const MAX_ATTEMPTS_EMAIL = 10;
@@ -42,7 +46,9 @@ class AuthService
         Logger $logger,
         Session $session,
         Audit $audit,
-		Mailer $mailer
+        Mailer $mailer,
+        Config $config,
+        Request $request
     ) {
         $this->userModel = $userModel;
         $this->rememberTokenModel = $rememberTokenModel;
@@ -51,12 +57,15 @@ class AuthService
         $this->logger = $logger;
         $this->session = $session;
         $this->audit = $audit;
-		 $this->mailer = $mailer;
+        $this->mailer = $mailer;
+        $this->config = $config;
+        $this->request = $request;
     }
 
     public function authenticate(string $email, string $password): ?array
     {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        // ✅ Используем Request вместо $_SERVER
+        $ip = $this->request->getIp();
 
         $blockType = $this->checkBlockStatus($ip, $email);
         if ($blockType !== null) {
@@ -137,7 +146,7 @@ class AuthService
 
     private function logFailedAttempt(string $ip, string $email, string $reason = 'invalid_credentials'): void
     {
-        // ✅ Используем $this->audit вместо Audit::log()
+        // ✅ Используем Request вместо $_SERVER
         $this->audit->log(
             'auth.login_failed',
             "Неудачная попытка входа",
@@ -146,7 +155,7 @@ class AuthService
                 'email' => $email,
                 'ip' => $ip,
                 'reason' => $reason,
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+                'user_agent' => $this->request->header('HTTP_USER_AGENT', 'Unknown'),
                 'timestamp' => date('c')
             ]
         );
@@ -206,7 +215,6 @@ class AuthService
 
             return $userId;
         } catch (\Exception $e) {
-            // ✅ Используем $this->audit
             $this->audit->log('auth.register_failed', "Ошибка регистрации: " . $e->getMessage(), 'auth', [
                 'email' => $email,
                 'username' => $username,
@@ -248,7 +256,6 @@ class AuthService
         if ($success) {
             $this->emailActivationModel->deleteByToken($token);
 
-            // ✅ Используем $this->audit
             $this->audit->log('auth.account_activated', "Аккаунт активирован", 'auth', [
                 'user_id' => $user['id'],
                 'email' => $user['email']
@@ -260,28 +267,30 @@ class AuthService
 
     private function sendActivationEmail(string $email, string $username, string $token): void
     {
-        $baseUrl = Config::get('config.app.url');
+        // ✅ Используем Config вместо Config::get()
+        $baseUrl = $this->config->getString('config.app.url', '');
         if (empty($baseUrl)) {
-            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            // ✅ Используем Request вместо $_SERVER
+            $scheme = $this->request->isSecure() ? 'https' : 'http';
+            $host = $this->request->header('HTTP_HOST', 'localhost');
             $baseUrl = $scheme . '://' . $host;
         }
 
         $activationUrl = rtrim($baseUrl, '/') . '/register/activate/' . $token;
-        $siteName = Config::get('config.app.name') ?? $baseUrl;
+        $siteName = $this->config->getString('config.app.name', $baseUrl);
 
+        // ✅ Используем Lang через контейнер (или хелпер)
         $subject = sprintf(
-            \App\Core\Lang::get('email_activation_subject'),
+            Lang::get('email_activation_subject'),
             htmlspecialchars($siteName)
         );
 
         $body = sprintf(
-            \App\Core\Lang::get('email_activation_body'),
+            Lang::get('email_activation_body'),
             htmlspecialchars($username),
             htmlspecialchars($activationUrl)
         );
 
-        // ✅ Используем $this->audit
         $this->audit->log('auth.activation_email', "Отправка письма активации", 'auth', [
             'to' => $email,
             'subject' => $subject,
@@ -312,17 +321,17 @@ class AuthService
             $this->createRememberCookie($user['id']);
         }
 
-        // ✅ Используем $this->audit
         $this->audit->log('auth.login_success', "Пользователь вошел в систему", 'auth');
     }
 
     private function createRememberCookie(int $userId): void
     {
+        // ✅ Используем Request вместо $_SERVER
         $tokenData = $this->rememberTokenModel->createToken(
             $userId,
             self::COOKIE_DAYS,
-            $_SERVER['HTTP_USER_AGENT'] ?? null,
-            $_SERVER['REMOTE_ADDR'] ?? null
+            $this->request->header('HTTP_USER_AGENT'),
+            $this->request->getIp()
         );
 
         $expiry = time() + (self::COOKIE_DAYS * 86400);
@@ -334,7 +343,7 @@ class AuthService
                 'expires' => $expiry,
                 'path' => '/',
                 'domain' => '',
-                'secure' => isset($_SERVER['HTTPS']),
+                'secure' => $this->request->isSecure(),
                 'httponly' => true,
                 'samesite' => 'Lax'
             ]
@@ -343,11 +352,12 @@ class AuthService
 
     public function attemptRememberLogin(): bool
     {
-        if (!isset($_COOKIE[self::COOKIE_NAME])) {
+        // ✅ Используем Request вместо $_COOKIE
+        if (!$this->request->hasCookie(self::COOKIE_NAME)) {
             return false;
         }
 
-        $token = $_COOKIE[self::COOKIE_NAME];
+        $token = $this->request->cookie(self::COOKIE_NAME);
 
         $parts = explode(':', $token, 2);
         if (count($parts) !== 2) {
@@ -387,8 +397,9 @@ class AuthService
 
     private function clearRememberCookie(): void
     {
-        if (isset($_COOKIE[self::COOKIE_NAME])) {
-            $token = $_COOKIE[self::COOKIE_NAME];
+        // ✅ Используем Request вместо $_COOKIE
+        if ($this->request->hasCookie(self::COOKIE_NAME)) {
+            $token = $this->request->cookie(self::COOKIE_NAME);
             $parts = explode(':', $token, 2);
             if (count($parts) === 2) {
                 $this->rememberTokenModel->deleteBySelector($parts[0]);
@@ -401,12 +412,11 @@ class AuthService
                     'expires' => time() - 3600,
                     'path' => '/',
                     'domain' => '',
-                    'secure' => isset($_SERVER['HTTPS']),
+                    'secure' => $this->request->isSecure(),
                     'httponly' => true,
                     'samesite' => 'Lax'
                 ]
             );
-            unset($_COOKIE[self::COOKIE_NAME]);
         }
     }
 
@@ -422,18 +432,18 @@ class AuthService
             }
         }
 
-        // Сохраняем flash-сообщения
-        $flashData = $_SESSION['flash'] ?? null;
+        // ✅ Используем Session вместо $_SESSION
+        $flashData = $this->session->get('flash');
 
         // Очищаем сессию
         $this->session->clear();
         $this->session->destroy();
 
         // Стартуем новую сессию для flash
-        session_start();
+        $this->session->start();
         
         if ($flashData) {
-            $_SESSION['flash'] = $flashData;
+            $this->session->set('flash', $flashData);
         }
     }
 }

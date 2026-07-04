@@ -4,13 +4,6 @@
  * Конфигурация модуля Content
  * 
  * Настройки парсинга Markdown и обработки текста.
- * Все параметры читаются через Config::get('content.config.xxx')
- * 
- * Примеры использования:
- *   Config::get('content.config.markdown.safe_mode')        // true
- *   Config::get('content.config.cache.ttl', 3600)           // 3600
- *   Config::get('content.config.mentions.enabled')          // true
- *   Config::getArray('content.config.links.internal_domains', [])
  */
 
 return [

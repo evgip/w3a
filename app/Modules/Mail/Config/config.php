@@ -4,12 +4,6 @@
  * Конфигурация модуля Mail
  * 
  * Настройки отправки email через PHPMailer (SMTP)
- * Все параметры читаются через Config::get('mail.config.xxx')
- * 
- * Примеры использования:
- *   Config::get('mail.config.host')          // 'smtp.yandex.ru'
- *   Config::get('mail.config.username')      // 'noreply@site.com'
- *   Config::get('mail.config.from_email')    // 'noreply@site.com'
  */
 
 return [

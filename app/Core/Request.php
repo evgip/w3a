@@ -317,4 +317,36 @@ class Request
 	{
 		return array_filter($_SERVER, fn($key) => str_starts_with($key, 'HTTP_'), ARRAY_FILTER_USE_KEY);
 	}
+	
+	/**
+	 * Получить cookie
+	 */
+	public function cookie(string $key, mixed $default = null): mixed
+	{
+		return $_COOKIE[$key] ?? $default;
+	}
+
+	/**
+	 * Проверить наличие cookie
+	 */
+	public function hasCookie(string $key): bool
+	{
+		return isset($_COOKIE[$key]);
+	}
+
+	/**
+	 * Получить IP клиента
+	 */
+	public function getIp(): string
+	{
+		return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+	}
+
+	/**
+	 * Проверить, является ли запрос HTTPS
+	 */
+	public function isSecure(): bool
+	{
+		return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+	}
 }

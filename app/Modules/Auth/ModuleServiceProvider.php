@@ -9,6 +9,8 @@ use App\Core\Database;
 use App\Core\Logger;
 use App\Core\Session;
 use App\Core\Audit;
+use App\Core\Config;
+use App\Core\Request;
 use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 use App\Modules\Auth\Services\AuthService;
 use App\Modules\Auth\Services\PasswordResetService;
@@ -18,6 +20,7 @@ use App\Modules\Auth\Models\PasswordResetToken;
 use App\Modules\Users\Models\User;
 use App\Modules\Mail\Core\Mailer; 
 
+ 
 class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     public function register(Container $container): void
@@ -47,18 +50,20 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
         });
 
         // === СЕРВИСЫ ===
-        $container->singleton(AuthService::class, function (Container $c) {
-            return new AuthService(
-                $c->get(User::class),
-                $c->get(RememberToken::class),
-                $c->get(EmailActivation::class),
-                $c->get(Database::class),
-                $c->get(Logger::class),
-                $c->get(Session::class),
-                $c->get(Audit::class),
-                $c->get(Mailer::class) 
-            );
-        });
+		$container->singleton(AuthService::class, function($container) {
+			return new AuthService(
+				$container->get(User::class),
+				$container->get(RememberToken::class),
+				$container->get(EmailActivation::class),
+				$container->get(Database::class),
+				$container->get(Logger::class),
+				$container->get(Session::class),
+				$container->get(Audit::class),
+				$container->get(Mailer::class),
+				$container->get(Config::class),
+				$container->get(Request::class)
+			);
+		});
 
         $container->singleton(PasswordResetService::class, function (Container $c) {
             return new PasswordResetService(

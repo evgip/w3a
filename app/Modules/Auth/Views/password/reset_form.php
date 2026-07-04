@@ -1,16 +1,6 @@
 <h1>Установить новый пароль</h1>
 
-<?php if (\App\Core\Session::hasFlash('error')): ?>
-    <div class="flash-error">
-        <?= e(\App\Core\Session::getFlash('error')) ?>
-    </div>
-<?php endif; ?>
-
-<?php if (\App\Core\Session::hasFlash('success')): ?>
-    <div class="flash-success">
-        <?= e(\App\Core\Session::getFlash('success')) ?>
-    </div>
-<?php endif; ?>
+<?= render_flashes() ?>
 
 <p class="hint">Придумайте новый надёжный пароль для вашего аккаунта.</p>
 

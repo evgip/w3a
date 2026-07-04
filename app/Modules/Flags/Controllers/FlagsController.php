@@ -27,6 +27,14 @@ class FlagsController extends Controller
     }
 
     /**
+     * ✅ НОВОЕ: хелпер для получения модели Flag
+     */
+    private function flagModel(): Flag
+    {
+        return $this->service(Flag::class);
+    }
+
+    /**
      * GET /flags/report?type=story&id=123
      */
     public function reportForm(string $type, string $id): void
@@ -37,7 +45,7 @@ class FlagsController extends Controller
             throw new BadRequestException('Некорректные параметры жалобы');
         }
 
-        $flagModel = $this->service(Flag::class);
+        $flagModel = $this->flagModel();
         $userId = (int) Auth::id();
 
         if ($flagModel->hasUserFlagged($userId, $type, $targetId)) {
@@ -46,11 +54,12 @@ class FlagsController extends Controller
             return;
         }
 
+        // ✅ ИСПРАВЛЕНО: используем экземпляр вместо статического вызова
         $this->render('report_form', [
             'title'    => 'Пожаловаться на контент',
             'type'     => $type,
             'targetId' => $targetId,
-            'reasons'  => Flag::getReasons(),
+            'reasons'  => $flagModel->getReasons(),
         ]);
     }
 
@@ -67,7 +76,7 @@ class FlagsController extends Controller
         $comment  = $this->request->getParams('comment');
         $userId   = (int) Auth::id();
 
-        $flagModel = $this->service(Flag::class);
+        $flagModel = $this->flagModel();
         $result = $flagModel->submit($userId, $type, $targetId, $reason, $comment);
 
         if (!$result['ok']) {
@@ -82,10 +91,11 @@ class FlagsController extends Controller
             ]);
 
             if (!empty($result['hidden'])) {
+                // ✅ ИСПРАВЛЕНО: используем экземпляр вместо статического вызова
                 $this->audit()->log('flag.auto_hidden', 'Контент автоматически скрыт по порогу флагов', 'flags', [
                     'type'      => $type,
                     'id'        => $targetId,
-                    'threshold' => Flag::getHideThreshold(),
+                    'threshold' => $flagModel->getHideThreshold(),
                 ]);
             }
         }
@@ -98,17 +108,18 @@ class FlagsController extends Controller
      */
     public function adminIndex(): void
     {
-        $flagModel = $this->service(Flag::class);
+        $flagModel = $this->flagModel();
         $pending = $flagModel->getPendingFlags();
         $recent  = $flagModel->getAllFlags(50);
 
+        // ✅ ИСПРАВЛЕНО: используем экземпляр вместо статических вызовов
         $this->render('admin_index', [
             'title'        => 'Жалобы пользователей',
             'pendingFlags' => $pending,
             'recentFlags'  => $recent,
-            'reasons'      => Flag::getReasons(),
+            'reasons'      => $flagModel->getReasons(),
             'pendingCount' => count($pending),
-            'hideThreshold'=> Flag::getHideThreshold(),
+            'hideThreshold'=> $flagModel->getHideThreshold(),
         ]);
     }
 
@@ -122,10 +133,9 @@ class FlagsController extends Controller
         $action = $this->request->getParams('action') ?: 'hide';
         $modId  = (int) Auth::id();
 
-        $flagModel = $this->service(Flag::class);
+        $flagModel = $this->flagModel();
         $flag = $flagModel->find((int) $id);
 
-        // ✅ ИСПРАВЛЕНО: выбрасываем исключение вместо redirect + flash
         if (!$flag) {
             throw new NotFoundException('Жалоба не найдена');
         }
@@ -148,8 +158,7 @@ class FlagsController extends Controller
      */
     public function pendingCount(): void
     {
-        // ✅ ИСПРАВЛЕНО: выбрасываем JsonResponseException вместо echo + exit
-        $count = $this->service(Flag::class)->getPendingCount();
+        $count = $this->flagModel()->getPendingCount();
         throw new JsonResponseException(['count' => $count]);
     }
 
