@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Suggestions\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 /**
  * Модель для лога изменений контента.
@@ -35,21 +37,9 @@ class ContentLog extends Model
         'created_at',
         'deleted_at'
     ];
-    
-    // =========================================================================
-    // ОСНОВНЫЕ МЕТОДЫ
-    // =========================================================================
 
     /**
      * Получить историю изменений для конкретного контента.
-     * 
-     * Возвращает записи лога с именами пользователей (если действие выполнено не сообществом).
-     * Используется для отображения блока "История изменений" на странице статьи/комментария.
-     * 
-     * @param string $targetType Тип контента ('Story' или 'Comment')
-     * @param int $targetId ID контента
-     * @param int $limit Максимальное количество записей (по умолчанию 50)
-     * @return array Массив записей лога
      */
     public function getChangeLog(string $targetType, int $targetId, int $limit = 50): array
     {
@@ -62,7 +52,7 @@ class ContentLog extends Model
                 ORDER BY cl.created_at DESC
                 LIMIT :limit";
 
-        $stmt = static::db()->prepare($sql);
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':target_type', $targetType);
         $stmt->bindValue(':target_id', $targetId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
@@ -73,15 +63,6 @@ class ContentLog extends Model
 
     /**
      * Получить историю изменений с пагинацией.
-     * 
-     * Используется для админ-панели или профиля пользователя, 
-     * где требуется разбивка по страницам.
-     * 
-     * @param string $targetType Тип контента
-     * @param int $targetId ID контента
-     * @param int $limit Количество записей на странице
-     * @param int $offset Смещение
-     * @return array Массив записей лога
      */
     public function getChangeLogPaginated(string $targetType, int $targetId, int $limit = 20, int $offset = 0): array
     {
@@ -94,11 +75,51 @@ class ContentLog extends Model
                 ORDER BY cl.created_at DESC
                 LIMIT :limit OFFSET :offset";
 
-        $stmt = static::db()->prepare($sql);
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':target_type', $targetType);
         $stmt->bindValue(':target_id', $targetId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Получить последние изменения, выполненные конкретным пользователем.
+     */
+    public function getLogsByActor(int $actorId, int $limit = 30): array
+    {
+        $sql = "SELECT cl.*, u.username AS actor_name
+                FROM `{$this->table}` cl
+                LEFT JOIN `users` u ON cl.actor_id = u.id
+                WHERE cl.actor_id = :actor_id
+                AND cl.deleted_at IS NULL
+                ORDER BY cl.created_at DESC
+                LIMIT :limit";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':actor_id', $actorId, \PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Получить последние глобальные изменения контента (для админ-дашборда).
+     */
+    public function getRecentGlobalChanges(int $limit = 50): array
+    {
+        $sql = "SELECT cl.*, u.username AS actor_name
+                FROM `{$this->table}` cl
+                LEFT JOIN `users` u ON cl.actor_id = u.id
+                WHERE cl.deleted_at IS NULL
+                ORDER BY cl.created_at DESC
+                LIMIT :limit";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -120,45 +141,13 @@ class ContentLog extends Model
                 AND target_id = :target_id 
                 AND deleted_at IS NULL";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->bindValue(':target_type', $targetType);
-        $stmt->bindValue(':target_id', $targetId, \PDO::PARAM_INT);
-        $stmt->execute();
-
-        return (int) $stmt->fetchColumn();
+        return (int)$this->db->fetchColumn($sql, [
+            'target_type' => $targetType,
+            'target_id' => $targetId
+        ]);
     }
     
-    // =========================================================================
-    // МЕТОДЫ ДЛЯ АДМИНИСТРИРОВАНИЯ И СТАТИСТИКИ
-    // =========================================================================
 
-    /**
-     * Получить последние изменения, выполненные конкретным пользователем.
-     * 
-     * Используется для профиля пользователя или проверки активности модераторов.
-     * Учитывает как личные правки, так и одобрения предложений.
-     * 
-     * @param int $actorId ID пользователя/модератора
-     * @param int $limit Максимальное количество записей
-     * @return array Массив записей лога
-     */
-    public function getLogsByActor(int $actorId, int $limit = 30): array
-    {
-        $sql = "SELECT cl.*, u.username AS actor_name
-                FROM `{$this->table}` cl
-                LEFT JOIN `users` u ON cl.actor_id = u.id
-                WHERE cl.actor_id = :actor_id
-                AND cl.deleted_at IS NULL
-                ORDER BY cl.created_at DESC
-                LIMIT :limit";
-
-        $stmt = static::db()->prepare($sql);
-        $stmt->bindValue(':actor_id', $actorId, \PDO::PARAM_INT);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->execute();
-
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
 
     /**
      * Получить сводную статистику по типам контента.
@@ -179,8 +168,7 @@ class ContentLog extends Model
                 WHERE deleted_at IS NULL
                 GROUP BY target_type";
 
-        $stmt = static::db()->query($sql);
-        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $rows = $this->db->fetchAll($sql);
 
         $stats = [];
         foreach ($rows as $row) {
@@ -194,25 +182,4 @@ class ContentLog extends Model
         return $stats;
     }
 
-    /**
-     * Получить последние глобальные изменения контента (для админ-дашборда).
-     * 
-     * @param int $limit Максимальное количество записей
-     * @return array Массив записей лога
-     */
-    public function getRecentGlobalChanges(int $limit = 50): array
-    {
-        $sql = "SELECT cl.*, u.username AS actor_name
-                FROM `{$this->table}` cl
-                LEFT JOIN `users` u ON cl.actor_id = u.id
-                WHERE cl.deleted_at IS NULL
-                ORDER BY cl.created_at DESC
-                LIMIT :limit";
-
-        $stmt = static::db()->prepare($sql);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->execute();
-
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
 }

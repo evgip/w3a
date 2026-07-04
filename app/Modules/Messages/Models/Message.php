@@ -8,31 +8,31 @@ class Message extends Model
 {
     protected string $table = 'messages';
 
-	protected array $fillable = [
-		'sender_id',
-		'conversation_id',
-		'message',
-		'is_read'
-	];
+    protected array $fillable = [
+        'sender_id',
+        'conversation_id',
+        'message',
+        'is_read'
+    ];
 
     /**
      * Fetch a paginated chunk of messages for a chat room, sorted chronologically
      */
     public function getPaginatedChatHistory(int $conversationId, int $limit = 15, int $offset = 0): array
     {
-        // Strategy: Select the most recent chunk using a subquery, then re-sort them chronologically for the view
         $sql = "SELECT * FROM (
                     SELECT m.*, u.username as sender_name, up.avatar as sender_avatar 
                     FROM `messages` m
                     JOIN `users` u ON m.sender_id = u.id
-					LEFT JOIN `user_profiles` up ON u.id = up.user_id
+                    LEFT JOIN `user_profiles` up ON u.id = up.user_id
                     WHERE m.conversation_id = :cid AND m.deleted_at IS NULL
                     ORDER BY m.id DESC 
                     LIMIT :limit OFFSET :offset
                 ) sub 
                 ORDER BY id ASC";
                 
-        $stmt = static::db()->prepare($sql);
+        // ✅ Используем prepare() для bindValue с LIMIT/OFFSET
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':cid', $conversationId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
@@ -46,27 +46,27 @@ class Message extends Model
      */
     public function getTotalMessageCount(int $conversationId): int
     {
-        $stmt = static::db()->prepare("SELECT COUNT(*) FROM `messages` WHERE `conversation_id` = :cid AND `deleted_at` IS NULL");
-        $stmt->execute(['cid' => $conversationId]);
-        return (int)$stmt->fetchColumn();
+        // ✅ Используем $this->db->fetchColumn()
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `messages` WHERE `conversation_id` = :cid AND `deleted_at` IS NULL",
+            ['cid' => $conversationId]
+        );
     }
-
 
     /**
      * Fetch standard linear message payload stacks bound to an conversation room channel key
      */
     public function getChatHistory(int $conversationId): array
     {
-        $stmt = static::db()->prepare("
+        // ✅ Используем $this->db->fetchAll()
+        return $this->db->fetchAll("
             SELECT m.*, u.username as sender_name, up.avatar as sender_avatar 
             FROM `messages` m
             JOIN `users` u ON m.sender_id = u.id
-			LEFT JOIN `user_profiles` up ON u.id = up.user_id
+            LEFT JOIN `user_profiles` up ON u.id = up.user_id
             WHERE m.conversation_id = :cid AND m.deleted_at IS NULL
             ORDER BY m.id ASC LIMIT 100
-        ");
-        $stmt->execute(['cid' => $conversationId]);
-        return $stmt->fetchAll();
+        ", ['cid' => $conversationId]);
     }
 
     /**
@@ -74,8 +74,10 @@ class Message extends Model
      */
     public function markAsRead(int $conversationId, int $readerId): void
     {
-        $stmt = static::db()->prepare("UPDATE `messages` SET `is_read` = 1 WHERE `conversation_id` = :cid AND `sender_id` != :rid AND `is_read` = 0");
-        $stmt->execute(['cid' => $conversationId, 'rid' => $readerId]);
+        // ✅ Используем $this->db->execute()
+        $this->db->execute(
+            "UPDATE `messages` SET `is_read` = 1 WHERE `conversation_id` = :cid AND `sender_id` != :rid AND `is_read` = 0",
+            ['cid' => $conversationId, 'rid' => $readerId]
+        );
     }
-	
 }

@@ -34,10 +34,7 @@ class WikiRevision extends Model
                 WHERE wr.wiki_page_id = :page_id
                 ORDER BY wr.revision_number DESC";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['page_id' => $pageId]);
-
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->db->fetchAll($sql, ['page_id' => $pageId]);
     }
 
     /**
@@ -50,11 +47,7 @@ class WikiRevision extends Model
                 ORDER BY revision_number DESC
                 LIMIT 1";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['page_id' => $pageId]);
-
-        $revision = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $revision ?: null;
+        return $this->db->fetchOne($sql, ['page_id' => $pageId]);
     }
 
     /**
@@ -78,14 +71,10 @@ class WikiRevision extends Model
                   AND wr.revision_number = :revision_number
                 LIMIT 1";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute([
+        return $this->db->fetchOne($sql, [
             'page_id' => $pageId,
             'revision_number' => $revisionNumber
         ]);
-
-        $revision = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $revision ?: null;
     }
 
     /**
@@ -93,11 +82,10 @@ class WikiRevision extends Model
      */
     public function getCountForPage(int $pageId): int
     {
-        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE wiki_page_id = :page_id";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['page_id' => $pageId]);
-
-        return (int)$stmt->fetchColumn();
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM {$this->table} WHERE wiki_page_id = :page_id",
+            ['page_id' => $pageId]
+        );
     }
 
     /**
@@ -105,8 +93,9 @@ class WikiRevision extends Model
      */
     public function deleteForPage(int $pageId): void
     {
-        $sql = "DELETE FROM {$this->table} WHERE wiki_page_id = :page_id";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['page_id' => $pageId]);
+        $this->db->execute(
+            "DELETE FROM {$this->table} WHERE wiki_page_id = :page_id",
+            ['page_id' => $pageId]
+        );
     }
 }

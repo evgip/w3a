@@ -12,45 +12,45 @@ use App\Core\Audit;
 
 /**
  * Сервис для административного управления пользователями.
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
  */
 class AdminUserService
 {
     private User $userModel;
     private AdminUser $adminUserModel;
     private Notification $notificationModel;
+    private Session $session;
+    private Audit $audit;
 
-    public function __construct()
-    {
-        $this->userModel = new User();
-        $this->adminUserModel = new AdminUser();
-        $this->notificationModel = new Notification();
+    public function __construct(
+        User $userModel,
+        AdminUser $adminUserModel,
+        Notification $notificationModel,
+        Session $session,
+        Audit $audit
+    ) {
+        $this->userModel = $userModel;
+        $this->adminUserModel = $adminUserModel;
+        $this->notificationModel = $notificationModel;
+        $this->session = $session;
+        $this->audit = $audit;
     }
 
-    /**
-     * Получить список всех пользователей (включая удалённых).
-     */
     public function getAllUsers(): array
     {
         return $this->userModel->getAllUsersWithBanStatus(withTrashed: true);
     }
 
-    /**
-     * Получить расширенный список пользователей для админки.
-     */
     public function getAdminUsersList(int $limit = 100): array
     {
         return $this->adminUserModel->getAdminUsersList($limit);
     }
 
-    /**
-     * Отправить пользователя в архив (soft delete).
-     *
-     * @return bool true если успешно, false если попытка удалить себя
-     */
     public function archiveUser(int $userId, int $currentAdminId): bool
     {
         if ($userId === $currentAdminId) {
-            Session::setFlash('error', 'Вы не можете отправить в архив собственный аккаунт!');
+            $this->session->flash('error', 'Вы не можете отправить в архив собственный аккаунт!');
             return false;
         }
 
@@ -58,69 +58,46 @@ class AdminUserService
         return true;
     }
 
-    /**
-     * Восстановить пользователя из архива.
-     */
     public function restoreUser(int $userId): void
     {
         $this->userModel->restore($userId);
     }
 
-    /**
-     * Обновить данные профиля пользователя.
-     */
     public function updateUserProfile(int $userId, array $data): void
     {
-        // Обновляем основные данные пользователя
         $this->userModel->update($userId, [
             'email' => trim($data['email'] ?? ''),
             'role' => trim($data['role'] ?? 'user'),
         ]);
 
-        // Обновляем профиль (bio, avatar)
         $this->userModel->updateProfile($userId, [
             'bio' => trim($data['bio'] ?? ''),
         ]);
     }
 
-    /**
-     * Переключить статус активации пользователя.
-     *
-     * @return int Новый статус (0 = заблокирован, 1 = активен, -1 = не найден)
-     */
     public function toggleUserStatus(int $targetUserId, int $currentAdminId): int
     {
         if ($targetUserId === $currentAdminId) {
-            Session::setFlash('error', 'Вы не можете заблокировать собственный административный аккаунт.');
-            return -2; // Специальный код для "попытка заблокировать себя"
+            $this->session->flash('error', 'Вы не можете заблокировать собственный административный аккаунт.');
+            return -2;
         }
 
         $newStatus = $this->adminUserModel->toggleActivationStatus($targetUserId);
 
         if ($newStatus === -1) {
-            return -1; // Пользователь не найден
+            return -1;
         }
 
         $user = $this->adminUserModel->find($targetUserId);
 
-        // ✅ Отправляем уведомление пользователю
-        // $notificationModel = new \App\Modules\Notifications\Models\Notification();
-
-        // Отправляем уведомление пользователю
         if ($newStatus === 0) {
-            // ✅ Деактивация — используем семантичный метод
-            // $notificationModel->createDeactivatedNotification($targetUserId, $currentAdminId);
-
-            Audit::log(
+            $this->audit->log(
                 'admin.user_suspended',
                 "Администратор принудительно ЗАБЛОКИРОВАЛ аккаунт: {$user['username']} (ID: {$targetUserId})",
                 'admin'
             );
         } else {
-            // ✅ Активация — используем семантичный метод
-            //$notificationModel->createActivatedNotification($targetUserId, $currentAdminId);
-
-            Audit::log(
+            $this->audit->log(
                 'admin.user_unsuspended',
                 "Администратор СНЯЛ блокировку с аккаунта: {$user['username']} (ID: {$targetUserId})",
                 'admin'
@@ -130,9 +107,6 @@ class AdminUserService
         return $newStatus;
     }
 
-    /**
-     * Удалить аватар пользователя.
-     */
     public function deleteUserAvatar(int $userId): bool
     {
         $user = $this->userModel->find($userId);
@@ -146,12 +120,10 @@ class AdminUserService
         $oldFolderDir = $baseUploadDir . '/' . $subFolder;
         $avatarPath = $oldFolderDir . '/' . $user['avatar'];
 
-        // Удаляем физический файл
         if (file_exists($avatarPath)) {
             unlink($avatarPath);
         }
 
-        // Удаляем пустую подпапку шардирования
         if (is_dir($oldFolderDir)) {
             $remainingFiles = array_diff(scandir($oldFolderDir), ['.', '..']);
             if (empty($remainingFiles)) {
@@ -161,13 +133,12 @@ class AdminUserService
 
         $this->userModel->update($userId, ['avatar' => null]);
 
-        Audit::log(
+        $this->audit->log(
             'admin.avatar_deleted',
             "Администратор принудительно удалил аватар пользователя ID: {$userId}",
             'admin'
         );
 
-        // Уведомляем пользователя
         $this->notificationModel->create([
             'user_id' => $userId,
             'type' => 'danger',
@@ -177,9 +148,6 @@ class AdminUserService
         return true;
     }
 
-    /**
-     * Найти пользователя по ID с данными профиля.
-     */
     public function findUser(int $userId): ?array
     {
         $user = $this->userModel->find($userId);
@@ -188,7 +156,6 @@ class AdminUserService
             return null;
         }
 
-        // Получаем данные профиля (bio, avatar)
         $profile = $this->userModel->getProfile($userId);
         $user['bio'] = $profile['bio'] ?? null;
         $user['avatar'] = $profile['avatar'] ?? null;

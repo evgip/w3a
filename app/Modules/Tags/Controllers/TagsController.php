@@ -7,6 +7,8 @@ use App\Core\Session;
 use App\Modules\Auth\Services\Auth;
 use App\Modules\Tags\Services\CategoryService;
 use App\Modules\Tags\Services\TagFilterService;
+use App\Modules\Votes\Models\Vote;
+use App\Modules\Users\Models\User;
 
 /**
  * Контроллер модуля Tags.
@@ -50,6 +52,27 @@ class TagsController extends Controller
             return;
         }
 
+        // ✅ Получаем данные для голосования
+        $currentUserId = Auth::check() ? Auth::id() : 0;
+        $isAdmin = Auth::isAdmin();
+        $canUserDownvote = false;
+        $currentVotes = [];
+        
+        if ($currentUserId > 0) {
+            // Получаем модель User из контейнера
+            $userModel = $this->container->get(User::class);
+            $viewerKarma = $userModel->getUserKarma($currentUserId);
+            $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
+            $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
+            
+            // Получаем голоса для всех историй
+            $storyIds = array_column($data['stories'], 'id');
+            $voteModel = $this->container->get(Vote::class);
+            foreach ($storyIds as $storyId) {
+                $currentVotes[$storyId] = $voteModel->getUserVote($currentUserId, 'story', (int)$storyId);
+            }
+        }
+
         $this->render('categories-show', [
             'title' => e($data['category']['name']),
             'category' => $data['category'],
@@ -57,6 +80,10 @@ class TagsController extends Controller
             'currentPage' => $data['currentPage'],
             'totalPages' => $data['totalPages'],
             'newCommentsMap' => $data['newCommentsMap'],
+            'currentUserId' => $currentUserId,
+            'isAdmin' => $isAdmin,
+            'canUserDownvote' => $canUserDownvote,
+            'currentVotes' => $currentVotes,
         ]);
     }
 
@@ -80,43 +107,45 @@ class TagsController extends Controller
         ]);
     }
 
-	/**
-	 * Добавить тег в фильтры (POST /filters/add)
-	 */
-	public function addFilter(): void
-	{
+    /**
+     * Добавить тег в фильтры (POST /filters/add)
+     */
+    public function addFilter(): void
+    {
+        $tagId = (int)$this->request->post('tag_id', 0);
+        $userId = (int)Auth::id();
+        
+        $result = $this->service(TagFilterService::class)->addFilter($userId, $tagId);
+        
+        // ✅ Используем Session через контейнер
+        $session = $this->container->get(Session::class);
+        if ($result['success']) {
+            $session->flash('success', $result['message'] ?? 'Фильтр добавлен');
+        } else {
+            $session->flash('error', $result['message'] ?? 'Ошибка добавления фильтра');
+        }
+        
+        $this->redirect('/filters');
+    }
 
-		$tagId = (int)$this->request->post('tag_id', 0);
-		$userId = (int)\App\Modules\Auth\Services\Auth::id();
-		
-		$result = $this->service(TagFilterService::class)->addFilter($userId, $tagId);
-		
-		if ($result['success']) {
-			Session::setFlash('success', $result['message'] ?? 'Фильтр добавлен');
-		} else {
-			Session::setFlash('error', $result['message'] ?? 'Ошибка добавления фильтра');
-		}
-		
-		$this->redirect('/filters');
-	}
-
-	/**
-	 * Удалить тег из фильтров (POST /filters/remove)
-	 */
-	public function removeFilter(): void
-	{
-		$tagId = (int)$this->request->post('tag_id', 0);
-		$userId = (int)\App\Modules\Auth\Services\Auth::id();
-		
-		$result = $this->service(TagFilterService::class)->removeFilter($userId, $tagId);
-		
-		if ($result['success']) {
-			Session::setFlash('success', $result['message'] ?? 'Фильтр удалён');
-		} else {
-			Session::setFlash('error', $result['message'] ?? 'Ошибка удаления фильтра');
-		}
-		
-		$this->redirect('/filters');
-	}
-
+    /**
+     * Удалить тег из фильтров (POST /filters/remove)
+     */
+    public function removeFilter(): void
+    {
+        $tagId = (int)$this->request->post('tag_id', 0);
+        $userId = (int)Auth::id();
+        
+        $result = $this->service(TagFilterService::class)->removeFilter($userId, $tagId);
+        
+        // ✅ Используем Session через контейнер
+        $session = $this->container->get(Session::class);
+        if ($result['success']) {
+            $session->flash('success', $result['message'] ?? 'Фильтр удалён');
+        } else {
+            $session->flash('error', $result['message'] ?? 'Ошибка удаления фильтра');
+        }
+        
+        $this->redirect('/filters');
+    }
 }

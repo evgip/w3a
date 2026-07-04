@@ -1,17 +1,8 @@
 <?php
-$request = new \App\Core\Request();
-$voteModel = new \App\Modules\Votes\Models\Vote();
-$currentUserId = \App\Modules\Auth\Services\Auth::check() ? \App\Modules\Auth\Services\Auth::id() : 0;
-$isAdmin = \App\Modules\Auth\Services\Auth::isAdmin();
-
-$minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
-
-$canUserDownvote = false;
-if ($currentUserId > 0) {
-    $userModel = new \App\Modules\Users\Models\User();
-    $viewerKarma = $userModel->getUserKarma($currentUserId);
-    $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
-}
+$currentUserId = $currentUserId ?? 0;
+$isAdmin = $isAdmin ?? false;
+$canUserDownvote = $canUserDownvote ?? false;
+$voteModel = $voteModel ?? null;
 ?>
 
 <?php
@@ -79,7 +70,8 @@ $sortLinks = [
                     'type' => 'story',
                     'id' => (int)$story['id'],
                     'score' => (int)$story['score'],
-                    'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
+                    // ✅ Используем переданные данные вместо создания модели
+                    'currentVoteState' => $currentVotes[$story['id']] ?? null,
                     'canDownvote' => $canUserDownvote,
                     'isLoggedIn' => $currentUserId > 0,
                     'contentOwnerId' => (int)$story['user_id'],

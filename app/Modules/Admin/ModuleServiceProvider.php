@@ -5,8 +5,15 @@ declare(strict_types=1);
 namespace App\Modules\Admin;
 
 use App\Core\Container;
+use App\Core\Database;
+use App\Core\Logger;
+use App\Core\Session;
+use App\Core\Audit;
+use App\Core\Validator;
+use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 use App\Modules\Admin\Models\AdminUser;
 use App\Modules\Admin\Models\AuditLog;
+use App\Modules\Admin\Models\Audit as AdminAuditModel;
 use App\Modules\Admin\Services\AdminUserService;
 use App\Modules\Admin\Services\AdminTagService;
 use App\Modules\Admin\Services\AdminCategoryService;
@@ -18,65 +25,110 @@ use App\Modules\Users\Models\User;
 use App\Modules\Users\Models\Notification;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Models\Category;
+use App\Modules\Stories\Models\Story;
+use App\Modules\Stories\Models\Comment;
 use App\Modules\Invitations\Models\InvitationRequest;
 
-/**
- * Провайдер сервисов модуля Admin.
- * 
- * Регистрирует все административные сервисы и их зависимости.
- */
-class ModuleServiceProvider
+class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     public function register(Container $container): void
     {
+        parent::register($container);
+
         // === МОДЕЛИ ===
+        $container->singleton(AdminUser::class, function (Container $c) {
+            return new AdminUser(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
 
-        $container->singleton(AdminUser::class, fn() => new AdminUser());
-        $container->singleton(AuditLog::class, fn() => new AuditLog());
+        $container->singleton(AuditLog::class, function (Container $c) {
+            return new AuditLog(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
 
-        // Cross-module модели
-        // TODO: перенести в соответствующие модули когда появятся их провайдеры
-        $container->singleton(Tag::class, fn() => new Tag());
-        $container->singleton(Category::class, fn() => new Category());
-        $container->singleton(InvitationRequest::class, fn() => new InvitationRequest());
+        $container->singleton(AdminAuditModel::class, function (Container $c) {
+            return new AdminAuditModel(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
+
+        $container->singleton(InvitationRequest::class, function (Container $c) {
+            return new InvitationRequest(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
 
         // === СЕРВИСЫ ===
-
+        
         $container->singleton(AdminUserService::class, function (Container $c) {
             return new AdminUserService(
                 $c->get(User::class),
                 $c->get(AdminUser::class),
-                $c->get(Notification::class)
+                $c->get(Notification::class),
+                $c->get(Session::class),
+                $c->get(Audit::class)
             );
         });
 
         $container->singleton(AdminTagService::class, function (Container $c) {
             return new AdminTagService(
                 $c->get(Tag::class),
-                $c->get(Category::class)
+                $c->get(Category::class),
+                $c->get(Story::class),
+                $c->get(Session::class),
+                $c->get(Audit::class),
+                $c->get(Validator::class),
+                $c->get(Database::class)
             );
         });
 
         $container->singleton(AdminCategoryService::class, function (Container $c) {
             return new AdminCategoryService(
-                $c->get(Category::class)
+                $c->get(Category::class),
+                $c->get(Session::class),
+                $c->get(Audit::class)
             );
         });
 
         $container->singleton(AdminAuditService::class, function (Container $c) {
             return new AdminAuditService(
-                $c->get(AuditLog::class)
+                $c->get(AuditLog::class),
+                $c->get(AdminAuditModel::class),
+                $c->get(Database::class)
             );
         });
 
-        $container->singleton(AdminToolsService::class, fn() => new AdminToolsService());
+        $container->singleton(AdminToolsService::class, function (Container $c) {
+            return new AdminToolsService(
+                $c->get(Audit::class),
+                $c->get(Logger::class),
+                $c->get(Comment::class),
+				$c->get(\App\Modules\Mail\Core\Mailer::class)
+            );
+        });
 
-        $container->singleton(AdminFirewallService::class, fn() => new AdminFirewallService());
+        $container->singleton(AdminFirewallService::class, function (Container $c) {
+            return new AdminFirewallService(
+                $c->get(Database::class),
+                $c->get(Audit::class)
+            );
+        });
 
         $container->singleton(AdminInvitationService::class, function (Container $c) {
             return new AdminInvitationService(
                 $c->get(InvitationRequest::class)
             );
         });
+    }
+
+    public function boot(): void
+    {
+        // Регистрация слушателей событий, если есть
     }
 }

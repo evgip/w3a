@@ -9,14 +9,43 @@ namespace App\Core;
 class IpResolver
 {
     /**
-     * Получить реальный IP клиента
+     * @var array Список доверенных proxy-серверов
      */
-    public static function getClientIp(): string
+    private array $trustedProxies;
+
+    /**
+     * @var bool Использовать ли диапазоны Cloudflare по умолчанию
+     */
+    private bool $useCloudflareDefaults;
+
+    /**
+     * Конструктор с инъекцией конфигурации.
+     *
+     * @param array|null $trustedProxies Список доверенных proxy (CIDR нотация)
+     * @param bool $useCloudflareDefaults Использовать диапазоны Cloudflare, если список пуст
+     */
+    public function __construct(?array $trustedProxies = null, bool $useCloudflareDefaults = true)
+    {
+        if ($trustedProxies === null) {
+            // Пытаемся получить из конфига
+            $trustedProxies = config('config.app.trusted_proxies', [], 'array');
+        }
+        
+        $this->trustedProxies = $trustedProxies;
+        $this->useCloudflareDefaults = $useCloudflareDefaults;
+    }
+
+    /**
+     * Получить реальный IP клиента
+     *
+     * @return string IP-адрес клиента
+     */
+    public function getClientIp(): string
     {
         $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
         
         // Проверяем, пришёл ли запрос от доверенного proxy
-        if (self::isTrustedProxy($remoteAddr)) {
+        if ($this->isTrustedProxy($remoteAddr)) {
             // Cloudflare
             if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
                 $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
@@ -27,8 +56,6 @@ class IpResolver
             
             // Другие proxy
             if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-                // X-Forwarded-For может содержать цепочку: "client, proxy1, proxy2"
-                // Берём первый IP (оригинальный клиент)
                 $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
                 $ip = trim($ips[0]);
                 if (filter_var($ip, FILTER_VALIDATE_IP)) {
@@ -45,26 +72,26 @@ class IpResolver
             }
         }
         
-        // Если не от доверенного proxy или нет proxy-заголовков, используем REMOTE_ADDR
         return $remoteAddr;
     }
     
     /**
      * Проверить, является ли IP доверенным proxy
      */
-    private static function isTrustedProxy(string $ip): bool
+    public function isTrustedProxy(string $ip): bool
     {
-        // Получаем список доверенных proxy из конфига
-        $trustedProxies = config('config.app.trusted_proxies', [], 'array');
+        $trustedProxies = $this->trustedProxies;
         
-        // Если список пуст, можно использовать встроенные диапазоны Cloudflare
-        if (empty($trustedProxies)) {
-            $trustedProxies = self::getCloudflareIps();
+        if (empty($trustedProxies) && $this->useCloudflareDefaults) {
+            $trustedProxies = $this->getCloudflareIps();
         }
         
-        // Проверяем, входит ли IP в один из доверенных диапазонов
+        if (empty($trustedProxies)) {
+            return false;
+        }
+        
         foreach ($trustedProxies as $cidr) {
-            if (self::ipInCidr($ip, $cidr)) {
+            if ($this->ipInCidr($ip, $cidr)) {
                 return true;
             }
         }
@@ -74,13 +101,9 @@ class IpResolver
     
     /**
      * Получить диапазоны IP Cloudflare
-     * В продакшене лучше кешировать эти данные
      */
-    private static function getCloudflareIps(): array
+    public function getCloudflareIps(): array
     {
-        // Статические диапазоны Cloudflare (обновляйте периодически)
-        // https://www.cloudflare.com/ips-v4
-        // https://www.cloudflare.com/ips-v6
         return [
             '173.245.48.0/20',
             '103.21.244.0/22',
@@ -97,7 +120,6 @@ class IpResolver
             '104.24.0.0/14',
             '172.64.0.0/13',
             '131.0.72.0/22',
-            // IPv6 диапазоны
             '2400:cb00::/32',
             '2606:4700::/32',
             '2803:f800::/32',
@@ -111,11 +133,10 @@ class IpResolver
     /**
      * Проверить, входит ли IP в CIDR диапазон
      */
-    private static function ipInCidr(string $ip, string $cidr): bool
+    public function ipInCidr(string $ip, string $cidr): bool
     {
         list($subnet, $bits) = explode('/', $cidr);
         
-        // Поддержка IPv4 и IPv6
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             $ip = ip2long($ip);
             $subnet = ip2long($subnet);
@@ -129,7 +150,6 @@ class IpResolver
             
             return ($ip & $mask) === $subnet;
         } elseif (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-            // Для IPv6 используем более сложную логику
             $ip = inet_pton($ip);
             $subnet = inet_pton($subnet);
             
@@ -150,5 +170,22 @@ class IpResolver
         }
         
         return false;
+    }
+
+    /**
+     * Установить список доверенных proxy
+     */
+    public function setTrustedProxies(array $trustedProxies): self
+    {
+        $this->trustedProxies = $trustedProxies;
+        return $this;
+    }
+
+    /**
+     * Получить список доверенных proxy
+     */
+    public function getTrustedProxies(): array
+    {
+        return $this->trustedProxies;
     }
 }

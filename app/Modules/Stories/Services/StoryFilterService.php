@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Stories\Services;
 
+use App\Core\Container;
 use App\Modules\Stories\Models\Story;
 use App\Modules\Stories\Models\ReadRibbon;
 use App\Modules\Origins\Models\Domain;
@@ -17,11 +18,23 @@ class StoryFilterService
 {
     private Story $storyModel;
     private Domain $domainModel;
+    private Container $container;
 
-    public function __construct(Story $storyModel, Domain $domainModel)
+    /**
+     * Конструктор с инъекцией зависимостей.
+     * 
+     * ✅ ИЗМЕНЕНО: Добавлен Container для получения моделей,
+     * которые создаются внутри методов (TagFilter, ReadRibbon).
+     *
+     * @param Story $storyModel Модель историй
+     * @param Domain $domainModel Модель доменов
+     * @param Container $container DI-контейнер
+     */
+    public function __construct(Story $storyModel, Domain $domainModel, Container $container)
     {
         $this->storyModel = $storyModel;
         $this->domainModel = $domainModel;
+        $this->container = $container;
     }
 
     /**
@@ -33,14 +46,14 @@ class StoryFilterService
      * @param string $domain Фильтр по домену
      * @return array Массив историй
      */
-	public function getFilteredStories(
-		int $perPage, 
-		int $offset, 
-		string $tagslug = '', 
-		string $domain = '', 
-		string $sort = 'hot',
-		string $author = ''
-	): array
+    public function getFilteredStories(
+        int $perPage, 
+        int $offset, 
+        string $tagslug = '', 
+        string $domain = '', 
+        string $sort = 'hot',
+        string $author = ''
+    ): array
     {
         $showDeleted = Auth::isAdmin();
         $excludeTagIds = $this->getUserExcludedTags();
@@ -51,16 +64,15 @@ class StoryFilterService
     /**
      * Получает общее количество историй с учётом фильтров.
      */
-	public function getTotalCount(
-		string $tagname = '', 
-		string $domain = '',
-		string $author = ''
-	): int
+    public function getTotalCount(
+        string $tagname = '', 
+        string $domain = '',
+        string $author = ''
+    ): int
     {
         $excludeTagIds = $this->getUserExcludedTags();
         return $this->storyModel->getTotalCount($tagname, $domain, $excludeTagIds, $author);
     }
-
 
     /**
      * Получает комментарии для истории в виде дерева с сортировкой по Вильсону
@@ -125,7 +137,8 @@ class StoryFilterService
             return [];
         }
 
-        $filterModel = new TagFilter();
+        // ✅ Получаем модель из контейнера вместо new TagFilter()
+        $filterModel = $this->container->get(TagFilter::class);
         return $filterModel->getFilteredTagIds(Auth::id());
     }
 
@@ -141,7 +154,8 @@ class StoryFilterService
             return [];
         }
 
-        $readRibbon = new ReadRibbon();
+        // ✅ Получаем модель из контейнера вместо new ReadRibbon()
+        $readRibbon = $this->container->get(ReadRibbon::class);
         return $readRibbon->getNewCommentsCounts(Auth::id(), array_map('intval', $storyIds));
     }
 
@@ -153,43 +167,42 @@ class StoryFilterService
         $showDeleted = Auth::isAdmin();
         return $this->storyModel->getSingleWithAuthor($storyId, $showDeleted);
     }
-	
-	/**
-	 * Подготовить данные для Open Graph мета-тегов.
-	 * 
-	 * @return array Массив с ключами: title, description, image, author_url
-	 */
-	public function getStoryOpenGraphData(int $storyId): array
-	{
-		$story = $this->getStoryWithAuthor($storyId);
-		if (!$story) {
-			return [];
-		}
-		
-		// Описание: либо из текста, либо кол-во комментариев
-		$description = '';
-		if (!empty($story['description'])) {
-			$description = mb_substr(strip_tags($story['description']), 0, 200);
-			if (mb_strlen($story['description']) > 200) {
-				$description .= '...';
-			}
-		} else {
-			$description = (int)$story['comments_count'] . ' комментариев';
-		}
-		
-		// Изображение: превью ссылки или дефолтное
-		$image = null;
-		if (!empty($story['url'])) {
-			// $image = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/' . $story['id'] . '.png';
-			$image = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/' . $story['id'] . '.png';
-		}
-		
-		return [
-			'title' => $story['title'],
-			'description' => $description,
-			'image' => $image,
-			'author_name' => $story['author_name'],
-			'author_url' => route('user.profile', ['username' => $story['author_name']]),
-		];
-	}
+    
+    /**
+     * Подготовить данные для Open Graph мета-тегов.
+     * 
+     * @return array Массив с ключами: title, description, image, author_url
+     */
+    public function getStoryOpenGraphData(int $storyId): array
+    {
+        $story = $this->getStoryWithAuthor($storyId);
+        if (!$story) {
+            return [];
+        }
+        
+        // Описание: либо из текста, либо кол-во комментариев
+        $description = '';
+        if (!empty($story['description'])) {
+            $description = mb_substr(strip_tags($story['description']), 0, 200);
+            if (mb_strlen($story['description']) > 200) {
+                $description .= '...';
+            }
+        } else {
+            $description = (int)$story['comments_count'] . ' комментариев';
+        }
+        
+        // Изображение: превью ссылки или дефолтное
+        $image = null;
+        if (!empty($story['url'])) {
+            $image = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/' . $story['id'] . '.png';
+        }
+        
+        return [
+            'title' => $story['title'],
+            'description' => $description,
+            'image' => $image,
+            'author_name' => $story['author_name'],
+            'author_url' => route('user.profile', ['username' => $story['author_name']]),
+        ];
+    }
 }

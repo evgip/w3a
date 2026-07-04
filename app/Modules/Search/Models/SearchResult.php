@@ -3,6 +3,8 @@
 namespace App\Modules\Search\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 class SearchResult extends Model
 {
@@ -17,7 +19,7 @@ class SearchResult extends Model
                        MATCH(s.title, s.description) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
                 FROM `stories` s
                 JOIN `users` u ON s.user_id = u.id
-				LEFT JOIN `user_profiles` up ON u.id = up.user_id
+                LEFT JOIN `user_profiles` up ON u.id = up.user_id
                 LEFT JOIN `taggings` tg ON s.id = tg.story_id
                 LEFT JOIN `tags` t ON tg.tag_id = t.id
                 WHERE s.deleted_at IS NULL 
@@ -27,7 +29,8 @@ class SearchResult extends Model
         $sql .= ($sortBy === 'date') ? " ORDER BY s.id DESC" : " ORDER BY relevance DESC, s.score DESC";
         $sql .= " LIMIT 50";
 
-        $stmt = static::db()->prepare($sql);
+        // ✅ Используем prepare() для работы с bindValue (одинаковые значения, разные имена параметров)
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':query1', $keywords, \PDO::PARAM_STR);
         $stmt->bindValue(':query2', $keywords, \PDO::PARAM_STR);
         $stmt->execute();
@@ -40,17 +43,16 @@ class SearchResult extends Model
     }
 
     /**
-     * NEW: High-performance full-text search across recursive comments
+     * High-performance full-text search across recursive comments
      */
     public function searchComments(string $keywords, string $sortBy = 'relevance'): array
     {
-        // Pull comment contents joined with comment authors and their respective parent stories
         $sql = "SELECT c.*, u.username as author_name, up.avatar as author_avatar,
                        s.title as story_title,
                        MATCH(c.comment) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
                 FROM `comments` c
                 JOIN `users` u ON c.user_id = u.id
-				LEFT JOIN `user_profiles` up ON u.id = up.user_id
+                LEFT JOIN `user_profiles` up ON u.id = up.user_id
                 JOIN `stories` s ON c.story_id = s.id
                 WHERE c.deleted_at IS NULL
                   AND MATCH(c.comment) AGAINST(:query2 IN NATURAL LANGUAGE MODE)";
@@ -63,7 +65,8 @@ class SearchResult extends Model
 
         $sql .= " LIMIT 50";
 
-        $stmt = static::db()->prepare($sql);
+        // ✅ Используем prepare() для работы с bindValue
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':query1', $keywords, \PDO::PARAM_STR);
         $stmt->bindValue(':query2', $keywords, \PDO::PARAM_STR);
         $stmt->execute();
@@ -71,4 +74,3 @@ class SearchResult extends Model
         return $stmt->fetchAll();
     }
 }
-

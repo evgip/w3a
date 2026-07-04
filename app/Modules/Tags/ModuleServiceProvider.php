@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Tags;
 
 use App\Core\Container;
+use App\Core\Database;
+use App\Core\Logger;
+use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 use App\Modules\Tags\Models\Category;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Models\TagFilter;
+use App\Modules\Tags\Models\Tagging;
 use App\Modules\Tags\Services\CategoryService;
 use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Stories\Models\ReadRibbon;
@@ -20,15 +24,42 @@ use App\Modules\Stories\Models\ReadRibbon;
  * Cross-module зависимости:
  * - ReadRibbon (из Stories) — уже зарегистрирован в Stories\ModuleServiceProvider
  */
-class ModuleServiceProvider
+class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     public function register(Container $container): void
     {
+        parent::register($container);
+
         // === МОДЕЛИ ===
+        // ✅ Передаём Database и Logger в конструкторы моделей
         
-        $container->singleton(Category::class, fn() => new Category());
-        $container->singleton(Tag::class, fn() => new Tag());
-        $container->singleton(TagFilter::class, fn() => new TagFilter());
+        $container->singleton(Category::class, function (Container $c) {
+            return new Category(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
+
+        $container->singleton(Tag::class, function (Container $c) {
+            return new Tag(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
+
+        $container->singleton(TagFilter::class, function (Container $c) {
+            return new TagFilter(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
+
+        $container->singleton(Tagging::class, function (Container $c) {
+            return new Tagging(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
         
         // === СЕРВИСЫ ===
         
@@ -47,5 +78,10 @@ class ModuleServiceProvider
                 $c->get(Tag::class)
             );
         });
+    }
+
+    public function boot(): void
+    {
+        // Регистрация слушателей событий, если есть
     }
 }

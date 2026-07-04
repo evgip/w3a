@@ -1,13 +1,18 @@
 <?php
+
 namespace App\Core\Middleware;
 
+use App\Core\Container;
 use App\Core\Session;
+use App\Core\Audit;
 use App\Modules\Users\Models\User;
 use App\Modules\Auth\Services\Auth;
 
 /**
  * Базовый middleware для проверки ролей.
  * Наследуется конкретными middleware (AdminMiddleware, ModeratorMiddleware).
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости внедряются через DI-контейнер.
  */
 abstract class RoleMiddleware implements MiddlewareInterface
 {
@@ -15,12 +20,28 @@ abstract class RoleMiddleware implements MiddlewareInterface
      * Минимальная роль для доступа
      */
     protected string $requiredRole = 'user';
+    
+    /**
+     * ✅ DI-контейнер для получения зависимостей
+     */
+    private Container $container;
+
+    /**
+     * ✅ Конструктор с инъекцией контейнера
+     */
+    public function __construct(Container $container)
+    {
+        $this->container = $container;
+    }
 
     public function handle(callable $next): mixed
     {
+        // ✅ Получаем Session из контейнера
+        $session = $this->container->get(Session::class);
+        
         // 1. Проверяем авторизацию
         if (!Auth::check()) {
-            Session::setFlash('error', 'Необходима авторизация');
+            $session->flash('error', 'Необходима авторизация');
             $_SESSION['intended_url'] = $_SERVER['REQUEST_URI'];
             header('Location: /login');
             exit;
@@ -28,15 +49,17 @@ abstract class RoleMiddleware implements MiddlewareInterface
 
         $userId = (int)($_SESSION['user_id'] ?? 0);
         if ($userId <= 0) {
-            Session::setFlash('error', 'Необходима авторизация');
+            $session->flash('error', 'Необходима авторизация');
             header('Location: /login');
             exit;
         }
 
         // 2. Проверяем бан
-        $userModel = new User();
+        // ✅ Получаем User из контейнера
+        $userModel = $this->container->get(User::class);
+        
         if ($userModel->isBanned($userId)) {
-            $this->handleBannedUser($userId, $userModel);
+            $this->handleBannedUser($userId, $userModel, $session);
         }
 
         // 3. Проверяем роль
@@ -50,36 +73,33 @@ abstract class RoleMiddleware implements MiddlewareInterface
         return $next();
     }
 
-
-	/**
-	 * Получить роль пользователя
-	 */
-	protected function getUserRole(int $userId, User $userModel): string
-	{
-		$user = $userModel->find($userId);
-		
-		if ($user === null) {
-			return 'user';
-		}
-		
-		// Поддержка разных форматов (role или is_admin)
-		if (isset($user['role'])) {
-			return (string)$user['role'];
-		}
-		
-		if (isset($user['is_admin']) && (int)$user['is_admin'] === 1) {
-			return 'admin';
-		}
-		
-		return 'user';
-	}
+    /**
+     * Получить роль пользователя
+     */
+    protected function getUserRole(int $userId, User $userModel): string
+    {
+        $user = $userModel->find($userId);
+        
+        if ($user === null) {
+            return 'user';
+        }
+        
+        if (isset($user['role'])) {
+            return (string)$user['role'];
+        }
+        
+        if (isset($user['is_admin']) && (int)$user['is_admin'] === 1) {
+            return 'admin';
+        }
+        
+        return 'user';
+    }
 
     /**
      * Проверка доступа
      */
     protected function hasAccess(string $userRole): bool
     {
-        // Иерархия ролей: admin > moderator > user > guest
         $hierarchy = [
             'guest' => 0,
             'user' => 1,
@@ -95,8 +115,10 @@ abstract class RoleMiddleware implements MiddlewareInterface
 
     /**
      * Обработка забаненного пользователя
+     * 
+     * ✅ ИЗМЕНЕНО: Session и Audit получены через параметры
      */
-    protected function handleBannedUser(int $userId, User $userModel): void
+    protected function handleBannedUser(int $userId, User $userModel, Session $session): void
     {
         $banInfo = $userModel->getBanInfo($userId);
         
@@ -105,45 +127,47 @@ abstract class RoleMiddleware implements MiddlewareInterface
             $message .= ' Причина: ' . $banInfo['reason'];
         }
         
-        // Логируем
-        if (class_exists(\App\Core\Audit::class)) {
-            \App\Core\Audit::log('security.banned_access', 'Попытка доступа забаненного пользователя', 'security', [
-                'user_id' => $userId,
-                'url' => $_SERVER['REQUEST_URI'] ?? '/',
-            ]);
-        }
+        // ✅ Логируем через внедрённый Audit
+        $audit = $this->container->get(Audit::class);
+        $audit->log('security.banned_access', 'Попытка доступа забаненного пользователя', 'security', [
+            'user_id' => $userId,
+            'url' => $_SERVER['REQUEST_URI'] ?? '/',
+        ]);
         
-        // Очищаем сессию
+        // ✅ Очищаем сессию через Session
         $flash = $_SESSION['flash'] ?? null;
-        session_destroy();
+        $session->destroy();
         session_start();
         
         if ($flash) {
             $_SESSION['flash'] = $flash;
         }
         
-        Session::setFlash('error', $message);
+        $session->flash('error', $message);
         header('Location: /');
         exit;
     }
 
     /**
      * Обработка отказа в доступе
+     * 
+     * ✅ ИЗМЕНЕНО: Audit и ErrorsController получены через контейнер
      */
     protected function handleAccessDenied(int $userId, string $userRole): void
     {
-        if (class_exists(\App\Core\Audit::class)) {
-            \App\Core\Audit::log('security.access_denied', 'Попытка доступа к защищённому маршруту', 'security',  [
-                'user_id' => $userId,
-                'user_role' => $userRole,
-                'required_role' => $this->requiredRole,
-                'url' => $_SERVER['REQUEST_URI'] ?? '/',
-            ]);
-        }
+        // ✅ Логируем через внедрённый Audit
+        $audit = $this->container->get(Audit::class);
+        $audit->log('security.access_denied', 'Попытка доступа к защищённому маршруту', 'security', [
+            'user_id' => $userId,
+            'user_role' => $userRole,
+            'required_role' => $this->requiredRole,
+            'url' => $_SERVER['REQUEST_URI'] ?? '/',
+        ]);
         
         http_response_code(403);
         
-        $errorController = new \App\Modules\Errors\Controllers\ErrorsController();
+        // ✅ Создаём ErrorsController через контейнер
+        $errorController = $this->container->make(\App\Modules\Errors\Controllers\ErrorsController::class);
         $errorController->forbidden("У вас недостаточно прав для доступа к этой странице. Требуется роль: {$this->requiredRole}");
         exit;
     }

@@ -1,121 +1,186 @@
 <?php
 
-namespace App\Modules\Messages\Services;
+declare(strict_types=1);
 
+namespace App\Modules\Moderations\Services;
+
+use App\Modules\Moderations\Models\ModNote;
+use App\Modules\Moderations\Models\Moderation;
+use App\Modules\Users\Models\User;
 use App\Core\Session;
-use App\Modules\Messages\Models\Message;
-use App\Modules\Messages\Models\Conversation;
-use App\Modules\Notifications\Services\NotificationService;
+use App\Core\Events\EventDispatcher;
+use App\Core\Events\UserBanned;
+use App\Core\Events\UserUnbanned;
+use App\Core\Events\ModNoteAdded;
 
 /**
- * Сервис для работы с сообщениями в диалогах.
- * Инкапсулирует бизнес-логику: отправка сообщений, пагинация,
- * отметка прочитанного, отправка уведомлений.
+ * Сервис для работы с модерацией.
+ *
+ * Отвечает за:
+ *  - Бан/разбан пользователей
+ *  - Модераторские заметки
+ *  - Диспатч событий для аудита
+ *
+ * Вся бизнес-логика (проверки, создание, события, flash-сообщения) находится здесь.
+ * Контроллер только получает параметры и делает редирект.
+ * 
+ * ✅ ИЗМЕНЕНО: Session внедряется через конструктор.
  */
-class MessageService
+class ModerationService
 {
-    private Message $messageModel;
-    private Conversation $conversationModel;
-    private ?NotificationService $notificationService;
-
-	public function __construct(
-		?Message $messageModel = null,
-		?Conversation $conversationModel = null,
-		?NotificationService $notificationService = null
-	) {
-		$this->messageModel = $messageModel ?? new Message();
-		$this->conversationModel = $conversationModel ?? new Conversation();
-		$this->notificationService = $notificationService;
-	}
+    private Moderation $moderationModel;
+    private ModNote $modNoteModel;
+    private User $userModel;
+    private Session $session;
+    private ?EventDispatcher $eventDispatcher;
 
     /**
-     * Отправить сообщение в диалог.
-     * @return int ID созданного сообщения
+     * ✅ ИЗМЕНЕНО: Добавлен Session в конструктор
      */
-	public function sendMessage(int $conversationId, int $senderId, string $messageText): ?int
-	{
-		$messageText = trim($messageText);
-		
-		// Валидация в сервисе
-		if (empty($messageText)) {
-			Session::setFlash('error', 'Текст сообщения не может быть пустым');
-			return null;
-		}
-
-		try {
-			// Создаём сообщение
-			$messageId = $this->messageModel->create([
-				'conversation_id' => $conversationId,
-				'sender_id' => $senderId,
-				'message' => $messageText
-			]);
-
-			// Обновляем timestamp
-			$this->conversationModel->update($conversationId, [
-				'updated_at' => date('Y-m-d H:i:s')
-			]);
-
-			// Уведомления
-			if ($messageId > 0 && $this->notificationService !== null) {
-				$recipientId = $this->conversationModel->getRecipientId($conversationId, $senderId);
-				if ($recipientId > 0) {
-					$this->notificationService->notifyMessageSent($messageId, $recipientId, $senderId);
-				}
-			}
-
-			return (int)$messageId;
-		} catch (\Throwable $e) {
-			Session::setFlash('error', 'Ошибка при отправке сообщения');
-			return null;
-		}
-	}
+    public function __construct(
+        Moderation $moderationModel,
+        ModNote $modNoteModel,
+        User $userModel,
+        Session $session,
+        ?EventDispatcher $eventDispatcher = null
+    ) {
+        $this->moderationModel = $moderationModel;
+        $this->modNoteModel = $modNoteModel;
+        $this->userModel = $userModel;
+        $this->session = $session;
+        $this->eventDispatcher = $eventDispatcher;
+    }
 
     /**
-     * Получить пагинированную историю сообщений диалога.
-     * @return array Массив с сообщениями и данными пагинации
+     * Добавляет модераторскую заметку к пользователю.
      */
-    public function getPaginatedMessages(int $conversationId, int $currentPage = 1, int $perPage = 15): array
+    public function addNote(int $targetUserId, int $moderatorId, string $noteText, int $isPrivate = 1): ?array
     {
-        // Нормализация номера страницы
-        if ($currentPage < 1) {
-            $currentPage = 1;
+        $noteText = trim($noteText);
+
+        if ($targetUserId <= 0 || $noteText === '') {
+            // ✅ Используем внедрённый Session
+            $this->session->flash('error', 'Укажите пользователя и текст заметки.');
+            return null;
         }
 
-        // Подсчёт общего количества сообщений
-        $totalMessages = $this->messageModel->getTotalMessageCount($conversationId);
-        $totalPages = (int)ceil($totalMessages / $perPage);
+        // Сохраняем заметку
+        $noteId = $this->modNoteModel->create([
+            'user_id'      => $targetUserId,
+            'moderator_id' => $moderatorId,
+            'note'         => $noteText,
+            'is_private'   => $isPrivate,
+        ]);
 
-        if ($totalPages < 1) {
-            $totalPages = 1;
+        if (!$noteId) {
+            $this->session->flash('error', 'Не удалось сохранить заметку.');
+            return null;
         }
 
-        // Вычисляем offset
-        $offset = ($currentPage - 1) * $perPage;
+        $this->session->flash('success', 'Заметка добавлена.');
 
-        // Получаем сообщения
-        $messages = $this->messageModel->getPaginatedChatHistory($conversationId, $perPage, $offset);
+        // Диспатчим событие для аудита
+        $this->dispatchEvent(new ModNoteAdded(
+            $moderatorId,
+            $targetUserId,
+            mb_substr($noteText, 0, 200)
+        ));
 
         return [
-            'messages' => $messages,
-            'currentPage' => $currentPage,
-            'totalPages' => $totalPages,
-            'totalMessages' => $totalMessages,
+            'note_id' => $noteId,
+            'user_id' => $targetUserId,
         ];
     }
 
     /**
-     * Пометить все сообщения в диалоге как прочитанные.
+     * Удаляет модераторскую заметку.
      */
-    public function markAsRead(int $conversationId, int $userId): void
+    public function deleteNote(int $noteId): bool
     {
-        $this->messageModel->markAsRead($conversationId, $userId);
+        if ($noteId <= 0) {
+            $this->session->flash('error', 'Некорректный ID заметки.');
+            return false;
+        }
+
+        $this->modNoteModel->deleteNote($noteId);
+        $this->session->flash('success', 'Заметка удалена.');
+
+        return true;
     }
 
     /**
-     * Получить историю сообщений без пагинации (для API или AJAX).
+     * Банит пользователя.
      */
-    public function getChatHistory(int $conversationId, int $limit = 100): array
+    public function banUser(int $targetUserId, int $moderatorId, string $reason): ?array
     {
-        return $this->messageModel->getChatHistory($conversationId);
+        if ($targetUserId === $moderatorId) {
+            $this->session->flash('error', 'Вы не можете применить это действие к себе.');
+            return null;
+        }
+
+        $targetUser = $this->userModel->find($targetUserId);
+        if (!$targetUser) {
+            $this->session->flash('error', 'Пользователь не найден.');
+            return null;
+        }
+
+        $this->moderationModel->banUser($targetUserId, $moderatorId, $reason);
+
+        $this->dispatchEvent(new UserBanned(
+            $targetUserId,
+            $moderatorId,
+            $reason ?: 'Без указания причины'
+        ));
+
+        $this->session->flash('success', "Пользователь «{$targetUser['username']}» забанен.");
+
+        return [
+            'user'     => $targetUser,
+            'username' => $targetUser['username'],
+        ];
+    }
+
+    /**
+     * Разбанивает пользователя.
+     */
+    public function unbanUser(int $targetUserId, int $moderatorId): ?array
+    {
+        if ($targetUserId === $moderatorId) {
+            $this->session->flash('error', 'Вы не можете применить это действие к себе.');
+            return null;
+        }
+
+        $targetUser = $this->userModel->find($targetUserId);
+        if (!$targetUser) {
+            $this->session->flash('error', 'Пользователь не найден.');
+            return null;
+        }
+
+        $this->moderationModel->unbanUser($targetUserId);
+
+        $this->dispatchEvent(new UserUnbanned(
+            $targetUserId,
+            $moderatorId,
+            'Разбан пользователя'
+        ));
+
+        $this->session->flash('success', "Пользователь «{$targetUser['username']}» разбанен.");
+
+        return [
+            'user'     => $targetUser,
+            'username' => $targetUser['username'],
+        ];
+    }
+
+    /**
+     * Безопасно диспатчит событие через EventDispatcher.
+     */
+    private function dispatchEvent(\App\Core\Events\Event $event): void
+    {
+        if ($this->eventDispatcher === null) {
+            return;
+        }
+
+        $this->eventDispatcher->dispatch($event);
     }
 }

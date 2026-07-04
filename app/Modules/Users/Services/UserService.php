@@ -5,15 +5,25 @@ declare(strict_types=1);
 namespace App\Modules\Users\Services;
 
 use App\Modules\Users\Models\User;
-use App\Core\Session as AppCoreSession;
+use App\Core\Session;
 
+/**
+ * Сервис для работы с пользователями.
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
+ */
 class UserService
 {
     private User $userModel;
+    private Session $session;
 
-    public function __construct()
+    /**
+     * ✅ ИЗМЕНЕНО: Все зависимости обязательны
+     */
+    public function __construct(User $userModel, Session $session)
     {
-        $this->userModel = new User();
+        $this->userModel = $userModel;
+        $this->session = $session;
     }
 
     /**
@@ -46,7 +56,8 @@ class UserService
         // Проверка уникальности
         $existingUser = $this->userModel->findBy('email', $newEmail);
         if ($existingUser && (int)$existingUser['id'] !== $userId) {
-            AppCoreSession::setFlash('error', 'Этот Email уже занят.');
+            // ✅ Используем внедрённый Session
+            $this->session->flash('error', 'Этот Email уже занят.');
             return false;
         }
 
@@ -82,12 +93,12 @@ class UserService
     {
         $user = $this->userModel->find($userId);
         if (!$user) {
-            AppCoreSession::setFlash('error', 'Пользователь не найден.');
+            $this->session->flash('error', 'Пользователь не найден.');
             return false;
         }
 
         if (!password_verify($currentPassword, $user['password'])) {
-            AppCoreSession::setFlash('error', 'Текущий пароль введён неверно.');
+            $this->session->flash('error', 'Текущий пароль введён неверно.');
             return false;
         }
 
@@ -95,7 +106,7 @@ class UserService
         $success = $this->userModel->update($userId, ['password' => $hashedPassword]);
         
         if ($success) {
-            AppCoreSession::setFlash('success', 'Пароль успешно изменён.');
+            $this->session->flash('success', 'Пароль успешно изменён.');
         }
         
         return $success;
@@ -108,7 +119,6 @@ class UserService
     {
         $settings = $this->userModel->getSettings($userId);
         
-        // Если настроек нет — возвращаем дефолтные значения
         if (!$settings) {
             return [
                 'notify_on_reply' => 1,
@@ -129,18 +139,21 @@ class UserService
     {
         return $this->userModel->getAllUsersWithBanStatus(withTrashed: true);
     }
-	
-	public function getUserOpenGraphData(string $username): array
-	{
-		$user = $this->getProfile($username);
-		if (!$user) return [];
-		
-		return [
-			'title' => $user['username'],
-			'description' => $user['bio'] ?? 'Пользователь ' . $user['username'],
-			'image' => !empty($user['avatar']) 
-				? 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/uploads/avatars/' . $user['avatar']
-				: null,
-		];
-	}
+    
+    /**
+     * Получить Open Graph данные пользователя
+     */
+    public function getUserOpenGraphData(string $username): array
+    {
+        $user = $this->userModel->findBy('username', $username);
+        if (!$user) return [];
+        
+        return [
+            'title' => $user['username'],
+            'description' => $user['bio'] ?? 'Пользователь ' . $user['username'],
+            'image' => !empty($user['avatar']) 
+                ? 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/uploads/avatars/' . $user['avatar']
+                : null,
+        ];
+    }
 }

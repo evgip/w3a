@@ -5,50 +5,59 @@ declare(strict_types=1);
 namespace App\Modules\Stories\Services;
 
 use App\Modules\Stories\Models\Story;
-use App\Modules\Stories\Services\StoryValidator;
 use App\Modules\Origins\Models\Domain;
 use App\Core\Session;
+use App\Core\Audit;
 use App\Core\Validator;
 use App\Core\Events\EventDispatcher;
 use App\Core\Events\StoryDeleted;
 use App\Core\Events\StoryRestore;
 
-
 /**
  * Сервис для работы с историями (бизнес-логика).
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
  */
 class StoryService
 {
     private Story $storyModel;
     private Domain $domainModel;
-    private ?EventDispatcher $eventDispatcher;
     private StoryValidator $storyValidator;
+    private Session $session;
+    private Audit $audit;
+    private Validator $validator;
+    private ?EventDispatcher $eventDispatcher;
 
+    /**
+     * ✅ ИЗМЕНЕНО: 7 зависимостей, все обязательны (кроме EventDispatcher)
+     */
     public function __construct(
         Story $storyModel,
         Domain $domainModel,
-        ?EventDispatcher $eventDispatcher = null,
-        ?StoryValidator $storyValidator = null
+        StoryValidator $storyValidator,
+        Session $session,
+        Audit $audit,
+        Validator $validator,
+        ?EventDispatcher $eventDispatcher = null
     ) {
         $this->storyModel = $storyModel;
         $this->domainModel = $domainModel;
+        $this->storyValidator = $storyValidator;
+        $this->session = $session;
+        $this->audit = $audit;
+        $this->validator = $validator;
         $this->eventDispatcher = $eventDispatcher;
-        $this->storyValidator = $storyValidator ?? new StoryValidator();
     }
 
     /**
      * Создаёт новую историю с полной валидацией.
-     *
-     * @param array $data Данные истории (title, url, description, tags, user_is_following)
-     * @param int $userId ID пользователя
-     * @return int ID созданной истории или 0 при ошибке
      */
     public function createStory(array $data, int $userId): int
     {
         // 1. Централизованная валидация через StoryValidator
         $validation = $this->storyValidator->validate($data, false);
         if (!$validation['valid']) {
-            Session::setFlash('error', implode(' ', $validation['errors']));
+            $this->session->flash('error', implode(' ', $validation['errors']));
             return 0;
         }
 
@@ -78,17 +87,14 @@ class StoryService
         }
 
         // 5. Логирование
-        \App\Core\Audit::log('story.created', 'Пользователь создал новую публикацию с тегами', 'story');
+        // ✅ Используем внедрённый Audit
+        $this->audit->log('story.created', 'Пользователь создал новую публикацию с тегами', 'story');
 
         return $storyId;
     }
 
     /**
      * Обновляет существующую историю.
-     *
-     * @param int $storyId ID истории
-     * @param array $data Новые данные
-     * @return bool Успешно ли обновлено
      */
     public function updateStory(int $storyId, array $data): bool
     {
@@ -100,7 +106,7 @@ class StoryService
         // 1. Централизованная валидация через StoryValidator
         $validation = $this->storyValidator->validate($data, true);
         if (!$validation['valid']) {
-            Session::setFlash('error', implode(' ', $validation['errors']));
+            $this->session->flash('error', implode(' ', $validation['errors']));
             return false;
         }
 
@@ -126,10 +132,6 @@ class StoryService
 
     /**
      * Проверяет права на редактирование истории.
-     *
-     * @param array $story Данные истории
-     * @param int $userId ID текущего пользователя
-     * @return bool Может ли пользователь редактировать
      */
     public function canEditStory(array $story, int $userId): bool
     {
@@ -149,18 +151,20 @@ class StoryService
 
     /**
      * Валидирует заголовок.
+     * 
+     * ✅ ИЗМЕНЕНО: Используем внедрённый Validator
      */
     private function validateTitle(string $title): bool
     {
-        $validator = new Validator();
         $minLength = config('validation.title_min_length', 5, 'int');
-        return $validator->validate(['title' => $title], ['title' => "required|min:{$minLength}"]);
+        return $this->validator->validate(
+            ['title' => $title], 
+            ['title' => "required|min:{$minLength}"]
+        );
     }
 
     /**
      * Проверяет, не забанен ли домен.
-     *
-     * @return bool true если домен НЕ забанен (можно продолжать), false если забанен
      */
     private function checkBannedDomain(?string $domain, int $userId, string $url): bool
     {
@@ -172,16 +176,17 @@ class StoryService
             return true;
         }
 
-        // Домен забанен - логируем и возвращаем ошибку
         $banInfo = $this->domainModel->getBanInfo($domain);
         $reason = $banInfo['ban_reason'] ?? 'Домен заблокирован администрацией';
 
-        Session::setFlash(
+        // ✅ Используем внедрённый Session
+        $this->session->flash(
             'error',
             "Публикация отклонена: домен **" . e($domain) . "** заблокирован. Причина: " . e($reason)
         );
 
-        \App\Core\Audit::log('story.rejected_banned_domain', "Попытка публикации с забаненного домена", 'story', [
+        // ✅ Используем внедрённый Audit
+        $this->audit->log('story.rejected_banned_domain', "Попытка публикации с забаненного домена", 'story', [
             'domain' => $domain,
             'user_id' => $userId,
             'url' => $url,
@@ -193,49 +198,43 @@ class StoryService
 
     /**
      * Удаляет (скрывает) историю.
-     *
-     * @param int $storyId ID истории
-     * @param int $adminId ID администратора
-     * @param string $reason Причина удаления (опционально)
-     * @return bool Успешно ли удалено
      */
     public function deleteStory(int $storyId, int $adminId, string $reason = 'История скрыта модератором'): bool
     {
         $story = $this->storyModel->find($storyId);
         if (!$story) {
-            Session::setFlash('error', 'Публикация не найдена.');
+            $this->session->flash('error', 'Публикация не найдена.');
             return false;
         }
 
         $this->storyModel->delete($storyId);
-        Session::setFlash('success', 'Публикация успешно скрыта из общей ленты.');
+        $this->session->flash('success', 'Публикация успешно скрыта из общей ленты.');
 
-        $this->eventDispatcher->dispatch(new StoryDeleted($storyId, $adminId, $reason));
+        if ($this->eventDispatcher !== null) {
+            $this->eventDispatcher->dispatch(new StoryDeleted($storyId, $adminId, $reason));
+        }
 
         return true;
     }
 
     /**
      * Восстанавливает историю.
-     *
-     * @param int $storyId ID истории
-     * @param int $adminId ID администратора
-     * @return bool Успешно ли восстановлено
      */
     public function restoreStory(int $storyId, int $adminId): bool
     {
         $story = $this->storyModel->find($storyId, withTrashed: true);
         if (!$story) {
-            Session::setFlash('error', 'Публикация не найдена.');
+            $this->session->flash('error', 'Публикация не найдена.');
             return false;
         }
 
         $this->storyModel->restore($storyId);
-        Session::setFlash('success', 'Публикация успешно восстановлена в общей ленте.');
+        $this->session->flash('success', 'Публикация успешно восстановлена в общей ленте.');
 
-        $this->eventDispatcher->dispatch(new StoryRestore($storyId, $adminId));
+        if ($this->eventDispatcher !== null) {
+            $this->eventDispatcher->dispatch(new StoryRestore($storyId, $adminId));
+        }
 
         return true;
     }
-
 }

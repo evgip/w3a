@@ -122,6 +122,7 @@ if (!function_exists('plural')) {
     }
 }
 
+
 /**
  * Generate a hidden CSRF token field
  * Генерация скрытого поля с CSRF-токеном
@@ -129,10 +130,23 @@ if (!function_exists('plural')) {
 if (!function_exists('csrf_field')) {
     function csrf_field(): string
     {
+        // ✅ Пытаемся получить Request из Router (если доступен)
+        try {
+            $router = \App\Core\Router::getInstance();
+            if ($router !== null && method_exists($router, 'getRequest')) {
+                $request = $router->getRequest();
+                return '<input type="hidden" name="csrf_token" value="' . e($request->getCsrfToken()) . '">';
+            }
+        } catch (\Throwable $e) {
+            // Игнорируем ошибки
+        }
+        
+        // Fallback: создаём новый Request
         $request = new \App\Core\Request();
-        return $request->csrfField();
+        return '<input type="hidden" name="csrf_token" value="' . e($request->getCsrfToken()) . '">';
     }
 }
+
 
 /**
  * Render flash messages by type (success, error, notice)
@@ -147,9 +161,16 @@ if (!function_exists('render_flashes')) {
             'notice'  => 'alert-notice'
         ];
 
+        // ✅ Прямой доступ к $_SESSION для хелпера
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+
         foreach ($types as $key => $class) {
-            if (\App\Core\Session::hasFlash($key)) {
-                $message = htmlspecialchars(\App\Core\Session::getFlash($key));
+            if (isset($_SESSION['flash'][$key])) {
+                $message = htmlspecialchars($_SESSION['flash'][$key]);
+                unset($_SESSION['flash'][$key]); // Удаляем после получения
+                
                 $title = $key === 'success' ? 'Успех' : ($key === 'error' ? 'Ошибка' : 'Информация');
 
                 echo '<div class="alert ' . $class . '">';

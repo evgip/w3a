@@ -12,18 +12,26 @@ use App\Modules\Origins\Models\Domain;
  * 
  * Используется в StoryService (create/update) и SuggestionService.
  * Отвечает только за проверку данных, не работает с БД напрямую.
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости теперь обязательны и внедряются через DI-контейнер.
  */
 class StoryValidator
 {
     private TagValidator $tagValidator;
     private Domain $domainModel;
 
+    /**
+     * Конструктор с инъекцией зависимостей.
+     * 
+     * @param TagValidator $tagValidator Валидатор тегов
+     * @param Domain $domainModel Модель доменов
+     */
     public function __construct(
-        ?TagValidator $tagValidator = null,
-        ?Domain $domainModel = null
+        TagValidator $tagValidator,
+        Domain $domainModel
     ) {
-        $this->tagValidator = $tagValidator ?? new TagValidator();
-        $this->domainModel = $domainModel ?? new Domain();
+        $this->tagValidator = $tagValidator;
+        $this->domainModel = $domainModel;
     }
 
     /**

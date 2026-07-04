@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Suggestions\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 /**
  * Модель для работы с предложениями изменений контента.
@@ -58,13 +60,10 @@ class Suggestion extends Model
                 AND s.deleted_at IS NULL
                 ORDER BY s.created_at DESC";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute([
+        return $this->db->fetchAll($sql, [
             'target_type' => $targetType,
             'target_id' => $targetId
         ]);
-
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
@@ -87,14 +86,12 @@ class Suggestion extends Model
                 AND proposed_data = :proposed_data
                 AND deleted_at IS NULL";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute([
+        $result = $this->db->fetchOne($sql, [
             'target_type' => $targetType,
             'target_id' => $targetId,
             'proposed_data' => $proposedDataJson
         ]);
 
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
         return (int) ($result['count'] ?? 0);
     }
 
@@ -116,11 +113,10 @@ class Suggestion extends Model
                 AND target_id = :target_id
                 AND deleted_at IS NULL";
 
-        $stmt = static::db()->prepare($sql);
-        return $stmt->execute([
+        return $this->db->execute($sql, [
             'target_type' => $targetType,
             'target_id' => $targetId
-        ]);
+        ]) > 0;
     }
 
     /**
@@ -143,14 +139,12 @@ class Suggestion extends Model
                 AND user_id = :user_id
                 AND deleted_at IS NULL";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute([
+        $result = $this->db->fetchOne($sql, [
             'target_type' => $targetType,
             'target_id' => $targetId,
             'user_id' => $userId
         ]);
 
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
         return (int) ($result['count'] ?? 0);
     }
     
@@ -160,14 +154,6 @@ class Suggestion extends Model
 
     /**
      * Получить все активные предложения для страницы модерации.
-     * 
-     * Поддерживает пагинацию и фильтрацию по типу контента.
-     * Для комментариев дополнительно подгружает story_id для ссылки.
-     * 
-     * @param int $limit Количество записей на странице (по умолчанию 30)
-     * @param int $offset Смещение для пагинации
-     * @param string $filter Фильтр по типу контента ('Story', 'Comment' или '' для всех)
-     * @return array Массив предложений с данными пользователей и story_id
      */
     public function getAllActive(int $limit = 30, int $offset = 0, string $filter = ''): array
     {
@@ -191,7 +177,7 @@ class Suggestion extends Model
 
         $sql .= " ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
 
-        $stmt = static::db()->prepare($sql);
+        $stmt = $this->db->prepare($sql);
 
         // Привязываем параметры
         foreach ($params as $key => $value) {
@@ -226,10 +212,7 @@ class Suggestion extends Model
             $params['filter'] = $filter;
         }
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute($params);
-
-        return (int) $stmt->fetchColumn();
+        return (int) $this->db->fetchColumn($sql, $params);
     }
     
     // =========================================================================
@@ -253,19 +236,11 @@ class Suggestion extends Model
                 AND s.deleted_at IS NULL
                 LIMIT 1";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['id' => $id]);
-
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $result ?: null;
+        return $this->db->fetchOne($sql, ['id' => $id]);
     }
 
     /**
      * Получить предложения пользователя (для профиля или статистики).
-     * 
-     * @param int $userId ID пользователя
-     * @param int $limit Максимальное количество записей
-     * @return array Массив предложений
      */
     public function getUserSuggestions(int $userId, int $limit = 50): array
     {
@@ -276,14 +251,14 @@ class Suggestion extends Model
                 ORDER BY s.created_at DESC
                 LIMIT :limit";
 
-        $stmt = static::db()->prepare($sql);
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':user_id', $userId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
-
+	
     /**
      * Проверить, существует ли уже такое предложение от этого пользователя.
      * 
@@ -305,15 +280,13 @@ class Suggestion extends Model
                 AND proposed_data = :proposed_data
                 AND deleted_at IS NULL";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute([
+        $result = $this->db->fetchOne($sql, [
             'target_type' => $targetType,
             'target_id' => $targetId,
             'user_id' => $userId,
             'proposed_data' => $proposedDataJson
         ]);
 
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
         return (int) ($result['count'] ?? 0) > 0;
     }
 
@@ -334,8 +307,7 @@ class Suggestion extends Model
                 FROM `{$this->table}`
                 GROUP BY target_type";
 
-        $stmt = static::db()->query($sql);
-        $results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $results = $this->db->fetchAll($sql);
 
         $stats = [
             'total' => 0,

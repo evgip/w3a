@@ -7,21 +7,17 @@
  * @var int $currentPage      Текущая страница пагинации
  * @var int $totalPages       Общее количество страниц
  * @var array $newCommentsMap Карта новых комментариев для каждой истории
+ * @var int $currentUserId    ID текущего пользователя (0 = гость)
+ * @var bool $isAdmin         Флаг администратора
+ * @var bool $canUserDownvote Может ли пользователь голосовать против
+ * @var array $currentVotes   Массив голосов: story_id => vote_value
  */
 
-$request = new \App\Core\Request();
-$voteModel = new \App\Modules\Votes\Models\Vote();
-$currentUserId = \App\Modules\Auth\Services\Auth::check() ? \App\Modules\Auth\Services\Auth::id() : 0;
-$isAdmin = \App\Modules\Auth\Services\Auth::isAdmin();
-
-$minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
-
-$canUserDownvote = false;
-if ($currentUserId > 0) {
-    $userModel = new \App\Modules\Users\Models\User();
-    $viewerKarma = $userModel->getUserKarma($currentUserId);
-    $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
-}
+// ✅ Все данные приходят из контроллера, не создаём модели здесь
+$currentUserId = $currentUserId ?? 0;
+$isAdmin = $isAdmin ?? false;
+$canUserDownvote = $canUserDownvote ?? false;
+$currentVotes = $currentVotes ?? [];
 
 // Базовый URL для пагинации (сохраняем slug категории)
 $paginationBaseUrl = route('categories.show', ['slug' => $category['slug']]);
@@ -30,11 +26,11 @@ $paginationBaseUrl = route('categories.show', ['slug' => $category['slug']]);
 <h1><?= e($title) ?></h1>
 
 <p class="hint">
-	Истории, помеченные тегами в категориях информатики:  <b><?= e($title) ?></b>
+    Истории, помеченные тегами в категориях информатики:  <b><?= e($title) ?></b>
 
-	<?php if (!empty($category['description'])): ?>
-		<br><?= e($category['description']) ?>
-	<?php endif; ?>
+    <?php if (!empty($category['description'])): ?>
+        <br><?= e($category['description']) ?>
+    <?php endif; ?>
 </p>
 
 <?php if (!empty($stories)): ?>
@@ -56,10 +52,11 @@ $paginationBaseUrl = route('categories.show', ['slug' => $category['slug']]);
                     'type' => 'story',
                     'id' => (int)$story['id'],
                     'score' => (int)$story['score'],
-                    'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
+                    // ✅ Используем переданный голос вместо создания модели
+                    'currentVoteState' => $currentVotes[$story['id']] ?? null,
                     'canDownvote' => $canUserDownvote,
                     'isLoggedIn' => $currentUserId > 0,
-					'contentOwnerId' => (int)$story['user_id']
+                    'contentOwnerId' => (int)$story['user_id']
                 ]); ?>
 
                 <div class="story_liner">
@@ -88,13 +85,13 @@ $paginationBaseUrl = route('categories.show', ['slug' => $category['slug']]);
                             <?php endif; ?>
                         <?php endif; ?>
                         
-						<?php if (!empty($story['tags'])): ?>  
-							<span class="tags">
-								<?php foreach ($story['tags_with_names'] as $tagData): ?>  
-									<a href="<?= route('tags.filter', ['tagslug' => e($tagData['slug'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
-								<?php endforeach; ?>
-							</span> 
-						<?php endif; ?>
+                        <?php if (!empty($story['tags'])): ?>  
+                            <span class="tags">
+                                <?php foreach ($story['tags_with_names'] as $tagData): ?>  
+                                    <a href="<?= route('tags.filter', ['tagslug' => e($tagData['slug'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
+                                <?php endforeach; ?>
+                            </span> 
+                        <?php endif; ?>
                     </div>
 
                     <div class="story_content">

@@ -6,12 +6,26 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Core\Audit;
 use App\Modules\Origins\Models\Domain;
+use App\Modules\Auth\Services\Auth;
 
 class OriginsController extends Controller
 {
     /**
-     * Публичная страница списка забаненных доменов (GET /domains)
+     * ✅ Хелпер: получить Session из контейнера
      */
+    private function session(): Session
+    {
+        return $this->container->get(Session::class);
+    }
+
+    /**
+     * ✅ Хелпер: получить Audit из контейнера
+     */
+    private function audit(): Audit
+    {
+        return $this->container->get(Audit::class);
+    }
+
     public function index(): void
     {
         $domainModel = $this->service(Domain::class);
@@ -24,10 +38,6 @@ class OriginsController extends Controller
         ]);
     }
 
-    /**
-     * Форма добавления домена в бан-лист (GET /admin/domains/create)
-     * Только для админов/модераторов
-     */
     public function showBanForm(): void
     {
         $this->render('ban_form', [
@@ -36,9 +46,6 @@ class OriginsController extends Controller
         ]);
     }
 
-    /**
-     * Обработка бана домена (POST /admin/domains/ban)
-     */
     public function ban(): void
     {
         $this->request->validateCsrf();
@@ -46,31 +53,28 @@ class OriginsController extends Controller
         $domain = strtolower(trim($this->request->getParams('domain')));
         $reason = trim($this->request->getParams('ban_reason')) ?: 'Нарушение правил сообщества';
 
-        // Валидация домена
         if (empty($domain) || !preg_match('/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*\.[a-z]{2,}$/i', $domain)) {
-            Session::setFlash('error', 'Указан некорректный домен. Пример: example.com');
-			$this->redirectBack('/admin/domains/create');
+            $this->session()->flash('error', 'Указан некорректный домен. Пример: example.com');
+            $this->redirectBack('/admin/domains/create');
         }
 
         $domainModel = $this->service(Domain::class);
-        $moderatorId = (int) ($_SESSION['user_id'] ?? 0);
+        // ✅ Используем Auth::id() вместо $_SESSION
+        $moderatorId = (int) Auth::id();
 
         if ($domainModel->ban($domain, $reason, $moderatorId)) {
-            Audit::log('admin.domain_banned', "Модератор заблокировал домен: {$domain}", 'admin', [
+            $this->audit()->log('admin.domain_banned', "Модератор заблокировал домен: {$domain}", 'admin', [
                 'domain' => $domain,
                 'reason' => $reason,
             ]);
-            Session::setFlash('success', "Домен «{$domain}» успешно заблокирован.");
+            $this->session()->flash('success', "Домен «{$domain}» успешно заблокирован.");
         } else {
-            Session::setFlash('error', "Домен «{$domain}» уже заблокирован.");
+            $this->session()->flash('error', "Домен «{$domain}» уже заблокирован.");
         }
-		
-		$this->redirectBack('/admin/domains');
+        
+        $this->redirectBack('/admin/domains');
     }
 
-    /**
-     * Разбан домена (POST /admin/domains/{id}/unban)
-     */
     public function unban(string $id): void
     {
         $this->request->validateCsrf();
@@ -79,23 +83,20 @@ class OriginsController extends Controller
         $domain = $domainModel->find((int) $id);
 
         if (!$domain) {
-            Session::setFlash('error', 'Домен не найден.');
+            $this->session()->flash('error', 'Домен не найден.');
             $this->redirectBack('/admin/domains');
         }
 
         $domainModel->unban($domain['domain']);
 
-        Audit::log('admin.domain_unbanned', "Модератор разблокировал домен: {$domain['domain']}",  'admin', [
+        $this->audit()->log('admin.domain_unbanned', "Модератор разблокировал домен: {$domain['domain']}", 'admin', [
             'domain_id' => (int) $id,
         ]);
 
-        Session::setFlash('success', "Домен «{$domain['domain']}» успешно разблокирован.");
+        $this->session()->flash('success', "Домен «{$domain['domain']}» успешно разблокирован.");
         $this->redirectBack('/admin/domains');
     }
 
-    /**
-     * Админ-панель управления доменами (GET /admin/domains)
-     */
     public function adminIndex(): void
     {
         $domainModel = $this->service(Domain::class);
@@ -107,5 +108,4 @@ class OriginsController extends Controller
             'totalBanned' => $domainModel->getBannedCount(),
         ]);
     }
-
 }

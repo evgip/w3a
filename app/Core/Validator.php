@@ -6,6 +6,15 @@ class Validator
 {
     protected array $errors = [];
     protected array $data = [];
+    protected ?Database $db;  // ✅ ДОБАВЛЕНО
+
+    /**
+     * ✅ Конструктор с инъекцией Database
+     */
+    public function __construct(?Database $db = null)
+    {
+        $this->db = $db;
+    }
 
     /**
      * Валидация входных данных по заданным правилам
@@ -13,6 +22,7 @@ class Validator
     public function validate(array $data, array $rules): bool
     {
         $this->data = $data;
+        $this->errors = [];  // ✅ Сбрасываем ошибки перед новой валидацией
 
         foreach ($rules as $field => $fieldRules) {
             $rulesArray = explode('|', $fieldRules);
@@ -75,13 +85,13 @@ class Validator
                 }
                 break;
 
-			case 'regex':
-				if ($value !== '' && $param !== null) {
-					if (!preg_match($param, $value)) {
-						$this->errors[$field][] = "Поле {$field} имеет недопустимый формат.";
-					}
-				}
-				break;
+            case 'regex':
+                if ($value !== '' && $param !== null) {
+                    if (!preg_match($param, $value)) {
+                        $this->errors[$field][] = "Поле {$field} имеет недопустимый формат.";
+                    }
+                }
+                break;
 
             case 'unique':
                 if ($value !== '' && $param !== null) {
@@ -95,11 +105,17 @@ class Validator
                             throw new \InvalidArgumentException("Недопустимое имя таблицы или колонки в правиле unique");
                         }
 
-                        $db = Database::getConnection();
-                        $stmt = $db->prepare("SELECT COUNT(*) FROM `{$table}` WHERE `{$column}` = :val LIMIT 1");
-                        $stmt->execute(['val' => $value]);
+                        // ✅ Используем внедрённый Database вместо статического вызова
+                        if ($this->db === null) {
+                            throw new \RuntimeException("Database не внедрён в Validator для правила unique");
+                        }
 
-                        if ((int)$stmt->fetchColumn() > 0) {
+                        $count = (int)$this->db->fetchColumn(
+                            "SELECT COUNT(*) FROM `{$table}` WHERE `{$column}` = :val LIMIT 1",
+                            ['val' => $value]
+                        );
+
+                        if ($count > 0) {
                             $this->errors[$field][] = "Такой {$value} уже зарегистрирован в системе.";
                         }
                     }
@@ -130,8 +146,8 @@ class Validator
     /**
      * Получить первую ошибку для конкретного поля
      */
-    public function getFirstError(string $field): array
+    public function getFirstError(string $field): string
     {
-        return isset($this->errors[$field]) ? $this->errors[$field] : '';
+        return isset($this->errors[$field][0]) ? $this->errors[$field][0] : '';
     }
 }

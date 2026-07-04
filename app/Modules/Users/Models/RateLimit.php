@@ -3,24 +3,29 @@
 namespace App\Modules\Users\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 class RateLimit extends Model
 {
     protected string $table = 'rate_limits';
 
-	protected array $fillable = [
-		'ip_address',
-		'endpoint_action', // <-- Добавили это поле
-		'request_count',
-		'window_start'
-	];
+    protected array $fillable = [
+        'ip_address',
+        'endpoint_action',
+        'request_count',
+        'window_start'
+    ];
 
     /**
      * Delete stale rows older than the specified sliding time window
      */
     public function clearStaleLogs(int $windowSeconds): void
     {
-        $stmt = static::db()->prepare("DELETE FROM `rate_limits` WHERE `created_at` < NOW() - INTERVAL :win SECOND");
+        // ✅ Используем prepare() для bindValue с типом PDO::PARAM_INT
+        $stmt = $this->db->prepare(
+            "DELETE FROM `rate_limits` WHERE `created_at` < NOW() - INTERVAL :win SECOND"
+        );
         $stmt->bindValue(':win', $windowSeconds, \PDO::PARAM_INT);
         $stmt->execute();
     }
@@ -35,7 +40,8 @@ class RateLimit extends Model
                   AND `endpoint_action` = :action 
                   AND `created_at` >= NOW() - INTERVAL :win SECOND";
                   
-        $stmt = static::db()->prepare($sql);
+        // ✅ Используем prepare() для bindValue с разными типами
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':ip', $ip, \PDO::PARAM_STR);
         $stmt->bindValue(':action', $action, \PDO::PARAM_STR);
         $stmt->bindValue(':win', $windowSeconds, \PDO::PARAM_INT);

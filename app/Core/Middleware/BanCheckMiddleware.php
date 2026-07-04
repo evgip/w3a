@@ -1,12 +1,30 @@
 <?php
+
 namespace App\Core\Middleware;
 
+use App\Core\Container;
 use App\Core\Session;
+use App\Core\Audit;
 use App\Modules\Users\Models\User;
 use App\Modules\Auth\Services\Auth;
 
+/**
+ * Middleware для проверки бана пользователя.
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости внедряются через DI-контейнер.
+ */
 class BanCheckMiddleware implements MiddlewareInterface
 {
+    private Container $container;
+
+    /**
+     * ✅ Конструктор с инъекцией контейнера
+     */
+    public function __construct(Container $container)
+    {
+        $this->container = $container;
+    }
+
     public function handle(callable $next): mixed
     {
         // Проверяем только авторизованных пользователей
@@ -19,7 +37,8 @@ class BanCheckMiddleware implements MiddlewareInterface
             return $next();
         }
         
-        $userModel = new User();
+        // ✅ Получаем User из контейнера
+        $userModel = $this->container->get(User::class);
         
         if ($userModel->isBanned($userId)) {
             // Получаем информацию о бане
@@ -34,25 +53,25 @@ class BanCheckMiddleware implements MiddlewareInterface
                 $message .= ' Срок до: ' . date('d.m.Y H:i', strtotime($banInfo['expires_at']));
             }
             
-            // Логируем попытку доступа
-            if (class_exists(\App\Core\Audit::class)) {
-                \App\Core\Audit::log('security.banned_access', 'Попытка доступа забаненного пользователя', 'security', [
-                    'user_id' => $userId,
-                    'url' => $_SERVER['REQUEST_URI'] ?? '/',
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-                ]);
-            }
+            // ✅ Логируем через внедрённый Audit
+            $audit = $this->container->get(Audit::class);
+            $audit->log('security.banned_access', 'Попытка доступа забаненного пользователя', 'security', [
+                'user_id' => $userId,
+                'url' => $_SERVER['REQUEST_URI'] ?? '/',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+            ]);
             
-            // Очищаем сессию (кроме flash-сообщения)
+            // ✅ Очищаем сессию через Session
+            $session = $this->container->get(Session::class);
             $flash = $_SESSION['flash'] ?? null;
-            session_destroy();
+            $session->destroy();
             session_start();
             
             if ($flash) {
                 $_SESSION['flash'] = $flash;
             }
             
-            Session::setFlash('error', $message);
+            $session->flash('error', $message);
             header('Location: /');
             exit;
         }

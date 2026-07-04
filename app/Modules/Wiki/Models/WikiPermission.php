@@ -28,18 +28,15 @@ class WikiPermission extends Model
      */
     public function getUserPermission(int $tagId, int $userId): ?array
     {
-        $sql = "SELECT * FROM {$this->table}
-                WHERE tag_id = :tag_id AND user_id = :user_id
-                LIMIT 1";
-
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute([
-            'tag_id' => $tagId,
-            'user_id' => $userId
-        ]);
-
-        $permission = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $permission ?: null;
+        return $this->db->fetchOne(
+            "SELECT * FROM {$this->table}
+             WHERE tag_id = :tag_id AND user_id = :user_id
+             LIMIT 1",
+            [
+                'tag_id' => $tagId,
+                'user_id' => $userId
+            ]
+        );
     }
 
     /**
@@ -53,10 +50,7 @@ class WikiPermission extends Model
                 WHERE wp.tag_id = :tag_id
                 ORDER BY u.username ASC";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['tag_id' => $tagId]);
-
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->db->fetchAll($sql, ['tag_id' => $tagId]);
     }
 
     /**
@@ -73,9 +67,10 @@ class WikiPermission extends Model
      */
     public function deleteForTag(int $tagId): void
     {
-        $sql = "DELETE FROM {$this->table} WHERE tag_id = :tag_id";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['tag_id' => $tagId]);
+        $this->db->execute(
+            "DELETE FROM {$this->table} WHERE tag_id = :tag_id",
+            ['tag_id' => $tagId]
+        );
     }
 
     /**
@@ -83,9 +78,10 @@ class WikiPermission extends Model
      */
     public function deleteForUser(int $userId): void
     {
-        $sql = "DELETE FROM {$this->table} WHERE user_id = :user_id";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['user_id' => $userId]);
+        $this->db->execute(
+            "DELETE FROM {$this->table} WHERE user_id = :user_id",
+            ['user_id' => $userId]
+        );
     }
 
     /**
@@ -93,10 +89,9 @@ class WikiPermission extends Model
      */
     public function getEditorsCount(int $tagId): int
     {
-        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE tag_id = :tag_id";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['tag_id' => $tagId]);
-
-        return (int)$stmt->fetchColumn();
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM {$this->table} WHERE tag_id = :tag_id",
+            ['tag_id' => $tagId]
+        );
     }
 }

@@ -6,6 +6,8 @@ namespace App\Modules\Admin\Controllers;
 
 use App\Core\Controller;
 use App\Core\Session;
+use App\Core\Audit;
+use App\Core\Logger;
 use App\Modules\Auth\Services\Auth;
 use App\Modules\Admin\Services\AdminUserService;
 use App\Modules\Admin\Services\AdminTagService;
@@ -14,9 +16,46 @@ use App\Modules\Admin\Services\AdminAuditService;
 use App\Modules\Admin\Services\AdminToolsService;
 use App\Modules\Admin\Services\AdminFirewallService;
 use App\Modules\Admin\Services\AdminInvitationService;
+use App\Modules\Wiki\Models\WikiPage;
 
 class AdminController extends Controller
 {
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * ✅ Хелпер: получить Session из контейнера
+     */
+    private function session(): Session
+    {
+        return $this->container->get(Session::class);
+    }
+
+    /**
+     * ✅ Хелпер: получить Audit из контейнера
+     */
+    private function audit(): Audit
+    {
+        return $this->container->get(Audit::class);
+    }
+
+    /**
+     * ✅ Хелпер: получить Logger из контейнера
+     */
+    private function logger(): Logger
+    {
+        return $this->container->get(Logger::class);
+    }
+
+    /**
+     * ✅ Хелпер: получить WikiPage из контейнера
+     */
+    private function wikiPage(): WikiPage
+    {
+        return $this->container->get(WikiPage::class);
+    }
+
     // =========================================================================
     // DASHBOARD
     // =========================================================================
@@ -39,7 +78,6 @@ class AdminController extends Controller
     public function users(): void
     {
         $user = $this->service(AdminUserService::class)->getAllUsers();
-
 
         $this->render('users_list', [
             'title' => 'Управление пользователями',
@@ -79,7 +117,8 @@ class AdminController extends Controller
             'bio' => $this->request->getParams('bio'),
         ]);
 
-        Session::setFlash('success', 'Данные профиля пользователя успешно изменены администратором.');
+        // ✅ Используем хелпер
+        $this->session()->flash('success', 'Данные профиля пользователя успешно изменены администратором.');
         $this->redirectBack('/admin/users');
     }
 
@@ -89,7 +128,7 @@ class AdminController extends Controller
         $success = $this->service(AdminUserService::class)->archiveUser((int)$id, $userId);
 
         if ($success) {
-            Session::setFlash('success', 'Пользователь успешно отправлен в архив.');
+            $this->session()->flash('success', 'Пользователь успешно отправлен в архив.');
         }
 
         $this->redirectBack('/admin/users');
@@ -98,7 +137,7 @@ class AdminController extends Controller
     public function restoreUser(string $id): void
     {
         $this->service(AdminUserService::class)->restoreUser((int)$id);
-        Session::setFlash('success', 'Аккаунт пользователя успешно восстановлен из архива.');
+        $this->session()->flash('success', 'Аккаунт пользователя успешно восстановлен из архива.');
 
         $this->redirectBack('/admin/users');
     }
@@ -111,11 +150,11 @@ class AdminController extends Controller
         if ($result === -2) {
             // Уже установлена ошибка в сервисе
         } elseif ($result === -1) {
-            Session::setFlash('error', 'Пользователь не найден.');
+            $this->session()->flash('error', 'Пользователь не найден.');
         } elseif ($result === 0) {
-            Session::setFlash('success', 'Пользователь успешно заблокирован.');
+            $this->session()->flash('success', 'Пользователь успешно заблокирован.');
         } else {
-            Session::setFlash('success', 'Доступ для пользователя успешно восстановлен.');
+            $this->session()->flash('success', 'Доступ для пользователя успешно восстановлен.');
         }
 
         $this->redirectBack('/admin/users');
@@ -126,7 +165,7 @@ class AdminController extends Controller
         $userId = (int)$id;
 
         if ($this->service(AdminUserService::class)->deleteUserAvatar($userId)) {
-            Session::setFlash('success', 'Аватар пользователя успешно удален.');
+            $this->session()->flash('success', 'Аватар пользователя успешно удален.');
         }
 
         header("Location: /admin/users/{$userId}/edit");
@@ -164,7 +203,7 @@ class AdminController extends Controller
         ]);
 
         if ($result) {
-            Session::setFlash('success', "Тег успешно добавлен.");
+            $this->session()->flash('success', "Тег успешно добавлен.");
             $this->redirectBack('/admin/tags');
         }
 
@@ -199,7 +238,7 @@ class AdminController extends Controller
         ]);
 
         if ($success) {
-            Session::setFlash('success', "Параметры тега сохранены.");
+            $this->session()->flash('success', "Параметры тега сохранены.");
             $this->redirectBack('/admin/tags');
         }
 
@@ -212,9 +251,9 @@ class AdminController extends Controller
         $success = $this->service(AdminTagService::class)->softDeleteTag($tagId);
 
         if ($success) {
-            Session::setFlash('success', "Тег успешно удален (перемещен в архив).");
+            $this->session()->flash('success', "Тег успешно удален (перемещен в архив).");
         } else {
-            Session::setFlash('error', "Не удалось удалить тег.");
+            $this->session()->flash('error', "Не удалось удалить тег.");
         }
 
         $this->redirectBack('/admin/tags');
@@ -226,9 +265,9 @@ class AdminController extends Controller
         $success = $this->service(AdminTagService::class)->restoreTag($tagId);
 
         if ($success) {
-            Session::setFlash('success', "Тег успешно восстановлен.");
+            $this->session()->flash('success', "Тег успешно восстановлен.");
         } else {
-            Session::setFlash('error', "Не удалось восстановить тег.");
+            $this->session()->flash('error', "Не удалось восстановить тег.");
         }
 
         $this->redirectBack('/admin/tags');
@@ -264,7 +303,7 @@ class AdminController extends Controller
         ]);
 
         if ($result) {
-            Session::setFlash('success', "Категория успешно создана.");
+            $this->session()->flash('success', "Категория успешно создана.");
             $this->redirectBack('/admin/categories');
         }
 
@@ -276,7 +315,7 @@ class AdminController extends Controller
         $category = $this->service(AdminCategoryService::class)->getCategoryById((int)$id);
 
         if (!$category) {
-            Session::setFlash('error', 'Категория не найдена.');
+            $this->session()->flash('error', 'Категория не найдена.');
             $this->redirectBack('/admin/categories');
         }
 
@@ -298,7 +337,7 @@ class AdminController extends Controller
         ]);
 
         if ($success) {
-            Session::setFlash('success', "Категория успешно обновлена.");
+            $this->session()->flash('success', "Категория успешно обновлена.");
             $this->redirectBack('/admin/categories');
         } else {
             header("Location: /admin/categories/{$categoryId}/edit");
@@ -309,102 +348,107 @@ class AdminController extends Controller
     public function deleteCategory(string $id): void
     {
         if ($this->service(AdminCategoryService::class)->deleteCategory((int)$id)) {
-            Session::setFlash('success', "Категория успешно удалена.");
+            $this->session()->flash('success', "Категория успешно удалена.");
         }
 
         $this->redirectBack('/admin/categories');
     }
 
-	// =========================================================================
-	// WIKI СТРАНИЦЫ
-	// =========================================================================
+    // =========================================================================
+    // WIKI СТРАНИЦЫ
+    // =========================================================================
 
-	/**
-	 * Список всех wiki страниц
-	 */
-	public function wikiIndex(): void
-	{
-		$wikiPage = new \App\Modules\Wiki\Models\WikiPage();
-		
-		$page = max(1, (int)$this->request->query('page', 1));
-		$perPage = 50;
-		$offset = ($page - 1) * $perPage;
-		
-		$pages = $wikiPage->getAllPagesWithTags($perPage, $offset);
-		$totalPages = $wikiPage->getTotalPagesCount();
-		$deletedPages = $wikiPage->getDeletedPagesCount();
-		
-		$this->render('wiki_list', [
-			'title' => 'Управление Wiki страницами',
-			'pages' => $pages,
-			'currentPage' => $page,
-			'perPage' => $perPage,
-			'totalPages' => $totalPages,
-			'deletedPages' => $deletedPages,
-			'totalPagesCount' => ceil($totalPages / $perPage),
-		]);
-	}
+    /**
+     * Список всех wiki страниц
+     */
+    public function wikiIndex(): void
+    {
+        // ✅ Получаем WikiPage из контейнера через хелпер
+        $wikiPage = $this->wikiPage();
+        
+        $page = max(1, (int)$this->request->query('page', 1));
+        $perPage = 50;
+        $offset = ($page - 1) * $perPage;
+        
+        $pages = $wikiPage->getAllPagesWithTags($perPage, $offset);
+        $totalPages = $wikiPage->getTotalPagesCount();
+        $deletedPages = $wikiPage->getDeletedPagesCount();
+        
+        $this->render('wiki_list', [
+            'title' => 'Управление Wiki страницами',
+            'pages' => $pages,
+            'currentPage' => $page,
+            'perPage' => $perPage,
+            'totalPages' => $totalPages,
+            'deletedPages' => $deletedPages,
+            'totalPagesCount' => ceil($totalPages / $perPage),
+        ]);
+    }
 
-	/**
-	 * Мягкое удаление wiki страницы
-	 */
-	public function deleteWikiPage(string $id): void
-	{
-		$wikiPage = new \App\Modules\Wiki\Models\WikiPage();
-		$page = $wikiPage->findWithDeleted((int)$id);
-		
-		if (!$page) {
-			Session::setFlash('error', 'Wiki страница не найдена');
-			$this->redirectBack('/admin/wiki');
-		}
-		
-		if ($wikiPage->softDelete((int)$id)) {
-			\App\Core\Audit::log('admin.wiki.deleted', 'Wiki страница удалена администратором', 'wiki', [
-				'page_id' => (int)$id,
-				'title' => $page['title'],
-				'admin_id' => \App\Modules\Auth\Services\Auth::id(),
-			]);
-			
-			Session::setFlash('success', "Wiki страница «{$page['title']}» удалена");
-		} else {
-			Session::setFlash('error', 'Ошибка при удалении wiki страницы');
-		}
-		
-		$this->redirectBack('/admin/wiki');
-	}
+    /**
+     * Мягкое удаление wiki страницы
+     */
+    public function deleteWikiPage(string $id): void
+    {
+        // ✅ Получаем WikiPage из контейнера
+        $wikiPage = $this->wikiPage();
+        $page = $wikiPage->findWithDeleted((int)$id);
+        
+        if (!$page) {
+            $this->session()->flash('error', 'Wiki страница не найдена');
+            $this->redirectBack('/admin/wiki');
+        }
+        
+        if ($wikiPage->softDelete((int)$id)) {
+            // ✅ Получаем Audit из контейнера
+            $this->audit()->log('admin.wiki.deleted', 'Wiki страница удалена администратором', 'wiki', [
+                'page_id' => (int)$id,
+                'title' => $page['title'],
+                'admin_id' => Auth::id(),
+            ]);
+            
+            $this->session()->flash('success', "Wiki страница «{$page['title']}» удалена");
+        } else {
+            $this->session()->flash('error', 'Ошибка при удалении wiki страницы');
+        }
+        
+        $this->redirectBack('/admin/wiki');
+    }
 
-	/**
-	 * Восстановить wiki страницу
-	 */
-	public function restoreWikiPage(string $id): void
-	{
-		$wikiPage = new \App\Modules\Wiki\Models\WikiPage();
-		$page = $wikiPage->findWithDeleted((int)$id);
-		
-		if (!$page) {
-			Session::setFlash('error', 'Wiki страница не найдена');
-			$this->redirectBack('/admin/wiki');
-		}
-		
-		if ($wikiPage->restore((int)$id)) {
-			\App\Core\Audit::log('admin.wiki.restored', 'Wiki страница восстановлена администратором', 'wiki', [
-				'page_id' => (int)$id,
-				'title' => $page['title'],
-				'admin_id' => \App\Modules\Auth\Services\Auth::id(),
-			]);
-			
-			Session::setFlash('success', "Wiki страница «{$page['title']}» восстановлена");
-		} else {
-			Session::setFlash('error', 'Ошибка при восстановлении wiki страницы');
-		}
-		
-		$this->redirectBack('/admin/wiki');
-	}
-
+    /**
+     * Восстановить wiki страницу
+     */
+    public function restoreWikiPage(string $id): void
+    {
+        // ✅ Получаем WikiPage из контейнера
+        $wikiPage = $this->wikiPage();
+        $page = $wikiPage->findWithDeleted((int)$id);
+        
+        if (!$page) {
+            $this->session()->flash('error', 'Wiki страница не найдена');
+            $this->redirectBack('/admin/wiki');
+        }
+        
+        if ($wikiPage->restore((int)$id)) {
+            // ✅ Получаем Audit из контейнера
+            $this->audit()->log('admin.wiki.restored', 'Wiki страница восстановлена администратором', 'wiki', [
+                'page_id' => (int)$id,
+                'title' => $page['title'],
+                'admin_id' => Auth::id(),
+            ]);
+            
+            $this->session()->flash('success', "Wiki страница «{$page['title']}» восстановлена");
+        } else {
+            $this->session()->flash('error', 'Ошибка при восстановлении wiki страницы');
+        }
+        
+        $this->redirectBack('/admin/wiki');
+    }
 
     // =========================================================================
     // АУДИТ
     // =========================================================================
+
     public function auditLogs(): void
     {
         $filterUserIdRaw = $this->request->query('filter_user_id');
@@ -431,7 +475,9 @@ class AdminController extends Controller
         $perPage = 25;
         $offset = ($currentPage - 1) * $perPage;
 
-        $logs = $this->service(AdminAuditService::class)->getFilteredLogs(
+        $auditService = $this->service(AdminAuditService::class);
+        
+        $logs = $auditService->getFilteredLogs(
             $perPage,
             $offset,
             $filterUserId,
@@ -439,19 +485,21 @@ class AdminController extends Controller
             $searchQuery,
             $filterCategory
         );
-        $totalLogs = $this->service(AdminAuditService::class)->getFilteredCount(
+        
+        $totalLogs = $auditService->getFilteredCount(
             $filterUserId,
             $filterAction,
             $searchQuery,
             $filterCategory
         );
+        
         $totalPages = max(1, (int)ceil($totalLogs / $perPage));
 
         $this->render('audit_list', [
             'title' => 'Журнал аудита системы',
             'logs' => $logs,
-            'uniqueActions' => $this->service(AdminAuditService::class)->getUniqueActions(),
-            'uniqueCategories' => $this->service(AdminAuditService::class)->getUniqueCategories(),
+            'uniqueActions' => $auditService->getUniqueActions(),
+            'uniqueCategories' => $auditService->getUniqueCategories(),
             'currentPage' => $currentPage,
             'totalPages' => $totalPages,
             'currentFilters' => [
@@ -469,7 +517,6 @@ class AdminController extends Controller
             ]
         ]);
     }
-
 
     public function getSecurityAlertsApi(): void
     {
@@ -502,12 +549,12 @@ class AdminController extends Controller
         $reason = trim($this->request->getParams('reason')) ?: 'Нарушение правил сообщества';
 
         if ($this->service(AdminFirewallService::class)->banIp($ip, $reason)) {
-            Session::setFlash('success', "IP-адрес {$ip} успешно внесен в черный список.");
+            $this->session()->flash('success', "IP-адрес {$ip} успешно внесен в черный список.");
         } else {
             if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-                Session::setFlash('error', 'Указан некорректный IP-адрес.');
+                $this->session()->flash('error', 'Указан некорректный IP-адрес.');
             } else {
-                Session::setFlash('error', 'Этот IP-адрес уже заблокирован.');
+                $this->session()->flash('error', 'Этот IP-адрес уже заблокирован.');
             }
         }
 
@@ -519,7 +566,7 @@ class AdminController extends Controller
         $ip = $this->service(AdminFirewallService::class)->unbanIp((int)$id);
 
         if ($ip) {
-            Session::setFlash('success', "IP-адрес {$ip} успешно разблокирован.");
+            $this->session()->flash('success', "IP-адрес {$ip} успешно разблокирован.");
         }
 
         $this->redirectBack('/admin/firewall');
@@ -539,7 +586,7 @@ class AdminController extends Controller
     public function compileAssets(): void
     {
         $this->service(AdminToolsService::class)->compileAssets();
-        Session::setFlash('success', 'Все CSS файлы модулей успешно найдены, объединены и сжаты силами PHP!');
+        $this->session()->flash('success', 'Все CSS файлы модулей успешно найдены, объединены и сжаты силами PHP!');
 
         $this->redirectBack('/admin/tools');
     }
@@ -547,7 +594,7 @@ class AdminController extends Controller
     public function clearFileLogs(): void
     {
         $count = $this->service(AdminToolsService::class)->clearFileLogs();
-        Session::setFlash('success', "Текстовые логи успешно очищены (обнулено файлов: {$count}).");
+        $this->session()->flash('success', "Текстовые логи успешно очищены (обнулено файлов: {$count}).");
 
         $this->redirectBack('/admin/tools');
     }
@@ -555,10 +602,11 @@ class AdminController extends Controller
     public function clearDbAudit(): void
     {
         if ($this->service(AdminAuditService::class)->clearAuditLogs()) {
-            \App\Core\Audit::log('admin.tools_clear_db', 'Администратор выполнил полную очистку (TRUNCATE) таблицы аудита в базе данных', 'admin');
-            Session::setFlash('success', 'Таблица логов аудита в базе данных успешно и полностью очищена.');
+            // ✅ Получаем Audit из контейнера
+            $this->audit()->log('admin.tools_clear_db', 'Администратор выполнил полную очистку (TRUNCATE) таблицы аудита в базе данных', 'admin');
+            $this->session()->flash('success', 'Таблица логов аудита в базе данных успешно и полностью очищена.');
         } else {
-            Session::setFlash('error', 'Не удалось очистить таблицу в БД.');
+            $this->session()->flash('error', 'Не удалось очистить таблицу в БД.');
         }
 
         $this->redirectBack('/admin/tools');
@@ -568,7 +616,7 @@ class AdminController extends Controller
     {
         global $router;
         $this->service(AdminToolsService::class)->cacheRoutes($router);
-        Session::setFlash('success', 'Маршруты всех модулей успешно оптимизированы и сохранены в кэш-файл.');
+        $this->session()->flash('success', 'Маршруты всех модулей успешно оптимизированы и сохранены в кэш-файл.');
 
         $this->redirectBack('/admin/tools');
     }
@@ -577,7 +625,7 @@ class AdminController extends Controller
     {
         global $router;
         $this->service(AdminToolsService::class)->clearCacheRoutes($router);
-        Session::setFlash('success', 'Кэш маршрутов успешно сброшен.');
+        $this->session()->flash('success', 'Кэш маршрутов успешно сброшен.');
 
         $this->redirectBack('/admin/tools');
     }
@@ -587,16 +635,16 @@ class AdminController extends Controller
         $email = $this->request->getParams('email');
 
         if (!$email) {
-            Session::setFlash('error', 'Не удалось определить email администратора.');
+            $this->session()->flash('error', 'Не удалось определить email администратора.');
             $this->redirectBack('/admin/tools');
         }
 
         $error = $this->service(AdminToolsService::class)->sendTestEmail($email);
 
         if ($error === null) {
-            Session::setFlash('success', 'Тестовое письмо отправлено успешно на ' . e($email));
+            $this->session()->flash('success', 'Тестовое письмо отправлено успешно на ' . e($email));
         } else {
-            Session::setFlash('error', $error);
+            $this->session()->flash('error', $error);
         }
 
         $this->redirectBack('/admin/tools');
@@ -626,8 +674,8 @@ class AdminController extends Controller
                 'nextOffset' => $result['nextOffset'],
             ]);
         } catch (\Exception $e) {
-            // Логируем ошибку
-            \App\Core\Logger::error('Recalculate confidence score error', [
+            // ✅ Используем хелпер для логирования
+            $this->logger()->error('Recalculate confidence score error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -645,7 +693,8 @@ class AdminController extends Controller
 
     public function invitationsIndex(): void
     {
-        $status = $_GET['status'] ?? 'pending';
+        // ✅ Используем request вместо $_GET
+        $status = $this->request->query('status', 'pending');
 
         $this->render('invitations', [
             'title' => 'Запросы приглашений',
@@ -657,9 +706,9 @@ class AdminController extends Controller
     public function approveInvitation(int $id): void
     {
         if ($this->service(AdminInvitationService::class)->approveRequest($id)) {
-            Session::setFlash('success', 'Запрос одобрен.');
+            $this->session()->flash('success', 'Запрос одобрен.');
         } else {
-            Session::setFlash('error', 'Не удалось одобрить запрос.');
+            $this->session()->flash('error', 'Не удалось одобрить запрос.');
         }
 
         $this->redirectBack('/admin/invitations?status=pending');
@@ -668,9 +717,9 @@ class AdminController extends Controller
     public function rejectInvitation(int $id): void
     {
         if ($this->service(AdminInvitationService::class)->rejectRequest($id)) {
-            Session::setFlash('success', 'Запрос отклонён.');
+            $this->session()->flash('success', 'Запрос отклонён.');
         } else {
-            Session::setFlash('error', 'Не удалось отклонить запрос.');
+            $this->session()->flash('error', 'Не удалось отклонить запрос.');
         }
 
         $this->redirectBack('/admin/invitations?status=pending');

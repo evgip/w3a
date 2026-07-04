@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Invitations;
 
 use App\Core\Container;
+use App\Core\Database;
+use App\Core\Logger;
+use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 use App\Modules\Invitations\Models\Invitation;
 use App\Modules\Invitations\Models\InvitationRequest;
 
@@ -17,11 +20,30 @@ use App\Modules\Invitations\Models\InvitationRequest;
  * Cross-module зависимости:
  * - User (из Users) — уже зарегистрирован в Users\ModuleServiceProvider
  */
-class ModuleServiceProvider
+class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     public function register(Container $container): void
     {
-        $container->singleton(Invitation::class, fn() => new Invitation());
-        $container->singleton(InvitationRequest::class, fn() => new InvitationRequest());
+        parent::register($container);
+
+        // ✅ Передаём Database и Logger в конструкторы моделей
+        $container->singleton(Invitation::class, function (Container $c) {
+            return new Invitation(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
+
+        $container->singleton(InvitationRequest::class, function (Container $c) {
+            return new InvitationRequest(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
+    }
+
+    public function boot(): void
+    {
+        // Регистрация слушателей событий, если есть
     }
 }

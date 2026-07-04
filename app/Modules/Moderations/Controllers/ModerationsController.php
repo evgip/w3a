@@ -14,24 +14,21 @@ use App\Modules\Auth\Services\Auth;
 
 /**
  * Контроллер модерации.
- *
- * Отвечает только за:
- *  - Получение параметров из запроса
- *  - Вызов сервиса
- *  - Редирект или рендеринг
- *
- * Вся бизнес-логика — в ModerationService.
  */
 class ModerationsController extends Controller
 {
+    /**
+     * ✅ Хелпер: получить Session из контейнера
+     */
+    private function session(): Session
+    {
+        return $this->container->get(Session::class);
+    }
+
     // ==========================================
     // /mod/log — Публичный лог модерации
     // ==========================================
 
-    /**
-     * Отображение публичного лога модерации.
-     * Берёт записи из audit_logs с категорией 'moderation'.
-     */
     public function log(): void
     {
         $page = max(1, (int)$this->request->query('page', 1));
@@ -43,7 +40,6 @@ class ModerationsController extends Controller
         $total = $auditLog->countByCategory('moderation');
         $pages = max(1, (int)ceil($total / $perPage));
 
-        // Декодируем payload для шаблона
         foreach ($items as &$item) {
             $item['decoded_payload'] = !empty($item['payload'])
                 ? json_decode($item['payload'], true)
@@ -63,9 +59,6 @@ class ModerationsController extends Controller
     // /mod/notes — Приватные заметки модераторов
     // ==========================================
 
-    /**
-     * Отображение списка заметок модераторов.
-     */
     public function notes(): void
     {
         $model = $this->service(ModNote::class);
@@ -86,15 +79,9 @@ class ModerationsController extends Controller
     // POST /mod/notes/store — Добавить заметку
     // ==========================================
 
-    /**
-     * Добавление модераторской заметки.
-     *
-     * Контроллер только получает параметры и вызывает сервис.
-     * Валидация, сохранение, событие и flash — в ModerationService.
-     */
     public function storeNote(): void
     {
-        $result = $this->service(ModerationService::class)->addNote(
+        $this->service(ModerationService::class)->addNote(
             (int)$this->request->post('user_id'),
             Auth::id(),
             (string)($this->request->post('note') ?? ''),
@@ -108,11 +95,6 @@ class ModerationsController extends Controller
     // POST /mod/notes/{id}/delete — Удалить заметку
     // ==========================================
 
-    /**
-     * Удаление модераторской заметки.
-     *
-     * @param string $id ID заметки
-     */
     public function deleteNote(string $id): void
     {
         $this->service(ModerationService::class)->deleteNote((int)$id);
@@ -123,9 +105,6 @@ class ModerationsController extends Controller
     // /mod/stats — Статистика активности
     // ==========================================
 
-    /**
-     * Статистика активности модераторов (только админ/мод).
-     */
     public function stats(): void
     {
         $activity = $this->service(ModActivity::class);
@@ -141,14 +120,6 @@ class ModerationsController extends Controller
     // POST /mod/ban/{id} — Бан/разбан пользователя
     // ==========================================
 
-    /**
-     * Бан или разбан пользователя.
-     *
-     * Контроллер определяет действие и вызывает нужный метод сервиса.
-     * Вся бизнес-логика (проверки, модели, события, flash) — в ModerationService.
-     *
-     * @param string $id ID целевого пользователя
-     */
     public function banUser(string $id): void
     {
         $targetUserId = (int)$id;
@@ -163,109 +134,94 @@ class ModerationsController extends Controller
         } elseif ($action === 'unban') {
             $result = $service->unbanUser($targetUserId, $currentUserId);
         } else {
-            Session::setFlash('error', 'Неизвестное действие.');
+            // ✅ Используем хелпер
+            $this->session()->flash('error', 'Неизвестное действие.');
             $this->redirectBack();
             return;
         }
 
         if ($result === null) {
-            // Flash-сообщение уже установлено в сервисе
             $this->redirectBack();
             return;
         }
 
-        // Редирект на профиль пользователя
         $this->redirect('/user/' . $result['username']);
     }
-	
-	// ==========================================
-	// /mod/suggestions — Список предложений
-	// ==========================================
+    
+    // ==========================================
+    // /mod/suggestions — Список предложений
+    // ==========================================
 
-	/**
-	 * Отображение списка активных предложений (только для модераторов).
-	 */
-	public function suggestions(): void
-	{
-	 
-		$page = max(1, (int)$this->request->query('page', 1));
-		$perPage = 30;
-		$offset = ($page - 1) * $perPage;
-		$filter = $this->request->query('type', '');
+    public function suggestions(): void
+    {
+        $page = max(1, (int)$this->request->query('page', 1));
+        $perPage = 30;
+        $offset = ($page - 1) * $perPage;
+        $filter = $this->request->query('type', '');
 
-		$suggestionService = $this->service(\App\Modules\Suggestions\Services\SuggestionService::class);
-		
-		// Получаем предложения с фильтром
-		$suggestions = $suggestionService->getAllActiveSuggestions($perPage, $offset, $filter);
-		$total = $suggestionService->countAllActiveSuggestions($filter);
-		$pages = max(1, (int)ceil($total / $perPage));
+        $suggestionService = $this->service(\App\Modules\Suggestions\Services\SuggestionService::class);
+        
+        $suggestions = $suggestionService->getAllActiveSuggestions($perPage, $offset, $filter);
+        $total = $suggestionService->countAllActiveSuggestions($filter);
+        $pages = max(1, (int)ceil($total / $perPage));
 
-		// Счетчики для фильтров
-		$totalCount = $suggestionService->countAllActiveSuggestions('');
-		$storiesCount = $suggestionService->countAllActiveSuggestions('Story');
-		$commentsCount = $suggestionService->countAllActiveSuggestions('Comment');
-		
-		$this->render('suggestions', [
-			'title' => 'Предложения на рассмотрении',
-			'suggestions' => $suggestions,
-			'total' => $total,
-			'pages' => $pages,
-			'current_page' => $page,
-			'filter' => $filter,
-			'totalCount' => $totalCount,
-			'storiesCount' => $storiesCount,
-			'commentsCount' => $commentsCount
-		]);
-	}
+        $totalCount = $suggestionService->countAllActiveSuggestions('');
+        $storiesCount = $suggestionService->countAllActiveSuggestions('Story');
+        $commentsCount = $suggestionService->countAllActiveSuggestions('Comment');
+        
+        $this->render('suggestions', [
+            'title' => 'Предложения на рассмотрении',
+            'suggestions' => $suggestions,
+            'total' => $total,
+            'pages' => $pages,
+            'current_page' => $page,
+            'filter' => $filter,
+            'totalCount' => $totalCount,
+            'storiesCount' => $storiesCount,
+            'commentsCount' => $commentsCount
+        ]);
+    }
 
-	// ==========================================
-	// POST /mod/suggestions/{id}/approve
-	// ==========================================
+    // ==========================================
+    // POST /mod/suggestions/{id}/approve
+    // ==========================================
 
-	/**
-	 * Одобрить предложение (только для модераторов).
-	 *
-	 * @param string $id ID предложения
-	 */
-	public function approveSuggestion(string $id): void
-	{
-		$suggestionId = (int)$id;
-		
-		try {
-			$this->service(\App\Modules\Suggestions\Services\SuggestionService::class)
-				->approveSuggestion($suggestionId, \App\Modules\Auth\Services\Auth::id());
-			
-			Session::setFlash('success', 'Предложение одобрено и применено.');
-		} catch (\Exception $e) {
-			Session::setFlash('error', $e->getMessage());
-		}
-		
-		$this->redirect('/mod/suggestions');
-	}
+    public function approveSuggestion(string $id): void
+    {
+        $suggestionId = (int)$id;
+        
+        try {
+            $this->service(\App\Modules\Suggestions\Services\SuggestionService::class)
+                ->approveSuggestion($suggestionId, Auth::id());
+            
+            // ✅ Используем хелпер
+            $this->session()->flash('success', 'Предложение одобрено и применено.');
+        } catch (\Exception $e) {
+            $this->session()->flash('error', $e->getMessage());
+        }
+        
+        $this->redirect('/mod/suggestions');
+    }
 
-	// ==========================================
-	// POST /mod/suggestions/{id}/reject
-	// ==========================================
+    // ==========================================
+    // POST /mod/suggestions/{id}/reject
+    // ==========================================
 
-	/**
-	 * Отклонить предложение (только для модераторов).
-	 *
-	 * @param string $id ID предложения
-	 */
-	public function rejectSuggestion(string $id): void
-	{
-		$suggestionId = (int)$id;
-		$reason = trim($this->request->post('reason', ''));
-		
-		try {
-			$this->service(\App\Modules\Suggestions\Services\SuggestionService::class)
-				->rejectSuggestion($suggestionId, \App\Modules\Auth\Services\Auth::id(), $reason);
-			
-			Session::setFlash('success', 'Предложение отклонено.');
-		} catch (\Exception $e) {
-			Session::setFlash('error', $e->getMessage());
-		}
-		
-		$this->redirect('/mod/suggestions');
-	}
+    public function rejectSuggestion(string $id): void
+    {
+        $suggestionId = (int)$id;
+        $reason = trim($this->request->post('reason', ''));
+        
+        try {
+            $this->service(\App\Modules\Suggestions\Services\SuggestionService::class)
+                ->rejectSuggestion($suggestionId, Auth::id(), $reason);
+            
+            // ✅ Используем хелпер
+            $this->session()->flash('success', 'Предложение отклонено.');
+        } catch (\Exception $e) {
+            $this->session()->flash('error', $e->getMessage());
+        }
+        
+        $this->redirect('/mod/suggestions');
+    }
 }

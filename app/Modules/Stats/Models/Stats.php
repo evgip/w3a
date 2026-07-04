@@ -3,6 +3,8 @@
 namespace App\Modules\Stats\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 use App\Core\SvgChart;
 
 class Stats extends Model
@@ -21,26 +23,28 @@ class Stats extends Model
 
     public function getTotalUsers(): int
     {
-        $stmt = static::db()->query("SELECT COUNT(*) FROM `users` WHERE `deleted_at` IS NULL");
-        return (int) $stmt->fetchColumn();
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `users` WHERE `deleted_at` IS NULL"
+        );
     }
 
     public function getTotalStories(): int
     {
-        $stmt = static::db()->query("SELECT COUNT(*) FROM `stories` WHERE `deleted_at` IS NULL");
-        return (int) $stmt->fetchColumn();
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `stories` WHERE `deleted_at` IS NULL"
+        );
     }
 
     public function getTotalComments(): int
     {
-        $stmt = static::db()->query("SELECT COUNT(*) FROM `comments` WHERE `deleted_at` IS NULL");
-        return (int) $stmt->fetchColumn();
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `comments` WHERE `deleted_at` IS NULL"
+        );
     }
 
     public function getTotalVotes(): int
     {
-        $stmt = static::db()->query("SELECT COUNT(*) FROM `votes`");
-        return (int) $stmt->fetchColumn();
+        return (int)$this->db->fetchColumn("SELECT COUNT(*) FROM `votes`");
     }
 
     public function getUsersByMonth(int $months = 12): array
@@ -53,9 +57,7 @@ class Stats extends Model
                 GROUP BY label
                 ORDER BY label ASC";
         
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['months' => $months]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->db->fetchAll($sql, ['months' => $months]);
     }
 
     public function getStoriesByMonth(int $months = 12): array
@@ -68,9 +70,7 @@ class Stats extends Model
                 GROUP BY label
                 ORDER BY label ASC";
         
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['months' => $months]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->db->fetchAll($sql, ['months' => $months]);
     }
 
     public function getCommentsByMonth(int $months = 12): array
@@ -83,9 +83,7 @@ class Stats extends Model
                 GROUP BY label
                 ORDER BY label ASC";
         
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['months' => $months]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->db->fetchAll($sql, ['months' => $months]);
     }
 
     public function getUsersChartSvg(int $months = 12): string

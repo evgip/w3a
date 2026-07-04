@@ -3,6 +3,8 @@
 namespace App\Modules\Origins\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 class Domain extends Model
 {
@@ -26,14 +28,12 @@ class Domain extends Model
             return false;
         }
 
-        $stmt = static::db()->prepare(
-            "SELECT COUNT(*) FROM `{$this->table}`
-             WHERE LOWER(`domain`) = :domain
-               AND `status` = 'banned'
-               AND `deleted_at` IS NULL"
-        );
-        $stmt->execute(['domain' => $domain]);
-        return (int) $stmt->fetchColumn() > 0;
+        $sql = "SELECT COUNT(*) FROM `{$this->table}`
+                WHERE LOWER(`domain`) = :domain
+                  AND `status` = 'banned'
+                  AND `deleted_at` IS NULL";
+
+        return (int)$this->db->fetchColumn($sql, ['domain' => $domain]) > 0;
     }
 
     /**
@@ -46,18 +46,15 @@ class Domain extends Model
             return null;
         }
 
-        $stmt = static::db()->prepare(
-            "SELECT d.*, u.username AS banned_by_name
-             FROM `{$this->table}` d
-             LEFT JOIN `users` u ON d.banned_by = u.id
-             WHERE LOWER(d.`domain`) = :domain
-               AND d.`status` = 'banned'
-               AND d.`deleted_at` IS NULL
-             LIMIT 1"
-        );
-        $stmt->execute(['domain' => $domain]);
-        $result = $stmt->fetch();
-        return $result ?: null;
+        $sql = "SELECT d.*, u.username AS banned_by_name
+                FROM `{$this->table}` d
+                LEFT JOIN `users` u ON d.banned_by = u.id
+                WHERE LOWER(d.`domain`) = :domain
+                  AND d.`status` = 'banned'
+                  AND d.`deleted_at` IS NULL
+                LIMIT 1";
+
+        return $this->db->fetchOne($sql, ['domain' => $domain]);
     }
 
     /**
@@ -102,13 +99,12 @@ class Domain extends Model
     {
         $domain = strtolower(trim($domain));
 
-        $stmt = static::db()->prepare(
-            "UPDATE `{$this->table}`
-             SET `status` = 'allowed', `deleted_at` = NOW()
-             WHERE LOWER(`domain`) = :domain
-               AND `deleted_at` IS NULL"
-        );
-        return $stmt->execute(['domain' => $domain]);
+        $sql = "UPDATE `{$this->table}`
+                SET `status` = 'allowed', `deleted_at` = NOW()
+                WHERE LOWER(`domain`) = :domain
+                  AND `deleted_at` IS NULL";
+
+        return $this->db->execute($sql, ['domain' => $domain]) > 0;
     }
 
     /**
@@ -116,15 +112,14 @@ class Domain extends Model
      */
     public function getBannedDomains(): array
     {
-        $stmt = static::db()->query(
-            "SELECT d.*, u.username AS banned_by_name
-             FROM `{$this->table}` d
-             LEFT JOIN `users` u ON d.banned_by = u.id
-             WHERE d.`status` = 'banned'
-               AND d.`deleted_at` IS NULL
-             ORDER BY d.created_at DESC"
-        );
-        return $stmt->fetchAll();
+        $sql = "SELECT d.*, u.username AS banned_by_name
+                FROM `{$this->table}` d
+                LEFT JOIN `users` u ON d.banned_by = u.id
+                WHERE d.`status` = 'banned'
+                  AND d.`deleted_at` IS NULL
+                ORDER BY d.created_at DESC";
+
+        return $this->db->fetchAll($sql);
     }
 
     /**
@@ -132,14 +127,13 @@ class Domain extends Model
      */
     public function getAllDomains(): array
     {
-        $stmt = static::db()->query(
-            "SELECT d.*, u.username AS banned_by_name
-             FROM `{$this->table}` d
-             LEFT JOIN `users` u ON d.banned_by = u.id
-             WHERE d.`deleted_at` IS NULL
-             ORDER BY d.created_at DESC"
-        );
-        return $stmt->fetchAll();
+        $sql = "SELECT d.*, u.username AS banned_by_name
+                FROM `{$this->table}` d
+                LEFT JOIN `users` u ON d.banned_by = u.id
+                WHERE d.`deleted_at` IS NULL
+                ORDER BY d.created_at DESC";
+
+        return $this->db->fetchAll($sql);
     }
 
     /**
@@ -147,10 +141,9 @@ class Domain extends Model
      */
     public function getBannedCount(): int
     {
-        $stmt = static::db()->query(
-            "SELECT COUNT(*) FROM `{$this->table}`
-             WHERE `status` = 'banned' AND `deleted_at` IS NULL"
-        );
-        return (int) $stmt->fetchColumn();
+        $sql = "SELECT COUNT(*) FROM `{$this->table}`
+                WHERE `status` = 'banned' AND `deleted_at` IS NULL";
+
+        return (int)$this->db->fetchColumn($sql);
     }
 }

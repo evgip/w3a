@@ -9,63 +9,59 @@ use App\Core\Audit;
 
 /**
  * Сервис для управления IP-баном (Firewall).
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
  */
 class AdminFirewallService
 {
-    /**
-     * Получить список заблокированных IP.
-     */
-    public function getBannedIps(): array
+    private Database $db;
+    private Audit $audit;
+
+    public function __construct(Database $db, Audit $audit)
     {
-        $db = Database::getConnection();
-        $stmt = $db->query("SELECT * FROM `banned_ips` ORDER BY id DESC");
-        return $stmt->fetchAll();
+        $this->db = $db;
+        $this->audit = $audit;
     }
 
-    /**
-     * Заблокировать IP-адрес.
-     *
-     * @return bool true если успешно, false если уже заблокирован
-     */
+    public function getBannedIps(): array
+    {
+        return $this->db->fetchAll("SELECT * FROM `banned_ips` ORDER BY id DESC");
+    }
+
     public function banIp(string $ip, string $reason = 'Нарушение правил сообщества'): bool
     {
         if (!filter_var($ip, FILTER_VALIDATE_IP)) {
             return false;
         }
 
-        $db = Database::getConnection();
-
         try {
-            $stmt = $db->prepare("INSERT INTO `banned_ips` (`ip_address`, `reason`) VALUES (:ip, :reason)");
-            $stmt->execute(['ip' => $ip, 'reason' => $reason]);
+            $this->db->execute(
+                "INSERT INTO `banned_ips` (`ip_address`, `reason`) VALUES (:ip, :reason)",
+                ['ip' => $ip, 'reason' => $reason]
+            );
 
-            Audit::log('admin.ip_banned', "Администратор заблокировал IP: {$ip}", 'admin');
+            $this->audit->log('admin.ip_banned', "Администратор заблокировал IP: {$ip}", 'admin');
 
             return true;
         } catch (\Exception $e) {
-            return false; // IP уже заблокирован
+            return false;
         }
     }
 
-    /**
-     * Разблокировать IP-адрес.
-     */
     public function unbanIp(int $id): ?string
     {
-        $db = Database::getConnection();
-
-        $stmt = $db->prepare("SELECT `ip_address` FROM `banned_ips` WHERE `id` = :id");
-        $stmt->execute(['id' => $id]);
-        $ip = $stmt->fetchColumn();
+        $ip = $this->db->fetchColumn(
+            "SELECT `ip_address` FROM `banned_ips` WHERE `id` = :id",
+            ['id' => $id]
+        );
 
         if (!$ip) {
             return null;
         }
 
-        $stmt = $db->prepare("DELETE FROM `banned_ips` WHERE `id` = :id");
-        $stmt->execute(['id' => $id]);
+        $this->db->execute("DELETE FROM `banned_ips` WHERE `id` = :id", ['id' => $id]);
 
-        Audit::log('admin.ip_unbanned', "Администратор разблокировал IP: {$ip}", 'admin');
+        $this->audit->log('admin.ip_unbanned', "Администратор разблокировал IP: {$ip}", 'admin');
 
         return $ip;
     }

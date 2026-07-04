@@ -3,6 +3,8 @@
 namespace App\Modules\Users\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 class User extends Model
 {
@@ -14,7 +16,7 @@ class User extends Model
         'email',
         'password',
         'role',
-		'bio',
+        'bio',
         'is_active'
     ];
 
@@ -23,13 +25,15 @@ class User extends Model
      */
     public function getProfileStats(int $userId): array
     {
-        $storiesStmt = static::db()->prepare("SELECT COUNT(*) FROM `stories` WHERE `user_id` = :uid AND `deleted_at` IS NULL");
-        $storiesStmt->execute(['uid' => $userId]);
-        $storiesCount = (int)$storiesStmt->fetchColumn();
+        $storiesCount = (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `stories` WHERE `user_id` = :uid AND `deleted_at` IS NULL",
+            ['uid' => $userId]
+        );
 
-        $commentsStmt = static::db()->prepare("SELECT COUNT(*) FROM `comments` WHERE `user_id` = :uid AND `deleted_at` IS NULL");
-        $commentsStmt->execute(['uid' => $userId]);
-        $commentsCount = (int)$commentsStmt->fetchColumn();
+        $commentsCount = (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `comments` WHERE `user_id` = :uid AND `deleted_at` IS NULL",
+            ['uid' => $userId]
+        );
 
         return [
             'stories_count'  => $storiesCount,
@@ -42,16 +46,13 @@ class User extends Model
      */
     public function getUserKarma(int $userId): int
     {
-		$stmt = static::db()->prepare("
-			SELECT SUM(total_score) as karma FROM (
-				SELECT SUM(`score`) as total_score FROM `stories` WHERE `user_id` = :uid1 AND `deleted_at` IS NULL
-				UNION ALL
-				SELECT SUM(`score`) as total_score FROM `comments` WHERE `user_id` = :uid2 AND `deleted_at` IS NULL
-			) as combined
-		");
-		$stmt->execute(['uid1' => $userId, 'uid2' => $userId]);
+        $sql = "SELECT SUM(total_score) as karma FROM (
+                    SELECT SUM(`score`) as total_score FROM `stories` WHERE `user_id` = :uid1 AND `deleted_at` IS NULL
+                    UNION ALL
+                    SELECT SUM(`score`) as total_score FROM `comments` WHERE `user_id` = :uid2 AND `deleted_at` IS NULL
+                ) as combined";
 
-		return (int)($stmt->fetchColumn() ?? 0);
+        return (int)($this->db->fetchColumn($sql, ['uid1' => $userId, 'uid2' => $userId]) ?? 0);
     }
     
     /**
@@ -59,14 +60,10 @@ class User extends Model
      */
     public function findByName(string $username): ?array
     {
-        $stmt = static::db()->prepare("
-            SELECT id, username FROM `{$this->table}` 
-            WHERE username = :username AND deleted_at IS NULL
-        ");
-        $stmt->execute(['username' => $username]);
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
-        return $result ?: null;
+        $sql = "SELECT id, username FROM `{$this->table}` 
+                WHERE username = :username AND deleted_at IS NULL";
+
+        return $this->db->fetchOne($sql, ['username' => $username]);
     }
 
     /**
@@ -74,11 +71,11 @@ class User extends Model
      */
     public function getUser(int $userId): ?array
     {
-        $stmt = static::db()->prepare("SELECT username, role FROM `users` WHERE `id` = :id LIMIT 1");
-        $stmt->execute(['id' => $userId]);
-        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+        return $this->db->fetchOne(
+            "SELECT username, role FROM `users` WHERE `id` = :id LIMIT 1",
+            ['id' => $userId]
+        );
     }
-
 
     // ==========================================
     // Методы для работы с user_profiles
@@ -86,9 +83,10 @@ class User extends Model
     
     public function getProfile(int $userId): ?array
     {
-        $stmt = static::db()->prepare("SELECT * FROM `user_profiles` WHERE `user_id` = :id LIMIT 1");
-        $stmt->execute(['id' => $userId]);
-        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+        return $this->db->fetchOne(
+            "SELECT * FROM `user_profiles` WHERE `user_id` = :id LIMIT 1",
+            ['id' => $userId]
+        );
     }
 
     public function updateProfile(int $userId, array $data): bool
@@ -113,8 +111,7 @@ class User extends Model
             $sql = "INSERT INTO `user_profiles` SET " . implode(', ', $fields);
         }
         
-        $stmt = static::db()->prepare($sql);
-        return $stmt->execute($params);
+        return $this->db->execute($sql, $params) > 0;
     }
 
     // ==========================================
@@ -123,9 +120,10 @@ class User extends Model
     
     public function getSettings(int $userId): ?array
     {
-        $stmt = static::db()->prepare("SELECT * FROM `user_settings` WHERE `user_id` = :id LIMIT 1");
-        $stmt->execute(['id' => $userId]);
-        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+        return $this->db->fetchOne(
+            "SELECT * FROM `user_settings` WHERE `user_id` = :id LIMIT 1",
+            ['id' => $userId]
+        );
     }
 
     public function updateSettings(int $userId, array $data): bool
@@ -150,8 +148,7 @@ class User extends Model
             $sql = "INSERT INTO `user_settings` SET " . implode(', ', $fields);
         }
         
-        $stmt = static::db()->prepare($sql);
-        return $stmt->execute($params);
+        return $this->db->execute($sql, $params) > 0;
     }
 
     // ==========================================
@@ -163,130 +160,122 @@ class User extends Model
      */
     public function isBanned(int $userId): bool
     {
-        $stmt = static::db()->prepare("
-            SELECT id FROM `user_bans` 
-            WHERE user_id = :id 
-              AND unbanned_at IS NULL 
-              AND (expires_at IS NULL OR expires_at > NOW())
-            LIMIT 1
-        ");
-        $stmt->execute(['id' => $userId]);
-        return (bool)$stmt->fetch(\PDO::FETCH_ASSOC);
+        $sql = "SELECT id FROM `user_bans` 
+                WHERE user_id = :id 
+                  AND unbanned_at IS NULL 
+                  AND (expires_at IS NULL OR expires_at > NOW())
+                LIMIT 1";
+
+        return (bool)$this->db->fetchOne($sql, ['id' => $userId]);
     }
 
-	/**
-	 * Получить список всех пользователей с информацией о бане.
-	 * Использует LEFT JOIN с user_bans для вычисления is_banned.
-	 * 
-	 * @param bool $withTrashed Включать ли удалённых пользователей
-	 * @return array Массив пользователей с дополнительными полями:
-	 *               - is_banned (0|1)
-	 *               - ban_reason
-	 *               - banned_at
-	 *               - expires_at
-	 *               - banned_by
-	 */
-	public function getAllUsersWithBanStatus(bool $withTrashed = false): array
-	{
-		$deletedCondition = $withTrashed ? '' : 'WHERE u.`deleted_at` IS NULL';
-		
-		$sql = "
-			SELECT 
-				u.*,
-				-- Вычисляем is_banned: 1 если есть активный бан
-				(
-					SELECT COUNT(*) 
-					FROM `user_bans` b 
-					WHERE b.`user_id` = u.id 
-					  AND b.`unbanned_at` IS NULL 
-					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
-				) > 0 AS `is_banned`,
-				-- Причина активного бана
-				(
-					SELECT b.`reason` 
-					FROM `user_bans` b 
-					WHERE b.`user_id` = u.id 
-					  AND b.`unbanned_at` IS NULL 
-					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
-					LIMIT 1
-				) AS `ban_reason`,
-				-- Дата начала активного бана
-				(
-					SELECT b.`created_at` 
-					FROM `user_bans` b 
-					WHERE b.`user_id` = u.id 
-					  AND b.`unbanned_at` IS NULL 
-					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
-					LIMIT 1
-				) AS `banned_at`,
-				-- Дата окончания активного бана (NULL = перманентный)
-				(
-					SELECT b.`expires_at` 
-					FROM `user_bans` b 
-					WHERE b.`user_id` = u.id 
-					  AND b.`unbanned_at` IS NULL 
-					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
-					LIMIT 1
-				) AS `expires_at`,
-				-- ID модератора, который забанил
-				(
-					SELECT b.`banned_by` 
-					FROM `user_bans` b 
-					WHERE b.`user_id` = u.id 
-					  AND b.`unbanned_at` IS NULL 
-					  AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
-					LIMIT 1
-				) AS `banned_by`
-			FROM `users` u
-			{$deletedCondition}
-			ORDER BY u.`created_at` DESC
-		";
-		
-		return static::db()->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
-	}
+    /**
+     * Получить список всех пользователей с информацией о бане.
+     * Использует LEFT JOIN с user_bans для вычисления is_banned.
+     * 
+     * @param bool $withTrashed Включать ли удалённых пользователей
+     * @return array Массив пользователей с дополнительными полями:
+     *               - is_banned (0|1)
+     *               - ban_reason
+     *               - banned_at
+     *               - expires_at
+     *               - banned_by
+     */
+    public function getAllUsersWithBanStatus(bool $withTrashed = false): array
+    {
+        $deletedCondition = $withTrashed ? '' : 'WHERE u.`deleted_at` IS NULL';
+        
+        $sql = "
+            SELECT 
+                u.*,
+                -- Вычисляем is_banned: 1 если есть активный бан
+                (
+                    SELECT COUNT(*) 
+                    FROM `user_bans` b 
+                    WHERE b.`user_id` = u.id 
+                      AND b.`unbanned_at` IS NULL 
+                      AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+                ) > 0 AS `is_banned`,
+                -- Причина активного бана
+                (
+                    SELECT b.`reason` 
+                    FROM `user_bans` b 
+                    WHERE b.`user_id` = u.id 
+                      AND b.`unbanned_at` IS NULL 
+                      AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+                    LIMIT 1
+                ) AS `ban_reason`,
+                -- Дата начала активного бана
+                (
+                    SELECT b.`created_at` 
+                    FROM `user_bans` b 
+                    WHERE b.`user_id` = u.id 
+                      AND b.`unbanned_at` IS NULL 
+                      AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+                    LIMIT 1
+                ) AS `banned_at`,
+                -- Дата окончания активного бана (NULL = перманентный)
+                (
+                    SELECT b.`expires_at` 
+                    FROM `user_bans` b 
+                    WHERE b.`user_id` = u.id 
+                      AND b.`unbanned_at` IS NULL 
+                      AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+                    LIMIT 1
+                ) AS `expires_at`,
+                -- ID модератора, который забанил
+                (
+                    SELECT b.`banned_by` 
+                    FROM `user_bans` b 
+                    WHERE b.`user_id` = u.id 
+                      AND b.`unbanned_at` IS NULL 
+                      AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+                    LIMIT 1
+                ) AS `banned_by`
+            FROM `users` u
+            {$deletedCondition}
+            ORDER BY u.`created_at` DESC
+        ";
+        
+        return $this->db->fetchAll($sql);
+    }
 
     /**
      * Получает информацию об активном бане пользователя.
      */
     public function getBanInfo(int $userId): ?array
     {
-        $stmt = static::db()->prepare("
-            SELECT * FROM `user_bans` 
-            WHERE user_id = :id 
-              AND unbanned_at IS NULL 
-              AND (expires_at IS NULL OR expires_at > NOW())
-            LIMIT 1
-        ");
-        $stmt->execute(['id' => $userId]);
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
-        return $result ?: null;
+        $sql = "SELECT * FROM `user_bans` 
+                WHERE user_id = :id 
+                  AND unbanned_at IS NULL 
+                  AND (expires_at IS NULL OR expires_at > NOW())
+                LIMIT 1";
+
+        return $this->db->fetchOne($sql, ['id' => $userId]);
     }
 
     public function banUser(int $userId, ?int $bannedBy, ?string $reason, ?string $expiresAt = null): bool
     {
-        $stmt = static::db()->prepare("
-            INSERT INTO `user_bans` (`user_id`, `banned_by`, `reason`, `created_at`, `expires_at`) 
-            VALUES (:user_id, :banned_by, :reason, NOW(), :expires_at)
-        ");
-        return $stmt->execute([
+        $sql = "INSERT INTO `user_bans` (`user_id`, `banned_by`, `reason`, `created_at`, `expires_at`) 
+                VALUES (:user_id, :banned_by, :reason, NOW(), :expires_at)";
+
+        return $this->db->execute($sql, [
             'user_id' => $userId,
             'banned_by' => $bannedBy,
             'reason' => $reason,
             'expires_at' => $expiresAt
-        ]);
+        ]) > 0;
     }
 
     public function unbanUser(int $userId, ?int $unbannedBy): bool
     {
-        $stmt = static::db()->prepare("
-            UPDATE `user_bans` 
-            SET `unbanned_at` = NOW(), `unbanned_by` = :unbanned_by 
-            WHERE `user_id` = :user_id AND `unbanned_at` IS NULL
-        ");
-        return $stmt->execute([
+        $sql = "UPDATE `user_bans` 
+                SET `unbanned_at` = NOW(), `unbanned_by` = :unbanned_by 
+                WHERE `user_id` = :user_id AND `unbanned_at` IS NULL";
+
+        return $this->db->execute($sql, [
             'user_id' => $userId,
             'unbanned_by' => $unbannedBy
-        ]);
+        ]) > 0;
     }
 }

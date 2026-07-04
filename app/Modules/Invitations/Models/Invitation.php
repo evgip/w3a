@@ -8,9 +8,6 @@ class Invitation extends Model
 {
     protected string $table = 'invitations';
 
-    /**
-     * Поля, разрешённые для массового присваивания
-     */
     protected array $fillable = [
         'code',
         'inviter_id',
@@ -25,7 +22,7 @@ class Invitation extends Model
      */
     public static function generateCode(): string
     {
-        return bin2hex(random_bytes(16)); // 32 символа
+        return bin2hex(random_bytes(16));
     }
 
     /**
@@ -90,15 +87,14 @@ class Invitation extends Model
      */
     public function getUserInvitations(int $userId): array
     {
-        $stmt = static::db()->prepare("
+        // ✅ Используем $this->db->fetchAll()
+        return $this->db->fetchAll("
             SELECT i.*, u.username as invitee_username
             FROM invitations i
             LEFT JOIN users u ON i.invitee_id = u.id
             WHERE i.inviter_id = :user_id
             ORDER BY i.created_at DESC
-        ");
-        $stmt->execute(['user_id' => $userId]);
-        return $stmt->fetchAll();
+        ", ['user_id' => $userId]);
     }
 
     /**
@@ -106,15 +102,13 @@ class Invitation extends Model
      */
     public function getActiveInvitations(int $userId): array
     {
-        $stmt = static::db()->prepare("
+        return $this->db->fetchAll("
             SELECT * FROM invitations
             WHERE inviter_id = :user_id
             AND status = 'pending'
             AND expires_at > NOW()
             ORDER BY created_at DESC
-        ");
-        $stmt->execute(['user_id' => $userId]);
-        return $stmt->fetchAll();
+        ", ['user_id' => $userId]);
     }
 
     /**
@@ -139,14 +133,12 @@ class Invitation extends Model
      */
     public function countActiveInvitations(int $userId): int
     {
-        $stmt = static::db()->prepare("
+        return (int)$this->db->fetchColumn("
             SELECT COUNT(*) FROM invitations
             WHERE inviter_id = :user_id
             AND status = 'pending'
             AND expires_at > NOW()
-        ");
-        $stmt->execute(['user_id' => $userId]);
-        return (int)$stmt->fetchColumn();
+        ", ['user_id' => $userId]);
     }
 
     /**
@@ -154,7 +146,7 @@ class Invitation extends Model
      */
     public function cleanupExpired(): int
     {
-        $stmt = static::db()->prepare("
+        $stmt = $this->db->prepare("
             UPDATE invitations
             SET status = 'expired'
             WHERE status = 'pending'

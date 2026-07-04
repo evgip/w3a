@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Wiki\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 /**
  * Модель Wiki страницы.
@@ -25,7 +27,7 @@ class WikiPage extends Model
         'is_primary',
         'status',
         'view_count',
-		'deleted_at'
+        'deleted_at'
     ];
 
     /**
@@ -45,7 +47,7 @@ class WikiPage extends Model
                 ORDER BY wp.updated_at DESC
                 LIMIT :limit OFFSET :offset";
 
-        $stmt = static::db()->prepare($sql);
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
         $stmt->execute();
@@ -77,11 +79,7 @@ class WikiPage extends Model
 
         $sql .= " LIMIT 1";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute($params);
-
-        $page = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $page ?: null;
+        return $this->db->fetchOne($sql, $params);
     }
 
     /**
@@ -94,40 +92,33 @@ class WikiPage extends Model
                 LEFT JOIN users u ON wp.author_id = u.id
                 WHERE wp.tag_id = :tag_id 
                 AND wp.status = 'published'
-
                 ORDER BY wp.is_primary DESC, wp.title ASC";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['tag_id' => $tagId]);
-
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->db->fetchAll($sql, ['tag_id' => $tagId]);
     }
 
-	/**
-	 * Найти страницу включая удалённые (soft deleted)
-	 * 
-	 * @param int $id ID страницы
-	 * @return array|null Данные страницы или null
-	 */
-	public function findWithDeleted(int $id): ?array
-	{
-		if ($id <= 0) {
-			return null;
-		}
-		
-		$sql = "SELECT wp.*, u.username as author_name
-				FROM {$this->table} wp
-				LEFT JOIN users u ON wp.author_id = u.id
-				WHERE wp.id = :id
-				LIMIT 1";
-		
-		$stmt = static::db()->prepare($sql);
-		$stmt->bindValue(':id', $id, \PDO::PARAM_INT);
-		$stmt->execute();
-		
-		$result = $stmt->fetch(\PDO::FETCH_ASSOC);
-		return $result ?: null;
-	}
+    /**
+     * Найти страницу включая удалённые (soft deleted)
+     */
+    public function findWithDeleted(int $id): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
+        
+        $sql = "SELECT wp.*, u.username as author_name
+                FROM {$this->table} wp
+                LEFT JOIN users u ON wp.author_id = u.id
+                WHERE wp.id = :id
+                LIMIT 1";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $result ?: null;
+    }
 
     /**
      * Получить основную страницу тега
@@ -143,11 +134,7 @@ class WikiPage extends Model
                   AND wp.deleted_at IS NULL
                 LIMIT 1";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['tag_id' => $tagId]);
-
-        $page = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $page ?: null;
+        return $this->db->fetchOne($sql, ['tag_id' => $tagId]);
     }
 
     /**
@@ -155,40 +142,32 @@ class WikiPage extends Model
      */
     public function incrementViewCount(int $pageId): void
     {
-        $sql = "UPDATE {$this->table} SET view_count = view_count + 1 WHERE id = :id";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['id' => $pageId]);
+        $this->db->execute(
+            "UPDATE {$this->table} SET view_count = view_count + 1 WHERE id = :id",
+            ['id' => $pageId]
+        );
     }
 
-	/**
-	 * Проверить существование slug в пределах тега
-	 * 
-	 * @param string $slug Slug для проверки
-	 * @param int $tagId ID тега
-	 * @param int|null $excludeId ID страницы для исключения (при редактировании)
-	 * @return bool true если slug существует
-	 */
-	public function slugExists(string $slug, int $tagId, ?int $excludeId = null): bool
-	{
-		$sql = "SELECT COUNT(*) FROM {$this->table} 
-				WHERE slug = :slug AND tag_id = :tag_id";
-		
-		$params = [
-			'slug' => $slug,
-			'tag_id' => $tagId
-		];
+    /**
+     * Проверить существование slug в пределах тега
+     */
+    public function slugExists(string $slug, int $tagId, ?int $excludeId = null): bool
+    {
+        $sql = "SELECT COUNT(*) FROM {$this->table} 
+                WHERE slug = :slug AND tag_id = :tag_id";
+        
+        $params = [
+            'slug' => $slug,
+            'tag_id' => $tagId
+        ];
 
-		if ($excludeId !== null) {
-			$sql .= " AND id != :id";
-			$params['id'] = $excludeId;
-		}
+        if ($excludeId !== null) {
+            $sql .= " AND id != :id";
+            $params['id'] = $excludeId;
+        }
 
-		$stmt = static::db()->prepare($sql);
-		$stmt->execute($params);
-
-		return (int)$stmt->fetchColumn() > 0;
-	}
-
+        return (int)$this->db->fetchColumn($sql, $params) > 0;
+    }
 
     /**
      * Поиск по wiki страницам (глобальный)
@@ -204,7 +183,7 @@ class WikiPage extends Model
                 ORDER BY wp.updated_at DESC
                 LIMIT :limit";
 
-        $stmt = static::db()->prepare($sql);
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':query', '%' . $query . '%', \PDO::PARAM_STR);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
@@ -212,41 +191,42 @@ class WikiPage extends Model
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-	/**
-	 * Поиск по wiki страницам тега
-	 */
-	public function searchInTag(int $tagId, string $query, int $limit = 20): array
-	{
-		$sql = "SELECT wp.*, u.username as author_name
-				FROM {$this->table} wp
-				LEFT JOIN users u ON wp.author_id = u.id
-				WHERE wp.tag_id = :tag_id
-				AND wp.status = 'published'
-				AND wp.deleted_at IS NULL
-				AND (wp.title LIKE :query_title OR wp.content LIKE :query_content)
-				ORDER BY wp.updated_at DESC
-				LIMIT :limit";
+    /**
+     * Поиск по wiki страницам тега
+     */
+    public function searchInTag(int $tagId, string $query, int $limit = 20): array
+    {
+        $sql = "SELECT wp.*, u.username as author_name
+                FROM {$this->table} wp
+                LEFT JOIN users u ON wp.author_id = u.id
+                WHERE wp.tag_id = :tag_id
+                AND wp.status = 'published'
+                AND wp.deleted_at IS NULL
+                AND (wp.title LIKE :query_title OR wp.content LIKE :query_content)
+                ORDER BY wp.updated_at DESC
+                LIMIT :limit";
 
-		$stmt = static::db()->prepare($sql);
-		$searchTerm = '%' . $query . '%';
-		
-		$stmt->bindValue(':tag_id', $tagId, \PDO::PARAM_INT);
-		$stmt->bindValue(':query_title', $searchTerm, \PDO::PARAM_STR);
-		$stmt->bindValue(':query_content', $searchTerm, \PDO::PARAM_STR);
-		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-		$stmt->execute();
-		
-		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-	}
+        $stmt = $this->db->prepare($sql);
+        $searchTerm = '%' . $query . '%';
+        
+        $stmt->bindValue(':tag_id', $tagId, \PDO::PARAM_INT);
+        $stmt->bindValue(':query_title', $searchTerm, \PDO::PARAM_STR);
+        $stmt->bindValue(':query_content', $searchTerm, \PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
 
     /**
      * Сбросить флаг is_primary для всех страниц тега
      */
     public function resetPrimaryFlag(int $tagId): void
     {
-        $sql = "UPDATE {$this->table} SET is_primary = 0 WHERE tag_id = :tag_id";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['tag_id' => $tagId]);
+        $this->db->execute(
+            "UPDATE {$this->table} SET is_primary = 0 WHERE tag_id = :tag_id",
+            ['tag_id' => $tagId]
+        );
     }
 
     /**
@@ -254,154 +234,139 @@ class WikiPage extends Model
      */
     public function getCountForTag(int $tagId): int
     {
-        $sql = "SELECT COUNT(*) FROM {$this->table} 
-                WHERE tag_id = :tag_id 
-                  AND status = 'published'
-                  AND deleted_at IS NULL";
-
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['tag_id' => $tagId]);
-
-        return (int)$stmt->fetchColumn();
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM {$this->table} 
+             WHERE tag_id = :tag_id 
+               AND status = 'published'
+               AND deleted_at IS NULL",
+            ['tag_id' => $tagId]
+        );
     }
-	
-	/**
-	 * Восстановить удалённую страницу (soft delete)
-	 */
-	public function restore($id): bool
-	{
-		$id = (int)$id;
-		
-		if ($id <= 0) {
-			return false;
-		}
-		
-		try {
-			$sql = "UPDATE {$this->table} 
-					SET deleted_at = NULL 
-					WHERE id = :id AND deleted_at IS NOT NULL";
-			
-			$stmt = static::db()->prepare($sql);
-			$stmt->bindValue(':id', $id, \PDO::PARAM_INT);
-			$stmt->execute();
-			
-			// Возвращаем true только если действительно обновили строку
-			return $stmt->rowCount() > 0;
-			
-		} catch (\Throwable $e) {
-			return false;
-		}
-	}
+    
+    /**
+     * Восстановить удалённую страницу (soft delete)
+     */
+    public function restore($id): bool
+    {
+        $id = (int)$id;
+        
+        if ($id <= 0) {
+            return false;
+        }
+        
+        try {
+            $sql = "UPDATE {$this->table} 
+                    SET deleted_at = NULL 
+                    WHERE id = :id AND deleted_at IS NOT NULL";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->rowCount() > 0;
+            
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
 
-	/**
-	 * Получить список удалённых страниц
-	 * 
-	 * @param int|null $tagId ID тега (опционально)
-	 * @param int $limit Максимальное количество
-	 * @return array Массив удалённых страниц
-	 */
-	public function getDeleted(?int $tagId = null, int $limit = 50): array
-	{
-		$sql = "SELECT wp.*, u.username as author_name, t.slug as tag_slug
-				FROM {$this->table} wp
-				LEFT JOIN users u ON wp.author_id = u.id
-				LEFT JOIN tags t ON wp.tag_id = t.id
-				WHERE wp.deleted_at IS NOT NULL";
-		
-		$params = [];
-		
-		if ($tagId !== null) {
-			$sql .= " AND wp.tag_id = :tag_id";
-			$params[':tag_id'] = $tagId;
-		}
-		
-		$sql .= " ORDER BY wp.deleted_at DESC LIMIT :limit";
-		
-		$stmt = static::db()->prepare($sql);
-		
-		foreach ($params as $key => $value) {
-			$stmt->bindValue($key, $value, \PDO::PARAM_INT);
-		}
-		
-		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-		$stmt->execute();
-		
-		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-	}
-	
-	/**
-	 * Получить все wiki страницы с информацией о тегах (для админки)
-	 * Включая удалённые
-	 * 
-	 * @param int $limit Максимальное количество
-	 * @param int $offset Смещение
-	 * @return array Массив страниц с данными тегов
-	 */
-	public function getAllPagesWithTags(int $limit = 100, int $offset = 0): array
-	{
-		$sql = "SELECT wp.*, 
-					   t.name as tag_name, 
-					   t.slug as tag_slug,
-					   u.username as author_name
-				FROM {$this->table} wp
-				LEFT JOIN tags t ON wp.tag_id = t.id
-				LEFT JOIN users u ON wp.author_id = u.id
-				ORDER BY wp.created_at DESC
-				LIMIT :limit OFFSET :offset";
-		
-		$stmt = static::db()->prepare($sql);
-		$stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-		$stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
-		$stmt->execute();
-		
-		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-	}
+    /**
+     * Получить список удалённых страниц
+     */
+    public function getDeleted(?int $tagId = null, int $limit = 50): array
+    {
+        $sql = "SELECT wp.*, u.username as author_name, t.slug as tag_slug
+                FROM {$this->table} wp
+                LEFT JOIN users u ON wp.author_id = u.id
+                LEFT JOIN tags t ON wp.tag_id = t.id
+                WHERE wp.deleted_at IS NOT NULL";
+        
+        $params = [];
+        
+        if ($tagId !== null) {
+            $sql .= " AND wp.tag_id = :tag_id";
+            $params[':tag_id'] = $tagId;
+        }
+        
+        $sql .= " ORDER BY wp.deleted_at DESC LIMIT :limit";
+        
+        $stmt = $this->db->prepare($sql);
+        
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, \PDO::PARAM_INT);
+        }
+        
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+    
+    /**
+     * Получить все wiki страницы с информацией о тегах (для админки)
+     */
+    public function getAllPagesWithTags(int $limit = 100, int $offset = 0): array
+    {
+        $sql = "SELECT wp.*, 
+                       t.name as tag_name, 
+                       t.slug as tag_slug,
+                       u.username as author_name
+                FROM {$this->table} wp
+                LEFT JOIN tags t ON wp.tag_id = t.id
+                LEFT JOIN users u ON wp.author_id = u.id
+                ORDER BY wp.created_at DESC
+                LIMIT :limit OFFSET :offset";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
 
-	/**
-	 * Получить общее количество wiki страниц (включая удалённые)
-	 */
-	public function getTotalPagesCount(): int
-	{
-		$sql = "SELECT COUNT(*) FROM {$this->table}";
-		return (int)static::db()->query($sql)->fetchColumn();
-	}
+    /**
+     * Получить общее количество wiki страниц (включая удалённые)
+     */
+    public function getTotalPagesCount(): int
+    {
+        return (int)$this->db->fetchColumn("SELECT COUNT(*) FROM {$this->table}");
+    }
 
-	/**
-	 * Получить количество удалённых wiki страниц
-	 */
-	public function getDeletedPagesCount(): int
-	{
-		$sql = "SELECT COUNT(*) FROM {$this->table} WHERE deleted_at IS NOT NULL";
-		return (int)static::db()->query($sql)->fetchColumn();
-	}
+    /**
+     * Получить количество удалённых wiki страниц
+     */
+    public function getDeletedPagesCount(): int
+    {
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM {$this->table} WHERE deleted_at IS NOT NULL"
+        );
+    }
 
-	/**
-	 * Мягкое удаление wiki страницы
-	 * 
-	 * @param int $id ID страницы
-	 * @return bool true, если успешно
-	 */
-	public function softDelete($id): bool
-	{
-		$id = (int)$id;
-		
-		if ($id <= 0) {
-			return false;
-		}
-		
-		try {
-			$sql = "UPDATE {$this->table} 
-					SET deleted_at = NOW() 
-					WHERE id = :id AND deleted_at IS NULL";
-			
-			$stmt = static::db()->prepare($sql);
-			$stmt->bindValue(':id', $id, \PDO::PARAM_INT);
-			$stmt->execute();
-			
-			return $stmt->rowCount() > 0;
-			
-		} catch (\Throwable $e) {
-			return false;
-		}
-	}
+    /**
+     * Мягкое удаление wiki страницы
+     */
+    public function softDelete($id): bool
+    {
+        $id = (int)$id;
+        
+        if ($id <= 0) {
+            return false;
+        }
+        
+        try {
+            $sql = "UPDATE {$this->table} 
+                    SET deleted_at = NOW() 
+                    WHERE id = :id AND deleted_at IS NULL";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->rowCount() > 0;
+            
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
 }

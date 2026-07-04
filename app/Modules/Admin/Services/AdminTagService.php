@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Services;
 
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Models\Category;
+use App\Modules\Stories\Models\Story;
 use App\Core\Session;
 use App\Core\Audit;
 use App\Core\Validator;
@@ -13,18 +14,38 @@ use App\Core\Database;
 
 /**
  * Сервис для административного управления тегами.
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
  */
 class AdminTagService
 {
     private Tag $tagModel;
     private Category $categoryModel;
+    private Story $storyModel;
+    private Session $session;
+    private Audit $audit;
+    private Validator $validator;
+    private Database $db;
 
+    /**
+     * ✅ ИЗМЕНЕНО: Все зависимости обязательны
+     */
     public function __construct(
-        ?Tag $tagModel = null,
-        ?Category $categoryModel = null
+        Tag $tagModel,
+        Category $categoryModel,
+        Story $storyModel,
+        Session $session,
+        Audit $audit,
+        Validator $validator,
+        Database $db
     ) {
-        $this->tagModel = $tagModel ?? new Tag();
-        $this->categoryModel = $categoryModel ?? new Category();
+        $this->tagModel = $tagModel;
+        $this->categoryModel = $categoryModel;
+        $this->storyModel = $storyModel;
+        $this->session = $session;
+        $this->audit = $audit;
+        $this->validator = $validator;
+        $this->db = $db;
     }
 
     /**
@@ -56,27 +77,35 @@ class AdminTagService
         $isMedia = isset($data['is_media']) ? 1 : 0;
         $categoryId = (int)($data['category_id'] ?? 0);
 
-        // Валидация имени
-        $validator = new Validator();
-        if (!$validator->validate(['slug' => $tagSlug], ['slug' => 'required|min:2'])) {
-            Session::setFlash('error', 'Slug тега должно содержать не менее 2 символов.');
+        // ✅ Валидация slug
+        $this->validator->validate(
+            ['slug' => $tagSlug], 
+            ['slug' => 'required|min:2']
+        );
+        if (!$this->validator->isValid()) {
+            $this->session->flash('error', 'Slug тега должно содержать не менее 2 символов.');
             return false;
         }
 
-        if (!$validator->validate(['name' => $tagName], ['name' => 'required|min:2'])) {
-            Session::setFlash('error', 'Название тега должно содержать не менее 2 символов.');
+        // ✅ Валидация имени
+        $this->validator->validate(
+            ['name' => $tagName], 
+            ['name' => 'required|min:2']
+        );
+        if (!$this->validator->isValid()) {
+            $this->session->flash('error', 'Название тега должно содержать не менее 2 символов.');
             return false;
         }
 
         // Проверка уникальности
         if ($this->tagModel->exists($tagSlug)) {
-            Session::setFlash('error', "Тег '{$tagSlug}' уже присутствует в базе данных.");
+            $this->session->flash('error', "Тег '{$tagSlug}' уже присутствует в базе данных.");
             return false;
         }
 
         // Валидация категории
         if (!$this->categoryModel->find($categoryId)) {
-            Session::setFlash('error', 'Выбранная категория не существует.');
+            $this->session->flash('error', 'Выбранная категория не существует.');
             return false;
         }
 
@@ -88,7 +117,8 @@ class AdminTagService
             'category_id' => $categoryId,
         ]);
 
-        Audit::log('admin.tag_created', "Администратор создал новый тег #{$tagSlug}", 'admin');
+        // ✅ Используем внедрённый Audit
+        $this->audit->log('admin.tag_created', "Администратор создал новый тег #{$tagSlug}", 'admin');
 
         return $tagId;
     }
@@ -112,27 +142,35 @@ class AdminTagService
         $categoryId = (int)($data['category_id'] ?? 0);
         $hotnessMod = (float)($data['hotness_mod'] ?? 0);
 
-        // Валидация имени
-        $validator = new Validator();
-        if (!$validator->validate(['slug' => $tagSlug], ['slug' => 'required|min:2'])) {
-            Session::setFlash('error', 'Slug тега должно содержать не менее 2 символов.');
+        // ✅ Валидация slug
+        $this->validator->validate(
+            ['slug' => $tagSlug], 
+            ['slug' => 'required|min:2']
+        );
+        if (!$this->validator->isValid()) {
+            $this->session->flash('error', 'Slug тега должно содержать не менее 2 символов.');
             return false;
         }
 
-        if (!$validator->validate(['name' => $tagName], ['name' => 'required|min:2'])) {
-            Session::setFlash('error', 'Название тега должно содержать не менее 2 символов.');
+        // ✅ Валидация имени
+        $this->validator->validate(
+            ['name' => $tagName], 
+            ['name' => 'required|min:2']
+        );
+        if (!$this->validator->isValid()) {
+            $this->session->flash('error', 'Название тега должно содержать не менее 2 символов.');
             return false;
         }
 
         // Проверка уникальности (исключая текущий тег)
         if ($this->tagModel->exists($tagSlug, $tagId)) {
-            Session::setFlash('error', "Имя тега '{$tagSlug}' занято другим элементом.");
+            $this->session->flash('error', "Имя тега '{$tagSlug}' занято другим элементом.");
             return false;
         }
 
         // Валидация категории
         if (!$this->categoryModel->find($categoryId)) {
-            Session::setFlash('error', 'Выбранная категория не существует.');
+            $this->session->flash('error', 'Выбранная категория не существует.');
             return false;
         }
 
@@ -145,44 +183,39 @@ class AdminTagService
             'hotness_mod' => $hotnessMod,
         ]);
 
-        // Получаем ID всех историй с этим тегом
-        $db = Database::getConnection();
-        $stmt = $db->prepare("SELECT story_id FROM taggings WHERE tag_id = :tag_id");
+        // ✅ Используем $this->db вместо Database::getConnection()
+        $stmt = $this->db->prepare("SELECT story_id FROM taggings WHERE tag_id = :tag_id");
         $stmt->execute(['tag_id' => $tagId]);
         $storyIds = array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), 'story_id');
 
-        // Пересчитываем hotness для каждой истории
-        $storyModel = new \App\Modules\Stories\Models\Story();
+        // ✅ Используем внедрённую Story модель
         foreach ($storyIds as $storyId) {
-            $storyModel->recalculateHotness($storyId);
+            $this->storyModel->recalculateHotness((int)$storyId);
         }
 
-        Audit::log('admin.tag_updated', "Администратор изменил параметры тега #{$tagSlug}", 'admin');
+        // ✅ Используем внедрённый Audit
+        $this->audit->log('admin.tag_updated', "Администратор изменил параметры тега #{$tagSlug}", 'admin');
 
         return true;
     }
 
-    // Мягкое удаление (Soft Delete)
+    /**
+     * Мягкое удаление (Soft Delete)
+     * ✅ ИСПРАВЛЕНО: используем модель Tag через метод delete()
+     */
     public function softDeleteTag(int $id): bool
     {
-        $sql = "UPDATE tags 
-                SET deleted_at = NOW() 
-                WHERE id = :id AND deleted_at IS NULL";
-
-        $db = Database::getConnection();
-        $stmt = $db->prepare($sql);
-        return $stmt->execute(['id' => $id]);
+        // Используем встроенный метод модели для soft delete
+        return $this->tagModel->delete($id);
     }
 
-    // Восстановление
+    /**
+     * Восстановление
+     * ✅ ИСПРАВЛЕНО: используем модель Tag через метод restore()
+     */
     public function restoreTag(int $id): bool
     {
-        $sql = "UPDATE tags 
-                SET deleted_at = NULL 
-                WHERE id = :id AND deleted_at IS NOT NULL";
-
-        $db = Database::getConnection();
-        $stmt = $db->prepare($sql);
-        return $stmt->execute(['id' => $id]);
+        // Используем встроенный метод модели для восстановления
+        return $this->tagModel->restore($id);
     }
 }

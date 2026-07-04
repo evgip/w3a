@@ -8,9 +8,14 @@ use App\Modules\Suggestions\Models\Suggestion;
 use App\Modules\Suggestions\Models\ContentLog;
 use App\Modules\Stories\Models\Story;
 use App\Modules\Stories\Services\StoryValidator;
-use App\Modules\Comments\Models\Comment;
+use App\Modules\Stories\Models\Comment as StoryComment;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Services\TagValidator;
+use App\Modules\Users\Models\User;
+use App\Modules\Moderations\Models\Moderation;
+use App\Core\Container;
+use App\Core\Logger;
+use App\Core\IpResolver;
 use App\Core\Events\EventDispatcher;
 use App\Core\Events\ContentUpdated;
 use App\Modules\Auth\Services\Auth;
@@ -20,6 +25,8 @@ use Exception;
  * Сервис для работы с предложениями изменений контента.
  * 
  * Вся бизнес-логика здесь, SQL-запросы вынесены в модели.
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости теперь обязательны и внедряются через DI-контейнер.
  */
 class SuggestionService
 {
@@ -29,27 +36,47 @@ class SuggestionService
     private Suggestion $suggestionModel;
     private ContentLog $contentLogModel;
     private Story $storyModel;
+    private StoryComment $commentModel;
     private Tag $tagModel;
+    private User $userModel;
+    private Moderation $moderationModel;
     private EventDispatcher $eventDispatcher;
     private TagValidator $tagValidator;
     private StoryValidator $storyValidator;
+    private Logger $logger;
+    private IpResolver $ipResolver;
 
+    /**
+     * Конструктор с инъекцией всех зависимостей.
+     * 
+     * ✅ ИЗМЕНЕНО: Все зависимости обязательны.
+     */
     public function __construct(
         Suggestion $suggestionModel,
         ContentLog $contentLogModel,
         Story $storyModel,
+        StoryComment $commentModel,
         Tag $tagModel,
+        User $userModel,
+        Moderation $moderationModel,
         EventDispatcher $eventDispatcher,
-        ?TagValidator $tagValidator = null,
-        ?StoryValidator $storyValidator = null
+        TagValidator $tagValidator,
+        StoryValidator $storyValidator,
+        Logger $logger,
+        IpResolver $ipResolver
     ) {
         $this->suggestionModel = $suggestionModel;
         $this->contentLogModel = $contentLogModel;
         $this->storyModel = $storyModel;
+        $this->commentModel = $commentModel;
         $this->tagModel = $tagModel;
+        $this->userModel = $userModel;
+        $this->moderationModel = $moderationModel;
         $this->eventDispatcher = $eventDispatcher;
-        $this->tagValidator = $tagValidator ?? new TagValidator();
-        $this->storyValidator = $storyValidator ?? new StoryValidator();
+        $this->tagValidator = $tagValidator;
+        $this->storyValidator = $storyValidator;
+        $this->logger = $logger;
+        $this->ipResolver = $ipResolver;
     }
     
     // =========================================================================
@@ -58,13 +85,6 @@ class SuggestionService
 
     /**
      * Добавить новое предложение
-     * 
-     * @param string $targetType Тип контента ('Story' или 'Comment')
-     * @param int $targetId ID контента
-     * @param int $userId ID пользователя, предлагающего изменения
-     * @param array $proposedData Предлагаемые изменения (title, tag_ids, text и т.д.)
-     * @return int ID созданного предложения
-     * @throws Exception
      */
     public function addSuggestion(
         string $targetType,
@@ -139,8 +159,6 @@ class SuggestionService
 
     /**
      * Получить все активные предложения (для страницы модерации).
-     * 
-     * Дополнительно подгружает названия и URL тегов для каждого предложения.
      */
     public function getAllActiveSuggestions(int $limit = 30, int $offset = 0, string $filter = ''): array
     {
@@ -161,7 +179,7 @@ class SuggestionService
 
         $allTagIds = array_unique(array_map('intval', $allTagIds));
 
-        // Получаем полную информацию о тегах (name + tag)
+        // Получаем полную информацию о тегах
         $tagsDetails = [];
         if (!empty($allTagIds)) {
             $tagsDetails = $this->tagModel->getDetailsByIds($allTagIds);
@@ -197,9 +215,6 @@ class SuggestionService
 
     /**
      * Одобрить предложение (только для модераторов)
-     * 
-     * Применяет изменения немедленно, удаляет все предложения для этого контента,
-     * логирует действие в таблицу moderations.
      */
     public function approveSuggestion(int $suggestionId, int $moderatorId): bool
     {
@@ -214,7 +229,6 @@ class SuggestionService
 
         $proposedData = json_decode($suggestion['proposed_data'], true);
 
-        // Применяем изменения (флаг true = действие модератора)
         $this->applyChanges(
             $suggestion['target_type'],
             $suggestion['target_id'],
@@ -223,7 +237,6 @@ class SuggestionService
             true
         );
 
-        // Логируем действие модератора
         $this->logModeratorAction($moderatorId, 'approved_suggestion', $suggestion);
 
         return true;
@@ -231,9 +244,6 @@ class SuggestionService
 
     /**
      * Отклонить предложение (только для модераторов)
-     * 
-     * Удаляет предложение без применения изменений.
-     * Логирует действие в таблицу moderations.
      */
     public function rejectSuggestion(int $suggestionId, int $moderatorId, string $reason = ''): bool
     {
@@ -246,10 +256,8 @@ class SuggestionService
             throw new Exception("Предложение не найдено");
         }
 
-        // Удаляем предложение (soft delete)
         $this->suggestionModel->delete($suggestionId);
 
-        // Логируем действие модератора
         $this->logModeratorAction($moderatorId, 'rejected_suggestion', $suggestion, $reason);
 
         return true;
@@ -332,7 +340,6 @@ class SuggestionService
             'target_id' => $targetId,
             'actor_id' => $actorId,
             'action_text' => $logText,
-            // is_community_action: 0 = действие модератора, 1 = действие сообщества
             'is_community_action' => $isModeratorAction ? 0 : 1
         ]);
 
@@ -351,7 +358,6 @@ class SuggestionService
 
         foreach (array_keys($proposedData) as $key) {
             if ($key === 'tag_ids') {
-                // Используем существующий метод из модели Story
                 $oldTagIds = $this->storyModel->getStoryTagIds($targetId);
                 $oldValues['tags'] = $this->tagModel->getNamesByIds($oldTagIds);
             } else {
@@ -365,10 +371,8 @@ class SuggestionService
     /**
      * Логировать действие модератора в таблицу moderations.
      * 
-     * @param int    $moderatorId ID модератора, выполнившего действие
-     * @param string $action      Тип действия (approved_suggestion, rejected_suggestion)
-     * @param array  $suggestion  Данные предложения
-     * @param string $reason      Причина (опционально)
+     * ✅ ИЗМЕНЕНО: Все зависимости получены через конструктор,
+     * нет статических вызовов и создания моделей через new.
      */
     private function logModeratorAction(
         int $moderatorId,
@@ -377,20 +381,19 @@ class SuggestionService
         string $reason = ''
     ): void {
         try {
-            // Получаем данные модератора
-            $userModel = new \App\Modules\Users\Models\User();
-            $moderator = $userModel->getUser($moderatorId);
+            // ✅ Получаем данные модератора через внедрённую модель
+            $moderator = $this->userModel->getUser($moderatorId);
 
-            // Получаем IP из запроса
-            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            // ✅ Получаем IP через внедрённый IpResolver
+            $ipAddress = $this->ipResolver->getClientIp();
 
-            $modLog = new \App\Modules\Moderations\Models\Moderation();
-            $modLog->create([
+            // ✅ Используем внедрённую модель Moderation
+            $this->moderationModel->create([
                 'user_id'     => $moderatorId,
                 'username'    => $moderator['username'] ?? 'Unknown',
                 'role'        => $moderator['role'] ?? 'moderator',
                 'ip_address'  => $ipAddress,
-                'action'      => 'moderation.' . $action,       // например: moderation.approve_suggestion
+                'action'      => 'moderation.' . $action,
                 'description' => $reason ?: "Модератор {$action} предложение #{$suggestion['id']}",
                 'category'    => 'moderation',
                 'payload'     => json_encode([
@@ -400,14 +403,12 @@ class SuggestionService
                 ], JSON_UNESCAPED_UNICODE),
             ]);
         } catch (\Throwable $e) {
-            // Логируем в файл, чтобы не терять информацию
-            \App\Core\Logger::error('Failed to write moderation log: ' . $e->getMessage(), [
+            // ✅ Используем внедрённый Logger вместо статического вызова
+            $this->logger->error('Failed to write moderation log: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            // Флеш-сообщение пользователю показывать не стоит — 
-            // одобрение уже прошло, а лог — это служебная информация
         }
     }
 
@@ -435,12 +436,14 @@ class SuggestionService
 
     /**
      * Найти модель по типу
+     * 
+     * ✅ ИЗМЕНЕНО: Используем внедрённый commentModel вместо new Comment()
      */
     private function findModel(string $targetType)
     {
         return match ($targetType) {
             'Story' => $this->storyModel,
-            'Comment' => new Comment(),
+            'Comment' => $this->commentModel,
             default => throw new Exception("Invalid target type: {$targetType}")
         };
     }
@@ -508,19 +511,12 @@ class SuggestionService
     // НОРМАЛИЗАЦИЯ JSON
     // =========================================================================
 
-    /**
-     * Нормализовать JSON для консистентного хеширования
-     * Сортирует ключи рекурсивно, чтобы {"b":1,"a":2} и {"a":2,"b":1} давали одинаковый результат
-     */
     private function normalizeJson(array $data): string
     {
         $this->sortArrayRecursive($data);
         return json_encode($data, JSON_UNESCAPED_UNICODE);
     }
 
-    /**
-     * Рекурсивная сортировка массива по ключам
-     */
     private function sortArrayRecursive(array &$data): void
     {
         ksort($data);
@@ -529,16 +525,12 @@ class SuggestionService
                 if ($this->isAssociative($value)) {
                     $this->sortArrayRecursive($value);
                 } else {
-                    // Для индексных массивов (теги) - сортируем значения
                     sort($value);
                 }
             }
         }
     }
 
-    /**
-     * Проверить, ассоциативный ли массив
-     */
     private function isAssociative(array $arr): bool
     {
         if (empty($arr)) return false;
@@ -547,8 +539,6 @@ class SuggestionService
 
     /**
      * Безопасно диспатчит событие через EventDispatcher.
-     * 
-     * Если EventDispatcher не был передан в конструктор, событие не будет отправлено.
      */
     private function dispatchContentEvent(\App\Core\Events\Event $event): void
     {

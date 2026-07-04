@@ -3,6 +3,8 @@
 namespace App\Modules\Moderations\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 class ModNote extends Model
 {
@@ -13,7 +15,7 @@ class ModNote extends Model
         'moderator_id',
         'note',
         'is_private',
-		'deleted_at'
+        'deleted_at'
     ];
 
     /**
@@ -27,7 +29,8 @@ class ModNote extends Model
                 WHERE mn.`user_id` = :user_id AND mn.`deleted_at` IS NULL
                 ORDER BY mn.`created_at` DESC
                 LIMIT :limit";
-        $stmt = static::db()->prepare($sql);
+        
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':user_id', $userId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
@@ -47,23 +50,22 @@ class ModNote extends Model
                 WHERE mn.`deleted_at` IS NULL {$privacyCondition}
                 ORDER BY mn.`created_at` DESC
                 LIMIT :limit";
-        $stmt = static::db()->prepare($sql);
+        
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
     }
-	
+    
     /**
      * Мягкое удаление заметки (soft delete)
-     * Гарантирует, что запись помечается как удалённая, а не стирается из БД
      */
     public function deleteNote(int $id): bool
     {
-        $sql = "UPDATE `{$this->table}` 
-                SET `deleted_at` = CURRENT_TIMESTAMP 
-                WHERE `id` = :id AND `deleted_at` IS NULL";
-        
-        $stmt = static::db()->prepare($sql);
-        return $stmt->execute(['id' => $id]);
+        return $this->db->execute("
+            UPDATE `{$this->table}` 
+            SET `deleted_at` = CURRENT_TIMESTAMP 
+            WHERE `id` = :id AND `deleted_at` IS NULL
+        ", ['id' => $id]) > 0;
     }
 }

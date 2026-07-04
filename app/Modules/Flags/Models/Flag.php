@@ -49,18 +49,19 @@ class Flag extends Model
      */
     public function hasUserFlagged(int $userId, string $type, int $targetId): bool
     {
-        $stmt = static::db()->prepare(
+        // ✅ Используем $this->db->fetchColumn()
+        $count = (int)$this->db->fetchColumn(
             "SELECT COUNT(*) FROM `{$this->table}`
              WHERE `user_id` = :uid
                AND `flaggable_type` = :type
-               AND `flaggable_id` = :tid"
+               AND `flaggable_id` = :tid",
+            [
+                'uid'  => $userId,
+                'type' => $type,
+                'tid'  => $targetId,
+            ]
         );
-        $stmt->execute([
-            'uid'  => $userId,
-            'type' => $type,
-            'tid'  => $targetId,
-        ]);
-        return (int) $stmt->fetchColumn() > 0;
+        return $count > 0;
     }
 
     /**
@@ -121,10 +122,11 @@ class Flag extends Model
     private function incrementFlagCount(string $type, int $targetId): void
     {
         $table = $type === 'story' ? 'stories' : 'comments';
-        $stmt = static::db()->prepare(
-            "UPDATE `{$table}` SET `flag_count` = `flag_count` + 1 WHERE `id` = :id"
+        // ✅ Используем $this->db->execute()
+        $this->db->execute(
+            "UPDATE `{$table}` SET `flag_count` = `flag_count` + 1 WHERE `id` = :id",
+            ['id' => $targetId]
         );
-        $stmt->execute(['id' => $targetId]);
     }
 
     /**
@@ -135,21 +137,21 @@ class Flag extends Model
         $table = $type === 'story' ? 'stories' : 'comments';
         $threshold = static::getHideThreshold();
 
-        $stmt = static::db()->prepare(
-            "SELECT `flag_count`, `is_hidden_by_flags` FROM `{$table}` WHERE `id` = :id LIMIT 1"
+        // ✅ Используем $this->db->fetchOne()
+        $row = $this->db->fetchOne(
+            "SELECT `flag_count`, `is_hidden_by_flags` FROM `{$table}` WHERE `id` = :id LIMIT 1",
+            ['id' => $targetId]
         );
-        $stmt->execute(['id' => $targetId]);
-        $row = $stmt->fetch();
 
         if (!$row) {
             return false;
         }
 
         if ((int) $row['flag_count'] >= $threshold && !(int) $row['is_hidden_by_flags']) {
-            $upd = static::db()->prepare(
-                "UPDATE `{$table}` SET `is_hidden_by_flags` = 1 WHERE `id` = :id"
+            $this->db->execute(
+                "UPDATE `{$table}` SET `is_hidden_by_flags` = 1 WHERE `id` = :id",
+                ['id' => $targetId]
             );
-            $upd->execute(['id' => $targetId]);
             return true;
         }
 
@@ -162,9 +164,11 @@ class Flag extends Model
     private function targetExists(string $type, int $targetId): bool
     {
         $table = $type === 'story' ? 'stories' : 'comments';
-        $stmt = static::db()->prepare("SELECT COUNT(*) FROM `{$table}` WHERE `id` = :id");
-        $stmt->execute(['id' => $targetId]);
-        return (int) $stmt->fetchColumn() > 0;
+        $count = (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `{$table}` WHERE `id` = :id",
+            ['id' => $targetId]
+        );
+        return $count > 0;
     }
 
     /**
@@ -172,7 +176,8 @@ class Flag extends Model
      */
     public function getPendingFlags(): array
     {
-        $stmt = static::db()->query(
+        // ✅ Используем $this->db->fetchAll()
+        return $this->db->fetchAll(
             "SELECT f.*,
                     u.username AS reporter_name,
                     r.username AS resolver_name
@@ -182,7 +187,6 @@ class Flag extends Model
              WHERE f.status = 'pending'
              ORDER BY f.created_at DESC"
         );
-        return $stmt->fetchAll();
     }
 
     /**
@@ -190,16 +194,17 @@ class Flag extends Model
      */
     public function getAllFlags(int $limit = 100): array
     {
-        $stmt = static::db()->prepare(
-            "SELECT f.*,
-                    u.username AS reporter_name,
-                    r.username AS resolver_name
-             FROM `flags` f
-             LEFT JOIN `users` u ON f.user_id = u.id
-             LEFT JOIN `users` r ON f.resolved_by = r.id
-             ORDER BY f.created_at DESC
-             LIMIT :lim"
-        );
+        $sql = "SELECT f.*,
+                       u.username AS reporter_name,
+                       r.username AS resolver_name
+                FROM `flags` f
+                LEFT JOIN `users` u ON f.user_id = u.id
+                LEFT JOIN `users` r ON f.resolved_by = r.id
+                ORDER BY f.created_at DESC
+                LIMIT :lim";
+
+        // ✅ Используем prepare() для bindValue с LIMIT
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':lim', $limit, \PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
@@ -210,8 +215,10 @@ class Flag extends Model
      */
     public function getPendingCount(): int
     {
-        $stmt = static::db()->query("SELECT COUNT(*) FROM `flags` WHERE `status` = 'pending'");
-        return (int) $stmt->fetchColumn();
+        // ✅ Используем $this->db->fetchColumn()
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `flags` WHERE `status` = 'pending'"
+        );
     }
 
     /**
@@ -224,20 +231,20 @@ class Flag extends Model
             return false;
         }
 
-        // Обновляем статус жалобы
-        $stmt = static::db()->prepare(
+        // ✅ Используем $this->db->execute()
+        $this->db->execute(
             "UPDATE `flags`
              SET `status` = 'resolved', `resolved_by` = :mid, `resolved_at` = NOW()
-             WHERE `id` = :id"
+             WHERE `id` = :id",
+            ['mid' => $moderatorId, 'id' => $flagId]
         );
-        $stmt->execute(['mid' => $moderatorId, 'id' => $flagId]);
 
         // Окончательно скрываем контент
         $table = $flag['flaggable_type'] === 'story' ? 'stories' : 'comments';
-        $upd = static::db()->prepare(
-            "UPDATE `{$table}` SET `is_hidden_by_flags` = 1 WHERE `id` = :id"
+        $this->db->execute(
+            "UPDATE `{$table}` SET `is_hidden_by_flags` = 1 WHERE `id` = :id",
+            ['id' => $flag['flaggable_id']]
         );
-        $upd->execute(['id' => $flag['flaggable_id']]);
 
         return true;
     }
@@ -252,19 +259,19 @@ class Flag extends Model
             return false;
         }
 
-        $stmt = static::db()->prepare(
+        $this->db->execute(
             "UPDATE `flags`
              SET `status` = 'dismissed', `resolved_by` = :mid, `resolved_at` = NOW()
-             WHERE `id` = :id"
+             WHERE `id` = :id",
+            ['mid' => $moderatorId, 'id' => $flagId]
         );
-        $stmt->execute(['mid' => $moderatorId, 'id' => $flagId]);
 
         // Снимаем авто-скрытие
         $table = $flag['flaggable_type'] === 'story' ? 'stories' : 'comments';
-        $upd = static::db()->prepare(
-            "UPDATE `{$table}` SET `is_hidden_by_flags` = 0 WHERE `id` = :id"
+        $this->db->execute(
+            "UPDATE `{$table}` SET `is_hidden_by_flags` = 0 WHERE `id` = :id",
+            ['id' => $flag['flaggable_id']]
         );
-        $upd->execute(['id' => $flag['flaggable_id']]);
 
         return true;
     }

@@ -23,7 +23,7 @@ class Notification extends Model
 
     // Типы уведомлений
     public const TYPE_REPLY = 'reply';
-	public const TYPE_STORY_COMMENT = 'story_comment';  
+    public const TYPE_STORY_COMMENT = 'story_comment';  
     public const TYPE_MENTION = 'mention';
     public const TYPE_MESSAGE = 'message';
     public const TYPE_BAN = 'ban';
@@ -55,24 +55,24 @@ class Notification extends Model
         );
     }
 
-	/**
-	 * Создать уведомление о комментарии к посту
-	 */
-	public function createStoryCommentNotification(
-		int $userId,
-		int $commentId,
-		int $actorId,
-		string $message = null
-	): int {
-		return $this->createNotification(
-			$userId,
-			self::TYPE_STORY_COMMENT,
-			self::ENTITY_COMMENT,
-			$commentId,
-			$actorId,
-			$message ?? 'Прокомментировал вашу публикацию'
-		);
-	}
+    /**
+     * Создать уведомление о комментарии к посту
+     */
+    public function createStoryCommentNotification(
+        int $userId,
+        int $commentId,
+        int $actorId,
+        string $message = null
+    ): int {
+        return $this->createNotification(
+            $userId,
+            self::TYPE_STORY_COMMENT,
+            self::ENTITY_COMMENT,
+            $commentId,
+            $actorId,
+            $message ?? 'Прокомментировал вашу публикацию'
+        );
+    }
 
     /**
      * Создать уведомление об упоминании
@@ -190,11 +190,9 @@ class Notification extends Model
         }
 
         $sql = "SELECT * FROM `{$this->table}` WHERE " . implode(' AND ', $where) . " LIMIT 1";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute($params);
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-        return $result ?: null;
+        
+        // ✅ Используем $this->db->fetchOne()
+        return $this->db->fetchOne($sql, $params);
     }
 
     /**
@@ -205,8 +203,6 @@ class Notification extends Model
         $where = "n.user_id = :user_id";
         $params = [
             'user_id' => $userId,
-            'limit'   => $limit,
-            'offset'  => ($page - 1) * $limit
         ];
 
         if ($type && $type !== 'all') {
@@ -235,8 +231,15 @@ class Notification extends Model
             LIMIT :limit OFFSET :offset
         ";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute($params);
+        // ✅ Используем prepare() для bindValue с LIMIT/OFFSET
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':user_id', $userId, \PDO::PARAM_INT);
+        if (isset($params['type'])) {
+            $stmt->bindValue(':type', $params['type']);
+        }
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', ($page - 1) * $limit, \PDO::PARAM_INT);
+        $stmt->execute();
 
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
@@ -246,12 +249,11 @@ class Notification extends Model
      */
     public function getUnreadCount(int $userId): int
     {
-        $stmt = static::db()->prepare("
+        // ✅ Используем $this->db->fetchColumn()
+        return (int)$this->db->fetchColumn("
             SELECT COUNT(*) FROM `{$this->table}` 
             WHERE user_id = :user_id AND is_read = 0
-        ");
-        $stmt->execute(['user_id' => $userId]);
-        return (int)$stmt->fetchColumn();
+        ", ['user_id' => $userId]);
     }
 
     /**
@@ -259,14 +261,13 @@ class Notification extends Model
      */
     public function getUnreadCountByType(int $userId): array
     {
-        $stmt = static::db()->prepare("
+        // ✅ Используем $this->db->fetchAll()
+        return $this->db->fetchAll("
             SELECT type, COUNT(*) as count 
             FROM `{$this->table}` 
             WHERE user_id = :user_id AND is_read = 0 
             GROUP BY type
-        ");
-        $stmt->execute(['user_id' => $userId]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        ", ['user_id' => $userId]);
     }
 
     /**
@@ -285,12 +286,12 @@ class Notification extends Model
      */
     public function markAllAsRead(int $userId): bool
     {
-        $stmt = static::db()->prepare("
+        // ✅ Используем $this->db->execute()
+        return $this->db->execute("
             UPDATE `{$this->table}` 
             SET is_read = 1, read_at = NOW() 
             WHERE user_id = :user_id AND is_read = 0
-        ");
-        return $stmt->execute(['user_id' => $userId]);
+        ", ['user_id' => $userId]) > 0;
     }
 
     /**
@@ -298,50 +299,53 @@ class Notification extends Model
      */
     public function cleanupOldNotifications(int $daysOld = 30): int
     {
-        $stmt = static::db()->prepare("
+        $stmt = $this->db->prepare("
             DELETE FROM `{$this->table}` 
             WHERE created_at < DATE_SUB(NOW(), INTERVAL :days DAY)
             AND is_read = 1
         ");
-        $stmt->execute(['days' => $daysOld]);
+        $stmt->bindValue(':days', $daysOld, \PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->rowCount();
     }
-	
-	
-	public function userWantsNotification(int $userId, string $setting): bool
-	{
-		$allowedSettings = [
-			'notify_on_reply',
-			'notify_on_story_comment',
-			'notify_on_message',
-			'notify_on_mention',
-			'email_notifications',
-		];
+    
+    /**
+     * Проверить, хочет ли пользователь получать уведомления определённого типа
+     */
+    public function userWantsNotification(int $userId, string $setting): bool
+    {
+        $allowedSettings = [
+            'notify_on_reply',
+            'notify_on_story_comment',
+            'notify_on_message',
+            'notify_on_mention',
+            'email_notifications',
+        ];
 
-		if (!in_array($setting, $allowedSettings, true)) {
-			return true;
-		}
+        if (!in_array($setting, $allowedSettings, true)) {
+            return true;
+        }
 
-		try {
-			$stmt = static::db()->prepare("
-				SELECT `{$setting}`
-				FROM `user_settings`
-				WHERE `user_id` = :user_id
-				LIMIT 1
-			");
+        try {
+            // ✅ Используем $this->db->fetchOne()
+            $result = $this->db->fetchOne("
+                SELECT `{$setting}`
+                FROM `user_settings`
+                WHERE `user_id` = :user_id
+                LIMIT 1
+            ", ['user_id' => $userId]);
 
-			$stmt->execute(['user_id' => $userId]);
-			$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (!$result) {
+                return true;
+            }
 
-			if (!$result) {
-				return true;
-			}
-
-			return (bool) $result[$setting];
-			
-		} catch (\Throwable $e) {
-			error_log("[NOTIFICATIONS] Error checking user settings: " . $e->getMessage());
-			return true; // При ошибке — уведомляем (безопасное поведение)
-		}
-	} 
+            return (bool) $result[$setting];
+            
+        } catch (\Throwable $e) {
+            if ($this->logger) {
+                $this->logger->error("[NOTIFICATIONS] Error checking user settings: " . $e->getMessage());
+            }
+            return true; // При ошибке — уведомляем (безопасное поведение)
+        }
+    } 
 }

@@ -8,9 +8,6 @@ class InvitationRequest extends Model
 {
     protected string $table = 'invitation_requests';
 
-    /**
-     * Поля, разрешённые для массового присваивания
-     */
     protected array $fillable = [
         'email',
         'reason',
@@ -36,12 +33,12 @@ class InvitationRequest extends Model
      */
     public function hasPendingRequest(string $email): bool
     {
-        $stmt = static::db()->prepare("
-            SELECT COUNT(*) FROM invitation_requests
-            WHERE email = :email AND status = 'pending'
-        ");
-        $stmt->execute(['email' => $email]);
-        return (int)$stmt->fetchColumn() > 0;
+        // ✅ Используем $this->db->fetchColumn()
+        $count = (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM invitation_requests WHERE email = :email AND status = 'pending'",
+            ['email' => $email]
+        );
+        return $count > 0;
     }
 
     /**
@@ -49,13 +46,11 @@ class InvitationRequest extends Model
      */
     public function getAllRequests(string $status = 'pending'): array
     {
-        $stmt = static::db()->prepare("
-            SELECT * FROM invitation_requests
-            WHERE status = :status
-            ORDER BY created_at DESC
-        ");
-        $stmt->execute(['status' => $status]);
-        return $stmt->fetchAll();
+        // ✅ Используем $this->db->fetchAll()
+        return $this->db->fetchAll(
+            "SELECT * FROM invitation_requests WHERE status = :status ORDER BY created_at DESC",
+            ['status' => $status]
+        );
     }
 
     /**

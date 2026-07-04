@@ -5,20 +5,30 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Services;
 
 use App\Modules\Admin\Models\AuditLog;
+use App\Modules\Admin\Models\Audit;
 use App\Core\Database;
 
+/**
+ * Сервис для работы с логами аудита.
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
+ */
 class AdminAuditService
 {
     private AuditLog $auditLogModel;
+    private Audit $auditModel;
+    private Database $db;
 
-    public function __construct(?AuditLog $auditLogModel = null)
-    {
-        $this->auditLogModel = $auditLogModel ?? new AuditLog();
+    public function __construct(
+        AuditLog $auditLogModel,
+        Audit $auditModel,
+        Database $db
+    ) {
+        $this->auditLogModel = $auditLogModel;
+        $this->auditModel = $auditModel;
+        $this->db = $db;
     }
 
-    /**
-     * Получить отфильтрованные логи аудита.
-     */
     public function getFilteredLogs(
         int $perPage,
         int $offset,
@@ -36,7 +46,6 @@ class AdminAuditService
             $filterCategory
         );
 
-        // Декодируем JSON-контекст
         foreach ($logs as &$log) {
             $payloadField = $log['payload'] ?? '';
             $log['decoded_payload'] = $payloadField ? json_decode($payloadField, true) : [];
@@ -45,25 +54,16 @@ class AdminAuditService
         return $logs;
     }
 
-    /**
-     * Получить уникальные действия для фильтра.
-     */
     public function getUniqueActions(): array
     {
         return $this->auditLogModel->getUniqueActions();
     }
 
-    /**
-     * Получить уникальные категории для фильтра.
-     */
     public function getUniqueCategories(): array
     {
         return $this->auditLogModel->getUniqueCategories();
     }
 
-    /**
-     * Получить общее количество логов с учётом фильтров.
-     */
     public function getFilteredCount(
         ?int $filterUserId = null,
         ?string $filterAction = null,
@@ -78,23 +78,17 @@ class AdminAuditService
         );
     }
 
-    /**
-     * Получить последние security-алерты.
-     */
     public function getRecentSecurityAlerts(): array
     {
-        $auditModel = new \App\Modules\Admin\Models\Audit();
-        return $auditModel->getRecentSecurityAlerts();
+        // ✅ Используем внедрённую модель
+        return $this->auditModel->getRecentSecurityAlerts();
     }
 
-    /**
-     * Полностью очистить таблицу логов аудита.
-     */
     public function clearAuditLogs(): bool
     {
         try {
-            $db = Database::getConnection();
-            $db->exec("TRUNCATE TABLE `audit_logs`");
+            // ✅ Используем внедрённый Database
+            $this->db->execute("TRUNCATE TABLE `audit_logs`");
             return true;
         } catch (\Exception $e) {
             return false;

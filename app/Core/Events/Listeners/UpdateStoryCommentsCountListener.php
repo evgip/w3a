@@ -29,13 +29,16 @@ class UpdateStoryCommentsCountListener
     private Story $storyModel;
 
     /**
-     * Конструктор слушателя.
+     * Конструктор слушателя с инъекцией зависимостей.
      *
-     * Инициализирует модель Story для выполнения операций обновления счётчика.
+     * ✅ ИЗМЕНЕНО: Теперь принимает модель Story через DI-контейнер
+     * вместо создания через new Story()
+     *
+     * @param Story $storyModel Модель историй для выполнения операций обновления счётчика
      */
-    public function __construct()
+    public function __construct(Story $storyModel)
     {
-        $this->storyModel = new Story();
+        $this->storyModel = $storyModel;
     }
 
     /**

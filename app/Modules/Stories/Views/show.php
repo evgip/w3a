@@ -1,29 +1,19 @@
 <?php
-
-$user_id = $_SESSION['user_id'] ?? false;
-
-$voteModel = new \App\Modules\Votes\Models\Vote();
-$currentUserId = \App\Modules\Auth\Services\Auth::check() ? (int)$user_id : 0;
+// ✅ Все данные приходят из контроллера, не создаём модели здесь
+$currentUserId = $currentUserId ?? 0;
+$isAdmin = $isAdmin ?? false;
+$isModerator = $isModerator ?? false;
+$isAuthor = $isAuthor ?? false;
+$canUserDownvote = $canUserDownvote ?? false;
+$currentStoryVote = $currentStoryVote ?? null;
+$currentCommentVotes = $currentCommentVotes ?? [];
+$userSuggestionsCount = $userSuggestionsCount ?? 0;
 
 $commentsTree = $commentsTree ?? [];
 
-$minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
-
-$canUserDownvote = false;
-if ($currentUserId > 0) {
-    $userModel = new \App\Modules\Users\Models\User();
-    $viewerKarma = $userModel->getUserKarma($currentUserId);
-    $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
-}
-
-$isAuthor = (int)$story['user_id'] === (int)$user_id;
 $isStoryDeleted = !empty($story['deleted_at']);
-$isAdmin = \App\Modules\Auth\Services\Auth::isAdmin();
-$isModerator =  \App\Modules\Auth\Services\Auth::isModerator();
-
 $hasNewComments = false;
-
-$showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ?? 0) > 0);
+$showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
 ?>
 
 <!-- КАРТОЧКА ПУБЛИКАЦИИ -->
@@ -35,7 +25,7 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
             'type' => 'story',
             'id' => (int)$story['id'],
             'score' => (int)$story['score'],
-            'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
+            'currentVoteState' => $currentStoryVote,
             'canDownvote' => $canUserDownvote,
             'isLoggedIn' => $currentUserId > 0,
             'contentOwnerId' => $isAuthor
@@ -81,20 +71,19 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
 
                 <!-- Кнопка "Предложить правку" -->
                 <?php
-                $isModerator = \App\Modules\Auth\Services\Auth::isModerator() || \App\Modules\Auth\Services\Auth::isAdmin();
-                $canSuggest = isset($_SESSION['user_id']) && (
-                    $_SESSION['user_id'] !== $story['user_id'] || // Не автор
-                    $isModerator // Или модератор
+                // ✅ Используем переданные данные вместо Auth::isModerator()
+                $canSuggest = $currentUserId > 0 && (
+                    !$isAuthor || // Не автор
+                    $isModerator || $isAdmin // Или модератор/админ
                 );
                 ?>
 
                 <?php if ($canSuggest): ?>
                     <?php
-                    // Проверяем лимит предложений (только для не-модераторов)
-                    if (!$isModerator) {
-                        $suggestionService = $this->service(\App\Modules\Suggestions\Services\SuggestionService::class);
-                        $userSuggestionsCount = $suggestionService->getUserActiveSuggestionsCount('Story', $story['id'], $_SESSION['user_id']);
-                        $canSuggest = $userSuggestionsCount < \App\Modules\Suggestions\Services\SuggestionService::MAX_USER_SUGGESTIONS;
+                    // ✅ Проверяем лимит предложений (только для не-модераторов)
+                    if (!$isModerator && !$isAdmin) {
+                        $maxSuggestions = \App\Modules\Suggestions\Services\SuggestionService::MAX_USER_SUGGESTIONS;
+                        $canSuggest = $userSuggestionsCount < $maxSuggestions;
                     }
                     ?>
 
@@ -106,18 +95,16 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
                 <?php endif; ?>
 
                 <!-- Блок активных предложений (только если есть) -->
-                <?php if (isset($_SESSION['user_id']) && !empty($activeSuggestions)): ?>
+                <?php if ($currentUserId > 0 && !empty($activeSuggestions)): ?>
                     <?php partial('Suggestions::active_suggestions', ['activeSuggestions' => $activeSuggestions ?? []]) ?>
                 <?php endif; ?>
 
-                <?php if (\App\Modules\Auth\Services\Auth::check()): ?>
+                <?php if ($currentUserId > 0): ?>
 
                     <!-- Блок истории изменений (только если есть) -->
                     <?php if (!empty($changeLog)): ?>
                         <?php partial('Suggestions::change_log', ['changeLog' => $changeLog ?? []]) ?>
                     <?php endif; ?>
-
-
 
                     <!-- Модальное окно -->
                     <?php partial('Suggestions::suggest_modal', [
@@ -161,7 +148,7 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
                 </a>
 
                 <!-- Редактирование -->
-                <?php if ($currentUserId > 0 && ((int)$story['user_id'] === $currentUserId || $isAdmin) && !$isStoryDeleted): ?>
+                <?php if ($currentUserId > 0 && ($isAuthor || $isAdmin) && !$isStoryDeleted): ?>
                     <span class="divider">|</span>
                     <a href="<?= route('story.edit', ['id' => $story['id']]) ?>">edit</a>
                 <?php endif; ?>
@@ -255,7 +242,7 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
 <?php else: ?>
 
     <?php
-    $renderTree = function (int $parentId) use (&$renderTree, $commentsTree,  $voteModel, $currentUserId, $isAdmin, $isModerator, $canUserDownvote, $isAuthor) {
+    $renderTree = function (int $parentId) use (&$renderTree, $commentsTree, $currentUserId, $isAdmin, $isModerator, $canUserDownvote, $isAuthor, $currentCommentVotes) {
         if (!isset($commentsTree[$parentId])) {
             return;
         }
@@ -265,6 +252,8 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
                 <?php
                 $commentId = (int)$comment['id'];
                 $isCommentDeleted = !empty($comment['deleted_at']);
+                // ✅ Получаем голос за комментарий из переданного массива
+                $currentCommentVote = $currentCommentVotes[$commentId] ?? null;
                 ?>
                 <li class="comment comment-thread <?= $isCommentDeleted ? 'deleted' : '' ?>" data-comment-id="<?= $commentId ?>"  id="comment-block-<?= $commentId ?>">
 
@@ -275,14 +264,14 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
                                 'type' => 'comment',
                                 'id' => $commentId,
                                 'score' => (int)$comment['score'],
-                                'currentVoteState' => $voteModel->getUserVote($currentUserId, 'comment', $commentId),
+                                'currentVoteState' => $currentCommentVote,
                                 'canDownvote' => $canUserDownvote,
-                                'isLoggedIn' => true,
+                                'isLoggedIn' => $currentUserId > 0,
                                 'contentOwnerId' => $isAuthor,
                             ]); ?>
                         </div>
 
-                    <?php elseif (!$isCommentDeleted): ?>
+                    <?php else: ?>
                         <div class="comment_votes">
                             <span class="score"><?= (int)$comment['score'] ?></span>
                         </div>
@@ -292,16 +281,14 @@ $showMarkReadButton = (\App\Modules\Auth\Services\Auth::check() && ($newCount ??
                     <div class="comment_body">
 
                         <!-- Метаданные комментария -->
-						
-<div class="comment-header">
-<span class="collapse-toggle" title="Свернуть ветку">[–]</span>
-                        <?php partial('Users::_comment_meta', [
-                            'comment' => $comment,
-                            'currentUserId' => $currentUserId,
-                            'isAdmin' => $isAdmin,
-                        ]); ?>
-</div>
-
+                        <div class="comment-header">
+                            <span class="collapse-toggle" title="Свернуть ветку">[–]</span>
+                            <?php partial('Users::_comment_meta', [
+                                'comment' => $comment,
+                                'currentUserId' => $currentUserId,
+                                'isAdmin' => $isAdmin,
+                            ]); ?>
+                        </div>
 
                         <!-- Тело комментария -->
                         <?php if (!$isCommentDeleted): ?>

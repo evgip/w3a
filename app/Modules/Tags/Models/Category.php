@@ -3,6 +3,8 @@
 namespace App\Modules\Tags\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 class Category extends Model
 {
@@ -15,7 +17,7 @@ class Category extends Model
         'sort_order',
     ];
 
-   /**
+    /**
      * Получить все категории с количеством тегов (для публичной страницы /categories)
      */
     public function getAllWithTagsCount(): array
@@ -27,119 +29,124 @@ class Category extends Model
                 GROUP BY c.id, c.name, c.slug, c.description, c.sort_order
                 ORDER BY c.sort_order ASC, c.name ASC";
 
-        $stmt = static::db()->query($sql);
-        return $stmt->fetchAll();
+        return $this->db->fetchAll($sql);
     }
 
-	/**
-	 * Получить истории, связанные с тегами конкретной категории по slug
-	 */
-	public function getStoriesBySlug(string $slug, int $limit, int $offset, array $excludeTagIds = []): ?array
-	{
-		// Получаем категорию
-		$sql = "SELECT * FROM {$this->table} WHERE slug = :slug LIMIT 1";
-		$stmt = static::db()->prepare($sql);
-		$stmt->execute(['slug' => $slug]);
-		$category = $stmt->fetch();
+    /**
+     * Получить истории, связанные с тегами конкретной категории по slug
+     */
+    public function getStoriesBySlug(string $slug, int $limit, int $offset, array $excludeTagIds = []): ?array
+    {
+        // Получаем категорию
+        $category = $this->db->fetchOne(
+            "SELECT * FROM {$this->table} WHERE slug = :slug LIMIT 1",
+            ['slug' => $slug]
+        );
 
-		if (!$category) {
-			return null;
-		}
+        if (!$category) {
+            return null;
+        }
 
-		// Получаем истории с тегами из этой категории
-		$sql = "SELECT DISTINCT s.*, u.username as author_name, up.avatar as author_avatar,
-					   GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
-					   GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
-				FROM stories s
-				JOIN users u ON s.user_id = u.id
-				LEFT JOIN `user_profiles` up ON u.id = up.user_id
-				JOIN taggings tg ON s.id = tg.story_id
-				JOIN tags t ON tg.tag_id = t.id
-				WHERE t.category_id = :category_id 
-				  AND s.deleted_at IS NULL
-				  AND t.deleted_at IS NULL";
+        // Получаем истории с тегами из этой категории
+        $sql = "SELECT DISTINCT s.*, u.username as author_name, up.avatar as author_avatar,
+                       GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
+                       GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
+                FROM stories s
+                JOIN users u ON s.user_id = u.id
+                LEFT JOIN `user_profiles` up ON u.id = up.user_id
+                JOIN taggings tg ON s.id = tg.story_id
+                JOIN tags t ON tg.tag_id = t.id
+                WHERE t.category_id = :category_id 
+                  AND s.deleted_at IS NULL
+                  AND t.deleted_at IS NULL";
 
-		$bindings = [':category_id' => $category['id']];
+        $bindings = [':category_id' => $category['id']];
 
-		// Исключаем истории с тегами из черного списка пользователя
-		if (!empty($excludeTagIds)) {
-			$namedPlaceholders = [];
-			foreach ($excludeTagIds as $index => $tagId) {
-				$paramName = ":exclude_tag_{$index}";
-				$namedPlaceholders[] = $paramName;
-				$bindings[$paramName] = (int)$tagId;
-			}
-			
-			$placeholdersStr = implode(',', $namedPlaceholders);
+        // Исключаем истории с тегами из черного списка пользователя
+        if (!empty($excludeTagIds)) {
+            $namedPlaceholders = [];
+            foreach ($excludeTagIds as $index => $tagId) {
+                $paramName = ":exclude_tag_{$index}";
+                $namedPlaceholders[] = $paramName;
+                $bindings[$paramName] = (int)$tagId;
+            }
+            
+            $placeholdersStr = implode(',', $namedPlaceholders);
 
-			$sql .= " LEFT JOIN taggings tg_exclude ON s.id = tg_exclude.story_id 
-				  AND tg_exclude.tag_id IN ($placeholdersStr)
-				  WHERE tg_exclude.story_id IS NULL";
-		}
+            $sql .= " LEFT JOIN taggings tg_exclude ON s.id = tg_exclude.story_id 
+                  AND tg_exclude.tag_id IN ($placeholdersStr)
+                  WHERE tg_exclude.story_id IS NULL";
+        }
 
-		$sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
+        $sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
 
-		$bindings[':limit'] = $limit;
-		$bindings[':offset'] = $offset;
+        $bindings[':limit'] = $limit;
+        $bindings[':offset'] = $offset;
 
-		$stmt = static::db()->prepare($sql);
-		$stmt->execute($bindings);
-		$stories = $stmt->fetchAll();
+        // Используем prepare() для работы с LIMIT/OFFSET через bindValue
+        $stmt = $this->db->prepare($sql);
+        foreach ($bindings as $key => $value) {
+            $paramKey = is_string($key) && !str_starts_with($key, ':') ? ":{$key}" : $key;
+            if ($paramKey === ':limit' || $paramKey === ':offset') {
+                $stmt->bindValue($paramKey, $value, \PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue($paramKey, $value);
+            }
+        }
+        $stmt->execute();
+        $stories = $stmt->fetchAll();
 
-		// Парсим теги
-		foreach ($stories as &$story) {
-			parseTagsCombined($story);
-		}
+        // Парсим теги
+        foreach ($stories as &$story) {
+            parseTagsCombined($story);
+        }
 
-		$category['stories'] = $stories;
-		return $category;
-	}
+        $category['stories'] = $stories;
+        return $category;
+    }
 
-	/**
-	 * Получить общее количество историй в категории
-	 */
-	public function getStoriesCountBySlug(string $slug, array $excludeTagIds = []): int
-	{
-		// Получаем категорию
-		$sql = "SELECT id FROM {$this->table} WHERE slug = :slug LIMIT 1";
-		$stmt = static::db()->prepare($sql);
-		$stmt->execute(['slug' => $slug]);
-		$category = $stmt->fetch();
+    /**
+     * Получить общее количество историй в категории
+     */
+    public function getStoriesCountBySlug(string $slug, array $excludeTagIds = []): int
+    {
+        // Получаем категорию
+        $category = $this->db->fetchOne(
+            "SELECT id FROM {$this->table} WHERE slug = :slug LIMIT 1",
+            ['slug' => $slug]
+        );
 
-		if (!$category) {
-			return 0;
-		}
+        if (!$category) {
+            return 0;
+        }
 
-		$sql = "SELECT COUNT(DISTINCT s.id) 
-				FROM stories s
-				JOIN taggings tg ON s.id = tg.story_id
-				JOIN tags t ON tg.tag_id = t.id
-				WHERE t.category_id = :category_id 
-				  AND s.deleted_at IS NULL
-				  AND t.deleted_at IS NULL";
+        $sql = "SELECT COUNT(DISTINCT s.id) 
+                FROM stories s
+                JOIN taggings tg ON s.id = tg.story_id
+                JOIN tags t ON tg.tag_id = t.id
+                WHERE t.category_id = :category_id 
+                  AND s.deleted_at IS NULL
+                  AND t.deleted_at IS NULL";
 
-		$bindings = [':category_id' => $category['id']];
+        $bindings = [':category_id' => $category['id']];
 
-		if (!empty($excludeTagIds)) {
-			$namedPlaceholders = [];
-			foreach ($excludeTagIds as $index => $tagId) {
-				$paramName = ":exclude_tag_{$index}";
-				$namedPlaceholders[] = $paramName;
-				$bindings[$paramName] = (int)$tagId;
-			}
-			
-			$placeholdersStr = implode(',', $namedPlaceholders);
-			$sql .= " AND s.id NOT IN (
-				SELECT DISTINCT story_id FROM taggings 
-				WHERE tag_id IN ($placeholdersStr)
-			)";
-		}
+        if (!empty($excludeTagIds)) {
+            $namedPlaceholders = [];
+            foreach ($excludeTagIds as $index => $tagId) {
+                $paramName = ":exclude_tag_{$index}";
+                $namedPlaceholders[] = $paramName;
+                $bindings[$paramName] = (int)$tagId;
+            }
+            
+            $placeholdersStr = implode(',', $namedPlaceholders);
+            $sql .= " AND s.id NOT IN (
+                SELECT DISTINCT story_id FROM taggings 
+                WHERE tag_id IN ($placeholdersStr)
+            )";
+        }
 
-		$stmt = static::db()->prepare($sql);
-		$stmt->execute($bindings);
-
-		return (int)$stmt->fetchColumn();
-	}
+        return (int)$this->db->fetchColumn($sql, $bindings);
+    }
 
     /**
      * Получить все категории с количеством тегов для админки
@@ -153,8 +160,7 @@ class Category extends Model
                 GROUP BY c.id
                 ORDER BY c.sort_order ASC, c.name ASC";
 
-        $stmt = static::db()->query($sql);
-        return $stmt->fetchAll();
+        return $this->db->fetchAll($sql);
     }
 
     /**
@@ -164,12 +170,9 @@ class Category extends Model
     {
         $sql = "SELECT id, name, slug FROM {$this->table} 
                 ORDER BY sort_order ASC, name ASC";
-        $stmt = static::db()->query($sql);
-        return $stmt->fetchAll();
-    }
 
-    // Метод find() удалён, так как он уже есть в родительском классе App\Core\Model
-    // и будет автоматически унаследован.
+        return $this->db->fetchAll($sql);
+    }
 
     /**
      * Проверить уникальность slug
@@ -184,9 +187,7 @@ class Category extends Model
             $params['id'] = $excludeId;
         }
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute($params);
-        return (int)$stmt->fetchColumn() > 0;
+        return (int)$this->db->fetchColumn($sql, $params) > 0;
     }
 
     /**
@@ -197,15 +198,14 @@ class Category extends Model
         $sql = "INSERT INTO {$this->table} (name, slug, description, sort_order) 
                 VALUES (:name, :slug, :description, :sort_order)";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute([
+        $this->db->execute($sql, [
             'name' => $data['name'],
             'slug' => $data['slug'],
             'description' => $data['description'] ?? null,
             'sort_order' => $data['sort_order'] ?? 0,
         ]);
 
-        return (int)static::db()->lastInsertId();
+        return (int)$this->db->lastInsertId();
     }
 
     /**
@@ -217,14 +217,13 @@ class Category extends Model
                 SET name = :name, slug = :slug, description = :description, sort_order = :sort_order
                 WHERE id = :id";
 
-        $stmt = static::db()->prepare($sql);
-        return $stmt->execute([
+        return $this->db->execute($sql, [
             'id' => $id,
             'name' => $data['name'],
             'slug' => $data['slug'],
             'description' => $data['description'] ?? null,
             'sort_order' => $data['sort_order'] ?? 0,
-        ]);
+        ]) > 0;
     }
 
     /**
@@ -232,9 +231,10 @@ class Category extends Model
      */
     public function deleteCategory(int $id): bool
     {
-        $sql = "DELETE FROM {$this->table} WHERE id = :id";
-        $stmt = static::db()->prepare($sql);
-        return $stmt->execute(['id' => $id]);
+        return $this->db->execute(
+            "DELETE FROM {$this->table} WHERE id = :id",
+            ['id' => $id]
+        ) > 0;
     }
 
     /**
@@ -242,9 +242,9 @@ class Category extends Model
      */
     public function hasTags(int $categoryId): bool
     {
-        $sql = "SELECT COUNT(*) FROM tags WHERE category_id = :id AND deleted_at IS NULL";
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['id' => $categoryId]);
-        return (int)$stmt->fetchColumn() > 0;
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM tags WHERE category_id = :id AND deleted_at IS NULL",
+            ['id' => $categoryId]
+        ) > 0;
     }
 }

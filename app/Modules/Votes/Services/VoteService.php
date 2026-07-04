@@ -8,37 +8,42 @@ use App\Modules\Votes\Models\Vote;
 use App\Modules\Users\Models\User;
 use App\Modules\Stories\Models\Comment;
 use App\Core\Logger;
+use App\Core\Database;
 
 /**
  * Сервис голосования.
- * Отвечает за бизнес-правила (карма, права, запрет самоголосования).
  */
 class VoteService
 {
     private Vote $voteModel;
     private User $userModel;
     private Comment $commentModel;
+    private Logger $logger;
+    private Database $db;
+    
     private const DEFAULT_MIN_KARMA = 10;
 
-    public function __construct(Vote $voteModel, User $userModel, Comment $commentModel)
-    {
+    public function __construct(
+        Vote $voteModel, 
+        User $userModel, 
+        Comment $commentModel,
+        Logger $logger,
+        Database $db
+    ) {
         $this->voteModel = $voteModel;
         $this->userModel = $userModel;
         $this->commentModel = $commentModel;
+        $this->logger = $logger;
+        $this->db = $db;
     }
 
-    /**
-     * Обработать голосование.
-     */
     public function handleVote(int $userId, string $type, int $targetId, int $voteValue): array
     {
-        // ✅ НОВОЕ: Проверка самоголосования
         $ownerCheck = $this->checkSelfVote($userId, $type, $targetId);
         if (!$ownerCheck['allowed']) {
             return $ownerCheck;
         }
 
-        // Проверка кармы для дизлайка
         if ($voteValue === -1 && !$this->canDownvote($userId)) {
             $minKarma = $this->getMinKarma();
             $userKarma = $this->userModel->getUserKarma($userId);
@@ -48,7 +53,6 @@ class VoteService
             ];
         }
 
-        // Выполняем голосование
         if (!$this->voteModel->toggleVote($userId, $type, $targetId, $voteValue)) {
             return [
                 'success' => false,
@@ -56,15 +60,13 @@ class VoteService
             ];
         }
 
-        // Обновляем confidence_score для комментариев
         if ($type === 'comment') {
             $this->updateCommentConfidenceScore($targetId);
         }
 
-		// ✅ НОВОЕ: Обновляем hotness для историй
-		if ($type === 'story') {
-			$this->updateStoryHotness($targetId);
-		}
+        if ($type === 'story') {
+            $this->updateStoryHotness($targetId);
+        }
 
         return ['success' => true, 'message' => 'Голос учтён.'];
     }
@@ -79,9 +81,6 @@ class VoteService
         return $this->voteModel->getUserVote($userId, $type, $targetId);
     }
 
-    /**
-     * ✅ НОВОЕ: Обновить confidence_score комментария после голосования
-     */
     private function updateCommentConfidenceScore(int $commentId): void
     {
         try {
@@ -96,25 +95,17 @@ class VoteService
                 $this->commentModel->updateConfidenceScore($commentId, $confidenceScore);
             }
         } catch (\Exception $e) {
-            // Логируем ошибку, но не прерываем процесс голосования
-            Logger::error('Failed to update confidence score for comment', [
+            $this->logger->error('Failed to update confidence score for comment', [
                 'comment_id' => $commentId,
                 'error' => $e->getMessage(),
             ]);
         }
     }
 
-    /**
-     * ✅ НОВОЕ: Проверка самоголосования.
-     * Пользователь не может голосовать за свой контент.
-     * 
-     * @return array ['allowed' => bool, 'success' => bool, 'message' => string]
-     */
     private function checkSelfVote(int $userId, string $type, int $targetId): array
     {
         $ownerId = $this->voteModel->getOwnerUserId($type, $targetId);
         
-        // Контент не найден
         if ($ownerId === null) {
             return [
                 'allowed' => false,
@@ -123,7 +114,6 @@ class VoteService
             ];
         }
         
-        // Пользователь пытается голосовать за свой контент
         if ($ownerId === $userId) {
             return [
                 'allowed' => false,
@@ -135,9 +125,6 @@ class VoteService
         return ['allowed' => true, 'success' => true, 'message' => ''];
     }
 
-    /**
-     * Проверить право на дизлайк.
-     */
     private function canDownvote(int $userId): bool
     {
         $user = $this->userModel->find($userId);
@@ -163,51 +150,43 @@ class VoteService
     {
         return (int)(config('app.min_karma_for_downvote') ?? self::DEFAULT_MIN_KARMA);
     }
-	
-	/**
-	 * Пересчитать hotness истории после голосования.
-	 */
-	private function updateStoryHotness(int $storyId): void
-	{
-		try {
-			$db = \App\Core\Database::getConnection();
-			
-			// Получаем данные истории И сумму модификаторов тегов одним запросом
-			$stmt = $db->prepare("
-				SELECT 
-					s.`score`, 
-					s.`created_at`,
-					COALESCE(SUM(t.`hotness_mod`), 0.0) AS `tag_hotness_mod`
-				FROM `stories` s
-				LEFT JOIN `taggings` tg ON s.`id` = tg.`story_id`
-				LEFT JOIN `tags` t ON tg.`tag_id` = t.`id`
-				WHERE s.`id` = :id
-				GROUP BY s.`id`
-			");
-			$stmt->execute(['id' => $storyId]);
-			$story = $stmt->fetch(\PDO::FETCH_ASSOC);
-			
-			if ($story) {
-				// Формируем массив модификаторов для функции calculate_hotness
-				// Поскольку нам нужна только сумма, передаём её как один элемент массива
-				$tagMods = [(float)$story['tag_hotness_mod']];
-				
-				$hotness = calculate_hotness(
-					(int)$story['score'], 
-					$story['created_at'],
-					$tagMods
-				);
-				
-				$update = $db->prepare("
-					UPDATE `stories` SET `hotness` = :h WHERE `id` = :id
-				");
-				$update->execute(['h' => $hotness, 'id' => $storyId]);
-			}
-		} catch (\Exception $e) {
-			\App\Core\Logger::error('Failed to update story hotness', [
-				'story_id' => $storyId,
-				'error' => $e->getMessage(),
-			]);
-		}
-	}
+    
+    private function updateStoryHotness(int $storyId): void
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT 
+                    s.`score`, 
+                    s.`created_at`,
+                    COALESCE(SUM(t.`hotness_mod`), 0.0) AS `tag_hotness_mod`
+                FROM `stories` s
+                LEFT JOIN `taggings` tg ON s.`id` = tg.`story_id`
+                LEFT JOIN `tags` t ON tg.`tag_id` = t.`id`
+                WHERE s.`id` = :id
+                GROUP BY s.`id`
+            ");
+            $stmt->execute(['id' => $storyId]);
+            $story = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            if ($story) {
+                $tagMods = [(float)$story['tag_hotness_mod']];
+                
+                $hotness = calculate_hotness(
+                    (int)$story['score'], 
+                    $story['created_at'],
+                    $tagMods
+                );
+                
+                $update = $this->db->prepare("
+                    UPDATE `stories` SET `hotness` = :h WHERE `id` = :id
+                ");
+                $update->execute(['h' => $hotness, 'id' => $storyId]);
+            }
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to update story hotness', [
+                'story_id' => $storyId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 }

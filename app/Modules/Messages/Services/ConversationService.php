@@ -4,24 +4,31 @@ namespace App\Modules\Messages\Services;
 
 use App\Modules\Messages\Models\Conversation;
 use App\Modules\Users\Models\User;
+use App\Core\Session;
 
 /**
  * Сервис для управления диалогами между пользователями.
- * Инкапсулирует бизнес-логику: создание диалогов, проверка прав доступа,
- * получение списка диалогов пользователя.
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
  */
 class ConversationService
 {
     private Conversation $conversationModel;
     private User $userModel;
+    private Session $session;
 
-	public function __construct(
-		?Conversation $conversationModel = null,
-		?User $userModel = null
-	) {
-		$this->conversationModel = $conversationModel ?? new Conversation();
-		$this->userModel = $userModel ?? new User();
-	}
+    /**
+     * ✅ ИЗМЕНЕНО: Все зависимости обязательны
+     */
+    public function __construct(
+        Conversation $conversationModel,
+        User $userModel,
+        Session $session
+    ) {
+        $this->conversationModel = $conversationModel;
+        $this->userModel = $userModel;
+        $this->session = $session;
+    }
 
     /**
      * Получить список всех диалогов пользователя с последним сообщением.
@@ -33,7 +40,6 @@ class ConversationService
 
     /**
      * Получить диалог по ID с проверкой прав доступа.
-     * @return array|null Данные диалога или null, если нет доступа
      */
     public function getConversationWithAccessCheck(int $conversationId, int $userId): ?array
     {
@@ -43,7 +49,6 @@ class ConversationService
             return null;
         }
 
-        // Проверяем, что пользователь является участником диалога
         if ((int)$chatRoom['user_one'] !== $userId && (int)$chatRoom['user_two'] !== $userId) {
             return null;
         }
@@ -62,7 +67,6 @@ class ConversationService
             return null;
         }
 
-        // Определяем ID собеседника
         $partnerId = ((int)$chatRoom['user_one'] === $currentUserId)
             ? (int)$chatRoom['user_two']
             : (int)$chatRoom['user_one'];
@@ -72,22 +76,22 @@ class ConversationService
 
     /**
      * Создать новый диалог или получить существующий между двумя пользователями.
-     * @return int ID диалога
      */
-	public function getOrCreateConversation(int $userOneId, int $userTwoId): ?int
-	{
-		if ($userOneId === $userTwoId) {
-			Session::setFlash('error', 'Нельзя создать диалог с самим собой');
-			return null;
-		}
+    public function getOrCreateConversation(int $userOneId, int $userTwoId): ?int
+    {
+        if ($userOneId === $userTwoId) {
+            // ✅ Используем внедрённый Session
+            $this->session->flash('error', 'Нельзя создать диалог с самим собой');
+            return null;
+        }
 
-		try {
-			return $this->conversationModel->firstOrCreate($userOneId, $userTwoId);
-		} catch (\Throwable $e) {
-			Session::setFlash('error', 'Ошибка при создании диалога');
-			return null;
-		}
-	}
+        try {
+            return $this->conversationModel->firstOrCreate($userOneId, $userTwoId);
+        } catch (\Throwable $e) {
+            $this->session->flash('error', 'Ошибка при создании диалога');
+            return null;
+        }
+    }
 
     /**
      * Обновить timestamp диалога (для сортировки по активности).

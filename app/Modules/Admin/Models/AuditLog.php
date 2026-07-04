@@ -3,6 +3,8 @@
 namespace App\Modules\Admin\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 class AuditLog extends Model
 {
@@ -49,10 +51,7 @@ class AuditLog extends Model
         $offset = (int)$offset;
         $sql .= " ORDER BY `id` DESC LIMIT {$limit} OFFSET {$offset}";
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute($bindings);
-
-        return $stmt->fetchAll();
+        return $this->db->fetchAll($sql, $bindings);
     }
 
     /**
@@ -89,9 +88,7 @@ class AuditLog extends Model
             $bindings['search_username'] = '%' . $search . '%';
         }
 
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute($bindings);
-        return (int)$stmt->fetchColumn();
+        return (int)$this->db->fetchColumn($sql, $bindings);
     }
 
     /**
@@ -99,8 +96,7 @@ class AuditLog extends Model
      */
     public function getUniqueActions(): array
     {
-        $stmt = static::db()->query("SELECT DISTINCT `action` FROM `audit_logs` ORDER BY `action` ASC");
-        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        return $this->db->fetchAll("SELECT DISTINCT `action` FROM `audit_logs` ORDER BY `action` ASC", [], \PDO::FETCH_COLUMN);
     }
 
     /**
@@ -108,10 +104,7 @@ class AuditLog extends Model
      */
     public function getUniqueCategories(): array
     {
-        $stmt = static::db()->query(
-            "SELECT DISTINCT `category` FROM `audit_logs` ORDER BY `category` ASC"
-        );
-        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        return $this->db->fetchAll("SELECT DISTINCT `category` FROM `audit_logs` ORDER BY `category` ASC", [], \PDO::FETCH_COLUMN);
     }
 
     /**
@@ -122,15 +115,12 @@ class AuditLog extends Model
         $limit = (int)$limit;
         $offset = (int)$offset;
 
-        $stmt = static::db()->prepare(
-            "SELECT * FROM `audit_logs` 
-			 WHERE `category` = :category 
-			 ORDER BY `id` DESC 
-			 LIMIT {$limit} OFFSET {$offset}"
-        );
-        $stmt->execute([':category' => $category]);
+        $sql = "SELECT * FROM `audit_logs` 
+                WHERE `category` = :category 
+                ORDER BY `id` DESC 
+                LIMIT {$limit} OFFSET {$offset}";
 
-        return $stmt->fetchAll();
+        return $this->db->fetchAll($sql, [':category' => $category]);
     }
 
     /**
@@ -138,11 +128,9 @@ class AuditLog extends Model
      */
     public function countByCategory(string $category): int
     {
-        $stmt = static::db()->prepare(
-            "SELECT COUNT(*) FROM `audit_logs` WHERE `category` = :category"
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `audit_logs` WHERE `category` = :category",
+            [':category' => $category]
         );
-        $stmt->bindValue(':category', $category);
-        $stmt->execute();
-        return (int)$stmt->fetchColumn();
     }
 }

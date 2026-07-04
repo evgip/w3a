@@ -8,19 +8,18 @@ use App\Modules\Invitations\Models\InvitationRequest;
 
 /**
  * Сервис для управления запросами на приглашение.
+ * 
+ * ✅ ИЗМЕНЕНО: Зависимость обязательна.
  */
 class AdminInvitationService
 {
     private InvitationRequest $requestModel;
 
-    public function __construct(?InvitationRequest $requestModel = null)
+    public function __construct(InvitationRequest $requestModel)
     {
-        $this->requestModel = $requestModel ?? new InvitationRequest();
+        $this->requestModel = $requestModel;
     }
 
-    /**
-     * Получить список запросов по статусу.
-     */
     public function getRequests(string $status = 'pending'): array
     {
         $allowedStatuses = ['pending', 'approved', 'rejected'];
@@ -32,17 +31,11 @@ class AdminInvitationService
         return $this->requestModel->getAllRequests($status);
     }
 
-    /**
-     * Одобрить запрос.
-     */
     public function approveRequest(int $id): bool
     {
         return $this->requestModel->approveRequest($id);
     }
 
-    /**
-     * Отклонить запрос.
-     */
     public function rejectRequest(int $id): bool
     {
         return $this->requestModel->rejectRequest($id);

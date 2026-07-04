@@ -12,11 +12,11 @@ use App\Modules\Stories\Services\CommentService;
 use App\Modules\Stories\Services\ReadRibbonService;
 use App\Modules\Stories\Services\UrlFetcherService;
 use App\Modules\Stories\Models\Story;
-
 use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Auth\Services\Auth;
-
+use App\Modules\Votes\Models\Vote;
+use App\Modules\Users\Models\User;
 
 /**
  * Контроллер для работы с историями (публикациями) и комментариями.
@@ -71,9 +71,33 @@ class StoriesController extends Controller
         $storyIds = array_column($stories, 'id');
         $newCommentsMap = $this->service(StoryFilterService::class)->getNewCommentsCounts($storyIds);
 
+        // ✅ Получаем данные для голосования через контейнер
+        $currentUserId = Auth::check() ? Auth::id() : 0;
+        $isAdmin = Auth::isAdmin();
+        $canUserDownvote = false;
+        $currentVotes = [];
+        
+        if ($currentUserId > 0) {
+            // Получаем модель User из контейнера
+            $userModel = $this->container->get(User::class);
+            $viewerKarma = $userModel->getUserKarma($currentUserId);
+            $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
+            $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
+            
+            // Получаем голоса для всех историй одним запросом
+            $voteModel = $this->container->get(Vote::class);
+            foreach ($storyIds as $storyId) {
+                $currentVotes[$storyId] = $voteModel->getUserVote($currentUserId, 'story', (int)$storyId);
+            }
+        }
+
         // Формируем заголовок страницы
         $title = 'Лента историй';
 		$tagInfo = '';
+		$wikiPages = false;
+		$primaryWikiPage = false;
+		$wikiPagesCount = false;
+		
         if ($tagslug) {
             $title = "Публикации с тегом # " . e($tagslug);
 			
@@ -94,15 +118,6 @@ class StoriesController extends Controller
 			$wikiPages = $wikiService->getPagesForTag($tagInfo['id']);
 			$primaryWikiPage = $wikiService->getPrimaryPageForTag($tagInfo['id']);
 			$wikiPagesCount = count($wikiPages);
-
-			/*// Проверяем права на создание wiki
-			$canCreateWiki = false;
-			if (\App\Modules\Auth\Services\Auth::check()) {
-				$permissionService = $this->service(\App\Modules\Wiki\Services\WikiPermissionService::class);
-				$canCreateWiki = $permissionService->canCreateWikiForTag($tagInfo['id'], \App\Modules\Auth\Services\Auth::id());
-			} */
-			
-
         } elseif ($author) {
 			 $title = "Публикации пользователя " . e($author);
 		} elseif ($domain) {	
@@ -125,11 +140,15 @@ class StoriesController extends Controller
             'newCommentsMap' => $newCommentsMap,
             'bannedDomainsCache' => $bannedDomainsCache,
             'sort' => $sort,
-			'wikiPages' => $wikiPages ?? false,
-			'primaryWikiPage' => $primaryWikiPage ?? false,
-			'wikiPagesCount' => $wikiPagesCount ?? false,
+			'wikiPages' => $wikiPages,
+			'primaryWikiPage' => $primaryWikiPage,
+			'wikiPagesCount' => $wikiPagesCount,
 			'author' => $author,
-			'domain' => $domain
+			'domain' => $domain,
+            'currentUserId' => $currentUserId,
+            'isAdmin' => $isAdmin,
+            'canUserDownvote' => $canUserDownvote,
+            'currentVotes' => $currentVotes,
         ]);
     }
     
@@ -150,7 +169,8 @@ class StoriesController extends Controller
         if (!$story) {
             $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
             if (class_exists($errorController)) {
-                (new $errorController())->notFound("История не найдена.");
+                $controller = $this->container->make($errorController);
+                $controller->notFound("История не найдена.");
                 exit;
             }
             http_response_code(404);
@@ -168,24 +188,60 @@ class StoriesController extends Controller
         $activeSuggestions = $suggestionService->getActiveSuggestions('Story', $storyId);
         $changeLog = $suggestionService->getChangeLog('Story', $storyId, 10);
 
-        // Получаем теги для модалки
-        $tagModel = new \App\Modules\Tags\Models\Tag();
+        // ✅ Получаем модели из контейнера вместо new
+        $tagModel = $this->container->get(Tag::class);
         $allTags = $tagModel->getAllTags();
 
-        $storyModel = new \App\Modules\Stories\Models\Story();
+        $storyModel = $this->container->get(Story::class);
         $currentTagIds = $storyModel->getStoryTagIds($storyId);
 
-		// Получаем OG-данные из сервиса
-		$ogData = $this->service(StoryFilterService::class)->getStoryOpenGraphData($storyId);
-		
-		// Контроллер устанавливает OG-теги (презентация)
-		$this->setOpenGraph([
-			'type' => 'article',
-			'title' => $ogData['title'],
-			'description' => $ogData['description'],
-			'image' => $ogData['image'],
-			'article:author' => $ogData['author_url'],
-		]);
+        // ✅ Получаем данные для голосования
+        $currentUserId = Auth::check() ? Auth::id() : 0;
+        $isAdmin = Auth::isAdmin();
+        $isModerator = Auth::isModerator();
+        $isAuthor = $currentUserId > 0 && (int)$story['user_id'] === $currentUserId;
+        
+        $canUserDownvote = false;
+        $currentStoryVote = null;
+        $currentCommentVotes = [];
+        $userSuggestionsCount = 0;
+        
+        if ($currentUserId > 0) {
+            // Получаем модель User из контейнера
+            $userModel = $this->container->get(User::class);
+            $viewerKarma = $userModel->getUserKarma($currentUserId);
+            $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
+            $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
+            
+            // Получаем голос за историю
+            $voteModel = $this->container->get(Vote::class);
+            $currentStoryVote = $voteModel->getUserVote($currentUserId, 'story', $storyId);
+            
+            // Получаем голоса за все комментарии
+            foreach ($commentsTree as $parentId => $comments) {
+                foreach ($comments as $comment) {
+                    $commentId = (int)$comment['id'];
+                    $currentCommentVotes[$commentId] = $voteModel->getUserVote($currentUserId, 'comment', $commentId);
+                }
+            }
+            
+            // Проверяем лимит предложений (только для не-модераторов)
+            if (!$isModerator && !$isAdmin) {
+                $userSuggestionsCount = $suggestionService->getUserActiveSuggestionsCount('Story', $storyId, $currentUserId);
+            }
+        }
+
+        // Получаем OG-данные из сервиса
+        $ogData = $this->service(StoryFilterService::class)->getStoryOpenGraphData($storyId);
+        
+        // Контроллер устанавливает OG-теги (презентация)
+        $this->setOpenGraph([
+            'type' => 'article',
+            'title' => $ogData['title'],
+            'description' => $ogData['description'],
+            'image' => $ogData['image'],
+            'article:author' => $ogData['author_url'],
+        ]);
 
         $this->render('show', [
             'title' => $story['title'],
@@ -195,9 +251,19 @@ class StoriesController extends Controller
             'activeSuggestions' => $activeSuggestions,
             'changeLog' => $changeLog,
             'allTags' => $allTags,
-            'currentTagIds' => $currentTagIds
+            'currentTagIds' => $currentTagIds,
+            // ✅ Передаём данные для голосования и прав доступа
+            'currentUserId' => $currentUserId,
+            'isAdmin' => $isAdmin,
+            'isModerator' => $isModerator,
+            'isAuthor' => $isAuthor,
+            'canUserDownvote' => $canUserDownvote,
+            'currentStoryVote' => $currentStoryVote,
+            'currentCommentVotes' => $currentCommentVotes,
+            'userSuggestionsCount' => $userSuggestionsCount,
         ]);
     }
+
     
     // =========================================================================
     // СОЗДАНИЕ ИСТОРИИ
@@ -208,7 +274,8 @@ class StoriesController extends Controller
      */
     public function showCreateForm(): void
     {
-        $tagModel = new Tag();
+        // ✅ Получаем модель из контейнера
+        $tagModel = $this->container->get(Tag::class);
         $availableTags = $tagModel->getAllTags(false);
 
         $this->render('create', [
@@ -237,7 +304,8 @@ class StoriesController extends Controller
         $storyId = $this->service(StoryService::class)->createStory($data, $userId);
 
         if ($storyId > 0) {
-            Session::setFlash('success', 'Ваша история успешно опубликована!');
+            $session = $this->container->get(Session::class);
+            $session->flash('success', 'Ваша история успешно опубликована!');
             $this->redirectBack('/');
         }
 
@@ -256,16 +324,19 @@ class StoriesController extends Controller
     public function showEditForm(string $id): void
     {
         $storyId = (int)$id;
-        $storyModel = new Story();
+        
+        // ✅ Получаем модели из контейнера
+        $storyModel = $this->container->get(Story::class);
         $story = $storyModel->find($storyId);
 
         $userId = Auth::id();
         if (!$story || !$this->service(StoryService::class)->canEditStory($story, $userId)) {
-            Session::setFlash('error', 'У вас нет прав для изменения этой публикации.');
+            $session = $this->container->get(Session::class);
+            $session->flash('error', 'У вас нет прав для изменения этой публикации.');
             $this->redirectBack('/');
         }
 
-        $tagModel = new Tag();
+        $tagModel = $this->container->get(Tag::class);
 
         $this->render('edit', [
             'title' => 'Редактирование публикации',
@@ -284,7 +355,9 @@ class StoriesController extends Controller
     public function update(string $id): void
     {
         $storyId = (int)$id;
-        $storyModel = new Story();
+        
+        // ✅ Получаем модель из контейнера
+        $storyModel = $this->container->get(Story::class);
         $story = $storyModel->find($storyId);
         $userId = Auth::id();
 
@@ -302,7 +375,8 @@ class StoriesController extends Controller
 
         $this->service(StoryService::class)->updateStory($storyId, $data);
 
-        Session::setFlash('success', 'Публикация успешно отредактирована.');
+        $session = $this->container->get(Session::class);
+        $session->flash('success', 'Публикация успешно отредактирована.');
         $this->redirectBack('/story/' . $storyId);
     }
     
@@ -315,13 +389,11 @@ class StoriesController extends Controller
      *
      * @param string $id ID истории
      */
-
     public function adminDelete(string $id): void
     {
         $this->service(StoryService::class)->deleteStory((int)$id, Auth::id());
         $this->redirectBack();
     }
-
 
     /**
      * Восстановление истории (только для администраторов).
@@ -333,7 +405,6 @@ class StoriesController extends Controller
         $this->service(StoryService::class)->restoreStory((int)$id, Auth::id());
         $this->redirectBack();
     }
-	 
     
     // =========================================================================
     // КОММЕНТАРИИ
@@ -341,11 +412,6 @@ class StoriesController extends Controller
 
     /**
      * Добавление нового комментария.
-     *
-     * Контроллер выполняет только:
-     *  - Получение параметров из запроса
-     *  - Вызов сервиса
-     *  - Редирект
      */
     public function addComment(): void
     {
@@ -355,7 +421,6 @@ class StoriesController extends Controller
 
         $userId = Auth::id();
 
-        // Сервис выполняет создание, диспатчит событие и устанавливает flash
         $result = $this->service(CommentService::class)->createComment(
             $storyId,
             $commentText,
@@ -364,21 +429,14 @@ class StoriesController extends Controller
         );
 
         if (!empty($result)) {
-            // Успех — редирект на комментарий
             $this->redirect(comment_url($result['story_id'], $result['comment_id']));
         } else {
-            // Ошибка — редирект на историю (flash уже установлен в сервисе)
             $this->redirect('/story/' . $storyId);
         }
     }
 
     /**
      * Редактирование комментария.
-     *
-     * Контроллер выполняет только:
-     *  - Получение параметров из запроса
-     *  - Вызов сервиса
-     *  - Редирект
      *
      * @param string $id ID комментария
      */
@@ -388,28 +446,18 @@ class StoriesController extends Controller
         $newText = $this->request->getParams('comment_text');
         $userId = Auth::id();
 
-        // Сервис выполняет обновление и диспатчит событие
         $result = $this->service(CommentService::class)->updateComment($commentId, $newText, $userId);
 
         if ($result === null) {
-            // При ошибке flash-сообщение уже установлено в сервисе
             $this->redirectBack();
             return;
         }
 
-        // Редирект на комментарий
         $this->redirect(comment_url((int)$result['comment']['story_id'], $commentId));
     }
 
     /**
      * Удаление комментария.
-     *
-     * Контроллер выполняет только:
-     *  - Получение параметров из запроса
-     *  - Вызов сервиса
-     *  - Редирект
-     *
-     * Вся бизнес-логика (проверка прав, удаление, событие, flash) — в сервисе.
      *
      * @param string $id ID комментария
      */
@@ -418,28 +466,18 @@ class StoriesController extends Controller
         $commentId = (int) $id;
         $userId = Auth::id();
 
-        // Сервис выполняет удаление и диспатчит событие
-        // Возвращает данные для редиректа или null при ошибке
         $result = $this->service(CommentService::class)->deleteComment($commentId, $userId);
 
         if ($result === null) {
-            // При ошибке flash-сообщение уже установлено в сервисе
             $this->redirectBack();
             return;
         }
 
-        // ✅ Редирект на страницу истории с якорем на комментарий
-        // Используем данные из сервиса — без дублирования запроса к БД!
         $this->redirect(comment_url($result['story_id'], $commentId));
     }
 
     /**
      * Восстановление удалённого комментария.
-     *
-     * Контроллер выполняет только:
-     *  - Получение параметров из запроса
-     *  - Вызов сервиса
-     *  - Редирект
      *
      * @param string $id ID комментария
      */
@@ -448,16 +486,13 @@ class StoriesController extends Controller
         $commentId = (int) $id;
         $userId = Auth::id();
 
-        // Сервис выполняет восстановление и диспатчит событие
         $result = $this->service(CommentService::class)->restoreComment($commentId, $userId);
 
         if ($result === null) {
-            // При ошибке flash-сообщение уже установлено в сервисе
             $this->redirectBack();
             return;
         }
 
-        // ✅ Редирект на страницу истории с якорем на комментарий
         $this->redirect(comment_url($result['story_id'], $commentId));
     }
     
@@ -475,7 +510,8 @@ class StoriesController extends Controller
         $storyId = (int)$id;
         $userId = Auth::id();
 
-        $storyModel = new Story();
+        // ✅ Получаем модель из контейнера
+        $storyModel = $this->container->get(Story::class);
         $storyModel->toggleFollow($storyId, $userId);
 
         // AJAX-ответ
@@ -532,7 +568,8 @@ class StoriesController extends Controller
 			return '';
 		}
 		
-		$validator = new \App\Core\Validator();
+		// ✅ Получаем Validator из контейнера
+		$validator = $this->container->get(\App\Core\Validator::class);
 		$validator->validate(
 			['username' => $username],
 			['username' => 'required|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/']
@@ -543,8 +580,8 @@ class StoriesController extends Controller
 			return '';
 		}
 		
-		// Проверка существования
-		$userModel = new \App\Modules\Users\Models\User();
+		// ✅ Получаем User из контейнера
+		$userModel = $this->container->get(User::class);
 		$user = $userModel->findByName($username);
 		
 		return $user ? $username : '';

@@ -5,14 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
-/**
- * Модель для работы с токенами восстановления пароля.
- * 
- * Использует таблицу password_resets с оптимизированной структурой:
- * - UNIQUE KEY (token) — быстрый поиск токена, гарантия уникальности
- * - KEY (email, token) — составной индекс для удаления по email
- */
 class PasswordResetToken extends Model
 {
     protected string $table = 'password_resets';
@@ -24,29 +19,19 @@ class PasswordResetToken extends Model
 
     /**
      * Создать новый токен для email.
-     * Старые токены для этого email автоматически удаляются.
-     * 
-     * Метод переименован в createToken(), чтобы не конфликтовать
-     * с базовым методом Model::create(array $data): int
-     * 
-     * @param string $email Email пользователя
-     * @param string $token Уникальный токен (макс. 64 символа)
-     * @return bool Успешность создания
      */
     public function createToken(string $email, string $token): bool
     {
-        // Удаляем старые токены для этого email
         $this->deleteByEmail($email);
 
-        $stmt = static::db()->prepare(
+        return $this->db->execute(
             "INSERT INTO `password_resets` (`email`, `token`, `created_at`) 
-             VALUES (:email, :token, NOW())"
-        );
-
-        return $stmt->execute([
-            'email' => $email,
-            'token' => $token
-        ]);
+             VALUES (:email, :token, NOW())",
+            [
+                'email' => $email,
+                'token' => $token
+            ]
+        ) > 0;
     }
 
     /**
@@ -54,14 +39,10 @@ class PasswordResetToken extends Model
      */
     public function findByToken(string $token): ?array
     {
-        $stmt = static::db()->prepare(
-            "SELECT * FROM `password_resets` WHERE `token` = :token LIMIT 1"
+        return $this->db->fetchOne(
+            "SELECT * FROM `password_resets` WHERE `token` = :token LIMIT 1",
+            ['token' => $token]
         );
-        $stmt->execute(['token' => $token]);
-
-        $result = $stmt->fetch();
-
-        return $result ?: null;
     }
 
     /**
@@ -69,11 +50,10 @@ class PasswordResetToken extends Model
      */
     public function deleteByToken(string $token): bool
     {
-        $stmt = static::db()->prepare(
-            "DELETE FROM `password_resets` WHERE `token` = :token"
-        );
-
-        return $stmt->execute(['token' => $token]);
+        return $this->db->execute(
+            "DELETE FROM `password_resets` WHERE `token` = :token",
+            ['token' => $token]
+        ) > 0;
     }
 
     /**
@@ -81,11 +61,10 @@ class PasswordResetToken extends Model
      */
     public function deleteByEmail(string $email): bool
     {
-        $stmt = static::db()->prepare(
-            "DELETE FROM `password_resets` WHERE `email` = :email"
-        );
-
-        return $stmt->execute(['email' => $email]);
+        return $this->db->execute(
+            "DELETE FROM `password_resets` WHERE `email` = :email",
+            ['email' => $email]
+        ) > 0;
     }
 
     /**
@@ -93,12 +72,9 @@ class PasswordResetToken extends Model
      */
     public function cleanupExpired(): int
     {
-        $stmt = static::db()->prepare(
+        return $this->db->execute(
             "DELETE FROM `password_resets` 
              WHERE `created_at` < DATE_SUB(NOW(), INTERVAL 1 HOUR)"
         );
-        $stmt->execute();
-
-        return $stmt->rowCount();
     }
 }

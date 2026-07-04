@@ -1,16 +1,8 @@
 <?php
-$request = new \App\Core\Request();
-$voteModel = new \App\Modules\Votes\Models\Vote();
-$currentUserId = \App\Modules\Auth\Services\Auth::check() ? \App\Modules\Auth\Services\Auth::id() : 0;
-
-$minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
-
-$canUserDownvote = false;
-if ($currentUserId > 0) {
-    $userModel = new \App\Modules\Users\Models\User();
-    $viewerKarma = $userModel->getUserKarma($currentUserId);
-    $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
-}
+// ✅ Все данные приходят из контроллера, не создаём модели здесь
+$currentUserId = $currentUserId ?? 0;
+$canUserDownvote = $canUserDownvote ?? false;
+$currentVotes = $currentVotes ?? [];
 ?>
 
 <h1>Поиск</h1>
@@ -55,14 +47,15 @@ if ($currentUserId > 0) {
 
                         <!-- Голосование -->
                         <?php partial('Votes::_voters', [
-							'type' => 'story',
-							'id' => (int)$story['id'],
-							'score' => (int)$story['score'],
-							'currentVoteState' => $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']),
-							'canDownvote' => $canUserDownvote,
-							'isLoggedIn' => $currentUserId > 0,
-							'contentOwnerId' => (int)$story['user_id'],
-						]); ?>
+                            'type' => 'story',
+                            'id' => (int)$story['id'],
+                            'score' => (int)$story['score'],
+                            // ✅ Используем переданный голос вместо создания модели
+                            'currentVoteState' => $currentVotes[$story['id']] ?? null,
+                            'canDownvote' => $canUserDownvote,
+                            'isLoggedIn' => $currentUserId > 0,
+                            'contentOwnerId' => (int)$story['user_id'],
+                        ]); ?>
 
                         <!-- Контент -->
                         <div class="story_liner">
@@ -76,23 +69,23 @@ if ($currentUserId > 0) {
                                 </a>
                                 <?php if ($isExternal): ?>
                                     <?php 
-									$domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
-									if ($domainHost): 
-									?>
-										<a href="<?= route('domain.show', ['domain' => $domainHost]) ?>" class="domain">
-											<?= e($domainHost) ?>
-										</a>
-									<?php endif; ?>
+                                    $domainHost = !empty($story['url']) ? parse_url($story['url'], PHP_URL_HOST) : null;
+                                    if ($domainHost): 
+                                    ?>
+                                        <a href="<?= route('domain.show', ['domain' => $domainHost]) ?>" class="domain">
+                                            <?= e($domainHost) ?>
+                                        </a>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
 
-							<?php if (!empty($story['tags'])): ?>  
-								<span class="tags">
-									<?php foreach ($story['tags_with_names'] as $tagData): ?>  
-										<a href="<?= route('tags.filter', ['tagslug' => e($tagData['slug'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
-									<?php endforeach; ?>
-								</span> 
-							<?php endif; ?>
+                            <?php if (!empty($story['tags'])): ?>  
+                                <span class="tags">
+                                    <?php foreach ($story['tags_with_names'] as $tagData): ?>  
+                                        <a href="<?= route('tags.filter', ['tagslug' => e($tagData['slug'])]) ?>" class="tag"><?= e($tagData['name']) ?></a>
+                                    <?php endforeach; ?>
+                                </span> 
+                            <?php endif; ?>
 
                             <div class="byline">
                                 <?php if (!empty($story['author_avatar'])): ?>

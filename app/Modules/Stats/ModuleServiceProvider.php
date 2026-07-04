@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Stats;
 
 use App\Core\Container;
+use App\Core\Database;
+use App\Core\Logger;
+use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 use App\Modules\Stats\Models\Stats;
 
 /**
@@ -13,10 +16,23 @@ use App\Modules\Stats\Models\Stats;
  * Регистрирует модель для работы со статистикой.
  * Сервисов в модуле нет — только модель.
  */
-class ModuleServiceProvider
+class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     public function register(Container $container): void
     {
-        $container->singleton(Stats::class, fn() => new Stats());
+        parent::register($container);
+
+        // ✅ Передаём Database и Logger в конструктор модели
+        $container->singleton(Stats::class, function (Container $c) {
+            return new Stats(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
+    }
+
+    public function boot(): void
+    {
+        // Регистрация слушателей событий, если есть
     }
 }

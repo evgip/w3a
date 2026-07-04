@@ -1,58 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Notifications\Services;
 
 use App\Modules\Notifications\Models\Notification;
 use App\Modules\Stories\Models\Comment;
 use App\Modules\Users\Models\User;
+use App\Core\Logger;
 
 /**
  * Сервис для управления уведомлениями пользователей.
- *
- * Позволяет получать, помечать как прочитанные и создавать уведомления различных типов
- * (ответы, упоминания, личные сообщения), учитывая настройки приватности пользователя.
+ * 
+ * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
  */
 class NotificationService
 {
     private Notification $notificationModel;
     private Comment $commentModel;
     private User $userModel;
+    private Logger $logger;
 
     private const ALLOWED_TYPES = ['reply', 'mention', 'message'];
     private const DEFAULT_PER_PAGE = 25;
 
     /**
-     * Конструктор с опциональными зависимостями.
-     * Если зависимости не переданы — создаются автоматически.
-     * Это упрощает использование сервиса в разных местах проекта.
-     *
-     * @param Notification|null $notificationModel Модель уведомлений.
-     * @param Comment|null $commentModel Модель комментариев.
-     * @param User|null $userModel Модель пользователя.
+     * ✅ ИЗМЕНЕНО: Все зависимости обязательны
      */
     public function __construct(
-        ?Notification $notificationModel = null,
-        ?Comment $commentModel = null,
-        ?User $userModel = null
+        Notification $notificationModel,
+        Comment $commentModel,
+        User $userModel,
+        Logger $logger
     ) {
-        $this->notificationModel = $notificationModel ?? new Notification();
-        $this->commentModel = $commentModel ?? new Comment();
-        $this->userModel = $userModel ?? new User();
+        $this->notificationModel = $notificationModel;
+        $this->commentModel = $commentModel;
+        $this->userModel = $userModel;
+        $this->logger = $logger;
     }
 
     // =========================================================================
     // МЕТОДЫ ДЛЯ КОНТРОЛЛЕРА
     // =========================================================================
 
-    /**
-     * Подготавливает данные для отображения списка уведомлений (для контроллера).
-     *
-     * @param int $userId ID пользователя.
-     * @param string $type Тип уведомлений (`'all'`, `'reply'`, `'mention'`, `'message'`).
-     * @param int $page Номер страницы пагинации.
-     * @param int $limit Количество уведомлений на страницу (по умолчанию 25).
-     * @return array Данные для представления: массив уведомлений, текущий фильтр, счетчики по типам и т.д.
-     */
     public function getNotificationsForIndex(
         int $userId,
         string $type = 'all',
@@ -77,15 +67,6 @@ class NotificationService
         ];
     }
 
-    /**
-     * Получает список уведомлений пользователя.
-     *
-     * @param int $userId ID пользователя.
-     * @param string|null $type Тип уведомлений (`'reply'`, `'mention'`, `'message'` или `null` для всех).
-     * @param int $limit Количество уведомлений.
-     * @param int $page Номер страницы.
-     * @return array Массив уведомлений (каждое — ассоциативный массив).
-     */
     public function getUserNotifications(
         int $userId,
         ?string $type = null,
@@ -108,12 +89,6 @@ class NotificationService
         );
     }
 
-    /**
-     * Получает количество непрочитанных уведомлений по типам для указанного пользователя.
-     *
-     * @param int $userId ID пользователя.
-     * @return array Ассоциативный массив: ['reply' => int, 'mention' => int, 'message' => int].
-     */
     public function getUnreadCountsByType(int $userId): array
     {
         if ($userId <= 0) {
@@ -136,12 +111,6 @@ class NotificationService
         return $counts;
     }
 
-    /**
-     * Получает общее количество непрочитанных уведомлений для пользователя.
-     *
-     * @param int $userId ID пользователя.
-     * @return int Количество непрочитанных уведомлений.
-     */
     public function getUnreadCount(int $userId): int
     {
         if ($userId <= 0) {
@@ -151,13 +120,6 @@ class NotificationService
         return (int)$this->notificationModel->getUnreadCount($userId);
     }
 
-    /**
-     * Помечает одно уведомление как прочитанное.
-     *
-     * @param int $notificationId ID уведомления.
-     * @param int $userId ID пользователя.
-     * @return bool true, если пометка успешна; false — при ошибке.
-     */
     public function markAsRead(int $notificationId, int $userId): bool
     {
         if ($notificationId <= 0 || $userId <= 0) {
@@ -167,12 +129,6 @@ class NotificationService
         return $this->notificationModel->markAsRead($notificationId, $userId);
     }
 
-    /**
-     * Помечает все уведомления пользователя как прочитанные.
-     *
-     * @param int $userId ID пользователя.
-     * @return bool true, если операция успешна; false — при ошибке.
-     */
     public function markAllAsRead(int $userId): bool
     {
         if ($userId <= 0) {
@@ -186,17 +142,6 @@ class NotificationService
     // БИЗНЕС-ЛОГИКА СОЗДАНИЯ УВЕДОМЛЕНИЙ
     // =========================================================================
 
-    /**
-     * Обрабатывает создание нового комментария и инициирует отправку уведомлений.
-     *
-     * Уведомления отправляются:
-     * - автору истории (если он не автор комментария и не отключил уведомления),
-     * - автору родительского комментария (если есть),
-     * - пользователям, упомянутым в комментарии.
-     *
-     * @param int $commentId ID созданного комментария.
-     * @return void
-     */
     public function notifyCommentCreated(int $commentId): void
     {
         if ($commentId <= 0) {
@@ -229,7 +174,7 @@ class NotificationService
                 );
             }
 
-           if ($storyAuthorId > 0) {
+            if ($storyAuthorId > 0) {
                 $this->notifyStoryAuthor(
                     $storyAuthorId,
                     $authorId,
@@ -249,20 +194,11 @@ class NotificationService
                 );
             }
         } catch (\Throwable $e) {
-            error_log("[NOTIFICATIONS] Error in notifyCommentCreated: " . $e->getMessage());
+            // ✅ Используем внедрённый Logger
+            $this->logger->error("[NOTIFICATIONS] Error in notifyCommentCreated: " . $e->getMessage());
         }
     }
 
-    /**
-     * Создаёт уведомление о новом личном сообщении.
-     *
-     * Проверяет, включены ли у получателя уведомления о сообщениях.
-     *
-     * @param int $messageId ID сообщения.
-     * @param int $recipientId ID получателя.
-     * @param int $senderId ID отправителя.
-     * @return void
-     */
     public function notifyMessageSent(int $messageId, int $recipientId, int $senderId): void
     {
         if ($messageId <= 0 || $recipientId <= 0 || $senderId <= 0) {
@@ -285,7 +221,7 @@ class NotificationService
                 'Отправил вам личное сообщение'
             );
         } catch (\Throwable $e) {
-            error_log("[NOTIFICATIONS] Error in notifyMessageSent: " . $e->getMessage());
+            $this->logger->error("[NOTIFICATIONS] Error in notifyMessageSent: " . $e->getMessage());
         }
     }
 
@@ -293,15 +229,6 @@ class NotificationService
     // ПРИВАТНЫЕ ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
 
-    /**
-     * Нормализует строку с типом уведомления.
-     *
-     * Приводит к нижнему регистру, обрезает пробелы и проверяет допустимость.
-     * Если тип пустой или `'all'`, возвращает `null` (означает «все типы»).
-     *
-     * @param string|null $type Исходный тип.
-     * @return string|null Нормализованный тип или null.
-     */
     private function normalizeType(?string $type): ?string
     {
         if ($type === null || $type === '' || $type === 'all') {
@@ -317,22 +244,6 @@ class NotificationService
         return null;
     }
 
-    /**
-     * Отправляет уведомление автору истории о комментарии к ней.
-     *
-     * Проверяет:
-     * - совпадение авторов (нет уведомления самому себе),
-     * - наличие в списке уже уведомлённых,
-     * - состояние подписки (`user_is_following`),
-     * - настройки приватности (`notify_on_story_comment`).
-     *
-     * @param int $storyAuthorId ID автора истории.
-     * @param int $commentAuthorId ID автора комментария.
-     * @param int $commentId ID комментария.
-     * @param bool $isFollowing Флаг: подписан ли автор истории на комментарии.
-     * @param array &$notifiedUserIds Список ID уже уведомлённых пользователей (по ссылке).
-     * @return void
-     */
     private function notifyStoryAuthor(
         int $storyAuthorId,
         int $commentAuthorId,
@@ -365,25 +276,10 @@ class NotificationService
             );
             $notifiedUserIds[] = $storyAuthorId;
         } catch (\Throwable $e) {
-            error_log("[NOTIFICATIONS] Error notifying story author: " . $e->getMessage());
+            $this->logger->error("[NOTIFICATIONS] Error notifying story author: " . $e->getMessage());
         }
     }
 
-    /**
-     * Отправляет уведомление автору родительского комментария об ответе.
-     *
-     * Проверяет:
-     * - наличие родительского комментария,
-     * - совпадение авторов,
-     * - уже уведомлённых,
-     * - настройки приватности (`notify_on_reply`).
-     *
-     * @param int $parentCommentId ID родительского комментария.
-     * @param int $commentAuthorId ID автора нового комментария.
-     * @param int $commentId ID нового комментария.
-     * @param array &$notifiedUserIds Список ID уже уведомлённых пользователей.
-     * @return void
-     */
     private function notifyParentCommentAuthor(
         int $parentCommentId,
         int $commentAuthorId,
@@ -393,7 +289,7 @@ class NotificationService
         try {
             $parentAuthorId = $this->commentModel->getAuthorId($parentCommentId);
         } catch (\Throwable $e) {
-            error_log("[NOTIFICATIONS] Error getting parent author: " . $e->getMessage());
+            $this->logger->error("[NOTIFICATIONS] Error getting parent author: " . $e->getMessage());
             return;
         }
 
@@ -422,25 +318,10 @@ class NotificationService
             );
             $notifiedUserIds[] = $parentAuthorId;
         } catch (\Throwable $e) {
-            error_log("[NOTIFICATIONS] Error notifying parent author: " . $e->getMessage());
+            $this->logger->error("[NOTIFICATIONS] Error notifying parent author: " . $e->getMessage());
         }
     }
 
-    /**
-     * Ищет упоминания (`@username`) в тексте комментария и отправляет уведомления.
-     *
-     * Проверяет:
-     * - существование упомянутого пользователя,
-     * - совпадение с автором комментария,
-     * - уже уведомлённых,
-     * - настройки приватности (`notify_on_mention`).
-     *
-     * @param string $text Текст комментария.
-     * @param int $commentId ID комментария.
-     * @param int $authorId ID автора комментария.
-     * @param array &$notifiedUserIds Список ID уже уведомлённых пользователей.
-     * @return void
-     */
     private function processMentions(
         string $text,
         int $commentId,
@@ -490,7 +371,7 @@ class NotificationService
 
                 $notifiedUserIds[] = $userId;
             } catch (\Throwable $e) {
-                error_log("[NOTIFICATIONS] Error processing mention @{$username}: " . $e->getMessage());
+                $this->logger->error("[NOTIFICATIONS] Error processing mention @{$username}: " . $e->getMessage());
             }
         }
     }

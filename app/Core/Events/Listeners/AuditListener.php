@@ -7,8 +7,34 @@ namespace App\Core\Events\Listeners;
 use App\Core\Events\Event;
 use App\Core\Audit;
 
+/**
+ * Слушатель событий для аудита.
+ * Записывает все важные события в журнал аудита.
+ */
 class AuditListener
 {
+    /**
+     * @var Audit Сервис аудита
+     */
+    private Audit $audit;
+
+    /**
+     * Конструктор с инъекцией зависимостей.
+     *
+     * @param Audit $audit Сервис аудита
+     */
+    public function __construct(Audit $audit)
+    {
+        $this->audit = $audit;
+    }
+
+    /**
+     * Обработчик события для аудита.
+     *
+     * @param Event $event Событие для логирования
+     *
+     * @return void
+     */
     public function handle(Event $event): void
     {
         $data = $event->getData();
@@ -19,7 +45,7 @@ class AuditListener
         $payload = $data;
         unset($payload['description']);
         
-        Audit::log(
+        $this->audit->log(
             $event->getName(),
             $description,
             $event->getCategory(),

@@ -6,29 +6,35 @@ namespace App\Modules\Votes\Controllers;
 
 use App\Core\Controller;
 use App\Core\Logger;
-use App\Modules\Votes\Models\Vote;
 use App\Modules\Votes\Services\VoteService;
-use App\Modules\Stories\Models\Comment;
-use App\Modules\Users\Models\User;
+use App\Modules\Auth\Services\Auth;
 
 /**
  * Контроллер голосования.
  * Маршрут защищён middleware: web + auth.
+ * 
+ * ✅ ИЗМЕНЕНО: VoteService получается из контейнера
  */
 class VotesController extends Controller
 {
     private const ALLOWED_TYPES = ['story', 'comment'];
     private const ALLOWED_DIRECTIONS = ['up', 'down'];
-    
-    private ?VoteService $voteService = null;
 
-	private function getVoteService(): VoteService
-	{
-		if ($this->voteService === null) {
-			$this->voteService = new VoteService(new Vote(), new User(), new Comment());
-		}
-		return $this->voteService;
-	}
+    /**
+     * ✅ Хелпер: получить VoteService из контейнера
+     */
+    private function voteService(): VoteService
+    {
+        return $this->service(VoteService::class);
+    }
+
+    /**
+     * ✅ Хелпер: получить Logger из контейнера
+     */
+    private function logger(): Logger
+    {
+        return $this->container->get(Logger::class);
+    }
 
     public function handle(string $type, string $id, string $direction): void
     {
@@ -37,15 +43,17 @@ class VotesController extends Controller
             return;
         }
 
-        $userId = (int)($_SESSION['user_id'] ?? 0);
+        // ✅ Используем Auth::id() вместо $_SESSION
+        $userId = (int) Auth::id();
         $targetId = (int)$id;
         $voteValue = ($direction === 'down') ? -1 : 1;
 
         // 2. Обработка голоса
         try {
-            $result = $this->getVoteService()->handleVote($userId, $type, $targetId, $voteValue);
+            $result = $this->voteService()->handleVote($userId, $type, $targetId, $voteValue);
         } catch (\Throwable $e) {
-            Logger::error('Vote failed', [
+            // ✅ Используем внедрённый Logger
+            $this->logger()->error('Vote failed', [
                 'user_id' => $userId,
                 'type' => $type,
                 'target_id' => $targetId,
@@ -62,8 +70,8 @@ class VotesController extends Controller
 
         // 3. Возвращаем актуальные данные
         $this->jsonSuccess([
-            'new_score'  => $this->getVoteService()->getNewScore($type, $targetId),
-            'vote_state' => $this->getVoteService()->getUserVote($userId, $type, $targetId),
+            'new_score'  => $this->voteService()->getNewScore($type, $targetId),
+            'vote_state' => $this->voteService()->getUserVote($userId, $type, $targetId),
         ]);
     }
 

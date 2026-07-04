@@ -3,6 +3,8 @@
 namespace App\Modules\Tags\Models;
 
 use App\Core\Model;
+use App\Core\Database;
+use App\Core\Logger;
 
 class TagFilter extends Model
 {
@@ -24,10 +26,7 @@ class TagFilter extends Model
                 WHERE tf.user_id = :user_id
                 ORDER BY t.slug ASC";
         
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['user_id' => $userId]);
-        
-        return $stmt->fetchAll();
+        return $this->db->fetchAll($sql, ['user_id' => $userId]);
     }
 
     /**
@@ -58,11 +57,10 @@ class TagFilter extends Model
         $sql = "DELETE FROM {$this->table} 
                 WHERE user_id = :user_id AND tag_id = :tag_id";
         
-        $stmt = static::db()->prepare($sql);
-        return $stmt->execute([
+        return $this->db->execute($sql, [
             'user_id' => $userId,
             'tag_id'  => $tagId
-        ]);
+        ]) > 0;
     }
 
     /**
@@ -81,9 +79,7 @@ class TagFilter extends Model
     {
         $sql = "SELECT tag_id FROM {$this->table} WHERE user_id = :user_id";
         
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['user_id' => $userId]);
-        
+        $stmt = $this->db->query($sql, ['user_id' => $userId]);
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
@@ -94,10 +90,7 @@ class TagFilter extends Model
     {
         $sql = "SELECT COUNT(*) FROM {$this->table} WHERE user_id = :user_id";
         
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute(['user_id' => $userId]);
-        
-        return (int)$stmt->fetchColumn();
+        return (int)$this->db->fetchColumn($sql, ['user_id' => $userId]);
     }
 
     /**
@@ -109,13 +102,9 @@ class TagFilter extends Model
                 WHERE user_id = :user_id AND tag_id = :tag_id 
                 LIMIT 1";
         
-        $stmt = static::db()->prepare($sql);
-        $stmt->execute([
+        return $this->db->fetchOne($sql, [
             'user_id' => $userId,
             'tag_id'  => $tagId
         ]);
-        
-        $result = $stmt->fetch();
-        return $result ?: null;
     }
 }

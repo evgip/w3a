@@ -1,27 +1,50 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
+/**
+ * Сервис безопасности: nonce для CSP и заголовки безопасности.
+ * 
+ * ✅ ИЗМЕНЕНО: Класс теперь нестатический, Logger внедряется через конструктор.
+ */
 class Security
 {
-    private static ?string $nonce = null;
+    private ?string $nonce = null;
+    private Logger $logger;
 
-    public static function getNonce(): string
+    /**
+     * ✅ Конструктор с инъекцией Logger
+     */
+    public function __construct(Logger $logger)
     {
-        if (self::$nonce === null) {
-            self::$nonce = bin2hex(random_bytes(16));
-        }
-        return self::$nonce;
+        $this->logger = $logger;
     }
 
-    public static function sendCspHeader(): void
+    /**
+     * Получить nonce для CSP
+     */
+    public function getNonce(): string
+    {
+        if ($this->nonce === null) {
+            $this->nonce = bin2hex(random_bytes(16));
+        }
+        return $this->nonce;
+    }
+
+    /**
+     * Отправить заголовки CSP и безопасности
+     */
+    public function sendCspHeader(): void
     {
         if (headers_sent()) {
-            Logger::error("Security Layer Failure: Headers already dispatched.");
+            // ✅ Используем внедрённый Logger
+            $this->logger->error("Security Layer Failure: Headers already dispatched.");
             return;
         }
 
-        $nonce = self::getNonce();
+        $nonce = $this->getNonce();
 
         $configFile = dirname(__DIR__) . '/Config/csp.php';
         $cspConfig = file_exists($configFile) ? require $configFile : [];
@@ -37,11 +60,8 @@ class Security
             "script-src 'self' 'nonce-{$nonce}' " . $mergeOrigins('script_src'),
             "style-src-elem 'self' 'unsafe-inline' " . $mergeOrigins('style_src'),
             "style-src-attr 'self' 'unsafe-inline'",
-
             "frame-src 'self' " . $mergeOrigins('frame_src'),
-            
             "connect-src 'self' " . $mergeOrigins('connect_src'),
-            
             "img-src 'self' data: " . $mergeOrigins('img_src'),
             "font-src 'self' " . $mergeOrigins('font_src'),
             "object-src 'none'",
@@ -57,7 +77,6 @@ class Security
         }
 
         header("Content-Security-Policy: " . implode("; ", $policy));
-
         header("X-Content-Type-Options: nosniff");
         header('X-Frame-Options: SAMEORIGIN');
         header("X-XSS-Protection: 1; mode=block");

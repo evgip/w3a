@@ -6,27 +6,26 @@ namespace App\Modules\Auth\Services;
 
 use App\Modules\Users\Models\User;
 use App\Modules\Auth\Models\PasswordResetToken;
+use App\Modules\Mail\Core\Mailer;
 
-/**
- * Сервис для управления восстановлением пароля через email.
- */
 class PasswordResetService
 {
-    /** @var int Время жизни токена в секундах (1 час) */
     private const TOKEN_LIFETIME = 3600;
 
     private User $userModel;
     private PasswordResetToken $tokenModel;
+    private Mailer $mailer;
 
-    public function __construct(User $userModel)
-    {
+    public function __construct(
+        User $userModel, 
+        PasswordResetToken $tokenModel,
+        Mailer $mailer
+    ) {
         $this->userModel = $userModel;
-        $this->tokenModel = new PasswordResetToken();
+        $this->tokenModel = $tokenModel;
+        $this->mailer = $mailer;
     }
 
-    /**
-     * Создать токен и отправить ссылку восстановления на email.
-     */
     public function sendResetLink(string $email): bool
     {
         $email = trim($email);
@@ -37,8 +36,6 @@ class PasswordResetService
         }
 
         $token = bin2hex(random_bytes(32));
-
-        // ⚠️ Изменено: create() → createToken()
         $this->tokenModel->createToken($email, $token);
 
         $resetUrl = $this->getResetUrl($token);
@@ -47,9 +44,6 @@ class PasswordResetService
         return true;
     }
 
-    /**
-     * Проверить валидность токена.
-     */
     public function validateToken(string $token): ?array
     {
         $tokenData = $this->tokenModel->findByToken($token);
@@ -74,9 +68,6 @@ class PasswordResetService
         return $user;
     }
 
-    /**
-     * Сбросить пароль по валидному токену.
-     */
     public function resetPassword(string $token, string $newPassword): bool
     {
         $user = $this->validateToken($token);
@@ -95,26 +86,17 @@ class PasswordResetService
         return $success;
     }
 
-    /**
-     * Удалить просроченные токены (для cron).
-     */
     public function cleanupExpiredTokens(): int
     {
         return $this->tokenModel->cleanupExpired();
     }
 
-    /**
-     * Сформировать полный URL для сброса пароля.
-     */
     private function getResetUrl(string $token): string
     {
         $baseUrl = rtrim(config('config.app.url'), '/');
         return $baseUrl . '/password/reset/' . $token;
     }
 
-    /**
-     * Отправить HTML-письмо со ссылкой восстановления.
-     */
     private function sendResetEmail(string $email, string $username, string $resetUrl): void
     {
         $siteName = config('app.name') ?? config('config.app.url');
@@ -126,6 +108,6 @@ class PasswordResetService
             htmlspecialchars($resetUrl)
         );
 
-        \App\Modules\Mail\Core\Mailer::send($email, $subject, $body);
+        $this->mailer->send($email, $subject, $body);
     }
 }

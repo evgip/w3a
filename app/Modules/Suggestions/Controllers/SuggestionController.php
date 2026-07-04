@@ -8,13 +8,18 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Modules\Suggestions\Services\SuggestionService;
 use App\Modules\Suggestions\Models\Suggestion;
+use App\Modules\Auth\Services\Auth;
 
 class SuggestionController extends Controller
 {
     /**
-     * GET /suggestions/{targetType}/{targetId}
-     * Получить активные предложения для контента
+     * ✅ Хелпер: получить Session из контейнера
      */
+    private function session(): Session
+    {
+        return $this->container->get(Session::class);
+    }
+
     public function index(string $targetType, string $targetId): void
     {
         $suggestions = $this->service(SuggestionService::class)->getActiveSuggestions(
@@ -28,10 +33,6 @@ class SuggestionController extends Controller
         ]);
     }
 
-    /**
-     * GET /suggestions/{targetType}/{targetId}/log
-     * Получить лог изменений для контента
-     */
     public function log(string $targetType, string $targetId): void
     {
         $limit = (int) ($_GET['limit'] ?? 50);
@@ -48,10 +49,6 @@ class SuggestionController extends Controller
         ]);
     }
 
-    /**
-     * POST /suggestions
-     * Добавить новое предложение
-     */
     public function store(): void
     {
         try {
@@ -64,10 +61,11 @@ class SuggestionController extends Controller
                 return;
             }
 
+            // ✅ Используем Auth::id() вместо $_SESSION
             $suggestionId = $this->service(SuggestionService::class)->addSuggestion(
                 $targetType,
                 $targetId,
-                (int) $_SESSION['user_id'],
+                (int) Auth::id(),
                 $proposedData
             );
 
@@ -81,25 +79,21 @@ class SuggestionController extends Controller
         }
     }
 
-    /**
-     * POST /suggestions/{id}/support
-     * Поддержать существующее предложение
-     */
     public function support(string $id): void
     {
         try {
-            $suggestion = Suggestion::find((int) $id);
+            $suggestionModel = $this->container->get(Suggestion::class);
+            $suggestion = $suggestionModel->find((int) $id);
 
             if (!$suggestion) {
                 $this->json(['error' => 'Suggestion not found'], 404);
                 return;
             }
 
-            // Добавляем предложение от текущего пользователя с теми же данными
             $this->service(SuggestionService::class)->addSuggestion(
                 $suggestion['target_type'],
                 $suggestion['target_id'],
-                (int) $_SESSION['user_id'],
+                (int) Auth::id(),
                 json_decode($suggestion['proposed_data'], true)
             );
 
@@ -109,30 +103,22 @@ class SuggestionController extends Controller
         }
     }
 
-    /**
-     * POST /suggestions/{id}/approve
-     * Одобрить предложение (только для модераторов)
-     */
     public function approve(string $id): void
     {
         try {
             $this->service(SuggestionService::class)->approveSuggestion(
                 (int) $id,
-                (int) $_SESSION['user_id']
+                (int) Auth::id()
             );
 
-            Session::setFlash('success', 'Предложение одобрено и применено.');
+            $this->session()->flash('success', 'Предложение одобрено и применено.');
             $this->redirectBack();
         } catch (\Throwable $e) {
-            Session::setFlash('error', $e->getMessage());
+            $this->session()->flash('error', $e->getMessage());
             $this->redirectBack();
         }
     }
 
-    /**
-     * POST /suggestions/{id}/reject
-     * Отклонить предложение (только для модераторов)
-     */
     public function reject(string $id): void
     {
         try {
@@ -140,14 +126,14 @@ class SuggestionController extends Controller
 
             $this->service(SuggestionService::class)->rejectSuggestion(
                 (int) $id,
-                (int) $_SESSION['user_id'],
+                (int) Auth::id(),
                 $reason
             );
 
-            Session::setFlash('success', 'Предложение отклонено.');
+            $this->session()->flash('success', 'Предложение отклонено.');
             $this->redirectBack();
         } catch (\Exception $e) {
-            Session::setFlash('error', $e->getMessage());
+            $this->session()->flash('error', $e->getMessage());
             $this->redirectBack();
         }
     }

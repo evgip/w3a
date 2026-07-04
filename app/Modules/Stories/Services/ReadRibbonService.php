@@ -10,14 +10,21 @@ use App\Core\Session;
 
 /**
  * Сервис для работы с отметками прочитанного.
+ * 
+ * ✅ ИЗМЕНЕНО: Session внедряется через конструктор.
  */
 class ReadRibbonService
 {
     private ReadRibbon $readRibbon;
+    private Session $session;
 
-    public function __construct(ReadRibbon $readRibbon)
+    /**
+     * ✅ ИЗМЕНЕНО: Добавлен Session в конструктор
+     */
+    public function __construct(ReadRibbon $readRibbon, Session $session)
     {
         $this->readRibbon = $readRibbon;
+        $this->session = $session;
     }
 
     /**
@@ -50,7 +57,8 @@ class ReadRibbonService
         // 3. Показываем flash-сообщение
         if ($newCount > 0) {
             $word = $this->pluralizeComment($newCount);
-            Session::setFlash('info', "Вы пропустили {$newCount} {$word}.");
+            // ✅ Используем внедрённый Session
+            $this->session->flash('info', "Вы пропустили {$newCount} {$word}.");
         }
 
         // 4. Отмечаем как прочитанное
@@ -69,7 +77,8 @@ class ReadRibbonService
         }
 
         $this->readRibbon->syncForUserAndStory(Auth::id(), $storyId);
-        Session::setFlash('success', 'История отмечена как прочитанная.');
+        // ✅ Используем внедрённый Session
+        $this->session->flash('success', 'История отмечена как прочитанная.');
     }
 
     /**

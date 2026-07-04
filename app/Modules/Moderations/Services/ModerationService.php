@@ -15,53 +15,43 @@ use App\Core\Events\ModNoteAdded;
 
 /**
  * Сервис для работы с модерацией.
- *
- * Отвечает за:
- *  - Бан/разбан пользователей
- *  - Модераторские заметки
- *  - Диспатч событий для аудита
- *
- * Вся бизнес-логика (проверки, создание, события, flash-сообщения) находится здесь.
- * Контроллер только получает параметры и делает редирект.
+ * 
+ * ✅ ИЗМЕНЕНО: Session внедряется через конструктор.
  */
 class ModerationService
 {
     private Moderation $moderationModel;
     private ModNote $modNoteModel;
     private User $userModel;
+    private Session $session;
     private ?EventDispatcher $eventDispatcher;
 
+    /**
+     * ✅ ИЗМЕНЕНО: Добавлен Session в конструктор
+     */
     public function __construct(
         Moderation $moderationModel,
         ModNote $modNoteModel,
         User $userModel,
+        Session $session,
         ?EventDispatcher $eventDispatcher = null
     ) {
         $this->moderationModel = $moderationModel;
         $this->modNoteModel = $modNoteModel;
         $this->userModel = $userModel;
+        $this->session = $session;
         $this->eventDispatcher = $eventDispatcher;
     }
 
-    /**
-     * Добавляет модераторскую заметку к пользователю.
-     *
-     * @param int    $targetUserId   ID пользователя, к которому добавляется заметка
-     * @param int    $moderatorId    ID модератора
-     * @param string $noteText       Текст заметки
-     * @param int    $isPrivate      Приватность заметки (1 = только для модераторов)
-     * @return array|null Данные созданной заметки или null при ошибке
-     */
     public function addNote(int $targetUserId, int $moderatorId, string $noteText, int $isPrivate = 1): ?array
     {
         $noteText = trim($noteText);
 
         if ($targetUserId <= 0 || $noteText === '') {
-            Session::setFlash('error', 'Укажите пользователя и текст заметки.');
+            $this->session->flash('error', 'Укажите пользователя и текст заметки.');
             return null;
         }
 
-        // Сохраняем заметку
         $noteId = $this->modNoteModel->create([
             'user_id'      => $targetUserId,
             'moderator_id' => $moderatorId,
@@ -70,13 +60,12 @@ class ModerationService
         ]);
 
         if (!$noteId) {
-            Session::setFlash('error', 'Не удалось сохранить заметку.');
+            $this->session->flash('error', 'Не удалось сохранить заметку.');
             return null;
         }
 
-        Session::setFlash('success', 'Заметка добавлена.');
+        $this->session->flash('success', 'Заметка добавлена.');
 
-        // Диспатчим событие для аудита (AuditListener запишет в audit_logs)
         $this->dispatchEvent(new ModNoteAdded(
             $moderatorId,
             $targetUserId,
@@ -89,69 +78,41 @@ class ModerationService
         ];
     }
 
-    /**
-     * Удаляет модераторскую заметку.
-     *
-     * @param int $noteId ID заметки
-     * @return bool Успешно ли удалено
-     */
     public function deleteNote(int $noteId): bool
     {
         if ($noteId <= 0) {
-            Session::setFlash('error', 'Некорректный ID заметки.');
+            $this->session->flash('error', 'Некорректный ID заметки.');
             return false;
         }
 
         $this->modNoteModel->deleteNote($noteId);
-        Session::setFlash('success', 'Заметка удалена.');
-
-        // Опционально: можно добавить событие ModNoteDeleted
-        // $this->dispatchEvent(new ModNoteDeleted($noteId));
+        $this->session->flash('success', 'Заметка удалена.');
 
         return true;
     }
 
-    /**
-     * Банит пользователя.
-     *
-     * Выполняет:
-     *  - Проверку, что модератор не банит себя
-     *  - Проверку существования целевого пользователя
-     *  - Бан в модели Moderation
-     *  - Диспатч события UserBanned (AuditListener запишет в аудит)
-     *  - Установка flash-сообщения
-     *
-     * @param int    $targetUserId    ID пользователя для бана
-     * @param int    $moderatorId     ID модератора
-     * @param string $reason          Причина бана
-     * @return array|null Данные пользователя при успехе, null при ошибке
-     */
     public function banUser(int $targetUserId, int $moderatorId, string $reason): ?array
     {
-        // Нельзя банить себя
         if ($targetUserId === $moderatorId) {
-            Session::setFlash('error', 'Вы не можете применить это действие к себе.');
+            $this->session->flash('error', 'Вы не можете применить это действие к себе.');
             return null;
         }
 
-        // Проверяем существование пользователя
         $targetUser = $this->userModel->find($targetUserId);
         if (!$targetUser) {
-            Session::setFlash('error', 'Пользователь не найден.');
+            $this->session->flash('error', 'Пользователь не найден.');
             return null;
         }
 
-        // Бан в модели
         $this->moderationModel->banUser($targetUserId, $moderatorId, $reason);
 
-        // Диспатчим событие для аудита
         $this->dispatchEvent(new UserBanned(
             $targetUserId,
             $moderatorId,
             $reason ?: 'Без указания причины'
         ));
 
-        Session::setFlash('success', "Пользователь «{$targetUser['username']}» забанен.");
+        $this->session->flash('success', "Пользователь «{$targetUser['username']}» забанен.");
 
         return [
             'user'     => $targetUser,
@@ -159,31 +120,16 @@ class ModerationService
         ];
     }
 
-    /**
-     * Разбанивает пользователя.
-     *
-     * Выполняет:
-     *  - Проверку, что модератор не разбанивает себя
-     *  - Проверку существования целевого пользователя
-     *  - Разбан в модели Moderation
-     *  - Диспатч события UserUnbanned (AuditListener запишет в аудит)
-     *  - Установка flash-сообщения
-     *
-     * @param int $targetUserId ID пользователя для разбана
-     * @param int $moderatorId  ID модератора
-     * @return array|null Данные пользователя при успехе, null при ошибке
-     */
     public function unbanUser(int $targetUserId, int $moderatorId): ?array
     {
-        // Нельзя разбанивать себя
         if ($targetUserId === $moderatorId) {
-            Session::setFlash('error', 'Вы не можете применить это действие к себе.');
+            $this->session->flash('error', 'Вы не можете применить это действие к себе.');
             return null;
         }
 
         $targetUser = $this->userModel->find($targetUserId);
         if (!$targetUser) {
-            Session::setFlash('error', 'Пользователь не найден.');
+            $this->session->flash('error', 'Пользователь не найден.');
             return null;
         }
 
@@ -195,7 +141,7 @@ class ModerationService
             'Разбан пользователя'
         ));
 
-        Session::setFlash('success', "Пользователь «{$targetUser['username']}» разбанен.");
+        $this->session->flash('success', "Пользователь «{$targetUser['username']}» разбанен.");
 
         return [
             'user'     => $targetUser,
@@ -203,11 +149,6 @@ class ModerationService
         ];
     }
 
-    /**
-     * Безопасно диспатчит событие через EventDispatcher.
-     *
-     * @param \App\Core\Events\Event $event Событие для диспатча
-     */
     private function dispatchEvent(\App\Core\Events\Event $event): void
     {
         if ($this->eventDispatcher === null) {

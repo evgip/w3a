@@ -1,27 +1,80 @@
 <?php
-// app/Core/Request.php
 
 namespace App\Core;
 
+/**
+ * Класс для работы с HTTP-запросом.
+ * 
+ * ✅ ИЗМЕНЕНО: Audit, Session и Container внедряются через конструктор.
+ */
 class Request
 {
     private const CSRF_TOKEN_KEY = 'csrf_token';
     private const CSRF_TOKEN_NAME = 'csrf_token';
 
+    /** @var Audit|null Сервис аудита (внедряется через setAudit() или конструктор) */
+    private ?Audit $audit = null;
+
+    /** @var Session|null Сервис сессий (внедряется через setSession() или конструктор) */
+    private ?Session $session = null;
+
+    /** @var Container|null DI-контейнер (внедряется через setContainer() или конструктор) */
+    private ?Container $container = null;
+
+    /**
+     * ✅ Конструктор с опциональными зависимостями
+     * 
+     * Зависимости можно передать позже через сеттеры, если Request
+     * создаётся до инициализации контейнера.
+     */
+    public function __construct(
+        ?Audit $audit = null,
+        ?Session $session = null,
+        ?Container $container = null
+    ) {
+        $this->audit = $audit;
+        $this->session = $session;
+        $this->container = $container;
+    }
+
+    /**
+     * ✅ Сеттер для Audit (если не передан в конструктор)
+     */
+    public function setAudit(Audit $audit): void
+    {
+        $this->audit = $audit;
+    }
+
+    /**
+     * ✅ Сеттер для Session (если не передан в конструктор)
+     */
+    public function setSession(Session $session): void
+    {
+        $this->session = $session;
+    }
+
+    /**
+     * ✅ Сеттер для Container (если не передан в конструктор)
+     */
+    public function setContainer(Container $container): void
+    {
+        $this->container = $container;
+    }
+
     /**
      * Получить URI без query-параметров
      */
-	public function getUri(): string
-	{
-		$uri = $_SERVER['REQUEST_URI'] ?? '/';
-		
-		if ($position = strpos($uri, '?')) {
-			$uri = substr($uri, 0, $position);
-		}
-		
-		$uri = rtrim($uri, '/');
-		return $uri === '' ? '/' : (str_starts_with($uri, '/') ? $uri : '/' . $uri);
-	}
+    public function getUri(): string
+    {
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        
+        if ($position = strpos($uri, '?')) {
+            $uri = substr($uri, 0, $position);
+        }
+        
+        $uri = rtrim($uri, '/');
+        return $uri === '' ? '/' : (str_starts_with($uri, '/') ? $uri : '/' . $uri);
+    }
 
     /**
      * Получить HTTP-метод
@@ -65,38 +118,35 @@ class Request
         return $data;
     }
 
-	/**
-	 * Получить GET-параметр (из $_GET).
-	 * Удобно для фильтров, пагинации, поиска.
-	 */
-	public function query(?string $key = null, $default = null)
-	{
-		if ($key === null) {
-			return $_GET;
-		}
-		return $_GET[$key] ?? $default;
-	}
+    /**
+     * Получить GET-параметр (из $_GET).
+     */
+    public function query(?string $key = null, $default = null)
+    {
+        if ($key === null) {
+            return $_GET;
+        }
+        return $_GET[$key] ?? $default;
+    }
 
-	/**
-	 * Получить POST-параметр (из $_POST).
-	 * Удобно для обработки форм.
-	 */
-	public function post(?string $key = null, $default = null)
-	{
-		if ($key === null) {
-			return $_POST;
-		}
-		return $_POST[$key] ?? $default;
-	}
+    /**
+     * Получить POST-параметр (из $_POST).
+     */
+    public function post(?string $key = null, $default = null)
+    {
+        if ($key === null) {
+            return $_POST;
+        }
+        return $_POST[$key] ?? $default;
+    }
 
-	/**
-	 * Получить все данные запроса (GET + POST).
-	 * Алиас для getParams() для обратной совместимости.
-	 */
-	public function input(?string $key = null, $default = null)
-	{
-		return $this->getParams($key, $default);
-	}
+    /**
+     * Получить все данные запроса (GET + POST).
+     */
+    public function input(?string $key = null, $default = null)
+    {
+        return $this->getParams($key, $default);
+    }
 
     /**
      * Получить или сгенерировать CSRF-токен
@@ -161,23 +211,33 @@ class Request
 
     /**
      * Обработка провала CSRF-валидации
+     * 
+     * ✅ ИЗМЕНЕНО: Используем внедрённые Audit, Session и Container
      */
     private function handleCsrfFailure(): void
     {
-        // 1. Логируем попытку атаки через существующий Audit
-        Audit::log('security.csrf_failed',  'Неверный CSRF-токен', 'security', [
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-            'url' => $_SERVER['REQUEST_URI'] ?? '/',
-            'method' => $this->getMethod(),
-            'referer' => $_SERVER['HTTP_REFERER'] ?? null,
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-        ]);
+        // 1. Логируем попытку атаки
+        // ✅ Используем внедрённый Audit (или получаем из контейнера)
+        $audit = $this->audit ?? $this->container?->get(Audit::class);
+        if ($audit !== null) {
+            $audit->log('security.csrf_failed', 'Неверный CSRF-токен', 'security', [
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                'url' => $_SERVER['REQUEST_URI'] ?? '/',
+                'method' => $this->getMethod(),
+                'referer' => $_SERVER['HTTP_REFERER'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+            ]);
+        }
 
         // 2. Регенерируем токен (предотвращает повторное использование)
         unset($_SESSION[self::CSRF_TOKEN_KEY]);
 
         // 3. Flash-сообщение для пользователя
-        Session::setFlash('error', 'Срок действия формы истёк. Пожалуйста, обновите страницу и попробуйте снова.');
+        // ✅ Используем внедрённый Session (или получаем из контейнера)
+        $session = $this->session ?? $this->container?->get(Session::class);
+        if ($session !== null) {
+            $session->flash('error', 'Срок действия формы истёк. Пожалуйста, обновите страницу и попробуйте снова.');
+        }
 
         // 4. Для AJAX — возвращаем JSON
         if ($this->isAjaxRequest()) {
@@ -190,10 +250,17 @@ class Request
             exit;
         }
 
-        // 5. Для обычных запросов — используем существующий ErrorsController
+        // 5. Для обычных запросов — используем ErrorsController
         http_response_code(419);
         
-        $errorController = new \App\Modules\Errors\Controllers\ErrorsController();
+        // ✅ Создаём ErrorsController через контейнер
+        if ($this->container !== null) {
+            $errorController = $this->container->make(\App\Modules\Errors\Controllers\ErrorsController::class);
+        } else {
+            // Fallback: создаём через new (если контейнер недоступен)
+            $errorController = new \App\Modules\Errors\Controllers\ErrorsController();
+        }
+        
         $errorController->csrf('Срок действия формы истёк. Пожалуйста, обновите страницу и попробуйте снова.');
         exit;
     }
