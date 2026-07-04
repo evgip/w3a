@@ -7,7 +7,11 @@ namespace App\Core;
 /**
  * Сервис безопасности: nonce для CSP и заголовки безопасности.
  * 
- * ✅ ИЗМЕНЕНО: Класс теперь нестатический, Logger внедряется через конструктор.
+ * Отвечает за:
+ * - Генерацию nonce для Content Security Policy
+ * - Отправку HTTP-заголовков безопасности
+ * 
+ * НЕ отвечает за CSRF (это делает Request.php)
  */
 class Security
 {
@@ -15,7 +19,7 @@ class Security
     private Logger $logger;
 
     /**
-     * ✅ Конструктор с инъекцией Logger
+     * Конструктор с инъекцией Logger
      */
     public function __construct(Logger $logger)
     {
@@ -39,7 +43,6 @@ class Security
     public function sendCspHeader(): void
     {
         if (headers_sent()) {
-            // ✅ Используем внедрённый Logger
             $this->logger->error("Security Layer Failure: Headers already dispatched.");
             return;
         }

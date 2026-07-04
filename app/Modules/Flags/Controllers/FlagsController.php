@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Flags\Controllers;
 
 use App\Core\Controller;
@@ -8,20 +10,17 @@ use App\Core\Audit;
 use App\Modules\Flags\Models\Flag;
 use App\Modules\Stories\Models\Comment;
 use App\Modules\Auth\Services\Auth;
+use App\Core\Exceptions\BadRequestException;
+use App\Core\Exceptions\NotFoundException;
+use App\Core\Exceptions\JsonResponseException;
 
 class FlagsController extends Controller
 {
-    /**
-     * ✅ Хелпер: получить Session из контейнера
-     */
     private function session(): Session
     {
         return $this->container->get(Session::class);
     }
 
-    /**
-     * ✅ Хелпер: получить Audit из контейнера
-     */
     private function audit(): Audit
     {
         return $this->container->get(Audit::class);
@@ -29,19 +28,16 @@ class FlagsController extends Controller
 
     /**
      * GET /flags/report?type=story&id=123
-     * Форма подачи жалобы
      */
     public function reportForm(string $type, string $id): void
     {
         $targetId = (int) $id;
 
         if (!in_array($type, ['story', 'comment'], true) || $targetId <= 0) {
-            http_response_code(400);
-            die('Некорректные параметры жалобы');
+            throw new BadRequestException('Некорректные параметры жалобы');
         }
 
         $flagModel = $this->service(Flag::class);
-        // ✅ Используем Auth::id() вместо $_SESSION
         $userId = (int) Auth::id();
 
         if ($flagModel->hasUserFlagged($userId, $type, $targetId)) {
@@ -60,7 +56,6 @@ class FlagsController extends Controller
 
     /**
      * POST /flags/report
-     * Обработка жалобы
      */
     public function submit(): void
     {
@@ -70,7 +65,6 @@ class FlagsController extends Controller
         $targetId = (int) $this->request->getParams('flaggable_id');
         $reason   = $this->request->getParams('reason');
         $comment  = $this->request->getParams('comment');
-        // ✅ Используем Auth::id() вместо $_SESSION
         $userId   = (int) Auth::id();
 
         $flagModel = $this->service(Flag::class);
@@ -81,7 +75,6 @@ class FlagsController extends Controller
         } else {
             $this->session()->flash('success', 'Спасибо! Ваша жалоба принята. Модераторы рассмотрят её в ближайшее время.');
 
-            // ✅ Используем хелпер audit()
             $this->audit()->log('flag.submitted', 'Пользователь подал жалобу', 'flags', [
                 'type'   => $type,
                 'id'     => $targetId,
@@ -102,7 +95,6 @@ class FlagsController extends Controller
 
     /**
      * GET /admin/flags
-     * Список жалоб для модераторов
      */
     public function adminIndex(): void
     {
@@ -128,16 +120,14 @@ class FlagsController extends Controller
         $this->request->validateCsrf();
 
         $action = $this->request->getParams('action') ?: 'hide';
-        // ✅ Используем Auth::id() вместо $_SESSION
         $modId  = (int) Auth::id();
 
         $flagModel = $this->service(Flag::class);
         $flag = $flagModel->find((int) $id);
 
+        // ✅ ИСПРАВЛЕНО: выбрасываем исключение вместо redirect + flash
         if (!$flag) {
-            $this->session()->flash('error', 'Жалоба не найдена');
-            $this->redirect('/admin/flags');
-            return;
+            throw new NotFoundException('Жалоба не найдена');
         }
 
         if ($action === 'dismiss') {
@@ -158,25 +148,17 @@ class FlagsController extends Controller
      */
     public function pendingCount(): void
     {
-        header('Content-Type: application/json');
-        echo json_encode(['count' => $this->service(Flag::class)->getPendingCount()]);
-        exit;
+        // ✅ ИСПРАВЛЕНО: выбрасываем JsonResponseException вместо echo + exit
+        $count = $this->service(Flag::class)->getPendingCount();
+        throw new JsonResponseException(['count' => $count]);
     }
 
-    // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    // =========================================================================
-
-    /**
-     * Строит URL для редиректа к целевому контенту (истории или комментарию).
-     */
     private function buildTargetUrl(string $type, int $targetId): string
     {
         if ($type === 'story') {
             return "/story/{$targetId}";
         }
 
-        // $targetId — это ID комментария, нужно получить story_id
         $commentModel = $this->service(Comment::class);
         $comment = $commentModel->find($targetId);
 

@@ -56,7 +56,7 @@
 <?php endif; ?>
 
 
-<script nonce="<?= \App\Core\Security::getNonce(); ?>">
+<script nonce="<?= csp_nonce(); ?>">
     document.addEventListener('DOMContentLoaded', function() {
         const titleInput = document.getElementById('wiki-title');
         const slugInput = document.getElementById('wiki-slug');

@@ -126,6 +126,10 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
                 $c->get(Story::class)
             );
         });
+		
+		$container->singleton(UrlFetcherService::class, function($container) {
+			return new UrlFetcherService();
+		});
     }
 
     public function boot(): void

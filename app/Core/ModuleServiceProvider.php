@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
 use App\Core\Events\EventDispatcher;
@@ -21,22 +23,22 @@ class ModuleServiceProvider
     {
         $this->container = $container;
 
-        // 1. Request
+        // 1. Request (если передан)
         if ($this->request !== null) {
-			$container->singleton(Request::class, function($container) {
-				$request = $this->request;
-				$request->setAudit($container->get(Audit::class));
-				$request->setSession($container->get(Session::class));
-				$request->setContainer($container);
-				
-				return $request;
-			});
+            $container->singleton(Request::class, function($container) {
+                $request = $this->request;
+                $request->setSession($container->get(Session::class));
+                $request->setAudit($container->get(Audit::class));
+                $request->setContainer($container);
+                return $request;
+            });
         }
 
         // 2. Database (singleton — одно подключение на весь запрос)
+        // ✅ ИСПРАВЛЕНО: используем 'config.database' вместо 'database'
         $container->singleton(Database::class, function($container) {
-            $config = require dirname(__DIR__) . '/Config/config.php';
-            return new Database($config['database'] ?? []);
+            $config = $container->get(Config::class);
+            return new Database($config->getArray('config.database', []));
         });
 
         // 3. Session (singleton — одна сессия на весь запрос)
@@ -51,9 +53,11 @@ class ModuleServiceProvider
         });
 
         // 5. IpResolver (singleton — один резолвер на весь запрос)
-        $container->singleton(IpResolver::class, function($container) {
-            return new IpResolver();
-        });
+		$container->singleton(IpResolver::class, function($container) {
+			$config = $container->get(Config::class);
+			$trustedProxies = $config->getArray('config.app.trusted_proxies', []);
+			return new IpResolver($trustedProxies);
+		});
 
         // 6. Audit (singleton — один сервис аудита на весь запрос)
         $container->singleton(Audit::class, function($container) {
@@ -65,44 +69,77 @@ class ModuleServiceProvider
         });
 
         // 7. Validator (transient — новый экземпляр каждый раз)
-		$container->bind(Validator::class, function($container) {
-			return new Validator($container->get(Database::class));
-		});
+        $container->bind(Validator::class, function($container) {
+            return new Validator($container->get(Database::class));
+        });
 
-        // 8. Rate Limiter
+        // 8. Rate Limiter (singleton)
         $container->singleton(RateLimiter::class, function($container) {
             return new RateLimiter(
                 $container->get(Database::class),
                 $container->get(Logger::class),
                 $container->get(Audit::class),
                 $container->get(IpResolver::class),
-                $container  // сам контейнер
+                $container,
+                $container->get(Config::class),
+                $container->get(Request::class)
             );
         });
 
-        // 9. Event Dispatcher (если ещё не зарегистрирован)
+        // 9. Router (singleton)
+        $container->singleton(Router::class, function($container) {
+            return new Router(
+                $container->get(Request::class),
+                $container,
+                $container->get(Config::class)
+            );
+        });
+
+        // 10. Security (singleton)
+        $container->singleton(Security::class, function($container) {
+            return new Security($container->get(Logger::class));
+        });
+
+        // 11. Container (сам себя)
+        $container->instance(Container::class, $container);
+
+        // 12. Event Dispatcher (если ещё не зарегистрирован)
         if (!$container->has(EventDispatcher::class)) {
             $container->singleton(EventDispatcher::class, function($container) {
                 return new EventDispatcher();
             });
         }
-
-        // 10. Container (сам себя)
-        $container->instance(Container::class, $container);
 		
-		// 11. Security
-		$container->singleton(Security::class, function($container) {
-			return new Security(
-				$container->get(Logger::class)
+		$container->singleton(UrlFetcherService::class, function($container) {
+			return new UrlFetcherService();
+		});
+		
+		// FileCache
+		$container->singleton(\App\Core\Cache\FileCache::class, function($container) {
+			$cacheDir = dirname(__DIR__, 2) . '/storage/cache/data';
+			return new \App\Core\Cache\FileCache($cacheDir);
+		});
+
+		// DatabaseCache (декоратор для Database)
+		$container->singleton(\App\Core\Cache\DatabaseCache::class, function($container) {
+			$config = $container->get(\App\Core\Config::class);
+			$enabled = $config->getBool('config.cache.database.enabled', true);
+			$ttl = $config->getInt('config.cache.database.ttl', 3600);
+			
+			return new \App\Core\Cache\DatabaseCache(
+				$container->get(\App\Core\Database::class),
+				$container->get(\App\Core\Cache\FileCache::class),
+				$enabled,
+				$ttl
 			);
 		});
     }
 
     /**
-     * Загрузка сервисов (вызывается после регистрации)
+     * Загрузка сервисов
      */
     public function boot(): void
     {
-        // Здесь можно инициализировать сервисы, которые зависят от других сервисов
+        // Здесь можно инициализировать сервисы
     }
 }

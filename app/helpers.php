@@ -3,22 +3,31 @@
 
 use App\Core\Router;
 
+
 /**
  * Генерация URL по имени маршрута
  * 
- * @example route('home') → '/'
- * @example route('story.show', ['id' => 123]) → '/story/123'
+ * @param string $name Имя маршрута
+ * @param array $params Параметры маршрута
+ * @return string URL
+ * 
+ * Пример:
+ *   route('profile', ['id' => 1])  // /user/1
+ *   route('story.show', ['slug' => 'hello-world'])  // /story/hello-world
  */
-function route(string $name, array $params = []): string
-{
-    $router = Router::getInstance();
-    
-    if ($router === null) {
-        // Fallback: Router ещё не инициализирован (например, в CLI)
-        $router = new Router(new \App\Core\Request());
+if (!function_exists('route')) {
+    function route(string $name, array $params = []): string
+    {
+        try {
+            // ✅ Получаем Router из контейнера
+            $router = app(\App\Core\Router::class);
+            return $router->route($name, $params);
+        } catch (\Throwable $e) {
+            // Fallback: если контейнер не инициализирован
+            error_log("Route helper failed: " . $e->getMessage());
+            return '#route-error';
+        }
     }
-    
-    return $router->route($name, $params);
 }
 
 /**
@@ -122,7 +131,6 @@ if (!function_exists('plural')) {
     }
 }
 
-
 /**
  * Generate a hidden CSRF token field
  * Генерация скрытого поля с CSRF-токеном
@@ -130,23 +138,49 @@ if (!function_exists('plural')) {
 if (!function_exists('csrf_field')) {
     function csrf_field(): string
     {
-        // ✅ Пытаемся получить Request из Router (если доступен)
         try {
-            $router = \App\Core\Router::getInstance();
-            if ($router !== null && method_exists($router, 'getRequest')) {
-                $request = $router->getRequest();
-                return '<input type="hidden" name="csrf_token" value="' . e($request->getCsrfToken()) . '">';
-            }
+            // ✅ Получаем Request из контейнера
+            $request = app(\App\Core\Request::class);
+            return $request->csrfField();
         } catch (\Throwable $e) {
-            // Игнорируем ошибки
+            // Fallback: если контейнер не инициализирован
+            error_log("csrf_field() failed: " . $e->getMessage());
+            
+            // Создаём временный Request
+            $request = new \App\Core\Request();
+            return $request->csrfField();
         }
-        
-        // Fallback: создаём новый Request
-        $request = new \App\Core\Request();
-        return '<input type="hidden" name="csrf_token" value="' . e($request->getCsrfToken()) . '">';
     }
 }
 
+
+if (!function_exists('csp_nonce')) {
+    /**
+     * Получить nonce для CSP (для inline скриптов и стилей)
+     * 
+     * Использование:
+     *   <script nonce="<?= csp_nonce() ?>">...</script>
+     *   <style nonce="<?= csp_nonce() ?>">...</style>
+     * 
+     * @return string Nonce для CSP
+     */
+    function csp_nonce(): string
+    {
+        static $nonce = null;
+        
+        if ($nonce === null) {
+            try {
+                $security = app(\App\Core\Security::class);
+                $nonce = $security->getNonce();
+            } catch (\Throwable $e) {
+                // Fallback: если контейнер не инициализирован
+                $nonce = bin2hex(random_bytes(16));
+            }
+        }
+        
+        return $nonce;
+    }
+}
 
 /**
  * Render flash messages by type (success, error, notice)
@@ -181,70 +215,64 @@ if (!function_exists('render_flashes')) {
     }
 }
 
+if (!function_exists('app')) {
     /**
-     * Универсальный хелпер для получения значений из конфигурации приложения.
+     * Получить экземпляр из контейнера или сам контейнер
      * 
-     * Функция извлекает значение по ключу из глобального конфига (AppCoreConfig)
-     * и опционально приводит его к указанному типу. Поддерживает точечную нотацию
-     * для доступа к вложенным ключам (например, 'app.name' или 'database.host').
-     * 
-     * Примеры использования:
-     * 
-     * // Получение значения без приведения типа
-     * $appName = config('app.name');                    // 'W3A'
-     * $version = config('app.version', '1.0.0');        // '1.0.0' если ключа нет
-     * 
-     * // Получение с приведением к int
-     * $maxUpload = config('app.max_upload_size', 10, 'int');  // 10
-     * $perPage = config('pagination.per_page', 20, 'int');    // 20
-     * 
-     * // Получение с приведением к bool
-     * $debug = config('app.debug', false, 'bool');      // true/false
-     * $maintenance = config('app.maintenance', false, 'bool');
-     * 
-     * // Получение с приведением к string
-     * $locale = config('app.locale', 'ru', 'string');   // 'ru'
-     * $timezone = config('app.timezone', 'UTC', 'string');
-     * 
-     * // Получение с приведением к array
-     * $allowedHosts = config('app.allowed_hosts', [], 'array');
-     * $roles = config('auth.roles', [], 'array');
-     * 
-     * // Получение всего конфига (при вызове без параметров)
-     * $allConfig = config();
-     * 
-     * // Значение по умолчанию, если ключ не найден
-     * $secret = config('app.secret_key', 'default_secret');
-     * 
-     * @param string|null $key      Ключ конфигурации в точечной нотации (например, 'app.name').
-     *                              Если null — возвращается весь массив конфигурации.
-     * @param mixed       $default  Значение по умолчанию, если ключ не найден в конфиге.
-     *                              Может быть любого типа.
-     * @param string|null $type     Опциональный тип для приведения значения.
-     *                              Допустимые значения: 'int', 'string', 'bool', 'array'.
-     *                              Если null — значение возвращается как есть.
-     * 
-     * @return mixed Значение из конфигурации, приведённое к указанному типу (если задан).
-     *               Если ключ не найден и не задан $default — возвращает null.
+     * @param string|null $abstract Имя сервиса или null для получения контейнера
+     * @return mixed
      */
-if (!function_exists('config')) {
-	function config(string $key = null, mixed $default = null, string $type = null): mixed
-	{
-		$value = \App\Core\Config::get($key, $default);
-		
-		if ($type !== null) {
-			return match($type) {
-				'int' => (int)$value,
-				'string' => (string)$value,
-				'bool' => (bool)$value,
-				'array' => (array)$value,
-				default => $value,
-			};
-		}
-		
-		return $value;
-	}
+    function app(?string $abstract = null): mixed
+    {
+        static $container = null;
+        
+        // Получаем контейнер из глобальной области
+        if ($container === null) {
+            // Ищем контейнер в глобальной переменной
+            if (isset($GLOBALS['app_container'])) {
+                $container = $GLOBALS['app_container'];
+            } else {
+                throw new \RuntimeException('Application container not initialized');
+            }
+        }
+        
+        if ($abstract === null) {
+            return $container;
+        }
+        
+        return $container->get($abstract);
+    }
 }
+
+if (!function_exists('config')) {
+    /**
+     * Получить значение из конфигурации
+     * 
+     * @param string|null $key Ключ конфигурации
+     * @param mixed $default Значение по умолчанию
+     * @return mixed
+     */
+    function config(?string $key = null, mixed $default = null): mixed
+    {
+        static $config = null;
+        
+        if ($config === null) {
+            try {
+                $config = app(\App\Core\Config::class);
+            } catch (\Throwable $e) {
+                // Fallback: если контейнер еще не инициализирован
+                return $default;
+            }
+        }
+        
+        if ($key === null) {
+            return $config;
+        }
+        
+        return $config->get($key, $default);
+    }
+}
+
 
 /**
  * Retrieve application name
@@ -483,6 +511,24 @@ if (!function_exists('env')) {
 // 🔤 ХЕЛПЕРЫ ДЛЯ РАБОТЫ С КОНТЕНТОМ (MARKDOWN)
 // ═══════════════════════════════════════════
 
+if (!function_exists('markdown_instance')) {
+    /**
+     * Получить экземпляр Markdown парсера
+     * 
+     * @return \App\Modules\Content\Core\Markdown
+     */
+    function markdown_instance(): \App\Modules\Content\Core\Markdown
+    {
+        static $instance = null;
+        
+        if ($instance === null) {
+            $instance = app(\App\Modules\Content\Core\Markdown::class);
+        }
+        
+        return $instance;
+    }
+}
+
 if (!function_exists('markdown')) {
     /**
      * Парсинг Markdown в HTML (полный режим - для постов/историй)
@@ -497,7 +543,7 @@ if (!function_exists('markdown')) {
      */
     function markdown(?string $text, bool $allowImages = true): string
     {
-        return \App\Modules\Content\Core\Markdown::parse($text, $allowImages);
+        return markdown_instance()->parse($text, $allowImages);
     }
 }
 
@@ -514,7 +560,7 @@ if (!function_exists('markdown_comment')) {
      */
     function markdown_comment(?string $text): string
     {
-        return \App\Modules\Content\Core\Markdown::parseComment($text);
+        return markdown_instance()->parseComment($text);
     }
 }
 
@@ -531,7 +577,7 @@ if (!function_exists('markdown_plain')) {
      */
     function markdown_plain(?string $text): string
     {
-        return \App\Modules\Content\Core\Markdown::parsePlain($text);
+        return markdown_instance()->parsePlain($text);
     }
 }
 
@@ -545,6 +591,72 @@ if (!function_exists('markdown_clear_cache')) {
      */
     function markdown_clear_cache(): void
     {
-        \App\Modules\Content\Core\Markdown::clearCache();
+        markdown_instance()->clearCache();
     }
+	
+	if (!function_exists('captcha')) {
+		/**
+		 * Получить HTML-код капчи
+		 * 
+		 * Использование в шаблонах:
+		 *   <?= captcha() ?>
+		 * 
+		 * @return string HTML капчи или пустая строка, если капча отключена
+		 */
+		function captcha(): string
+		{
+			static $html = null;
+			
+			if ($html === null) {
+				try {
+					$captcha = app(\App\Modules\Captcha\Core\Captcha::class);
+					$html = $captcha->getHtml();
+				} catch (\Throwable $e) {
+					error_log("captcha() failed: " . $e->getMessage());
+					$html = '';
+				}
+			}
+			
+			return $html;
+		}
+	}
+
+	if (!function_exists('captcha_validate')) {
+		/**
+		 * Проверить ответ капчи
+		 * 
+		 * Использование в контроллерах:
+		 *   if (!captcha_validate()) { ... }
+		 * 
+		 * @param string|null $token Токен капчи (опционально)
+		 * @return bool Результат проверки
+		 */
+		function captcha_validate(?string $token = null): bool
+		{
+			try {
+				$captcha = app(\App\Modules\Captcha\Core\Captcha::class);
+				return $captcha->validate($token);
+			} catch (\Throwable $e) {
+				error_log("captcha_validate() failed: " . $e->getMessage());
+				return false;
+			}
+		}
+	}
+
+	if (!function_exists('captcha_is_required')) {
+		/**
+		 * Проверить, нужна ли капча текущему пользователю
+		 * 
+		 * @return bool
+		 */
+		function captcha_is_required(): bool
+		{
+			try {
+				$captcha = app(\App\Modules\Captcha\Core\Captcha::class);
+				return $captcha->isRequired();
+			} catch (\Throwable $e) {
+				return false;
+			}
+		}
+	}
 }

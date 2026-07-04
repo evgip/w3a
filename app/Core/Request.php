@@ -212,7 +212,7 @@ class Request
     /**
      * Обработка провала CSRF-валидации
      * 
-     * ✅ ИЗМЕНЕНО: Используем внедрённые Audit, Session и Container
+     * Используем внедрённые Audit, Session и Container
      */
     private function handleCsrfFailure(): void
     {
@@ -278,4 +278,43 @@ class Request
                 && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'))
         );
     }
+	
+	/**
+	 * Получить загруженный файл
+	 * 
+	 * @param string $key Имя поля файла
+	 * @return array|null Данные файла или null
+	 */
+	public function file(string $key): ?array
+	{
+		return $_FILES[$key] ?? null;
+	}
+
+	/**
+	 * Проверить наличие загруженного файла
+	 */
+	public function hasFile(string $key): bool
+	{
+		return isset($_FILES[$key]) && $_FILES[$key]['error'] !== UPLOAD_ERR_NO_FILE;
+	}
+	
+	/**
+	 * Получить HTTP заголовок
+	 * 
+	 * @param string $key Имя заголовка (например, 'HTTP_REFERER')
+	 * @param mixed $default Значение по умолчанию
+	 * @return mixed
+	 */
+	public function header(string $key, mixed $default = null): mixed
+	{
+		return $_SERVER[$key] ?? $default;
+	}
+
+	/**
+	 * Получить все заголовки
+	 */
+	public function headers(): array
+	{
+		return array_filter($_SERVER, fn($key) => str_starts_with($key, 'HTTP_'), ARRAY_FILTER_USE_KEY);
+	}
 }

@@ -125,7 +125,7 @@
     </form>
 </div>
 
-<script nonce="<?= \App\Core\Security::getNonce(); ?>">
+<script nonce="<?= csp_nonce(); ?>">
 document.getElementById('recalculate-confidence-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     

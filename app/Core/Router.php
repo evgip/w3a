@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
 use App\Core\Middleware\MiddlewarePipeline;
@@ -7,32 +9,16 @@ use App\Core\Events\EventDispatcher;
 
 class Router
 {
-    /** @var string|null Имя текущего маршрута (для is_route()) */
     protected ?string $currentRouteName = null;
-
-    /** @var self|null Singleton экземпляр */
-    private static ?self $instance = null;
-
-    /** @var array Маршруты, сгруппированные по HTTP-методу */
     protected array $routes = [];
-
-    /** @var array Именованные маршруты */
     protected array $namedRoutes = [];
-
-    /** @var array Middleware для каждого маршрута */
     protected array $routeMiddleware = [];
-
-    /** @var Request Объект запроса */
     protected Request $request;
-
-    /** @var string Путь к файлу кэша маршрутов */
     protected string $cacheFile;
-
+    protected Container $container;
+    protected Config $config;
     protected ?EventDispatcher $eventDispatcher = null;
 
-    protected Container $container;
-
-    /** @var array Группы middleware (алиасы) */
     protected array $middlewareGroups = [
         'web' => [
             \App\Core\Middleware\CsrfMiddleware::class,
@@ -51,24 +37,16 @@ class Router
         ],
     ];
 
-    /** @var array Текущий контекст группы маршрутов */
     protected array $currentGroupMiddleware = [];
-
-    /** @var string Текущий префикс группы маршрутов */
     protected string $currentGroupPrefix = '';
 
-    public function __construct(Request $request, Container $container)
+    public function __construct(Request $request, Container $container, Config $config)
     {
-        self::$instance = $this;
         $this->request = $request;
         $this->container = $container;
+        $this->config = $config;
         $this->cacheFile = dirname(__DIR__, 2) . '/storage/cache/routes_compiled.php';
         $this->loadRoutes();
-    }
-
-    public static function getInstance(): ?self
-    {
-        return self::$instance;
     }
 
     public function getCurrentRouteName(): ?string
@@ -83,8 +61,7 @@ class Router
 
     protected function loadRoutes(): void
     {
-        $config = require dirname(__DIR__) . '/Config/config.php';
-        $isProduction = ($config['app']['env'] ?? 'development') === 'production';
+        $isProduction = $this->config->getString('config.app.env', 'development') === 'production';
 
         if ($isProduction && file_exists($this->cacheFile)) {
             $cache = require $this->cacheFile;
@@ -213,9 +190,6 @@ class Router
         return '/' . ltrim($pattern, '/');
     }
 
-    /**
-     * Получить объект Request
-     */
     public function getRequest(): Request
     {
         return $this->request;
@@ -226,24 +200,8 @@ class Router
         $uri = $this->request->getUri();
         $method = $this->request->getMethod();
 
-        // --- RATE LIMITER ---
-        $rateLimiter = $this->container->get(RateLimiter::class);
-        if ($method === 'POST') {
-            if ($uri === '/login' || $uri === '/register') {
-                if (!$rateLimiter->check('auth.submit')) {
-                    $rateLimiter->block();
-                }
-            } else {
-                if (!$rateLimiter->check('global.post')) {
-                    $rateLimiter->block();
-                }
-            }
-        } else {
-            if (!$rateLimiter->check('global.get')) {
-                $rateLimiter->block();
-            }
-        }
-        // --- КОНЕЦ RATE LIMITER ---
+        // ✅ Rate limiting через конфиг
+        $this->applyRateLimiting($uri, $method);
 
         if (!isset($this->routes[$method])) {
             $this->triggerError(404, "Method $method not allowed");
@@ -263,6 +221,38 @@ class Router
         $this->triggerError(404, "Route not found");
     }
 
+    /**
+     * ✅ Применение rate limiting из конфига
+     */
+    protected function applyRateLimiting(string $uri, string $method): void
+    {
+        $rateLimiter = $this->container->get(RateLimiter::class);
+        
+        // Получаем правила из конфига
+        $rateLimitConfig = $this->config->getArray('rate_limit.rules', []);
+        
+        if ($method === 'POST') {
+            // Проверяем auth routes
+            $authRoutes = $rateLimitConfig['auth.submit']['routes'] ?? ['/login', '/register'];
+            if (in_array($uri, $authRoutes)) {
+                if (!$rateLimiter->check('auth.submit')) {
+                    $rateLimiter->block();
+                }
+                return;
+            }
+            
+            // Global POST
+            if (!$rateLimiter->check('global.post')) {
+                $rateLimiter->block();
+            }
+        } else {
+            // Global GET
+            if (!$rateLimiter->check('global.get')) {
+                $rateLimiter->block();
+            }
+        }
+    }
+
     protected function executeWithMiddleware(string $action, array $params, array $middleware): void
     {
         if (empty($middleware)) {
@@ -270,7 +260,6 @@ class Router
             return;
         }
 
-        // ПЕРЕДАЁМ КОНТЕЙНЕР В PIPELINE
         $pipeline = new MiddlewarePipeline($this->container);
         foreach ($middleware as $middlewareClass) {
             if (class_exists($middlewareClass)) {
@@ -288,11 +277,6 @@ class Router
         $pipeline->process($destination);
     }
 
-    /**
-     * Выполнение действия контроллера.
-     * Используем Container::make() для создания контроллера
-     * с автоматической инъекцией всех зависимостей через рефлексию.
-     */
     protected function executeAction(string $action, array $params): void
     {
         if (strpos($action, '@') === false) {
@@ -307,7 +291,6 @@ class Router
             return;
         }
 
-        // ИСПОЛЬЗУЕМ КОНТЕЙНЕР ДЛЯ СОЗДАНИЯ КОНТРОЛЛЕРА
         $controllerInstance = $this->container->make($controllerClass);
 
         if (!method_exists($controllerInstance, $method)) {
@@ -318,23 +301,18 @@ class Router
         call_user_func_array([$controllerInstance, $method], $params);
     }
 
-    /**
-     * Обработка ошибки с выводом страницы.
-     * Используем Container::make() для создания контроллера ошибок
-     */
     protected function triggerError(int $code, string $message): void
     {
         http_response_code($code);
 
         if ($code === 404) {
             $logger = $this->container->get(Logger::class);
-            $logger->error("Ошибка 404: " . $message, ['url' => $_SERVER['REQUEST_URI'] ?? '/']);
+            $logger->error("Ошибка 404: " . $message, ['url' => $this->request->getUri()]);
         }
 
         $errorControllerClass = "App\\Modules\\Errors\\Controllers\\ErrorsController";
 
         if (class_exists($errorControllerClass)) {
-            // ИСПОЛЬЗУЕМ КОНТЕЙНЕР
             $controller = $this->container->make($errorControllerClass);
             
             match($code) {

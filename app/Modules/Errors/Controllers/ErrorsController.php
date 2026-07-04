@@ -82,6 +82,30 @@ class ErrorsController extends Controller
 		]);
 		exit;
 	}
+	
+	/**
+	 * HTTP 400 Bad Request
+	 */
+	public function badRequest(string $message = ''): void
+	{
+		http_response_code(400);
+		$this->render('errors/400', [
+			'title' => 'Некорректный запрос',
+			'message' => $message ?: 'Запрос содержит некорректные параметры',
+		]);
+	}
+
+	/**
+	 * Универсальный метод для других кодов
+	 */
+	public function show(int $code, string $message = ''): void
+	{
+		http_response_code($code);
+		$this->render("errors/{$code}", [
+			'title' => "Ошибка {$code}",
+			'message' => $message,
+		]);
+	}
 }
 
  

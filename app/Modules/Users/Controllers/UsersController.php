@@ -6,6 +6,7 @@ namespace App\Modules\Users\Controllers;
 
 use App\Core\Controller;
 use App\Core\Session;
+use App\Core\Exceptions\NotFoundException;
 use App\Modules\Users\Services\UserService;
 use App\Modules\Users\Services\AvatarService;
 use App\Modules\Users\Models\User;
@@ -13,28 +14,14 @@ use App\Modules\Auth\Services\Auth;
 
 /**
  * Контроллер для управления профилями пользователей и настройками аккаунта.
- * 
- * Отвечает за:
- * - Отображение публичных профилей пользователей
- * - Управление настройками профиля (email, bio, аватар, уведомления)
- * - Смену пароля авторизованным пользователем
- * 
- * Все действия (кроме profile) требуют авторизации через сессию.
- * Зависимости (UserService, AvatarService) получаются из контейнера через методы-геттеры.
  */
 class UsersController extends Controller
 {
-    /**
-     * Получить сервис для работы с пользователями из контейнера.
-     */
     private function getUserService(): UserService
     {
         return $this->service(UserService::class);
     }
 
-    /**
-     * Получить сервис для работы с аватарами из контейнера.
-     */
     private function getAvatarService(): AvatarService
     {
         return $this->service(AvatarService::class);
@@ -43,55 +30,37 @@ class UsersController extends Controller
     /**
      * Отображение всех участников (GET /users).
      */
-    public function index() {
-        return true;
+    public function index(): void
+    {
+        // TODO: Реализовать список пользователей
+        $this->render('index', [
+            'title' => 'Участники',
+        ]);
     }
 
     /**
      * Отображение публичного профиля пользователя (GET /user/{username}).
-     * 
-     * @param string $username Имя пользователя (username) — обязательный параметр маршрута
-     * @return void
      */
     public function profile(string $username): void
     {
-        // ✅ Получаем модель из контейнера вместо new
-        $userModel = $this->container->get(User::class);
-        
-        // Ищем пользователя по username (с обрезкой пробелов)
-        $user = $userModel->findBy('username', trim($username));
+        $user = $this->getUserByUsername(trim($username));
 
-        if (!$user) {
-            // Пользователь не найден — показываем 404
-            $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-            if (class_exists($errorController)) {
-                // ✅ Создаём через контейнер с инъекцией зависимостей
-                $controller = $this->container->make($errorController);
-                $controller->notFound("Пользователь <i>{$username}</i> не найден.");
-                exit;
-            }
-            die("<h1>404 Errors</h1>");
-        }
-
-        // Загружаем дополнительные данные профиля (bio, аватар)
-        $profile = $userModel->getProfile((int)$user['id']);
+        // Загружаем дополнительные данные профиля
+        $profile = $user['profile'] ?? [];
         $user['bio'] = $profile['bio'] ?? null;
         $user['avatar'] = $profile['avatar'] ?? null;
 
-        // Проверяем, забанен ли пользователь
-        $banInfo = $userModel->getBanInfo((int)$user['id']);
+        // Загружаем информацию о бане
+        $banInfo = $this->container->get(User::class)->getBanInfo((int)$user['id']);
         $user['is_banned'] = $banInfo !== null;
         $user['ban_reason'] = $banInfo['reason'] ?? null;
         $user['banned_at'] = $banInfo['created_at'] ?? null;
         $user['expires_at'] = $banInfo['expires_at'] ?? null;
 
-        // Загружаем статистику (количество историй и комментариев)
-        $stats = $userModel->getProfileStats((int)$user['id']);
-        
-        // Загружаем карму пользователя
-        $userKarma = $userModel->getUserKarma((int)$user['id']);
+        // Загружаем статистику
+        $stats = $this->container->get(User::class)->getProfileStats((int)$user['id']);
+        $userKarma = $this->container->get(User::class)->getUserKarma((int)$user['id']);
 
-        // Рендерим шаблон профиля с данными
         $this->render('profile', [
             'title' => 'Профиль пользователя ' . e($user['username']),
             'profileUser' => $user,
@@ -103,23 +72,18 @@ class UsersController extends Controller
 
     /**
      * Отображение страницы настроек профиля (GET /account/settings).
-     * 
-     * @return void
      */
     public function settings(): void
     {
         $userId = Auth::id();
+        $user = $this->getUserWithProfileOrRedirect($userId);
         
-        // Загружаем пользователя с данными профиля
-        $user = $this->getUserService()->getUserWithProfile($userId);
-        if (!$user) {
-            redirect('/');
+        if ($user === null) {
+            return;
         }
-        
-        // Загружаем настройки через сервис
+
         $settings = $this->getUserService()->getUserSettings($userId);
-        
-        // Рендерим страницу
+
         $this->render('settings', [
             'title' => 'Настройки профиля',
             'user' => $user,
@@ -130,38 +94,34 @@ class UsersController extends Controller
 
     /**
      * Обработка обновления настроек профиля (POST /account/settings).
-     * 
-     * @return void
      */
     public function updateSettings(): void
     {
-        // Получаем ID текущего пользователя
         $userId = Auth::id();
+        $user = $this->getUserWithProfileOrRedirect($userId);
         
-        // Загружаем текущие данные пользователя
-        $user = $this->getUserService()->getUserWithProfile($userId);
-
-        if (!$user) {
-            redirect('/');
+        if ($user === null) {
+            return;
         }
 
-        // Получаем данные из формы
-        $email = trim($this->request->getParams('email'));
-        $bio = trim($this->request->getParams('bio'));
-        $oldAvatarFilename = $user['avatar'];
+        $email = trim($this->request->getParams('email', ''));
+        $bio = trim($this->request->getParams('bio', ''));
+        $oldAvatarFilename = $user['avatar'] ?? '';
         $newAvatarFilename = $oldAvatarFilename;
 
         // Обновление email
         if ($email !== $user['email']) {
             if (!$this->getUserService()->updateEmail($userId, $email)) {
-                redirect(route('account.settings'));
+                $this->redirect(route('account.settings'));
+                return;
             }
         }
 
-        // Загрузка нового аватара
-        if (isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
+        // ✅ ИСПРАВЛЕНО: используем Request вместо $_FILES
+        $avatarFile = $this->request->file('avatar_file');
+        if ($avatarFile && $avatarFile['error'] === UPLOAD_ERR_OK) {
             $uploadedAvatar = $this->getAvatarService()->handleUpload(
-                $_FILES['avatar_file'], 
+                $avatarFile,
                 $oldAvatarFilename
             );
             
@@ -185,43 +145,80 @@ class UsersController extends Controller
             'email_notifications' => $this->request->getParams('email_notifications') ? 1 : 0,
         ]);
 
-        // Обновляем аватар в сессии (для отображения в шапке сайта)
-        // ✅ Используем Session через контейнер
+        // Обновляем аватар в сессии
         $session = $this->container->get(Session::class);
         $session->set('user_avatar', $newAvatarFilename);
-
-        // Показываем flash-сообщение об успехе
         $session->flash('success', 'Настройки сохранены.');
-        
-        // Редирект обратно на страницу настроек
-        redirect(route('account.settings'));
+
+        $this->redirect(route('account.settings'));
     }
 
     /**
      * Обработка смены пароля (POST /account/password).
-     * 
-     * @return void
      */
     public function updatePassword(): void
     {
         $userId = Auth::id();
         
-        $currentPassword = $this->request->getParams('current_password');
-        $newPassword = $this->request->getParams('new_password');
+        $currentPassword = $this->request->getParams('current_password', '');
+        $newPassword = $this->request->getParams('new_password', '');
 
-        // ✅ Используем Session через контейнер
         $session = $this->container->get(Session::class);
 
         // Валидация длины пароля
         if (strlen($newPassword) < 6) {
             $session->flash('error', 'Пароль должен быть не менее 6 символов.');
-            redirect(route('account.settings'));
+            $this->redirect(route('account.settings'));
+            return;
         }
 
         // Попытка смены пароля
-        $this->getUserService()->changePassword($userId, $currentPassword, $newPassword);
+        $success = $this->getUserService()->changePassword($userId, $currentPassword, $newPassword);
 
-        // Редирект обратно на страницу настроек
-        redirect(route('account.settings'));
+        if ($success) {
+            $session->flash('success', 'Пароль успешно изменён.');
+        } else {
+            $session->flash('error', 'Не удалось изменить пароль. Проверьте текущий пароль.');
+        }
+
+        $this->redirect(route('account.settings'));
+    }
+
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * ✅ Получить пользователя по username или выбросить 404
+     */
+    private function getUserByUsername(string $username): array
+    {
+        $userModel = $this->container->get(User::class);
+        $user = $userModel->findBy('username', $username);
+
+        if (!$user) {
+            throw new NotFoundException("Пользователь <i>{$username}</i> не найден.");
+        }
+
+        // Загружаем профиль
+        $profile = $userModel->getProfile((int)$user['id']);
+        $user['profile'] = $profile;
+
+        return $user;
+    }
+
+    /**
+     * ✅ Получить пользователя с профилем или сделать редирект
+     */
+    private function getUserWithProfileOrRedirect(int $userId): ?array
+    {
+        $user = $this->getUserService()->getUserWithProfile($userId);
+        
+        if (!$user) {
+            $this->redirect('/');
+            return null;
+        }
+
+        return $user;
     }
 }

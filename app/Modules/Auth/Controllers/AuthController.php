@@ -6,7 +6,6 @@ namespace App\Modules\Auth\Controllers;
 
 use App\Core\Controller;
 use App\Core\Session;
-use App\Modules\Captcha\Core\Captcha;
 use App\Modules\Auth\Services\AuthService;
 use App\Modules\Auth\Services\PasswordResetService;
 
@@ -21,10 +20,10 @@ class AuthController extends Controller
 
     public function sendResetLink(): void
     {
-        // ✅ Используем Session через контейнер
         $session = $this->container->get(Session::class);
 
-        if (Captcha::isRequired() && !Captcha::validate($this->request->post('smart-token'))) {
+        // ✅ ИСПРАВЛЕНО: используем хелперы вместо статических вызовов
+        if (captcha_is_required() && !captcha_validate($this->request->post('smart-token'))) {
             $session->flash('error', 'Пожалуйста, подтвердите, что вы не робот.');
             $this->redirect(route('password.request'));
             return;
@@ -132,12 +131,12 @@ class AuthController extends Controller
 
     public function showRegisterForm(): void
     {
-        if (config('config.app.invitations_enabled', false, 'bool')) {
+        // ✅ ИСПРАВЛЕНО: убран лишний третий параметр 'bool'
+        if (config('config.app.invitations_enabled', false)) {
             $this->redirect(route('home'));
             return;
         }
 
-        // ✅ Используем Session через контейнер
         $session = $this->container->get(Session::class);
         $old = $session->get('old_input', []);
         $session->delete('old_input');
@@ -153,7 +152,8 @@ class AuthController extends Controller
     {
         $session = $this->container->get(Session::class);
 
-        if (!Captcha::validate($this->request->post('smart-token'))) {
+        // ✅ ИСПРАВЛЕНО: используем хелпер вместо статического вызова
+        if (!captcha_validate($this->request->post('smart-token'))) {
             $session->flash('error', 'Пожалуйста, подтвердите, что вы не робот.');
             $this->redirect(route('auth.register'));
             return;
@@ -163,7 +163,6 @@ class AuthController extends Controller
         $email = trim($this->request->getParams('email'));
         $password = $this->request->getParams('password');
 
-        // ✅ Валидация в контроллере, а не в сервисе
         $validator = $this->container->get(\App\Core\Validator::class);
         $validator->validate([
             'username' => $username,
@@ -176,13 +175,10 @@ class AuthController extends Controller
         ]);
 
         if (!$validator->isValid()) {
+            // ✅ УПРОЩЕНО: используем array_merge и implode напрямую
             $errors = $validator->getErrors();
-            $errorMessages = [];
-            foreach ($errors as $fieldErrors) {
-                foreach ($fieldErrors as $error) {
-                    $errorMessages[] = $error;
-                }
-            }
+            $errorMessages = array_merge(...array_values($errors));
+            
             $session->flash('error', implode('<br>', $errorMessages));
             $session->set('old_input', [
                 'username' => $username,
@@ -192,7 +188,6 @@ class AuthController extends Controller
             return;
         }
 
-        // ✅ Передаём данные в сервис
         $userId = $this->service(AuthService::class)->register($username, $email, $password);
         
         if (!$userId) {
@@ -201,6 +196,7 @@ class AuthController extends Controller
                 'email' => $email,
             ]);
             $this->redirectBack('/register');
+            return;
         }
 
         $session->flash('success', 'Регистрация успешна! Проверьте почту.');

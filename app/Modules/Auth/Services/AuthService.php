@@ -14,6 +14,7 @@ use App\Modules\Users\Models\User;
 use App\Modules\Auth\Models\RememberToken;
 use App\Modules\Auth\Models\EmailActivation;
 use App\Modules\Captcha\Core\Captcha;
+use App\Modules\Mail\Core\Mailer; 
 
 class AuthService
 {

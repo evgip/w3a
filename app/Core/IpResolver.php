@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
 /**
@@ -21,16 +23,12 @@ class IpResolver
     /**
      * Конструктор с инъекцией конфигурации.
      *
-     * @param array|null $trustedProxies Список доверенных proxy (CIDR нотация)
+     * @param array $trustedProxies Список доверенных proxy (CIDR нотация)
      * @param bool $useCloudflareDefaults Использовать диапазоны Cloudflare, если список пуст
      */
-    public function __construct(?array $trustedProxies = null, bool $useCloudflareDefaults = true)
+    public function __construct(array $trustedProxies = [], bool $useCloudflareDefaults = true)
     {
-        if ($trustedProxies === null) {
-            // Пытаемся получить из конфига
-            $trustedProxies = config('config.app.trusted_proxies', [], 'array');
-        }
-        
+        // ✅ Убрали config() helper - теперь полностью зависим от DI
         $this->trustedProxies = $trustedProxies;
         $this->useCloudflareDefaults = $useCloudflareDefaults;
     }

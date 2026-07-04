@@ -1,34 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
+use App\Core\Contracts\DatabaseInterface;
 use PDO;
 use PDOException;
 use RuntimeException;
 
-class Database
+class Database implements DatabaseInterface
 {
     private ?PDO $connection = null;
     private array $config;
+    private ?Logger $logger;
 
-    /**
-     * Конструктор с инъекцией конфигурации
-     * 
-     * @param array $config Конфигурация подключения
-     */
-    public function __construct(array $config = [])
+    public function __construct(array $config, ?Logger $logger = null)
     {
         if (empty($config)) {
-            // Fallback: загружаем из конфига (для обратной совместимости)
-            $config = require dirname(__DIR__) . '/Config/config.php';
-            $config = $config['database'] ?? [];
+            throw new \InvalidArgumentException('Database config cannot be empty');
         }
+        
         $this->config = $config;
+        $this->logger = $logger;
     }
 
-    /**
-     * Получить PDO-подключение (ленивая инициализация)
-     */
     public function getConnection(): PDO
     {
         if ($this->connection === null) {
@@ -37,17 +33,11 @@ class Database
         return $this->connection;
     }
 
-    /**
-     * Алиас для getConnection() — более короткое имя
-     */
     public function pdo(): PDO
     {
         return $this->getConnection();
     }
 
-    /**
-     * Создание нового PDO-подключения
-     */
     private function createConnection(): PDO
     {
         $dsn = sprintf(
@@ -72,27 +62,17 @@ class Database
                 $options
             );
 
-            // Устанавливаем строгий режим
             $pdo->exec("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
 
             return $pdo;
         } catch (PDOException $e) {
-            // Логируем через контейнер, если доступен
-            if (class_exists(Logger::class)) {
-                try {
-                    $logger = new Logger();
-                    $logger->error("Сбой подключения к БД: " . $e->getMessage());
-                } catch (\Throwable $logError) {
-                    // Игнорируем ошибки логирования
-                }
+            if ($this->logger) {
+                $this->logger->error("Сбой подключения к БД: " . $e->getMessage());
             }
-            throw new RuntimeException("Database connection failed: " . $e->getMessage());
+            throw new RuntimeException("Database connection failed: " . $e->getMessage(), 0, $e);
         }
     }
 
-    /**
-     * Выполнить запрос и вернуть PDOStatement
-     */
     public function query(string $sql, array $params = []): \PDOStatement
     {
         $stmt = $this->getConnection()->prepare($sql);
@@ -100,83 +80,48 @@ class Database
         return $stmt;
     }
 
-    /**
-     * Выполнить запрос и вернуть количество затронутых строк
-     */
     public function execute(string $sql, array $params = []): int
     {
-        $stmt = $this->getConnection()->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->rowCount();
+        return $this->query($sql, $params)->rowCount();
     }
 
-    /**
-     * Получить последнюю вставленную ID
-     */
     public function lastInsertId(): string
     {
         return $this->getConnection()->lastInsertId();
     }
 
-    /**
-     * Начать транзакцию
-     */
     public function beginTransaction(): bool
     {
         return $this->getConnection()->beginTransaction();
     }
 
-    /**
-     * Зафиксировать транзакцию
-     */
     public function commit(): bool
     {
         return $this->getConnection()->commit();
     }
 
-    /**
-     * Откатить транзакцию
-     */
     public function rollBack(): bool
     {
         return $this->getConnection()->rollBack();
     }
 
-    /**
-     * Выполнить запрос и вернуть одну запись
-     */
     public function fetchOne(string $sql, array $params = []): ?array
     {
-        $stmt = $this->query($sql, $params);
-        $result = $stmt->fetch();
+        $result = $this->query($sql, $params)->fetch();
         return $result === false ? null : $result;
     }
 
-    /**
-     * Выполнить запрос и вернуть все записи
-     */
     public function fetchAll(string $sql, array $params = []): array
     {
-        $stmt = $this->query($sql, $params);
-        return $stmt->fetchAll();
+        return $this->query($sql, $params)->fetchAll();
     }
 
-    /**
-     * Выполнить запрос и вернуть одно значение
-     */
     public function fetchColumn(string $sql, array $params = [], int $column = 0): mixed
     {
-        $stmt = $this->query($sql, $params);
-        return $stmt->fetchColumn($column);
+        $result = $this->query($sql, $params)->fetchColumn($column);
+        return $result === false ? null : $result;
     }
-	
-    /**
-     * Подготовить SQL-запрос без выполнения.
-     * Возвращает PDOStatement для использования с bindValue().
-     * 
-     * @param string $sql SQL-запрос
-     * @return \PDOStatement Подготовленный statement
-     */
+
     public function prepare(string $sql): \PDOStatement
     {
         return $this->getConnection()->prepare($sql);

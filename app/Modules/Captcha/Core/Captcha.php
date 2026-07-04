@@ -1,45 +1,61 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Captcha\Core;
 
 use App\Core\Config;
+use App\Core\Request;
+use App\Core\Session;
 
 class Captcha
 {
-    private static string $driver = 'yandex';
+    private Config $config;
+    private Request $request;
+    private Session $session;
+    private ?string $driver = null;
 
-    /**
-     * Инициализация драйвера из конфига
-     */
-    public static function init(): void
+    public function __construct(Config $config, Request $request, Session $session)
     {
-        self::$driver = Config::get('captcha.config.driver', 'yandex');
+        $this->config = $config;
+        $this->request = $request;
+        $this->session = $session;
     }
 
     /**
-     * 🔑 НОВЫЙ МЕТОД: Проверить, включена ли капча
+     * Получить драйвер из конфига
      */
-    public static function isEnabled(): bool
+    private function getDriver(): string
     {
-        return Config::getBool('captcha.config.enabled', true);
+        if ($this->driver === null) {
+            $this->driver = $this->config->getString('captcha.config.driver', 'yandex');
+        }
+        return $this->driver;
     }
 
     /**
-     * 🔑 НОВЫЙ МЕТОД: Нужно ли показывать капчу текущему пользователю?
+     * Проверить, включена ли капча
      */
-    public static function isRequired(): bool
+    public function isEnabled(): bool
     {
-        // Если капча глобально отключена — не нужна
-        if (!self::isEnabled()) {
+        return $this->config->getBool('captcha.config.enabled', true);
+    }
+
+    /**
+     * Нужно ли показывать капчу текущему пользователю?
+     */
+    public function isRequired(): bool
+    {
+        if (!$this->isEnabled()) {
             return false;
         }
 
-        // Если пользователь авторизован и настроен пропуск — не нужна
-        if (Config::getBool('captcha.config.skip_for_authorized_users', true)) {
-            if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
-                // Можно дополнительно проверить карму
-                $minKarma = Config::getInt('captcha.config.min_karma_to_skip', 50);
-                $userKarma = $_SESSION['user_karma'] ?? 0;
+        // Если пользователь авторизован и настроен пропуск
+        if ($this->config->getBool('captcha.config.skip_for_authorized_users', true)) {
+            $userId = $this->session->get('user_id');
+            if (!empty($userId)) {
+                $minKarma = $this->config->getInt('captcha.config.min_karma_to_skip', 50);
+                $userKarma = $this->session->get('user_karma', 0);
                 if ($userKarma >= $minKarma) {
                     return false;
                 }
@@ -52,49 +68,43 @@ class Captcha
     /**
      * Получить HTML-код капчи
      */
-    public static function getHtml(): string
+    public function getHtml(): string
     {
-        // 🔑 Если капча отключена — возвращаем пустую строку
-        if (!self::isRequired()) {
+        if (!$this->isRequired()) {
             return '';
         }
 
-        self::init();
-
-        return match (self::$driver) {
-            'yandex' => self::getYandexCaptcha(),
-            'google' => self::getGoogleCaptcha(),
-            'custom' => self::getCustomCaptcha(),
-            default => throw new \Exception("Unknown captcha driver: " . self::$driver),
+        return match ($this->getDriver()) {
+            'yandex' => $this->getYandexCaptcha(),
+            'google' => $this->getGoogleCaptcha(),
+            'custom' => $this->getCustomCaptcha(),
+            default => throw new \RuntimeException("Unknown captcha driver: " . $this->getDriver()),
         };
     }
 
     /**
      * Проверить ответ капчи
      */
-    public static function validate(?string $token = null): bool
+    public function validate(?string $token = null): bool
     {
-        // 🔑 Если капча отключена — всегда возвращаем true
-        if (!self::isEnabled()) {
+        if (!$this->isEnabled()) {
             return true;
         }
 
-        self::init();
-
-        return match (self::$driver) {
-            'yandex' => self::validateYandex($token),
-            'google' => self::validateGoogle($token),
-            'custom' => self::validateCustom($token),
+        return match ($this->getDriver()) {
+            'yandex' => $this->validateYandex($token),
+            'google' => $this->validateGoogle($token),
+            'custom' => $this->validateCustom($token),
             default => false,
         };
     }
 
     /**
-     * Yandex SmartCaptcha
+     * Yandex SmartCaptcha HTML
      */
-    private static function getYandexCaptcha(): string
+    private function getYandexCaptcha(): string
     {
-        $siteKey = Config::get('captcha.config.yandex.site_key', '');
+        $siteKey = $this->config->getString('captcha.config.yandex.site_key', '');
         
         if (empty($siteKey)) {
             return '<!-- Yandex Captcha: site_key not configured -->';
@@ -110,11 +120,11 @@ HTML;
     }
 
     /**
-     * Google reCAPTCHA
+     * Google reCAPTCHA HTML
      */
-    private static function getGoogleCaptcha(): string
+    private function getGoogleCaptcha(): string
     {
-        $siteKey = Config::get('captcha.config.google.site_key', '');
+        $siteKey = $this->config->getString('captcha.config.google.site_key', '');
         
         if (empty($siteKey)) {
             return '<!-- Google Captcha: site_key not configured -->';
@@ -127,13 +137,13 @@ HTML;
     }
 
     /**
-     * Кастомная капча
+     * Кастомная капча HTML
      */
-    private static function getCustomCaptcha(): string
+    private function getCustomCaptcha(): string
     {
-        $num1 = rand(1, 10);
-        $num2 = rand(1, 10);
-        $_SESSION['captcha_answer'] = $num1 + $num2;
+        $num1 = random_int(1, 10);
+        $num2 = random_int(1, 10);
+        $this->session->set('captcha_answer', $num1 + $num2);
 
         return <<<HTML
 <div class="custom-captcha">
@@ -144,42 +154,33 @@ HTML;
     }
 
     /**
-     * 🔑 Валидация Yandex с submit_url из конфига
+     * Валидация Yandex
      */
-    private static function validateYandex(?string $token): bool
+    private function validateYandex(?string $token): bool
     {
-        $request = new \App\Core\Request();
-        $token = $token ?? $request->post('smart-token');
+        $token = $token ?? $this->request->post('smart-token');
         
         if (empty($token)) {
             return false;
         }
 
-        $secretKey = Config::get('captcha.config.yandex.secret_key', '');
-        $submitUrl = Config::get('captcha.config.yandex.submit_url', 
-                                  'https://smartcaptcha.cloud.yandex.ru/validate');
+        $secretKey = $this->config->getString('captcha.config.yandex.secret_key', '');
+        $submitUrl = $this->config->getString(
+            'captcha.config.yandex.submit_url', 
+            'https://smartcaptcha.cloud.yandex.ru/validate'
+        );
         
         if (empty($secretKey)) {
             return false;
         }
 
-        // 🔑 Используем submit_url из конфига
-        $ch = curl_init($submitUrl);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        $response = $this->sendHttpRequest($submitUrl, [
             'secret' => $secretKey,
             'token'  => $token,
-            'ip'     => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Таймаут 5 секунд
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+            'ip'     => $this->request->getIp(),
+        ]);
 
-        if ($httpCode !== 200) {
-            error_log("Yandex Captcha validation failed with HTTP code: {$httpCode}");
+        if ($response === null) {
             return false;
         }
 
@@ -189,37 +190,35 @@ HTML;
     }
 
     /**
-     * 🔑 Валидация Google с submit_url из конфига
+     * Валидация Google
      */
-    private static function validateGoogle(?string $token): bool
+    private function validateGoogle(?string $token): bool
     {
-        $request = new \App\Core\Request();
-		$token = $token ?? $request->post('g-recaptcha-response');
+        $token = $token ?? $this->request->post('g-recaptcha-response');
         
         if (empty($token)) {
             return false;
         }
 
-        $secretKey = Config::get('captcha.config.google.secret_key', '');
-        $submitUrl = Config::get('captcha.config.google.submit_url', 
-                                  'https://www.google.com/recaptcha/api/siteverify');
+        $secretKey = $this->config->getString('captcha.config.google.secret_key', '');
+        $submitUrl = $this->config->getString(
+            'captcha.config.google.submit_url', 
+            'https://www.google.com/recaptcha/api/siteverify'
+        );
         
         if (empty($secretKey)) {
             return false;
         }
 
-        $ch = curl_init($submitUrl);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        $response = $this->sendHttpRequest($submitUrl, [
             'secret'   => $secretKey,
             'response' => $token,
-            'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        
-        $response = curl_exec($ch);
-        curl_close($ch);
+            'remoteip' => $this->request->getIp(),
+        ]);
+
+        if ($response === null) {
+            return false;
+        }
 
         $data = json_decode($response, true);
         
@@ -229,18 +228,50 @@ HTML;
     /**
      * Валидация кастомной капчи
      */
-    private static function validateCustom(?string $token): bool
+    private function validateCustom(?string $token): bool
     {
-        $request = new \App\Core\Request();
-		$answer = $token ?? $request->post('captcha_answer');
+        $answer = $token ?? $this->request->post('captcha_answer');
         
-        if ($answer === null || !isset($_SESSION['captcha_answer'])) {
+        if ($answer === null) {
             return false;
         }
 
-        $correct = $_SESSION['captcha_answer'];
-        unset($_SESSION['captcha_answer']);
+        $correct = $this->session->get('captcha_answer');
+        $this->session->remove('captcha_answer');
+
+        if ($correct === null) {
+            return false;
+        }
 
         return (int)$answer === (int)$correct;
+    }
+
+    /**
+     * Отправить HTTP POST запрос
+     */
+    private function sendHttpRequest(string $url, array $data): ?string
+    {
+        $ch = curl_init($url);
+        
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($data),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 5,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        
+        curl_close($ch);
+
+        if ($response === false || $httpCode !== 200) {
+            error_log("HTTP request failed: {$error} (HTTP {$httpCode})");
+            return null;
+        }
+
+        return $response;
     }
 }

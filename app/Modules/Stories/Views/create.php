@@ -116,7 +116,7 @@
     </div>
 </form>
 
-<script nonce="<?= \App\Core\Security::getNonce(); ?>">
+<script nonce="<?= csp_nonce(); ?>">
 document.addEventListener('DOMContentLoaded', function() {
     const urlInput = document.getElementById('story-url');
     const titleInput = document.getElementById('story-title');

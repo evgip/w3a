@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Content\Core;
 
 use App\Core\Config;
@@ -17,43 +19,52 @@ use App\Core\Config;
  */
 class Markdown
 {
+    private Config $config;
+    private string $storagePath;
+
+    public function __construct(Config $config)
+    {
+        $this->config = $config;
+        $this->storagePath = dirname(__DIR__, 4) . '/storage/';
+    }
+
     /**
      * Parse Markdown text to HTML (full mode - for stories/descriptions)
      */
-    public static function parse(?string $text, bool $allowImages = true): string
+    public function parse(?string $text, bool $allowImages = true): string
     {
         if (empty($text)) {
             return '';
         }
 
-        // 🔑 Проверяем, включено ли кэширование
-        $cacheEnabled = Config::getBool('content.config.cache.enabled', true);
-        $cacheTtl = Config::getInt('content.config.cache.ttl', 3600);
+        // Проверяем, включено ли кэширование
+        $cacheEnabled = $this->config->getBool('content.config.cache.enabled', true);
+        $cacheTtl = $this->config->getInt('content.config.cache.ttl', 3600);
 
         // Check cache
         $cacheKey = 'md_' . md5($text . ($allowImages ? '_img' : ''));
         
         if ($cacheEnabled) {
-            $cached = self::getCached($cacheKey, $cacheTtl);
+            $cached = $this->getCached($cacheKey, $cacheTtl);
             if ($cached !== null) {
                 return $cached;
             }
         }
 
-        // 🔑 Используем SafeParsedown вместо стандартного Parsedown
+        // Используем SafeParsedown вместо стандартного Parsedown
         $parsedown = new SafeParsedown();
         
-        $safeMode = Config::getBool('content.config.markdown.safe_mode', true);
+        $safeMode = $this->config->getBool('content.config.markdown.safe_mode', true);
         $parsedown->setSafeMode($safeMode);
         
-        $markupEscaped = Config::getBool('content.config.markdown.markup_escaped', true);
+        $markupEscaped = $this->config->getBool('content.config.markdown.markup_escaped', true);
         $parsedown->setMarkupEscaped($markupEscaped);
         
-        $urlsLinked = Config::getBool('content.config.markdown.urls_linked', true);
+        $urlsLinked = $this->config->getBool('content.config.markdown.urls_linked', true);
         $parsedown->setUrlsLinked($urlsLinked);
 
-        // 🔑 Отключаем изображения через наш кастомный метод
-        $imagesInComments = Config::getBool('content.config.images.allowed_in_comments', false);
+        // Отключаем изображения через наш кастомный метод
+        $imagesInComments = $this->config->getBool('content.config.images.allowed_in_comments', false);
         if (!$allowImages || !$imagesInComments) {
             $parsedown->setImagesEnabled(false);
         }
@@ -61,20 +72,20 @@ class Markdown
         // Parse Markdown
         $html = $parsedown->text($text);
 
-        // 🔑 Add custom @mentions support (если включено)
-        if (Config::getBool('content.config.mentions.enabled', true)) {
-            $html = self::parseMentions($html);
+        // Add custom @mentions support (если включено)
+        if ($this->config->getBool('content.config.mentions.enabled', true)) {
+            $html = $this->parseMentions($html);
         }
 
         // Add target="_blank" and rel="noopener" to all external links
-        $html = self::addLinkAttributes($html);
+        $html = $this->addLinkAttributes($html);
 
-        // 🔑 Фильтрация по чёрному списку
-        $html = self::filterBlacklist($html);
+        // Фильтрация по чёрному списку
+        $html = $this->filterBlacklist($html);
 
         // Cache result
         if ($cacheEnabled) {
-            self::setCache($cacheKey, $html, $cacheTtl);
+            $this->setCache($cacheKey, $html, $cacheTtl);
         }
 
         return $html;
@@ -83,15 +94,15 @@ class Markdown
     /**
      * Parse Markdown for comments (restricted mode - no images)
      */
-    public static function parseComment(?string $text): string
+    public function parseComment(?string $text): string
     {
-        return self::parse($text, false);
+        return $this->parse($text, false);
     }
 
     /**
      * Parse plain text (no Markdown, just escape and line breaks)
      */
-    public static function parsePlain(?string $text): string
+    public function parsePlain(?string $text): string
     {
         if (empty($text)) {
             return '';
@@ -103,11 +114,11 @@ class Markdown
     /**
      * Parse @username mentions and convert to links
      */
-    private static function parseMentions(string $html): string
+    private function parseMentions(string $html): string
     {
-        $minLen = Config::getInt('content.config.mentions.min_length', 3);
-        $maxLen = Config::getInt('content.config.mentions.max_length', 20);
-        $profileUrl = Config::getString('content.config.mentions.profile_url', '/user/{username}');
+        $minLen = $this->config->getInt('content.config.mentions.min_length', 3);
+        $maxLen = $this->config->getInt('content.config.mentions.max_length', 20);
+        $profileUrl = $this->config->getString('content.config.mentions.profile_url', '/user/{username}');
         
         $pattern = '/(?<![\w@])@([a-zA-Z0-9_]{' . $minLen . ',' . $maxLen . '})(?![\w@])/';
         
@@ -125,11 +136,11 @@ class Markdown
     /**
      * Add target="_blank" and rel="noopener noreferrer" to all links
      */
-    private static function addLinkAttributes(string $html): string
+    private function addLinkAttributes(string $html): string
     {
-        $externalBlank = Config::getBool('content.config.links.external_blank', true);
-        $externalSecure = Config::getBool('content.config.links.external_secure', true);
-        $internalDomains = Config::getArray('content.config.links.internal_domains', []);
+        $externalBlank = $this->config->getBool('content.config.links.external_blank', true);
+        $externalSecure = $this->config->getBool('content.config.links.external_secure', true);
+        $internalDomains = $this->config->getArray('content.config.links.internal_domains', []);
         
         if (!$externalBlank && !$externalSecure) {
             return $html;
@@ -172,11 +183,11 @@ class Markdown
     }
 
     /**
-     * 🔑 Фильтрация по чёрному списку доменов
+     * Фильтрация по чёрному списку доменов
      */
-    private static function filterBlacklist(string $html): string
+    private function filterBlacklist(string $html): string
     {
-        $blacklist = Config::getArray('content.config.blacklist.domains', []);
+        $blacklist = $this->config->getArray('content.config.blacklist.domains', []);
         
         if (empty($blacklist)) {
             return $html;
@@ -199,10 +210,10 @@ class Markdown
 
     // ==================== CACHE ====================
 
-    private static function getCached(string $key, int $ttl = 3600): ?string
+    private function getCached(string $key, int $ttl = 3600): ?string
     {
-        $cachePath = Config::getString('content.config.cache.path', 'cache');
-        $file = dirname(__DIR__, 4) . '/storage/' . $cachePath . '/' . $key . '.html';
+        $cachePath = $this->config->getString('content.config.cache.path', 'cache');
+        $file = $this->storagePath . $cachePath . '/' . $key . '.html';
         
         if (file_exists($file) && (time() - filemtime($file) < $ttl)) {
             return file_get_contents($file);
@@ -210,10 +221,10 @@ class Markdown
         return null;
     }
 
-    private static function setCache(string $key, string $value, int $ttl): void
+    private function setCache(string $key, string $value, int $ttl): void
     {
-        $cachePath = Config::getString('content.config.cache.path', 'cache');
-        $cacheDir = dirname(__DIR__, 4) . '/storage/' . $cachePath . '/';
+        $cachePath = $this->config->getString('content.config.cache.path', 'cache');
+        $cacheDir = $this->storagePath . $cachePath . '/';
         
         if (!is_dir($cacheDir)) {
             mkdir($cacheDir, 0755, true);
@@ -224,10 +235,10 @@ class Markdown
     /**
      * Clear Markdown cache
      */
-    public static function clearCache(): void
+    public function clearCache(): void
     {
-        $cachePath = Config::getString('content.config.cache.path', 'cache');
-        $cacheDir = dirname(__DIR__, 4) . '/storage/' . $cachePath . '/';
+        $cachePath = $this->config->getString('content.config.cache.path', 'cache');
+        $cacheDir = $this->storagePath . $cachePath . '/';
         
         $files = glob($cacheDir . 'md_*.html');
         foreach ($files as $file) {

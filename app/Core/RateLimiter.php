@@ -9,8 +9,6 @@ use App\Modules\Errors\Controllers\ErrorsController;
 
 /**
  * Rate Limiter для защиты от флуда.
- * 
- * ✅ ИЗМЕНЕНО: Класс теперь нестатический, зависимости внедряются через конструктор.
  */
 class RateLimiter
 {
@@ -19,47 +17,58 @@ class RateLimiter
     private Audit $audit;
     private IpResolver $ipResolver;
     private Container $container;
+    private Config $config;
+    private Request $request;
 
     /**
-     * ✅ Конструктор с инъекцией зависимостей
+     * Конструктор с инъекцией зависимостей
      */
     public function __construct(
         Database $db,
         Logger $logger,
         Audit $audit,
         IpResolver $ipResolver,
-        Container $container
+        Container $container,
+        Config $config,
+        Request $request
     ) {
         $this->db = $db;
         $this->logger = $logger;
         $this->audit = $audit;
         $this->ipResolver = $ipResolver;
         $this->container = $container;
+        $this->config = $config;
+        $this->request = $request;
     }
 
     /**
-     * Evaluate incoming request frequencies against configuration constraints
+     * Проверить лимит запросов
      */
     public function check(string $action): bool
     {
-        $config = Config::getArray('rate_limit', []);
+        $config = $this->config->getArray('rate_limit.rules', []);
 
-        if (!($config['enabled'] ?? false) || !isset($config['rules'][$action])) {
+        if (!isset($config[$action])) {
             return true;
         }
 
-        $rule = $config['rules'][$action];
-        $maxRequests = (int)$rule['max_requests'];
-        $window = (int)$rule['window'];
+        $rule = $config[$action];
+        $maxRequests = (int)($rule['max_requests'] ?? 0);
+        $window = (int)($rule['window'] ?? 60);
+        $enabled = (bool)($rule['enabled'] ?? true);
 
-        // ✅ Используем внедрённый IpResolver
+        if (!$enabled) {
+            return true;
+        }
+
+        // Используем внедрённый IpResolver
         $ip = $this->ipResolver->getClientIp();
         
-        // ✅ Получаем модель из контейнера
+        // Получаем модель из контейнера
         $rateLimitModel = $this->container->get(RateLimit::class);
 
         // 1. Garbage Collection
-        $gcProbability = Config::getInt('rate_limit.gc_probability', 5);
+        $gcProbability = $this->config->getInt('rate_limit.gc_probability', 5);
         if (random_int(1, 100) <= $gcProbability) {
             $rateLimitModel->clearStaleLogs($window);
         }
@@ -85,20 +94,18 @@ class RateLimiter
     }
 
     /**
-     * Halt runtime processing and output a fully clean HTTP 429 page
+     * Заблокировать запрос (429 Too Many Requests)
      */
     public function block(): void
     {
-        // ✅ Используем внедрённый IpResolver
         $ip = $this->ipResolver->getClientIp();
+        $uri = $this->request->getUri();
 
-        // ✅ Используем внедрённый Audit
         $this->audit->log('security.rate_limited', "Превышен лимит частоты запросов. IP заблокирован.", 'security', [
             'ip_address' => $ip,
-            'url'        => $_SERVER['REQUEST_URI'] ?? '/'
+            'url'        => $uri
         ]);
 
-        // ✅ Создаём контроллер через контейнер
         $controller = $this->container->make(ErrorsController::class);
         $controller->tooManyRequests("Вы делаете запросы слишком часто. Пожалуйста, подождите и обновите страницу.");
     }

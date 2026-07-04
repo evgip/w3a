@@ -31,7 +31,7 @@
     </div>
 
     <div class="form-input-wide">
-        <?= \App\Modules\Captcha\Core\Captcha::getHtml() ?>
+        <?= captcha() ?>
     </div>
 
     <div class="form-actions">

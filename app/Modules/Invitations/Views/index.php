@@ -135,7 +135,7 @@
     </div>
 </div>
 
-<script nonce="<?= \App\Core\Security::getNonce(); ?>">
+<script nonce="<?= csp_nonce(); ?>">
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.btn-copy').forEach(btn => {
         btn.addEventListener('click', function() {
