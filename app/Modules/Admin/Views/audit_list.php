@@ -15,8 +15,6 @@
     Интерактивный просмотр логов безопасности системы. Данные фильтруются динамически через SQL-запросы к таблице <code>audit_logs</code>.
 </p>
 
-<hr>
-
 <!-- Форма фильтров -->
 <form method="get" action="/admin/audit" class="audit-filters">
     <!-- Фильтр по пользователю -->
@@ -74,7 +72,7 @@
 
 <!-- ТАБЛИЦА ЛОГОВ -->
 <?php if (!empty($logs)): ?>
-    <table class="audit-table">
+    <table class="data">
         <thead>
             <tr>
                 <th>ID</th>

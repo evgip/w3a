@@ -91,21 +91,37 @@ class AuditLog extends Model
         return (int)$this->db->fetchColumn($sql, $bindings);
     }
 
+ 
+	
     /**
      * Получить список уникальных экшенов для выпадающего списка в UI
+     * 
+     * @return array Плоский массив строк: ['login', 'logout', 'create_story', ...]
      */
     public function getUniqueActions(): array
     {
-        return $this->db->fetchAll("SELECT DISTINCT `action` FROM `audit_logs` ORDER BY `action` ASC", [], \PDO::FETCH_COLUMN);
+        $rows = $this->db->fetchAll(
+            "SELECT DISTINCT `action` FROM `audit_logs` WHERE `action` IS NOT NULL ORDER BY `action` ASC"
+        );
+        
+        // ✅ Извлекаем только значения поля 'action' в плоский массив
+        return array_column($rows, 'action');
     }
 
     /**
      * Получить список уникальных категорий
+     * 
+     * @return array Плоский массив строк: ['general', 'moderation', 'admin', ...]
      */
     public function getUniqueCategories(): array
     {
-        return $this->db->fetchAll("SELECT DISTINCT `category` FROM `audit_logs` ORDER BY `category` ASC", [], \PDO::FETCH_COLUMN);
+        $rows = $this->db->fetchAll(
+            "SELECT DISTINCT `category` FROM `audit_logs` WHERE `category` IS NOT NULL ORDER BY `category` ASC"
+        );
+        
+        return array_column($rows, 'category');
     }
+	
 
     /**
      * Получить записи по категории (для модераторского раздела)

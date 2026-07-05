@@ -48,9 +48,9 @@
                     <td>
                         <?php
                         if ($user['is_active']): ?>
-                            Активен
+                            <span class="status status-accepted">Активен</span>
                         <?php else: ?>
-                            <span style="color: #ac130d; font-weight: bold;">Не активирован</span>
+                            <span class="status status-pending">Не активирован</span>
                         <?php endif; ?>
 
                         <?php if (($user['role'] ?? 'user') != 'admin'): ?>

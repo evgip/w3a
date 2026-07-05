@@ -1273,3 +1273,8 @@ ALTER TABLE `wiki_revisions`
   ADD CONSTRAINT `fk_wiki_revisions_page` FOREIGN KEY (`wiki_page_id`) REFERENCES `wiki_pages` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_wiki_revisions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
+
+
+ALTER TABLE `invitations` 
+ADD COLUMN `deleted_at` TIMESTAMP NULL DEFAULT NULL AFTER `updated_at`,
+ADD INDEX `idx_deleted_at` (`deleted_at`);

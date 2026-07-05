@@ -2,6 +2,7 @@
 
 namespace App\Core;
 
+use App\Core\Logger;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RegexIterator;
@@ -152,7 +153,8 @@ class Asset
         file_put_contents(self::$distCssFile, $minify($appCss));
         file_put_contents(self::$distAdminCssFile, $minify($adminCss));
 
-        Logger::info("Asset Compiler: Сборка CSS завершена. app.min.css (файлов: {$appCount}), admin.min.css (файлов: {$adminCount})");
+		$logger = app(Logger::class);
+        $logger->info("Asset Compiler: Сборка CSS завершена. app.min.css (файлов: {$appCount}), admin.min.css (файлов: {$adminCount})");
     }
 
     private static function compileJsIfNeeded(): void
@@ -192,6 +194,8 @@ class Asset
         $dir = dirname(self::$distJsFile);
         if (!is_dir($dir)) mkdir($dir, 0755, true);
         file_put_contents(self::$distJsFile, $compiled);
-        Logger::info("Asset Compiler: JS сборка обновлена. Файлов: " . count($files));
+		
+		$logger = app(Logger::class);
+        $logger->info("Asset Compiler: JS сборка обновлена. Файлов: " . count($files));
     }
 }

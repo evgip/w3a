@@ -65,5 +65,4 @@ $isDeleted = !empty($story['deleted_at']);
             </form>
         <?php endif; ?>
     <?php endif; ?>
-
 </div>
