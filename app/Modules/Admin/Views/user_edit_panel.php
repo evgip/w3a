@@ -21,7 +21,6 @@
 
         <?php if (!empty($userItem['avatar'])): ?>
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                <!-- Исправлено: было $user['avatar'], стало $userItem['avatar'] -->
                 <img src="/uploads/avatars/<?= substr($userItem['avatar'], 0, 2) ?>/<?= e($userItem['avatar']) ?>"
                     style="width: 64px; height: 64px; border-radius: 4px; object-fit: cover; background: #f0f0f0;"
                     alt="Аватар">

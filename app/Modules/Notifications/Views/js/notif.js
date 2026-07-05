@@ -71,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const destinationUrl = link.href;
         const csrfToken = getCsrfToken();
         
-        // ✅ ИСПРАВЛЕНО: передаём токен в теле запроса
         fetch(`/notifications/${notificationId}/read`, {
             method: 'POST',
             headers: {
@@ -79,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest'
             },
-            body: `csrf_token=${encodeURIComponent(csrfToken)}`,  // ← ДОБАВЛЕНО
+            body: `csrf_token=${encodeURIComponent(csrfToken)}`,
             credentials: 'same-origin'
         })
         .then(response => {
@@ -112,7 +111,6 @@ document.getElementById('mark-all-read-btn')?.addEventListener('click', function
     
     const csrfToken = getCsrfToken();
     
-    // ✅ ИСПРАВЛЕНО: передаём токен в теле запроса
     fetch('/notifications/mark-all-read', {
         method: 'POST',
         headers: {
@@ -120,7 +118,7 @@ document.getElementById('mark-all-read-btn')?.addEventListener('click', function
             'X-CSRF-TOKEN': csrfToken,
             'X-Requested-With': 'XMLHttpRequest'
         },
-        body: `csrf_token=${encodeURIComponent(csrfToken)}`,  // ← ДОБАВЛЕНО
+        body: `csrf_token=${encodeURIComponent(csrfToken)}`,
         credentials: 'same-origin'
     })
     .then(response => {

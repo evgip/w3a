@@ -101,7 +101,7 @@
 					</div>
 				<?php else: ?>
 					<a href="<?= route('auth.login') ?>"><?= __('login') ?></a>
-					<?php if (config('config.app.invitations_enabled', false, 'bool')): ?>
+					<?php if (config('invitations.config.invitations_enabled')): ?>
 						<a class="nav-link" href="<?= route('home') ?>invite/request"><?= __('request_invitation') ?></a>
 					<?php else: ?>
 						<a class="btn-nav-create" href="<?= route('auth.register') ?>"><?= __('register') ?></a>

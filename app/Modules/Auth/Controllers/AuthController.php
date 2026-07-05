@@ -22,7 +22,6 @@ class AuthController extends Controller
     {
         $session = $this->container->get(Session::class);
 
-        // ✅ ИСПРАВЛЕНО: используем хелперы вместо статических вызовов
         if (captcha_is_required() && !captcha_validate($this->request->post('smart-token'))) {
             $session->flash('error', 'Пожалуйста, подтвердите, что вы не робот.');
             $this->redirect(route('password.request'));
@@ -131,8 +130,7 @@ class AuthController extends Controller
 
     public function showRegisterForm(): void
     {
-        // ✅ ИСПРАВЛЕНО: убран лишний третий параметр 'bool'
-        if (config('config.app.invitations_enabled', false)) {
+        if (config('invitations.config.invitations_enabled')) {
             $this->redirect(route('home'));
             return;
         }
@@ -152,7 +150,6 @@ class AuthController extends Controller
     {
         $session = $this->container->get(Session::class);
 
-        // ✅ ИСПРАВЛЕНО: используем хелпер вместо статического вызова
         if (!captcha_validate($this->request->post('smart-token'))) {
             $session->flash('error', 'Пожалуйста, подтвердите, что вы не робот.');
             $this->redirect(route('auth.register'));
@@ -175,7 +172,7 @@ class AuthController extends Controller
         ]);
 
         if (!$validator->isValid()) {
-            // ✅ УПРОЩЕНО: используем array_merge и implode напрямую
+
             $errors = $validator->getErrors();
             $errorMessages = array_merge(...array_values($errors));
             

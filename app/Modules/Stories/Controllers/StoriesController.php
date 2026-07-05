@@ -395,7 +395,6 @@ class StoriesController extends Controller
             return;
         }
 
-        // ✅ ИСПРАВЛЕНО: получаем из контейнера вместо new
         $fetcher = $this->container->get(UrlFetcherService::class);
         $attributes = $fetcher->fetchAttributes($url);
 
@@ -415,7 +414,6 @@ class StoriesController extends Controller
         $text = $this->request->post('text', '');
         $allowImages = (bool)$this->request->post('allow_images', true);
 
-        // ✅ ИСПРАВЛЕНО: получаем Markdown из контейнера вместо статического вызова
         $markdown = $this->container->get(Markdown::class);
         $html = $markdown->parse($text, $allowImages);
 

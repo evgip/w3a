@@ -35,7 +35,6 @@ class ModuleServiceProvider
         }
 
         // 2. Database (singleton — одно подключение на весь запрос)
-        // ✅ ИСПРАВЛЕНО: используем 'config.database' вместо 'database'
         $container->singleton(Database::class, function($container) {
             $config = $container->get(Config::class);
             return new Database($config->getArray('config.database', []));

@@ -229,7 +229,7 @@ class WikiController extends Controller
             }
             
         } catch (\Throwable $e) {
-            // ✅ ИСПРАВЛЕНО: получаем logger из контейнера
+
             $this->container->get(\App\Core\Logger::class)->error(
                 "[WIKI] Error in restore controller: " . $e->getMessage()
             );

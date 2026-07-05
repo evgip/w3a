@@ -234,7 +234,6 @@ abstract class Controller
     protected function setOpenGraph(array $data): void
     {
         if (!isset($data['url'])) {
-            // ✅ ИСПРАВЛЕНО: используем Request вместо $_SERVER
             $host = $this->request->header('HTTP_HOST', 'localhost');
             $uri = $this->request->getUri();
             $data['url'] = 'https://' . $host . $uri;

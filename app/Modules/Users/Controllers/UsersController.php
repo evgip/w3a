@@ -117,7 +117,6 @@ class UsersController extends Controller
             }
         }
 
-        // ✅ ИСПРАВЛЕНО: используем Request вместо $_FILES
         $avatarFile = $this->request->file('avatar_file');
         if ($avatarFile && $avatarFile['error'] === UPLOAD_ERR_OK) {
             $uploadedAvatar = $this->getAvatarService()->handleUpload(

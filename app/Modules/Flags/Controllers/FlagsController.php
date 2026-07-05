@@ -54,7 +54,6 @@ class FlagsController extends Controller
             return;
         }
 
-        // ✅ ИСПРАВЛЕНО: используем экземпляр вместо статического вызова
         $this->render('report_form', [
             'title'    => 'Пожаловаться на контент',
             'type'     => $type,
@@ -91,7 +90,7 @@ class FlagsController extends Controller
             ]);
 
             if (!empty($result['hidden'])) {
-                // ✅ ИСПРАВЛЕНО: используем экземпляр вместо статического вызова
+
                 $this->audit()->log('flag.auto_hidden', 'Контент автоматически скрыт по порогу флагов', 'flags', [
                     'type'      => $type,
                     'id'        => $targetId,
@@ -112,7 +111,6 @@ class FlagsController extends Controller
         $pending = $flagModel->getPendingFlags();
         $recent  = $flagModel->getAllFlags(50);
 
-        // ✅ ИСПРАВЛЕНО: используем экземпляр вместо статических вызовов
         $this->render('admin_index', [
             'title'        => 'Жалобы пользователей',
             'pendingFlags' => $pending,

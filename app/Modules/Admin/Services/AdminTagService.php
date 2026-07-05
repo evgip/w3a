@@ -201,7 +201,6 @@ class AdminTagService
 
     /**
      * Мягкое удаление (Soft Delete)
-     * ✅ ИСПРАВЛЕНО: используем модель Tag через метод delete()
      */
     public function softDeleteTag(int $id): bool
     {
@@ -211,7 +210,6 @@ class AdminTagService
 
     /**
      * Восстановление
-     * ✅ ИСПРАВЛЕНО: используем модель Tag через метод restore()
      */
     public function restoreTag(int $id): bool
     {
