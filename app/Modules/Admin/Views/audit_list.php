@@ -21,7 +21,7 @@
     <label>
         User ID:
         <input type="number" name="filter_user_id"
-            value="<?= htmlspecialchars((string)($currentFilters['user_id'] ?? '')) ?>"
+            value="<?= e((string)($currentFilters['user_id'] ?? '')) ?>"
             placeholder="Все">
     </label>
 
@@ -31,9 +31,9 @@
         <select name="filter_action">
             <option value="">Все действия</option>
             <?php foreach ($uniqueActions as $action): ?>
-                <option value="<?= htmlspecialchars($action) ?>"
+                <option value="<?= e($action) ?>"
                     <?= ($currentFilters['action'] ?? '') === $action ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($action) ?>
+                    <?= e($action) ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -45,9 +45,9 @@
         <select name="category">
             <option value="">Все категории</option>
             <?php foreach ($categoryLabels as $value => $label): ?>
-                <option value="<?= htmlspecialchars($value) ?>"
+                <option value="<?= e($value) ?>"
                     <?= ($currentFilters['category'] ?? '') === $value ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($label) ?>
+                    <?= e($label) ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -57,7 +57,7 @@
     <label>
         Поиск:
         <input type="text" name="search"
-            value="<?= htmlspecialchars($currentFilters['search'] ?? '') ?>"
+            value="<?= e($currentFilters['search'] ?? '') ?>"
             placeholder="Поиск...">
     </label>
 
@@ -99,30 +99,30 @@
                         <td>
                             <?php if ($log['user_id']): ?>
                                 <a href="/admin/users/<?= $log['user_id'] ?>/edit">
-                                    <?= htmlspecialchars($log['username']) ?>
+                                    <?= e($log['username']) ?>
                                 </a>
                             <?php else: ?>
-                                <?= htmlspecialchars($log['username']) ?>
+                                <?= e($log['username']) ?>
                             <?php endif; ?>
                         </td>
                         <td>
-                            <span class="role-badge role-<?= htmlspecialchars($log['role']) ?>">
-                                <?= htmlspecialchars($log['role']) ?>
+                            <span class="status role-<?= e($log['role']) ?>">
+                                <?= e($log['role']) ?>
                             </span>
                         </td>
-                        <td><code><?= htmlspecialchars($log['ip_address']) ?></code></td>
-                        <td><code><?= htmlspecialchars($log['action']) ?></code></td>
-                        <td><?= htmlspecialchars($log['description']) ?></td>
+                        <td><code><?= e($log['ip_address']) ?></code></td>
+                        <td><code><?= e($log['action']) ?></code></td>
+                        <td><?= e($log['description']) ?></td>
                         <td>
-                            <span class="category-badge category-<?= htmlspecialchars($log['category']) ?>">
-                                <?= htmlspecialchars($categoryLabels[$log['category']] ?? $log['category']) ?>
+                            <span class="category-badge category-<?= e($log['category']) ?>">
+                                <?= e($categoryLabels[$log['category']] ?? $log['category']) ?>
                             </span>
                         </td>
                         <td>
                             <?php if (!empty($log['decoded_payload'])): ?>
                                 <details>
                                     <summary>Показать</summary>
-                                    <pre><?= htmlspecialchars(json_encode($log['decoded_payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
+                                    <pre><?= e(json_encode($log['decoded_payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
                                 </details>
                             <?php else: ?>
                                 —

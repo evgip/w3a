@@ -1672,21 +1672,25 @@ table.data tr.unread td {
     font-weight: 500;
 }
 
+.role-moderator,
 .status-pending {
     background: #fff3cd;
     color: #856404;
 }
 
+.role-user,
 .status-accepted {
     background: #d4edda;
     color: #155724;
 }
 
+.role-guest,
 .status-expired {
     background: #e2e3e5;
     color: #383d41;
 }
 
+.role-admin,
 .status-revoked {
     background: #f8d7da;
     color: #721c24;

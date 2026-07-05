@@ -142,12 +142,4 @@ class Validator
     {
         return $this->errors;
     }
-
-    /**
-     * Получить первую ошибку для конкретного поля
-     */
-    public function getFirstError(string $field): string
-    {
-        return isset($this->errors[$field][0]) ? $this->errors[$field][0] : '';
-    }
 }

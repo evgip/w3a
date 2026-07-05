@@ -47,9 +47,7 @@ function is_route(string $name): bool
 if (!function_exists('redirect')) {
     function redirect(string $url, int $code = 302): never
     {
-        http_response_code($code);
-        header('Location: ' . $url);
-        exit;
+        throw new \App\Core\Exceptions\RedirectException($url, $code);
     }
 }
 

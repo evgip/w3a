@@ -7,12 +7,12 @@ use App\Core\Session;
 use App\Core\Audit;
 use App\Modules\Users\Models\User;
 use App\Modules\Auth\Services\Auth;
+use App\Core\Exceptions\RedirectException;
+use App\Core\Exceptions\AccessDeniedException;
 
 /**
  * Базовый middleware для проверки ролей.
  * Наследуется конкретными middleware (AdminMiddleware, ModeratorMiddleware).
- * 
- * ✅ ИЗМЕНЕНО: Все зависимости внедряются через DI-контейнер.
  */
 abstract class RoleMiddleware implements MiddlewareInterface
 {
@@ -43,19 +43,16 @@ abstract class RoleMiddleware implements MiddlewareInterface
         if (!Auth::check()) {
             $session->flash('error', 'Необходима авторизация');
             $_SESSION['intended_url'] = $_SERVER['REQUEST_URI'];
-            header('Location: /login');
-            exit;
+            throw new RedirectException('/login');
         }
 
         $userId = (int)($_SESSION['user_id'] ?? 0);
         if ($userId <= 0) {
             $session->flash('error', 'Необходима авторизация');
-            header('Location: /login');
-            exit;
+            throw new RedirectException('/login');
         }
 
         // 2. Проверяем бан
-        // ✅ Получаем User из контейнера
         $userModel = $this->container->get(User::class);
         
         if ($userModel->isBanned($userId)) {
@@ -115,8 +112,6 @@ abstract class RoleMiddleware implements MiddlewareInterface
 
     /**
      * Обработка забаненного пользователя
-     * 
-     * ✅ ИЗМЕНЕНО: Session и Audit получены через параметры
      */
     protected function handleBannedUser(int $userId, User $userModel, Session $session): void
     {
@@ -144,14 +139,13 @@ abstract class RoleMiddleware implements MiddlewareInterface
         }
         
         $session->flash('error', $message);
-        header('Location: /');
-        exit;
+        
+        // ✅ Выбрасываем исключение вместо header + exit
+        throw new RedirectException('/');
     }
 
     /**
      * Обработка отказа в доступе
-     * 
-     * ✅ ИЗМЕНЕНО: Audit и ErrorsController получены через контейнер
      */
     protected function handleAccessDenied(int $userId, string $userRole): void
     {
@@ -164,11 +158,9 @@ abstract class RoleMiddleware implements MiddlewareInterface
             'url' => $_SERVER['REQUEST_URI'] ?? '/',
         ]);
         
-        http_response_code(403);
-        
-        // ✅ Создаём ErrorsController через контейнер
-        $errorController = $this->container->make(\App\Modules\Errors\Controllers\ErrorsController::class);
-        $errorController->forbidden("У вас недостаточно прав для доступа к этой странице. Требуется роль: {$this->requiredRole}");
-        exit;
+        // ✅ Выбрасываем исключение вместо прямого рендеринга и exit
+        throw new AccessDeniedException(
+            "У вас недостаточно прав для доступа к этой странице. Требуется роль: {$this->requiredRole}"
+        );
     }
 }

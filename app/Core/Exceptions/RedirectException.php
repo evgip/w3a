@@ -5,29 +5,22 @@ declare(strict_types=1);
 namespace App\Core\Exceptions;
 
 /**
- * Исключение для редиректов
- * Используется для прерывания потока выполнения при редиректе
+ * Исключение для редиректов.
+ * Используется для прерывания потока выполнения (Control Flow) при необходимости редиректа.
  */
 class RedirectException extends \RuntimeException
 {
-    protected string $url;
-    protected int $statusCode;
-
-    public function __construct(string $url, int $statusCode = 302, ?\Throwable $previous = null)
-    {
-        $this->url = $url;
-        $this->statusCode = $statusCode;
-        
+    public function __construct(
+        public readonly string $url,
+        public readonly int $statusCode = 302,
+        ?\Throwable $previous = null
+    ) {
         parent::__construct("Redirect to: {$url}", $statusCode, $previous);
-    }
-
-    public function getUrl(): string
-    {
-        return $this->url;
     }
 
     public function getStatusCode(): int
     {
         return $this->statusCode;
     }
+    
 }

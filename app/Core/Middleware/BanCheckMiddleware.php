@@ -7,11 +7,13 @@ use App\Core\Session;
 use App\Core\Audit;
 use App\Modules\Users\Models\User;
 use App\Modules\Auth\Services\Auth;
+use App\Core\Exceptions\RedirectException;
 
 /**
  * Middleware для проверки бана пользователя.
  * 
  * ✅ ИЗМЕНЕНО: Все зависимости внедряются через DI-контейнер.
+ * ✅ Использует RedirectException для управления потоком вместо exit.
  */
 class BanCheckMiddleware implements MiddlewareInterface
 {
@@ -72,8 +74,9 @@ class BanCheckMiddleware implements MiddlewareInterface
             }
             
             $session->flash('error', $message);
-            header('Location: /');
-            exit;
+            
+            // ✅ Выбрасываем исключение
+            throw new RedirectException('/');
         }
         
         return $next();

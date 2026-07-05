@@ -7,6 +7,7 @@ use App\Core\Session;
 use App\Core\Audit;
 use App\Modules\Users\Models\User;
 use App\Modules\Auth\Services\Auth;
+use App\Core\Exceptions\RedirectException; 
 
 /**
  * Middleware для авторизованных пользователей.
@@ -33,15 +34,13 @@ class AuthMiddleware implements MiddlewareInterface
         if (!Auth::check()) {
             $session->flash('error', 'Необходима авторизация');
             $_SESSION['intended_url'] = $_SERVER['REQUEST_URI'];
-            header('Location: /login');
-            exit;
+            throw new RedirectException('/login');
         }
 
         $userId = (int)($_SESSION['user_id'] ?? 0);
         if ($userId <= 0) {
             $session->flash('error', 'Необходима авторизация');
-            header('Location: /login');
-            exit;
+            throw new RedirectException('/login');
         }
 
         // 2. Проверяем бан
@@ -73,11 +72,12 @@ class AuthMiddleware implements MiddlewareInterface
             }
             
             $session->flash('error', $message);
-            header('Location: /');
-            exit;
+            
+            // ✅ Вместо header + exit выбрасываем исключение
+            throw new RedirectException('/');
         }
 
-        // 3. Всё ок
+        // 3. Всё ок, передаем управление дальше
         return $next();
     }
 }

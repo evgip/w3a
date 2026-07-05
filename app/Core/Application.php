@@ -123,12 +123,12 @@ class Application
     /**
      * Обработка редиректов (без логирования!)
      */
-    private function handleRedirect(RedirectException $e): void
-    {
-        http_response_code($e->getStatusCode());
-        header('Location: ' . $e->getUrl());
-        exit;
-    }
+	private function handleRedirect(RedirectException $e): void
+	{
+		http_response_code($e->statusCode);
+		header('Location: ' . $e->url);
+		exit;
+	}
 
 
     /**
