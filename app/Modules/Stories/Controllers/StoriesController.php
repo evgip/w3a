@@ -92,7 +92,7 @@ class StoriesController extends Controller
         $storyId = (int)$id;
 
         $story = $this->service(StoryFilterService::class)->getStoryWithAuthor($storyId);
-        
+
         if (!$story) {
             throw new NotFoundException("История не найдена.");
         }

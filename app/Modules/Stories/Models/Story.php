@@ -244,24 +244,7 @@ class Story extends Model
         $story = $this->db->fetchOne($sql, ['id' => $id]);
 
         if ($story) {
-            // 1. Оставляем tag_list строкой (как было раньше)
-            $story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
-
-            // 2. Парсим tags_combined в массив объектов с именами
-            $tagsWithNames = [];
-            if (!empty($story['tags_combined'])) {
-                foreach (explode(',', $story['tags_combined']) as $pair) {
-                    list($slug, $name) = explode('||', $pair);
-                    $tagsWithNames[] = [
-                        'slug' => $slug,
-                        'name' => $name
-                    ];
-                }
-            }
-            $story['tags_with_names'] = $tagsWithNames;
-
-            // Удаляем служебное поле, чтобы не засорять массив
-            unset($story['tags_combined']);
+			parseTagsCombined($story);
 
             return $story;
         }

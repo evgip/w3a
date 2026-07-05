@@ -33,51 +33,116 @@ class SuggestionController extends Controller
         ]);
     }
 
-    public function log(string $targetType, string $targetId): void
-    {
-        $limit = (int) ($_GET['limit'] ?? 50);
+	/**
+	 * Получить историю изменений (ленту предложений)
+	 */
+	public function log(string $targetType, string $targetId): void
+	{
+		try {
+			// Базовая валидация
+			$targetType = trim($targetType);
+			$targetIdInt = (int) $targetId;
+			
+			if ($targetType === '' || $targetIdInt <= 0) {
+				$this->json(['error' => 'Invalid parameters: target_type and target_id are required'], 400);
+				return;
+			}
+			
+			// Получаем limit из query-параметров через Request
+			$limit = (int) $this->request->input('limit', 50);
+			
+			// Ограничиваем диапазон (защита от злоупотреблений)
+			$limit = max(1, min($limit, 200));
+			
+			$logs = $this->service(SuggestionService::class)->getChangeLog(
+				$targetType,
+				$targetIdInt,
+				$limit
+			);
+			
+			$this->json([
+				'success' => true,
+				'logs' => $logs,
+				'count' => count($logs),
+				'limit' => $limit
+			]);
+		} catch (\Exception $e) {
+			error_log('Suggestion log error: ' . $e->getMessage());
+			$this->json(['error' => 'Failed to retrieve change log'], 500);
+		}
+	}
 
-        $logs = $this->service(SuggestionService::class)->getChangeLog(
-            $targetType,
-            (int) $targetId,
-            $limit
-        );
+	/**
+	 * Создать новое предложение
+	 */
+	public function store(): void
+	{
+		try {
+			// Проверка авторизации
+			$userId = Auth::id();
+			if (!$userId) {
+				$this->json(['error' => 'Authentication required'], 401);
+				return;
+			}
+			
+			// Получаем данные через Request (поддерживает GET/POST/JSON)
+			$targetType = trim((string) $this->request->input('target_type', ''));
+			$targetId = (int) $this->request->input('target_id', 0);
+			$proposedDataRaw = $this->request->input('proposed_data');
+			
+			// Базовая валидация обязательных параметров
+			if ($targetType === '' || $targetId <= 0) {
+				$this->json([
+					'error' => 'Missing or invalid required parameters: target_type, target_id'
+				], 400);
+				return;
+			}
+			
+			// Универсальный парсинг proposed_data (строка или массив)
+			$proposedData = $this->parseProposedData($proposedDataRaw);
+			if (empty($proposedData)) {
+				$this->json(['error' => 'Invalid or empty proposed_data'], 400);
+				return;
+			}
+			
+			// Создаём предложение
+			$suggestionId = $this->service(SuggestionService::class)->addSuggestion(
+				$targetType,
+				$targetId,
+				(int) $userId,
+				$proposedData
+			);
+			
+			$this->json([
+				'success' => true,
+				'suggestion_id' => $suggestionId,
+				'message' => 'Suggestion added successfully'
+			], 201);
+		} catch (\Exception $e) {
+			error_log('Suggestion store error: ' . $e->getMessage());
+			$this->json(['error' => 'Failed to create suggestion'], 500);
+		}
+	}
 
-        $this->json([
-            'logs' => $logs,
-            'count' => count($logs)
-        ]);
-    }
-
-    public function store(): void
-    {
-        try {
-            $targetType = $_POST['target_type'] ?? '';
-            $targetId = (int) ($_POST['target_id'] ?? 0);
-            $proposedData = json_decode($_POST['proposed_data'] ?? '{}', true);
-
-            if (!$targetType || !$targetId || empty($proposedData)) {
-                $this->json(['error' => 'Invalid parameters'], 400);
-                return;
-            }
-
-            // ✅ Используем Auth::id() вместо $_SESSION
-            $suggestionId = $this->service(SuggestionService::class)->addSuggestion(
-                $targetType,
-                $targetId,
-                (int) Auth::id(),
-                $proposedData
-            );
-
-            $this->json([
-                'success' => true,
-                'suggestion_id' => $suggestionId,
-                'message' => 'Suggestion added successfully'
-            ]);
-        } catch (\Exception $e) {
-            $this->json(['error' => $e->getMessage()], 400);
-        }
-    }
+	/**
+	 * Универсальный парсер proposed_data
+	 * Поддерживает: JSON-строку, массив, null
+	 */
+	private function parseProposedData(mixed $data): array
+	{
+		if (is_array($data)) {
+			return $data;
+		}
+		
+		if (is_string($data) && $data !== '') {
+			$decoded = json_decode($data, true);
+			if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+				return $decoded;
+			}
+		}
+		
+		return [];
+	}
 
     public function support(string $id): void
     {

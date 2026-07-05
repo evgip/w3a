@@ -27,7 +27,7 @@ class FlagsController extends Controller
     }
 
     /**
-     * ✅ НОВОЕ: хелпер для получения модели Flag
+     * Хелпер для получения модели Flag
      */
     private function flagModel(): Flag
     {

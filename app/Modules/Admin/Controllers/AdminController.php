@@ -693,7 +693,6 @@ class AdminController extends Controller
 
     public function invitationsIndex(): void
     {
-        // ✅ Используем request вместо $_GET
         $status = $this->request->query('status', 'pending');
 
         $this->render('invitations', [

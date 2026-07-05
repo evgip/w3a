@@ -134,19 +134,10 @@ class Audit
      */
     public function getAll(int $limit = 100, int $offset = 0, ?string $category = null): array
     {
-        if ($category && $category !== '') {
-            return $this->db->fetchAll(
-                "SELECT * FROM audit_logs 
-                 WHERE category = :category
-                 ORDER BY id DESC 
-                 LIMIT :limit OFFSET :offset",
-                [
-                    'category' => $category,
-                    'limit'    => $limit,
-                    'offset'   => $offset,
-                ]
-            );
-        }
+		// Если категория передана - делегируем getByCategory()
+		if ($category !== null && $category !== '') {
+			return $this->getByCategory($category, $limit, $offset);
+		}
 
         return $this->db->fetchAll(
             "SELECT * FROM audit_logs 

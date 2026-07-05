@@ -103,20 +103,23 @@ class Request
     /**
      * Получить параметры запроса (GET или POST)
      */
-    public function getParams(?string $key = null, $default = null)
-    {
-        $data = [];
-        if ($this->isGet()) {
-            $data = $_GET;
-        }
-        if ($this->isPost()) {
-            $data = $_POST;
-        }
-        if ($key !== null) {
-            return $data[$key] ?? $default;
-        }
-        return $data;
-    }
+	public function getParams(?string $key = null, mixed $default = null): mixed
+	{
+		$data = $_GET;
+		
+		if (in_array($this->getMethod(), ['POST', 'PUT', 'PATCH'])) {
+			$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+			
+			if (stripos($contentType, 'application/json') !== false) {
+				$jsonBody = json_decode(file_get_contents('php://input'), true) ?? [];
+				$data = array_merge($data, $jsonBody);
+			} else {
+				$data = array_merge($data, $_POST);
+			}
+		}
+		
+		return $key !== null ? ($data[$key] ?? $default) : $data;
+	}
 
     /**
      * Получить GET-параметр (из $_GET).

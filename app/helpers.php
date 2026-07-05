@@ -116,19 +116,47 @@ if (!function_exists('dt')) {
 }
 
 /**
- * Decline numerals in Russian (0, 1, 2-4, 5-20+ forms)
- * Склонение числительных на русском (формы: 1, 2-4, 5-20+)
+ * Склонение существительных для русского языка
+ * 
+ * @param int $n Число для склонения
+ * @param array $forms Массив из 3 форм: [1 форма, 2-4 форма, 5+ форма]
+ *                     Пример: ['комментарий', 'комментария', 'комментариев']
+ * @return string Правильная форма слова
+ * @throws InvalidArgumentException Если массив содержит менее 3 элементов
  */
-if (!function_exists('plural')) {
-    function plural(int $n, array $forms): string
-    {
-        $n = abs($n) % 100;
-        $n1 = $n % 10;
-        if ($n > 10 && $n < 20) return $forms[2];
-        if ($n1 > 1 && $n1 < 5) return $forms[1];
-        if ($n1 === 1) return $forms[0];
-        return $forms[2];
-    }
+ if (!function_exists('plural')) {
+	function plural(int $n, array $forms): string
+	{
+		// Валидация входных данных
+		if (count($forms) < 3) {
+			throw new InvalidArgumentException(
+				'Forms array must contain exactly 3 elements for Russian pluralization: ' .
+				'[singular, paucal, plural]. Example: ["комментарий", "комментария", "комментариев"]'
+			);
+		}
+		
+		// Приведение к абсолютному значению и получение последних двух цифр
+		$n = abs($n) % 100;
+		$n1 = $n % 10;
+		
+		// Исключения: 11-14 всегда используют форму "5+"
+		if ($n > 10 && $n < 20) {
+			return $forms[2];
+		}
+		
+		// Форма для 2-4 (два комментария, три комментария)
+		if ($n1 > 1 && $n1 < 5) {
+			return $forms[1];
+		}
+		
+		// Форма для 1 (один комментарий)
+		if ($n1 === 1) {
+			return $forms[0];
+		}
+		
+		// Форма для 0, 5-9, 20+ (ноль комментариев, пять комментариев)
+		return $forms[2];
+	}
 }
 
 /**
@@ -381,22 +409,37 @@ if (!function_exists('needsTruncation')) {
  */
 if (!function_exists('safeLink')) {
     function safeLink(?string $text): string
-    {
-        if ($text === null || $text === '') return '—';
-        
-        // Allow only <a> tags
-        // Разрешить только теги <a>
-        $clean = strip_tags($text, '<a>');
-
-        $clean = preg_replace_callback('/<a\s+([^>]*)>/i', function($m) {
-            if (preg_match('/href\s*=\s*["\']([^"\']+)["\']/i', $m[1], $href)) {
-                return '<a href="' . htmlspecialchars($href[1], ENT_QUOTES) . '">';
-            }
-            return '<a>';
-        }, $clean);
-        
-        return $clean;
-    }
+	{
+		if ($text === null || $text === '') return '—';
+		
+		// Разрешённые протоколы
+		$allowedProtocols = '/^(https?|mailto|tel):/i';
+		
+		return preg_replace_callback(
+			'/<\/?a(\s+[^>]*)?>/i',
+			function($m) use ($allowedProtocols) {
+				// Закрывающий тег
+				if (strpos($m[0], '</a') === 0) {
+					return '</a>';
+				}
+				
+				// Открывающий тег
+				if (preg_match('/href\s*=\s*["\']([^"\']+)["\']/i', $m[1], $href)) {
+					$url = $href[1];
+					
+					// Проверка протокола
+					if (!preg_match($allowedProtocols, $url)) {
+						return '<a rel="noopener noreferrer">';
+					}
+					
+					return '<a href="' . htmlspecialchars($url, ENT_QUOTES) . '" rel="noopener noreferrer">';
+				}
+				
+				return '<a rel="noopener noreferrer">';
+			},
+			$text
+		);
+	}
 }
 
 /**

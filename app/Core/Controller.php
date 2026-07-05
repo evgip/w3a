@@ -14,6 +14,8 @@ abstract class Controller
     protected Request $request;
     protected EventDispatcher $eventDispatcher;
     protected Container $container;
+	
+	private ?array $commonViewDataCache = null;
 
     public function __construct(
         Request $request,
@@ -89,6 +91,12 @@ abstract class Controller
      */
     protected function getCommonViewData(): array
     {
+		
+        // Возвращаем кеш, если уже вычисляли
+        if ($this->commonViewDataCache !== null) {
+            return $this->commonViewDataCache;
+        }
+		
         $data = [
             'currentUser' => [
                 'id' => null,
@@ -131,6 +139,9 @@ abstract class Controller
             // Fallback: возвращаем пустые данные (уже установлены выше)
         }
         
+		
+        // Кешируем результат
+        $this->commonViewDataCache = $data;
         return $data;
     }
 
