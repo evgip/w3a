@@ -27,6 +27,9 @@ $router->add('GET', '/t/{tagslug}', StoriesController::class . '@index', 'tags.f
 // Фильтр по домену
 $router->add('GET', '/domain/{domain}', StoriesController::class . '@index', 'domain.show');
 
+// Истории участника
+$router->add('GET', '/user/{username}/stories', StoriesController::class . '@userStories', 'user.stories');
+
 // =========================================================================
 // МАРШРУТЫ ДЛЯ АВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ
 // =========================================================================
@@ -44,12 +47,6 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
 
     $router->add('GET', '/stories/{id}/edit', StoriesController::class . '@showEditForm', 'story.edit');
     $router->add('POST', '/stories/{id}/edit', StoriesController::class . '@update', 'story.edit.submit');
-
-    // --- Работа с комментариями ---
-    $router->add('POST', '/comments/create', StoriesController::class . '@addComment', 'comment.create');
-    $router->add('POST', '/comments/{id}/edit', StoriesController::class . '@editComment', 'comment.edit');
-    $router->add('POST', '/comments/{id}/delete', StoriesController::class . '@deleteComment', 'comment.delete');
-    $router->add('POST', '/comments/{id}/restore', StoriesController::class . '@restoreComment', 'comment.restore');
 
     // --- Подписки и прочтение ---
     $router->add('POST', '/story/{id}/follow', StoriesController::class . '@toggleFollow', 'story.toggle.follow');

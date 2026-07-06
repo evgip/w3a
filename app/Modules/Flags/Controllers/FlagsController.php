@@ -8,7 +8,7 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Core\Audit;
 use App\Modules\Flags\Models\Flag;
-use App\Modules\Stories\Models\Comment;
+use App\Modules\Comments\Models\Comment;
 use App\Modules\Auth\Services\Auth;
 use App\Core\Exceptions\BadRequestException;
 use App\Core\Exceptions\NotFoundException;

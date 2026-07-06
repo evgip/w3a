@@ -100,4 +100,16 @@ class ReadRibbonService
         }
         return 'комментариев';
     }
+	
+	/**
+	 * Отмечает историю как прочитанную (обновляет read_ribbon до последнего комментария)
+	 */
+	public function markStoryAsRead(int $storyId): void
+	{
+		if (!Auth::check()) {
+			return;
+		}
+
+		$this->readRibbon->syncForUserAndStory(Auth::id(), $storyId);
+	}
 }

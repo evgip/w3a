@@ -6,7 +6,7 @@ namespace App\Modules\Admin\Services;
 
 use App\Core\Audit;
 use App\Core\Logger;
-use App\Modules\Stories\Models\Comment;
+use App\Modules\Comments\Models\Comment;
 use App\Modules\Mail\Core\Mailer;
 
 /**

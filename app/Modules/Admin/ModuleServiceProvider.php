@@ -26,7 +26,7 @@ use App\Modules\Users\Models\Notification;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Models\Category;
 use App\Modules\Stories\Models\Story;
-use App\Modules\Stories\Models\Comment;
+use App\Modules\Comments\Models\Comment;
 use App\Modules\Invitations\Models\InvitationRequest;
 
 class ModuleServiceProvider extends BaseModuleServiceProvider

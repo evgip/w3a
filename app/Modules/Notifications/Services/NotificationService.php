@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Notifications\Services;
 
 use App\Modules\Notifications\Models\Notification;
-use App\Modules\Stories\Models\Comment;
+use App\Modules\Comments\Models\Comment;
 use App\Modules\Users\Models\User;
 use App\Core\Logger;
 

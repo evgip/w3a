@@ -1278,3 +1278,5 @@ ALTER TABLE `wiki_revisions`
 ALTER TABLE `invitations` 
 ADD COLUMN `deleted_at` TIMESTAMP NULL DEFAULT NULL AFTER `updated_at`,
 ADD INDEX `idx_deleted_at` (`deleted_at`);
+
+ALTER TABLE users ADD COLUMN last_read_comments_at TIMESTAMP NULL DEFAULT NULL;

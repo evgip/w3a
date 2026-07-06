@@ -14,7 +14,7 @@ use App\Modules\Suggestions\Models\Suggestion;
 use App\Modules\Suggestions\Models\ContentLog;
 use App\Modules\Suggestions\Services\SuggestionService;
 use App\Modules\Stories\Models\Story;
-use App\Modules\Stories\Models\Comment as StoryComment;
+use App\Modules\Comments\Models\Comment as StoryComment;
 use App\Modules\Stories\Services\StoryValidator;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Services\TagValidator;

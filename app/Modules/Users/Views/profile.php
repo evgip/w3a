@@ -115,7 +115,7 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
         <tr>
             <td>Размещено историй:</td>
             <td>
-                <a href="/?author=<?= urlencode($profileUser['username']) ?>">
+				<a href="<?= route('user.stories', ['username' => $profileUser['username']]) ?>">
                     <?= (int)$storiesCount ?> публикаций
                 </a>
             </td>
@@ -124,7 +124,9 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
         <tr>
             <td>Оставлено ответов:</td>
             <td>
-                <?= (int)$commentsCount ?> комментариев
+			  <a href="<?= route('user.comments', ['username' => $profileUser['username']]) ?>">
+                 <?= (int)$commentsCount ?> комментариев
+			  </a>	 
             </td>
         </tr>
 

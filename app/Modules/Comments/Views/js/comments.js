@@ -202,6 +202,22 @@ document.addEventListener('DOMContentLoaded', function() {
 				}
 			});
 		});
+		
+		
+    // Проверяем, есть ли якорь #reply-to-{id} в URL
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#reply-to-')) {
+        const commentId = hash.replace('#reply-to-', '');
+        
+        // Находим кнопку "Ответить" для этого комментария и кликаем по ней
+        const replyLink = document.querySelector(`.comment-reply-link[data-id="${commentId}"]`);
+        if (replyLink) {
+            // Небольшая задержка, чтобы страница успела прокрутиться к якорю
+            setTimeout(() => {
+                replyLink.click();
+            }, 100);
+        }
+    }
 
 });
 

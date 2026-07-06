@@ -11,7 +11,7 @@ use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 use App\Modules\Votes\Models\Vote;
 use App\Modules\Votes\Services\VoteService;
 use App\Modules\Users\Models\User;
-use App\Modules\Stories\Models\Comment;
+use App\Modules\Comments\Models\Comment;
 
 /**
  * Провайдер сервисов модуля Votes.

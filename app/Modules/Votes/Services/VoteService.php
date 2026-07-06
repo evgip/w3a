@@ -6,7 +6,7 @@ namespace App\Modules\Votes\Services;
 
 use App\Modules\Votes\Models\Vote;
 use App\Modules\Users\Models\User;
-use App\Modules\Stories\Models\Comment;
+use App\Modules\Comments\Models\Comment;
 use App\Core\Logger;
 use App\Core\Database;
 

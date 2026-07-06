@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Stories\Models;
+namespace App\Modules\Comments\Models;
 
 use Exception;
 use App\Core\Model;
@@ -172,4 +172,42 @@ class Comment extends Model
 
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
+	
+	public function getLatestComments(int $limit): array
+	{
+		$sql = "SELECT c.*, 
+					   u.username as author_name, 
+					   up.avatar as author_avatar,
+					   s.title as story_title
+				FROM comments c
+				JOIN users u ON c.user_id = u.id
+				LEFT JOIN user_profiles up ON u.id = up.user_id
+				JOIN stories s ON c.story_id = s.id
+				WHERE c.deleted_at IS NULL
+				ORDER BY c.created_at DESC
+				LIMIT :limit";
+		
+		return $this->db->fetchAll($sql, ['limit' => $limit]);
+	}
+	
+	public function getUserComments(int $userId, int $limit): array
+	{
+		$sql = "SELECT c.*, 
+					   u.username as author_name, 
+					   up.avatar as author_avatar,
+					   s.title as story_title,
+					   s.id as story_id
+				FROM comments c
+				JOIN users u ON c.user_id = u.id
+				LEFT JOIN user_profiles up ON u.id = up.user_id
+				JOIN stories s ON c.story_id = s.id
+				WHERE c.user_id = :user_id AND c.deleted_at IS NULL
+				ORDER BY c.created_at DESC
+				LIMIT :limit";
+		
+		return $this->db->fetchAll($sql, [
+			'user_id' => $userId,
+			'limit' => $limit
+		]);
+	}
 }

@@ -8,7 +8,7 @@ use App\Core\Container;
 use App\Core\Logger;
 use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 use App\Modules\Notifications\Services\NotificationService;
-use App\Modules\Stories\Models\Comment;
+use App\Modules\Comments\Models\Comment;
 use App\Modules\Users\Models\User;
 
 /**

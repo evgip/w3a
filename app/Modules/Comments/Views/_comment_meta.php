@@ -3,10 +3,11 @@
  * @var array $comment       - данные комментария
  * @var int   $currentUserId - ID текущего пользователя
  * @var bool  $isAdmin       - является ли текущий пользователь админом
+ * @var bool  $isModerator   - является ли текущий пользователь модератором
  */
 $isDeleted = !empty($comment['deleted_at']);
 $isOwner = ((int)$comment['user_id'] === $currentUserId);
-$isModerator =  \App\Modules\Auth\Services\Auth::isModerator();
+$isModerator = $isModerator ?? false; // Получаем из переданных данных
 ?>
 <div class="comment_meta">
     <?php if (!$isDeleted): ?>

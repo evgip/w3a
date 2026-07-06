@@ -278,4 +278,12 @@ class User extends Model
             'unbanned_by' => $unbannedBy
         ]) > 0;
     }
+	
+	public function updateLastReadComments(int $userId): void
+	{
+		$this->db->execute(
+			"UPDATE users SET last_read_comments_at = NOW() WHERE id = :id",
+			['id' => $userId]
+		);
+	}
 }

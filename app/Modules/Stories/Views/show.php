@@ -255,82 +255,21 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
                 // ✅ Получаем голос за комментарий из переданного массива
                 $currentCommentVote = $currentCommentVotes[$commentId] ?? null;
                 ?>
-                <li class="comment comment-thread <?= $isCommentDeleted ? 'deleted' : '' ?>" data-comment-id="<?= $commentId ?>"  id="comment-block-<?= $commentId ?>">
-
-                    <!-- Голосование -->
-                    <?php if (!$isCommentDeleted): ?>
-                        <div class="comment_votes">
-                            <?php partial('Votes::_voters', [
-                                'type' => 'comment',
-                                'id' => $commentId,
-                                'score' => (int)$comment['score'],
-                                'currentVoteState' => $currentCommentVote,
-                                'canDownvote' => $canUserDownvote,
-                                'isLoggedIn' => $currentUserId > 0,
-                                'contentOwnerId' => $isAuthor,
-                            ]); ?>
-                        </div>
-
-                    <?php else: ?>
-                        <div class="comment_votes">
-                            <span class="score"><?= (int)$comment['score'] ?></span>
-                        </div>
-                    <?php endif; ?>
-
-                    <!-- Обёртка для метаданных, текста и действий -->
-                    <div class="comment_body">
-
-                        <!-- Метаданные комментария -->
-                        <div class="comment-header">
-                            <span class="collapse-toggle" title="Свернуть ветку">[–]</span>
-                            <?php partial('Users::_comment_meta', [
-                                'comment' => $comment,
-                                'currentUserId' => $currentUserId,
-                                'isAdmin' => $isAdmin,
-                            ]); ?>
-                        </div>
-
-                        <!-- Тело комментария -->
-                        <?php if (!$isCommentDeleted): ?>
-                            <div class="comment_text" id="comment-text-content-<?= $commentId ?>"
-                                data-raw="<?= e($comment['comment'], ENT_QUOTES, 'UTF-8') ?>">
-                                <?= markdown_comment($comment['comment']) ?>
-                            </div>
-
-                            <!-- Действия -->
-                            <div class="comment_actions">
-                                <?php if ($currentUserId > 0): ?>
-                                    <a href="#reply-to-<?= $commentId ?>" class="comment-reply-link" data-id="<?= $commentId ?>">Ответить</a>
-                                <?php endif; ?>
-
-                                <?php if ((int)$comment['user_id'] === $currentUserId || $isAdmin || $isModerator): ?>
-                                    <span class="divider">|</span>
-                                    <a class="comment-edit-trigger" data-id="<?= $commentId ?>">Редактировать</a>
-                                    <span class="divider">|</span>
-                                    <form action="/comments/<?= $commentId ?>/delete" method="POST" class="inline-form js-confirm-delete" data-confirm-message="Удалить комментарий?">
-                                        <?= csrf_field() ?>
-                                        <button type="submit">Удалить</button>
-                                    </form>
-                                <?php endif; ?>
-
-                                <?php if ($currentUserId > 0): ?>
-                                    <span class="divider">|</span>
-                                    <a href="<?= route('flags.report', ['type' => 'comment', 'id' => $commentId]) ?>"
-                                        class="flag-link"
-                                        title="Пожаловаться на контент"
-                                        data-confirm="Вы уверены, что хотите подать жалобу?">
-                                        🚩
-                                    </a>
-                                <?php endif; ?>
-                            </div>
-                        <?php endif; ?>
-
-                    </div>
-
-                    <!-- Рекурсия ветки -->
-                    <?php $renderTree($commentId); ?>
-
-                </li>
+                
+				<?php partial('Comments::_item', [
+					'comment' => $comment,
+					'currentUserId' => $currentUserId,
+					'isAdmin' => $isAdmin,
+					'isModerator' => $isModerator,
+					'isStoryAuthor' => $isAuthor,
+					'canDownvote' => $canUserDownvote,
+					'currentVote' => $currentCommentVote,
+					'showStoryContext' => false,
+					'showCollapseToggle' => true,
+					'renderTree' => $renderTree,
+					'commentsTree' => $commentsTree,
+				]); ?>
+			
             <?php endforeach; ?>
         </ol>
     <?php
