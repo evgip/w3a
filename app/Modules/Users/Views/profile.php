@@ -39,8 +39,8 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
 				<form action="/mute/toggle/<?= (int)$profileUser['id'] ?>" method="POST" class="d-inline">
 					<?= csrf_field() ?>
 					<button type="submit" class="btn btn-sm <?= $isMuted ? 'btn-warning' : 'btn-outline-secondary' ?>"
-							title="<?= $isMuted ? 'Размьютить' : 'Скрыть истории и комментарии этого пользователя' ?>">
-						<?= $isMuted ? '🔊 Размьютить' : '🔇 Замьютить' ?>
+							title="<?= $isMuted ? 'Читать' : 'Скрыть истории и комментарии этого пользователя' ?>">
+						<?= $isMuted ? '🔊 Читать' : '🔇 Игнорировать' ?>
 					</button>
 				</form>
 			</div>
