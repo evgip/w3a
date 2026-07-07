@@ -19,23 +19,23 @@ class MuteService
     }
 
     /**
-     * Переключить мьют (если замьючен — размьютить, иначе замьютить)
+     * Переключить мьют
      */
     public function toggle(int $userId, int $targetUserId): bool
     {
         if ($userId === $targetUserId) {
-            $this->session->flash('error', 'Нельзя замьютить самого себя');
+            $this->session->flash('error', 'Нельзя игнорировать самого себя');
             return false;
         }
 
         if ($this->mutedUser->isMuted($userId, $targetUserId)) {
             $this->mutedUser->unmute($userId, $targetUserId);
-            $this->session->flash('success', 'Пользователь размьючен');
+            $this->session->flash('success', 'Пользователь разблокирован');
             return false;
         }
-        
+
         $this->mutedUser->mute($userId, $targetUserId);
-        $this->session->flash('success', 'Пользователь замьючен. Его истории и комментарии больше не будут вам показываться.');
+        $this->session->flash('success', 'Пользователь игнорирован. Его истории и комментарии больше не будут вам показываться.');
         return true;
     }
 

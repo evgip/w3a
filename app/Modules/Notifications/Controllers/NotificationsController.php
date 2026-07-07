@@ -30,7 +30,10 @@ class NotificationsController extends Controller
         $perPage = config('constants.pagination.notifications_per_page', 25, 'int');
 
         $data = $this->service(NotificationService::class)->getNotificationsForIndex(
-            $userId, $type, $page, $perPage
+            $userId,
+            $type,
+            $page,
+            $perPage
         );
 
         $this->render('index', [
@@ -120,7 +123,6 @@ class NotificationsController extends Controller
             $count = $this->service(NotificationService::class)->getUnreadCount($userId);
 
             echo json_encode(['count' => $count]);
-
         } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['count' => 0]);

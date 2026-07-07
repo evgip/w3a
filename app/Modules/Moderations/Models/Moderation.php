@@ -3,8 +3,6 @@
 namespace App\Modules\Moderations\Models;
 
 use App\Core\Model;
-use App\Core\Database;
-use App\Core\Logger;
 
 class Moderation extends Model
 {
@@ -46,41 +44,40 @@ class Moderation extends Model
      * @return string HTML-строка для поля reason
      */
     public static function formatActionReason(
-        string $verb, 
-        string $targetType, 
-        int $targetId, 
+        string $verb,
+        string $targetType,
+        int $targetId,
         ?int $storyId = null
     ): string {
         return match ($targetType) {
-            'comment' => $verb 
+            'comment' => $verb
                 . ' <a href="/story/' . $storyId . '#comment-block-' . $targetId . '">комментарий #' . $targetId . '</a>'
                 . ' в <a href="/story/' . $storyId . '">истории #' . $storyId . '</a>',
-                
-            'story'   => $verb 
+
+            'story'   => $verb
                 . ' <a href="/story/' . $targetId . '">историю #' . $targetId . '</a>',
-                
-            'user'    => $verb 
+
+            'user'    => $verb
                 . ' <a href="/user/' . $targetId . '">пользователя #' . $targetId . '</a>',
-                
+
             default   => $verb . ' объект #' . $targetId,
         };
     }
-    
+
     /**
      * Логирование действие модератора
      * 
      * ✅ ИЗМЕНЕНО: Метод теперь нестатический, использует $this
-     */ 
+     */
     public function logCommentModeratorAction(
-        string $verb, 
+        string $verb,
         int $isAuthor,
         array $comment
-    ): bool
-    {
+    ): bool {
         if (!$isAuthor && \App\Modules\Auth\Services\Auth::isModerator()) {
             try {
                 $history = self::formatActionReason($verb, 'comment', (int)$comment['id'], (int)$comment['story_id']);
-                
+
                 // ✅ Используем $this вместо new
                 $this->create([
                     'user_id'     => (int) $_SESSION['user_id'],
@@ -154,7 +151,7 @@ class Moderation extends Model
               AND `unbanned_at` IS NULL
               AND (`expires_at` IS NULL OR `expires_at` > NOW())
         ", ['user_id' => $userId]);
-        
+
         return $count > 0;
     }
 
@@ -245,7 +242,7 @@ class Moderation extends Model
               AND `expires_at` <= NOW()
         ");
         $stmt->execute();
-        
+
         return $stmt->rowCount();
     }
 }

@@ -17,14 +17,14 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
     {
         parent::register($container);
 
-        $container->singleton(MutedUser::class, function(Container $c) {
+        $container->singleton(MutedUser::class, function (Container $c) {
             return new MutedUser(
                 $c->get(Database::class),
                 $c->get(Logger::class)
             );
         });
 
-        $container->singleton(MuteService::class, function(Container $c) {
+        $container->singleton(MuteService::class, function (Container $c) {
             return new MuteService(
                 $c->get(MutedUser::class),
                 $c->get(Session::class)

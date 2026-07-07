@@ -1,5 +1,4 @@
 <?php
-// app/Modules/Muted/Controllers/MuteController.php
 
 declare(strict_types=1);
 
@@ -13,7 +12,7 @@ use App\Modules\Users\Models\User;
 class MuteController extends Controller
 {
     /**
-     * Список замьюченных пользователей
+     * Список игнорируемых пользователей
      */
     public function list(): void
     {
@@ -27,7 +26,7 @@ class MuteController extends Controller
         $mutedUsers = $muteService->getMutedList($userId);
 
         $this->render('list', [
-            'title' => 'Замьюченные пользователи',
+            'title' => 'Игнорируемые пользователи',
             'mutedUsers' => $mutedUsers,
             'currentUserId' => $userId,
         ]);
@@ -48,10 +47,10 @@ class MuteController extends Controller
 
         if ($userId === $targetUserId) {
             if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-                $this->json(['error' => 'Нельзя замьютить самого себя'], 400);
+                $this->json(['error' => 'Нельзя игнорировать самого себя'], 400);
                 return;
             }
-            $this->session()->flash('error', 'Нельзя замьютить самого себя');
+            $this->session()->flash('error', 'Нельзя игнорировать самого себя');
             $this->redirectBack();
             return;
         }

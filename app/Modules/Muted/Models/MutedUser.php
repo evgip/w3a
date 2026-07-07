@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Muted\Models;
 
 use App\Core\Model;
-use App\Core\Database;
-use App\Core\Logger;
 
 class MutedUser extends Model
 {
@@ -15,7 +13,7 @@ class MutedUser extends Model
     protected array $fillable = ['user_id', 'muted_user_id'];
 
     /**
-     * Замьютить пользователя
+     * Игнорировать пользователя
      */
     public function mute(int $userId, int $mutedUserId): bool
     {
@@ -27,7 +25,7 @@ class MutedUser extends Model
             $sql = "INSERT INTO `muted_users` (`user_id`, `muted_user_id`) 
                     VALUES (:user_id, :muted_user_id)
                     ON DUPLICATE KEY UPDATE `created_at` = CURRENT_TIMESTAMP";
-            
+
             return $this->db->execute($sql, [
                 'user_id' => $userId,
                 'muted_user_id' => $mutedUserId,
@@ -41,7 +39,7 @@ class MutedUser extends Model
     }
 
     /**
-     * Размьютить пользователя
+     * Разблокировать пользователя
      */
     public function unmute(int $userId, int $mutedUserId): bool
     {
@@ -52,7 +50,7 @@ class MutedUser extends Model
     }
 
     /**
-     * Проверить, замьючен ли пользователь
+     * Проверить, игнорирован ли пользователь
      */
     public function isMuted(int $userId, int $mutedUserId): bool
     {
@@ -63,7 +61,7 @@ class MutedUser extends Model
     }
 
     /**
-     * Получить список замьюченных пользователей с данными
+     * Получить список игнорируемых пользователей с данными
      */
     public function getMutedList(int $userId): array
     {
@@ -73,12 +71,12 @@ class MutedUser extends Model
                 LEFT JOIN `user_profiles` up ON u.id = up.user_id
                 WHERE mu.user_id = :user_id
                 ORDER BY mu.created_at DESC";
-        
+
         return $this->db->fetchAll($sql, ['user_id' => $userId]);
     }
 
     /**
-     * Получить массив ID замьюченных пользователей (для фильтрации)
+     * Получить массив ID игнорируемых пользователей (для фильтрации)
      */
     public function getMutedUserIds(int $userId): array
     {

@@ -13,7 +13,7 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
     {
         parent::register($container);
 
-        $container->singleton(RssService::class, function(Container $c) {
+        $container->singleton(RssService::class, function (Container $c) {
             return new RssService();
         });
     }

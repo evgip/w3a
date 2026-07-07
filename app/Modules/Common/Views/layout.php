@@ -109,7 +109,7 @@
 							
 							<a href="<?= route('saved.index') ?>" class="dropdown-menu-item">🔖 Закладки</a>
 							
-							<a href="/muted" class="dropdown-menu-item">🔇 Замьюченные</a>
+							<a href="/muted" class="dropdown-menu-item">🔇 Игнорируемые</a>
 
 							<?php if (!empty($currentUser['isAdmin'])): ?>
 								<div class="dropdown-divider"></div>

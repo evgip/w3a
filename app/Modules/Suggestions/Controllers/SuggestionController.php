@@ -12,26 +12,26 @@ use App\Modules\Auth\Services\Auth;
 
 class SuggestionController extends Controller
 {
-    /**
-     * ✅ Хелпер: получить Session из контейнера
-     */
-    private function session(): Session
-    {
-        return $this->container->get(Session::class);
-    }
+	/**
+	 * ✅ Хелпер: получить Session из контейнера
+	 */
+	private function session(): Session
+	{
+		return $this->container->get(Session::class);
+	}
 
-    public function index(string $targetType, string $targetId): void
-    {
-        $suggestions = $this->service(SuggestionService::class)->getActiveSuggestions(
-            $targetType,
-            (int) $targetId
-        );
+	public function index(string $targetType, string $targetId): void
+	{
+		$suggestions = $this->service(SuggestionService::class)->getActiveSuggestions(
+			$targetType,
+			(int) $targetId
+		);
 
-        $this->json([
-            'suggestions' => $suggestions,
-            'count' => count($suggestions)
-        ]);
-    }
+		$this->json([
+			'suggestions' => $suggestions,
+			'count' => count($suggestions)
+		]);
+	}
 
 	/**
 	 * Получить историю изменений (ленту предложений)
@@ -42,24 +42,24 @@ class SuggestionController extends Controller
 			// Базовая валидация
 			$targetType = trim($targetType);
 			$targetIdInt = (int) $targetId;
-			
+
 			if ($targetType === '' || $targetIdInt <= 0) {
 				$this->json(['error' => 'Invalid parameters: target_type and target_id are required'], 400);
 				return;
 			}
-			
+
 			// Получаем limit из query-параметров через Request
 			$limit = (int) $this->request->input('limit', 50);
-			
+
 			// Ограничиваем диапазон (защита от злоупотреблений)
 			$limit = max(1, min($limit, 200));
-			
+
 			$logs = $this->service(SuggestionService::class)->getChangeLog(
 				$targetType,
 				$targetIdInt,
 				$limit
 			);
-			
+
 			$this->json([
 				'success' => true,
 				'logs' => $logs,
@@ -84,12 +84,12 @@ class SuggestionController extends Controller
 				$this->json(['error' => 'Authentication required'], 401);
 				return;
 			}
-			
+
 			// Получаем данные через Request (поддерживает GET/POST/JSON)
 			$targetType = trim((string) $this->request->input('target_type', ''));
 			$targetId = (int) $this->request->input('target_id', 0);
 			$proposedDataRaw = $this->request->input('proposed_data');
-			
+
 			// Базовая валидация обязательных параметров
 			if ($targetType === '' || $targetId <= 0) {
 				$this->json([
@@ -97,14 +97,14 @@ class SuggestionController extends Controller
 				], 400);
 				return;
 			}
-			
+
 			// Универсальный парсинг proposed_data (строка или массив)
 			$proposedData = $this->parseProposedData($proposedDataRaw);
 			if (empty($proposedData)) {
 				$this->json(['error' => 'Invalid or empty proposed_data'], 400);
 				return;
 			}
-			
+
 			// Создаём предложение
 			$suggestionId = $this->service(SuggestionService::class)->addSuggestion(
 				$targetType,
@@ -112,7 +112,7 @@ class SuggestionController extends Controller
 				(int) $userId,
 				$proposedData
 			);
-			
+
 			$this->json([
 				'success' => true,
 				'suggestion_id' => $suggestionId,
@@ -133,73 +133,73 @@ class SuggestionController extends Controller
 		if (is_array($data)) {
 			return $data;
 		}
-		
+
 		if (is_string($data) && $data !== '') {
 			$decoded = json_decode($data, true);
 			if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
 				return $decoded;
 			}
 		}
-		
+
 		return [];
 	}
 
-    public function support(string $id): void
-    {
-        try {
-            $suggestionModel = $this->container->get(Suggestion::class);
-            $suggestion = $suggestionModel->find((int) $id);
+	public function support(string $id): void
+	{
+		try {
+			$suggestionModel = $this->container->get(Suggestion::class);
+			$suggestion = $suggestionModel->find((int) $id);
 
-            if (!$suggestion) {
-                $this->json(['error' => 'Suggestion not found'], 404);
-                return;
-            }
+			if (!$suggestion) {
+				$this->json(['error' => 'Suggestion not found'], 404);
+				return;
+			}
 
-            $this->service(SuggestionService::class)->addSuggestion(
-                $suggestion['target_type'],
-                $suggestion['target_id'],
-                (int) Auth::id(),
-                json_decode($suggestion['proposed_data'], true)
-            );
+			$this->service(SuggestionService::class)->addSuggestion(
+				$suggestion['target_type'],
+				$suggestion['target_id'],
+				(int) Auth::id(),
+				json_decode($suggestion['proposed_data'], true)
+			);
 
-            $this->json(['success' => true]);
-        } catch (\Exception $e) {
-            $this->json(['error' => $e->getMessage()], 400);
-        }
-    }
+			$this->json(['success' => true]);
+		} catch (\Exception $e) {
+			$this->json(['error' => $e->getMessage()], 400);
+		}
+	}
 
-    public function approve(string $id): void
-    {
-        try {
-            $this->service(SuggestionService::class)->approveSuggestion(
-                (int) $id,
-                (int) Auth::id()
-            );
+	public function approve(string $id): void
+	{
+		try {
+			$this->service(SuggestionService::class)->approveSuggestion(
+				(int) $id,
+				(int) Auth::id()
+			);
 
-            $this->session()->flash('success', 'Предложение одобрено и применено.');
-            $this->redirectBack();
-        } catch (\Throwable $e) {
-            $this->session()->flash('error', $e->getMessage());
-            $this->redirectBack();
-        }
-    }
+			$this->session()->flash('success', 'Предложение одобрено и применено.');
+			$this->redirectBack();
+		} catch (\Throwable $e) {
+			$this->session()->flash('error', $e->getMessage());
+			$this->redirectBack();
+		}
+	}
 
-    public function reject(string $id): void
-    {
-        try {
-            $reason = $this->request->post('reason', '');
+	public function reject(string $id): void
+	{
+		try {
+			$reason = $this->request->post('reason', '');
 
-            $this->service(SuggestionService::class)->rejectSuggestion(
-                (int) $id,
-                (int) Auth::id(),
-                $reason
-            );
+			$this->service(SuggestionService::class)->rejectSuggestion(
+				(int) $id,
+				(int) Auth::id(),
+				$reason
+			);
 
-            $this->session()->flash('success', 'Предложение отклонено.');
-            $this->redirectBack();
-        } catch (\Exception $e) {
-            $this->session()->flash('error', $e->getMessage());
-            $this->redirectBack();
-        }
-    }
+			$this->session()->flash('success', 'Предложение отклонено.');
+			$this->redirectBack();
+		} catch (\Exception $e) {
+			$this->session()->flash('error', $e->getMessage());
+			$this->redirectBack();
+		}
+	}
 }

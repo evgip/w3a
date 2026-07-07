@@ -7,7 +7,6 @@ namespace App\Modules\Stories\Controllers;
 use App\Core\Controller;
 use App\Core\Session;
 use App\Core\Exceptions\NotFoundException;
-use App\Core\Exceptions\BadRequestException;
 use App\Modules\Stories\Services\StoryService;
 use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Stories\Services\ReadRibbonService;
@@ -29,7 +28,7 @@ class StoriesController extends Controller
     // =========================================================================
 
     public function index(string $tagslug = '', string $domain = ''): void
-    {  
+    {
         $currentPage = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config('constants.pagination.stories_per_page', 15, 'int');
         $offset = ($currentPage - 1) * $perPage;
@@ -51,7 +50,7 @@ class StoriesController extends Controller
         // Получаем данные для голосования через общий метод
         $currentUserId = Auth::check() ? Auth::id() : 0;
         $votingContext = $this->getVotingContext($currentUserId);
-        
+
         // Получаем голоса для всех историй
         $currentVotes = [];
         if ($currentUserId > 0) {
@@ -64,18 +63,18 @@ class StoriesController extends Controller
         // Формируем заголовок и OG-данные
         $pageData = $this->buildIndexPageData($tagslug, $domain);
 
-		$rssFeed = [
-			'title' => 'Новые истории',
-			'url' => '/rss',
-		];
+        $rssFeed = [
+            'title' => 'Новые истории',
+            'url' => '/rss',
+        ];
 
-		// Если есть фильтр по тегу
-		if ($tagslug) {
-			$rssFeed = [
-				'title' => 'Тег #' . e($tagInfo['name'] ?? $tagslug),
-				'url' => '/t/' . e($tagslug) . '/rss',
-			];
-		}
+        // Если есть фильтр по тегу
+        if ($tagslug) {
+            $rssFeed = [
+                'title' => 'Тег #' . e($tagInfo['name'] ?? $tagslug),
+                'url' => '/t/' . e($tagslug) . '/rss',
+            ];
+        }
 
         $this->render('index', array_merge([
             'stories' => $stories,
@@ -89,10 +88,10 @@ class StoriesController extends Controller
             'isAdmin' => Auth::isAdmin(),
             'canUserDownvote' => $votingContext['canDownvote'],
             'currentVotes' => $currentVotes,
-			'rssFeed' => $rssFeed,
+            'rssFeed' => $rssFeed,
         ], $pageData));
     }
-    
+
     // =========================================================================
     // ПРОСМОТР ОДНОЙ ИСТОРИИ
     // =========================================================================
@@ -108,14 +107,14 @@ class StoriesController extends Controller
         }
 
         $commentsTree = $this->service(StoryFilterService::class)->getCommentsTree($storyId);
-		
-		// Получаем ТЕКУЩУЮ отметку прочтения (до обновления)
-		$currentUserId = Auth::check() ? Auth::id() : 0;
-		$readRibbonModel = $this->container->get(\App\Modules\Stories\Models\ReadRibbon::class);
-		$ribbonData = $readRibbonModel->getForStories($currentUserId, [$storyId]);
-		$lastReadCommentId = $ribbonData[$storyId] ?? 0;
 
-		// Теперь обновляем ленту (сдвигает отметку до последнего комментария)
+        // Получаем ТЕКУЩУЮ отметку прочтения (до обновления)
+        $currentUserId = Auth::check() ? Auth::id() : 0;
+        $readRibbonModel = $this->container->get(\App\Modules\Stories\Models\ReadRibbon::class);
+        $ribbonData = $readRibbonModel->getForStories($currentUserId, [$storyId]);
+        $lastReadCommentId = $ribbonData[$storyId] ?? 0;
+
+        // Теперь обновляем ленту (сдвигает отметку до последнего комментария)
         $newCount = $this->service(ReadRibbonService::class)->handleStoryView($storyId);
 
         $suggestionService = $this->service(SuggestionService::class);
@@ -131,23 +130,23 @@ class StoriesController extends Controller
         // Получаем данные для голосования через общий метод
         $currentUserId = Auth::check() ? Auth::id() : 0;
         $votingContext = $this->getVotingContext($currentUserId);
-        
+
         // Получаем голос за историю и комментарии
         $currentStoryVote = null;
         $currentCommentVotes = [];
         $userSuggestionsCount = 0;
-        
+
         if ($currentUserId > 0) {
             $voteModel = $this->container->get(Vote::class);
             $currentStoryVote = $voteModel->getUserVote($currentUserId, 'story', $storyId);
-            
+
             foreach ($commentsTree as $parentId => $comments) {
                 foreach ($comments as $comment) {
                     $commentId = (int)$comment['id'];
                     $currentCommentVotes[$commentId] = $voteModel->getUserVote($currentUserId, 'comment', $commentId);
                 }
             }
-            
+
             $isAdmin = Auth::isAdmin();
             $isModerator = Auth::isModerator();
             if (!$isModerator && !$isAdmin) {
@@ -165,8 +164,8 @@ class StoriesController extends Controller
             'article:author' => $ogData['author_url'],
         ]);
 
-		$savedModel = $this->container->get(\App\Modules\Saved\Models\SavedStory::class);
-		$isStorySaved = $currentUserId > 0 ? $savedModel->isSaved($currentUserId, $storyId) : false;
+        $savedModel = $this->container->get(\App\Modules\Saved\Models\SavedStory::class);
+        $isStorySaved = $currentUserId > 0 ? $savedModel->isSaved($currentUserId, $storyId) : false;
 
 
         $this->render('show', [
@@ -174,7 +173,7 @@ class StoriesController extends Controller
             'story' => $story,
             'commentsTree' => $commentsTree,
             'newCount' => $newCount,
-			'lastReadCommentId' => $lastReadCommentId, 
+            'lastReadCommentId' => $lastReadCommentId,
             'activeSuggestions' => $activeSuggestions,
             'changeLog' => $changeLog,
             'allTags' => $allTags,
@@ -187,7 +186,7 @@ class StoriesController extends Controller
             'currentStoryVote' => $currentStoryVote,
             'currentCommentVotes' => $currentCommentVotes,
             'userSuggestionsCount' => $userSuggestionsCount,
-			'isStorySaved' => $isStorySaved,
+            'isStorySaved' => $isStorySaved,
         ]);
     }
 
@@ -229,7 +228,7 @@ class StoriesController extends Controller
 
         $this->redirectBack('/story/' . $storyId);
     }
-    
+
     // =========================================================================
     // РЕДАКТИРОВАНИЕ ИСТОРИИ
     // =========================================================================
@@ -237,7 +236,7 @@ class StoriesController extends Controller
     public function showEditForm(string $id): void
     {
         $storyId = (int)$id;
-        
+
         $storyModel = $this->container->get(Story::class);
         $story = $storyModel->find($storyId);
 
@@ -262,7 +261,7 @@ class StoriesController extends Controller
     public function update(string $id): void
     {
         $storyId = (int)$id;
-        
+
         $storyModel = $this->container->get(Story::class);
         $story = $storyModel->find($storyId);
         $userId = Auth::id();
@@ -279,14 +278,14 @@ class StoriesController extends Controller
             'tags' => $this->request->post('tags', []),
             'user_is_following' => $this->request->post('user_is_following') !== null ? 1 : 0,
         ];
- 
+
         $this->service(StoryService::class)->updateStory($storyId, $data);
 
         $this->container->get(Session::class)->flash('success', 'Публикация успешно отредактирована.');
 
         $this->redirectBack('/story/' . $storyId);
     }
-    
+
     // =========================================================================
     // АДМИНИСТРИРОВАНИЕ ИСТОРИЙ
     // =========================================================================
@@ -302,8 +301,8 @@ class StoriesController extends Controller
         $this->service(StoryService::class)->restoreStory((int)$id, Auth::id());
         $this->redirectBack();
     }
-    
-   
+
+
     // =========================================================================
     // ПОДПИСКА И ПРОЧТЕНИЕ
     // =========================================================================
@@ -348,7 +347,7 @@ class StoriesController extends Controller
     public function fetchUrlTitle(): void
     {
         $url = $this->request->getParams('url');
-        
+
         if (empty($url)) {
             $this->json(['title' => '', 'url' => '']);
             return;
@@ -359,7 +358,7 @@ class StoriesController extends Controller
 
         $this->json($attributes);
     }
-    
+
     /**
      * AJAX endpoint для предпросмотра Markdown
      */
@@ -398,11 +397,11 @@ class StoriesController extends Controller
                 'karma' => 0,
             ];
         }
-        
+
         $userModel = $this->container->get(User::class);
         $karma = $userModel->getUserKarma($userId);
         $minKarma = (int)config('config.app.min_karma_for_downvote', 10);
-        
+
         return [
             'canDownvote' => $karma >= $minKarma,
             'karma' => $karma,
@@ -413,140 +412,140 @@ class StoriesController extends Controller
      * Формирование данных для index страницы (заголовок, OG, wiki)
      * Устраняет перегруженность метода index()
      */
-	private function buildIndexPageData(string $tagslug, string $domain): array
-	{
-		$data = [
-			'title' => 'Лента историй',
-			'tagInfo' => '',
-			'wikiPages' => false,
-			'primaryWikiPage' => false,
-			'wikiPagesCount' => false,
-		];
-		
-		if ($tagslug) {
-			$data['title'] = "Публикации с тегом # " . e($tagslug);
-			
-			$tagFilterService = $this->service(TagFilterService::class);
-			$ogData = $tagFilterService->getTagOpenGraphData($tagslug);
-			$this->setOpenGraph([
-				'type' => 'article',
-				'title' => $ogData['title'],
-				'description' => $ogData['description'],
-				'image' => config('config.app.url') . '/',
-			]);
-			
-			$data['tagInfo'] = $tagFilterService->getByInfoSlug($tagslug);
-			
-			if (!empty($data['tagInfo']['id'])) {
-				$wikiService = $this->service(WikiService::class);
-				$wikiPages = $wikiService->getPagesForTag($data['tagInfo']['id']);
-				$data['wikiPages'] = $wikiPages;
-				$data['primaryWikiPage'] = $wikiService->getPrimaryPageForTag($data['tagInfo']['id']);
-				$data['wikiPagesCount'] = count($wikiPages);
-			}
-		} elseif ($domain) {
-			$data['title'] = "Публикации с домена " . e($domain);
-			$this->setOpenGraph([
-				'type' => 'article',
-				'title' => $data['title'],
-				'description' => null,
-				'image' => config('config.app.url') . '/',
-			]);
-		}
-		
-		return $data;
-	}
+    private function buildIndexPageData(string $tagslug, string $domain): array
+    {
+        $data = [
+            'title' => 'Лента историй',
+            'tagInfo' => '',
+            'wikiPages' => false,
+            'primaryWikiPage' => false,
+            'wikiPagesCount' => false,
+        ];
+
+        if ($tagslug) {
+            $data['title'] = "Публикации с тегом # " . e($tagslug);
+
+            $tagFilterService = $this->service(TagFilterService::class);
+            $ogData = $tagFilterService->getTagOpenGraphData($tagslug);
+            $this->setOpenGraph([
+                'type' => 'article',
+                'title' => $ogData['title'],
+                'description' => $ogData['description'],
+                'image' => config('config.app.url') . '/',
+            ]);
+
+            $data['tagInfo'] = $tagFilterService->getByInfoSlug($tagslug);
+
+            if (!empty($data['tagInfo']['id'])) {
+                $wikiService = $this->service(WikiService::class);
+                $wikiPages = $wikiService->getPagesForTag($data['tagInfo']['id']);
+                $data['wikiPages'] = $wikiPages;
+                $data['primaryWikiPage'] = $wikiService->getPrimaryPageForTag($data['tagInfo']['id']);
+                $data['wikiPagesCount'] = count($wikiPages);
+            }
+        } elseif ($domain) {
+            $data['title'] = "Публикации с домена " . e($domain);
+            $this->setOpenGraph([
+                'type' => 'article',
+                'title' => $data['title'],
+                'description' => null,
+                'image' => config('config.app.url') . '/',
+            ]);
+        }
+
+        return $data;
+    }
 
     private function validateAuthor(string $username): string
     {
         $username = trim($username);
-        
+
         if ($username === '') {
             return '';
         }
-        
+
         $validator = $this->container->get(\App\Core\Validator::class);
         $validator->validate(
             ['username' => $username],
             ['username' => 'required|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/']
         );
-        
+
         if (!$validator->isValid()) {
             return '';
         }
-        
+
         $userModel = $this->container->get(User::class);
         $user = $userModel->findByName($username);
-        
+
         return $user ? $username : '';
     }
-	
-	/**
-	 * Публикации конкретного пользователя
-	 */
-	public function userStories(string $username): void
-	{
-		// Валидация username
-		$validator = $this->container->get(\App\Core\Validator::class);
-		$validator->validate(
-			['username' => $username],
-			['username' => 'required|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/']
-		);
-		
-		if (!$validator->isValid()) {
-			throw new \App\Core\Exceptions\NotFoundException("Пользователь не найден");
-		}
-		
-		// Проверяем существование пользователя
-		$userModel = $this->container->get(\App\Modules\Users\Models\User::class);
-		$user = $userModel->findByName($username);
-		
-		if (!$user) {
-			throw new \App\Core\Exceptions\NotFoundException("Пользователь не найден");
-		}
-		
-		$currentPage = max(1, (int)$this->request->getParams('page', 1));
-		$perPage = config('constants.pagination.stories_per_page', 15, 'int');
-		$offset = ($currentPage - 1) * $perPage;
 
-		$filterService = $this->service(StoryFilterService::class);
-		$stories = $filterService->getFilteredStories($perPage, $offset, '', '', 'hot', $username);
-		$totalStories = $filterService->getTotalCount('', '', $username);
-		$totalPages = (int)ceil($totalStories / $perPage);
+    /**
+     * Публикации конкретного пользователя
+     */
+    public function userStories(string $username): void
+    {
+        // Валидация username
+        $validator = $this->container->get(\App\Core\Validator::class);
+        $validator->validate(
+            ['username' => $username],
+            ['username' => 'required|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/']
+        );
 
-		$bannedDomainsCache = $filterService->getBannedDomains();
-		$storyIds = array_column($stories, 'id');
-		$newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
+        if (!$validator->isValid()) {
+            throw new \App\Core\Exceptions\NotFoundException("Пользователь не найден");
+        }
 
-		$currentUserId = Auth::check() ? Auth::id() : 0;
-		$votingContext = $this->getVotingContext($currentUserId);
-		
-		$currentVotes = [];
-		if ($currentUserId > 0) {
-			$voteModel = $this->container->get(Vote::class);
-			foreach ($storyIds as $storyId) {
-				$currentVotes[$storyId] = $voteModel->getUserVote($currentUserId, 'story', (int)$storyId);
-			}
-		}
+        // Проверяем существование пользователя
+        $userModel = $this->container->get(\App\Modules\Users\Models\User::class);
+        $user = $userModel->findByName($username);
 
-		$this->render('index', [
-			'stories' => $stories,
-			'currentPage' => $currentPage,
-			'totalPages' => $totalPages,
-			'newCommentsMap' => $newCommentsMap,
-			'bannedDomainsCache' => $bannedDomainsCache,
-			'sort' => 'hot',
-			'author' => $username,
-			'domain' => '',
-			'currentUserId' => $currentUserId,
-			'isAdmin' => Auth::isAdmin(),
-			'canUserDownvote' => $votingContext['canDownvote'],
-			'currentVotes' => $currentVotes,
-			'title' => 'Публикации пользователя ' . e($username),
-			'rssFeed' => [
-				'title' => 'Публикации ' . e($username),
-				'url' => '/u/' . e($username) . '/rss',
-			],
-		]);
-	}
+        if (!$user) {
+            throw new \App\Core\Exceptions\NotFoundException("Пользователь не найден");
+        }
+
+        $currentPage = max(1, (int)$this->request->getParams('page', 1));
+        $perPage = config('constants.pagination.stories_per_page', 15, 'int');
+        $offset = ($currentPage - 1) * $perPage;
+
+        $filterService = $this->service(StoryFilterService::class);
+        $stories = $filterService->getFilteredStories($perPage, $offset, '', '', 'hot', $username);
+        $totalStories = $filterService->getTotalCount('', '', $username);
+        $totalPages = (int)ceil($totalStories / $perPage);
+
+        $bannedDomainsCache = $filterService->getBannedDomains();
+        $storyIds = array_column($stories, 'id');
+        $newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
+
+        $currentUserId = Auth::check() ? Auth::id() : 0;
+        $votingContext = $this->getVotingContext($currentUserId);
+
+        $currentVotes = [];
+        if ($currentUserId > 0) {
+            $voteModel = $this->container->get(Vote::class);
+            foreach ($storyIds as $storyId) {
+                $currentVotes[$storyId] = $voteModel->getUserVote($currentUserId, 'story', (int)$storyId);
+            }
+        }
+
+        $this->render('index', [
+            'stories' => $stories,
+            'currentPage' => $currentPage,
+            'totalPages' => $totalPages,
+            'newCommentsMap' => $newCommentsMap,
+            'bannedDomainsCache' => $bannedDomainsCache,
+            'sort' => 'hot',
+            'author' => $username,
+            'domain' => '',
+            'currentUserId' => $currentUserId,
+            'isAdmin' => Auth::isAdmin(),
+            'canUserDownvote' => $votingContext['canDownvote'],
+            'currentVotes' => $currentVotes,
+            'title' => 'Публикации пользователя ' . e($username),
+            'rssFeed' => [
+                'title' => 'Публикации ' . e($username),
+                'url' => '/u/' . e($username) . '/rss',
+            ],
+        ]);
+    }
 }

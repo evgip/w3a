@@ -1,5 +1,4 @@
 <?php
-// app/Modules/Rss/Services/RssService.php
 
 declare(strict_types=1);
 

@@ -71,7 +71,7 @@ class OriginsController extends Controller
         } else {
             $this->session()->flash('error', "Домен «{$domain}» уже заблокирован.");
         }
-        
+
         $this->redirectBack('/admin/domains');
     }
 

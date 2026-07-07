@@ -3,8 +3,6 @@
 namespace App\Modules\Moderations\Models;
 
 use App\Core\Model;
-use App\Core\Database;
-use App\Core\Logger;
 
 class ModActivity extends Model
 {
@@ -35,7 +33,7 @@ class ModActivity extends Model
         $sql = "INSERT INTO `mod_activity` (`moderator_id`, `action`, `date`, `count`) 
                 VALUES (:mod_id, :action, :date, 1)
                 ON DUPLICATE KEY UPDATE `count` = `count` + 1";
-        
+
         $this->db->execute($sql, [
             'mod_id' => $moderatorId,
             'action' => $action,
@@ -54,7 +52,7 @@ class ModActivity extends Model
                 WHERE ma.`date` >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
                 GROUP BY ma.moderator_id, ma.action, ma.date
                 ORDER BY ma.date DESC, total DESC";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':days', $days, \PDO::PARAM_INT);
         $stmt->execute();
@@ -72,7 +70,7 @@ class ModActivity extends Model
                 WHERE ma.`date` >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
                 GROUP BY ma.moderator_id
                 ORDER BY total_actions DESC";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':days', $days, \PDO::PARAM_INT);
         $stmt->execute();

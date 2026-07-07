@@ -3,8 +3,6 @@
 namespace App\Modules\Moderations\Models;
 
 use App\Core\Model;
-use App\Core\Database;
-use App\Core\Logger;
 
 class ModNote extends Model
 {

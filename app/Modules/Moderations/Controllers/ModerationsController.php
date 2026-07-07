@@ -147,7 +147,7 @@ class ModerationsController extends Controller
 
         $this->redirect('/user/' . $result['username']);
     }
-    
+
     // ==========================================
     // /mod/suggestions — Список предложений
     // ==========================================
@@ -160,7 +160,7 @@ class ModerationsController extends Controller
         $filter = $this->request->query('type', '');
 
         $suggestionService = $this->service(\App\Modules\Suggestions\Services\SuggestionService::class);
-        
+
         $suggestions = $suggestionService->getAllActiveSuggestions($perPage, $offset, $filter);
         $total = $suggestionService->countAllActiveSuggestions($filter);
         $pages = max(1, (int)ceil($total / $perPage));
@@ -168,7 +168,7 @@ class ModerationsController extends Controller
         $totalCount = $suggestionService->countAllActiveSuggestions('');
         $storiesCount = $suggestionService->countAllActiveSuggestions('Story');
         $commentsCount = $suggestionService->countAllActiveSuggestions('Comment');
-        
+
         $this->render('suggestions', [
             'title' => 'Предложения на рассмотрении',
             'suggestions' => $suggestions,
@@ -189,17 +189,17 @@ class ModerationsController extends Controller
     public function approveSuggestion(string $id): void
     {
         $suggestionId = (int)$id;
-        
+
         try {
             $this->service(\App\Modules\Suggestions\Services\SuggestionService::class)
                 ->approveSuggestion($suggestionId, Auth::id());
-            
+
             // ✅ Используем хелпер
             $this->session()->flash('success', 'Предложение одобрено и применено.');
         } catch (\Exception $e) {
             $this->session()->flash('error', $e->getMessage());
         }
-        
+
         $this->redirect('/mod/suggestions');
     }
 
@@ -211,17 +211,17 @@ class ModerationsController extends Controller
     {
         $suggestionId = (int)$id;
         $reason = trim($this->request->post('reason', ''));
-        
+
         try {
             $this->service(\App\Modules\Suggestions\Services\SuggestionService::class)
                 ->rejectSuggestion($suggestionId, Auth::id(), $reason);
-            
+
             // ✅ Используем хелпер
             $this->session()->flash('success', 'Предложение отклонено.');
         } catch (\Exception $e) {
             $this->session()->flash('error', $e->getMessage());
         }
-        
+
         $this->redirect('/mod/suggestions');
     }
 }

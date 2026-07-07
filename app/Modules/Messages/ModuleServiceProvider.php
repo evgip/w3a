@@ -2,78 +2,55 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Wiki;
+namespace App\Modules\Messages;
 
 use App\Core\Container;
 use App\Core\Database;
 use App\Core\Logger;
 use App\Core\Session;
-use App\Core\Audit;
-use App\Core\Events\EventDispatcher;
-use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
-use App\Modules\Wiki\Models\WikiPage;
-use App\Modules\Wiki\Models\WikiRevision;
-use App\Modules\Wiki\Models\WikiPermission;
-use App\Modules\Wiki\Services\WikiService;
-use App\Modules\Wiki\Services\WikiPermissionService;
-use App\Modules\Tags\Models\Tag;
+use App\Modules\Messages\Models\Conversation;
+use App\Modules\Messages\Models\Message;
+use App\Modules\Messages\Services\ConversationService;
+use App\Modules\Messages\Services\MessageService;
 use App\Modules\Users\Models\User;
+use App\Modules\Notifications\Services\NotificationService;
 
-class ModuleServiceProvider extends BaseModuleServiceProvider
+class ModuleServiceProvider
 {
     public function register(Container $container): void
     {
-        parent::register($container);
-
         // === МОДЕЛИ ===
-        $container->singleton(WikiPage::class, function (Container $c) {
-            return new WikiPage(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
-        });
-
-        $container->singleton(WikiRevision::class, function (Container $c) {
-            return new WikiRevision(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
-        });
-
-        $container->singleton(WikiPermission::class, function (Container $c) {
-            return new WikiPermission(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
-        });
-
-        // === СЕРВИСЫ ===
         
-        // ✅ WikiService: 5 зависимостей
-        $container->singleton(WikiService::class, function (Container $c) {
-            return new WikiService(
-                $c->get(WikiPage::class),
-                $c->get(WikiRevision::class),
-                $c->get(Session::class),
-                $c->get(Audit::class),
-                $c->get(EventDispatcher::class)
+        $container->singleton(Conversation::class, function(Container $c) {
+            return new Conversation(
+                $c->get(Database::class),
+                $c->get(Logger::class)
             );
         });
+        
+        $container->singleton(Message::class, function(Container $c) {
+            return new Message(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
+        
+        // === СЕРВИСЫ ===
 
-        // ✅ WikiPermissionService: 5 зависимостей
-        $container->singleton(WikiPermissionService::class, function (Container $c) {
-            return new WikiPermissionService(
-                $c->get(WikiPermission::class),
-                $c->get(Tag::class),
+        $container->singleton(ConversationService::class, function (Container $c) {
+            return new ConversationService(
+                $c->get(Conversation::class),
                 $c->get(User::class),
-                $c->get(Session::class),
-                $c->get(Audit::class)
+                $c->get(Session::class)
             );
         });
-    }
 
-    public function boot(): void
-    {
-        // Регистрация слушателей событий, если есть
+        $container->singleton(MessageService::class, function (Container $c) {
+            return new MessageService(
+                $c->get(Message::class),
+                $c->get(Conversation::class),
+                $c->get(NotificationService::class)
+            );
+        });
     }
 }

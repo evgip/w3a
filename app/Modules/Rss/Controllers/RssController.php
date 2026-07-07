@@ -1,5 +1,4 @@
 <?php
-// app/Modules/Rss/Controllers/RssController.php
 
 declare(strict_types=1);
 
@@ -9,7 +8,6 @@ use App\Core\Controller;
 use App\Core\Exceptions\NotFoundException;
 use App\Modules\Rss\Services\RssService;
 use App\Modules\Stories\Services\StoryFilterService;
-use App\Modules\Stories\Models\Story;
 use App\Modules\Comments\Models\Comment;
 use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Users\Models\User;
