@@ -48,7 +48,7 @@ class StoriesController extends Controller
         $storyIds = array_column($stories, 'id');
         $newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
 
-        // ✅ Получаем данные для голосования через общий метод
+        // Получаем данные для голосования через общий метод
         $currentUserId = Auth::check() ? Auth::id() : 0;
         $votingContext = $this->getVotingContext($currentUserId);
         
@@ -64,6 +64,19 @@ class StoriesController extends Controller
         // Формируем заголовок и OG-данные
         $pageData = $this->buildIndexPageData($tagslug, $domain);
 
+		$rssFeed = [
+			'title' => 'Новые истории',
+			'url' => '/rss',
+		];
+
+		// Если есть фильтр по тегу
+		if ($tagslug) {
+			$rssFeed = [
+				'title' => 'Тег #' . e($tagInfo['name'] ?? $tagslug),
+				'url' => '/t/' . e($tagslug) . '/rss',
+			];
+		}
+
         $this->render('index', array_merge([
             'stories' => $stories,
             'currentPage' => $currentPage,
@@ -76,6 +89,7 @@ class StoriesController extends Controller
             'isAdmin' => Auth::isAdmin(),
             'canUserDownvote' => $votingContext['canDownvote'],
             'currentVotes' => $currentVotes,
+			'rssFeed' => $rssFeed,
         ], $pageData));
     }
     
@@ -94,6 +108,14 @@ class StoriesController extends Controller
         }
 
         $commentsTree = $this->service(StoryFilterService::class)->getCommentsTree($storyId);
+		
+		// Получаем ТЕКУЩУЮ отметку прочтения (до обновления)
+		$currentUserId = Auth::check() ? Auth::id() : 0;
+		$readRibbonModel = $this->container->get(\App\Modules\Stories\Models\ReadRibbon::class);
+		$ribbonData = $readRibbonModel->getForStories($currentUserId, [$storyId]);
+		$lastReadCommentId = $ribbonData[$storyId] ?? 0;
+
+		// Теперь обновляем ленту (сдвигает отметку до последнего комментария)
         $newCount = $this->service(ReadRibbonService::class)->handleStoryView($storyId);
 
         $suggestionService = $this->service(SuggestionService::class);
@@ -106,7 +128,7 @@ class StoriesController extends Controller
         $storyModel = $this->container->get(Story::class);
         $currentTagIds = $storyModel->getStoryTagIds($storyId);
 
-        // ✅ Получаем данные для голосования через общий метод
+        // Получаем данные для голосования через общий метод
         $currentUserId = Auth::check() ? Auth::id() : 0;
         $votingContext = $this->getVotingContext($currentUserId);
         
@@ -143,11 +165,16 @@ class StoriesController extends Controller
             'article:author' => $ogData['author_url'],
         ]);
 
+		$savedModel = $this->container->get(\App\Modules\Saved\Models\SavedStory::class);
+		$isStorySaved = $currentUserId > 0 ? $savedModel->isSaved($currentUserId, $storyId) : false;
+
+
         $this->render('show', [
             'title' => $story['title'],
             'story' => $story,
             'commentsTree' => $commentsTree,
             'newCount' => $newCount,
+			'lastReadCommentId' => $lastReadCommentId, 
             'activeSuggestions' => $activeSuggestions,
             'changeLog' => $changeLog,
             'allTags' => $allTags,
@@ -160,6 +187,7 @@ class StoriesController extends Controller
             'currentStoryVote' => $currentStoryVote,
             'currentCommentVotes' => $currentCommentVotes,
             'userSuggestionsCount' => $userSuggestionsCount,
+			'isStorySaved' => $isStorySaved,
         ]);
     }
 
@@ -199,7 +227,7 @@ class StoriesController extends Controller
             $this->redirectBack('/');
         }
 
-        $this->redirectBack('/stories/create');
+        $this->redirectBack('/story/' . $storyId);
     }
     
     // =========================================================================
@@ -251,10 +279,11 @@ class StoriesController extends Controller
             'tags' => $this->request->post('tags', []),
             'user_is_following' => $this->request->post('user_is_following') !== null ? 1 : 0,
         ];
-
+ 
         $this->service(StoryService::class)->updateStory($storyId, $data);
 
         $this->container->get(Session::class)->flash('success', 'Публикация успешно отредактирована.');
+
         $this->redirectBack('/story/' . $storyId);
     }
     
@@ -514,6 +543,10 @@ class StoriesController extends Controller
 			'canUserDownvote' => $votingContext['canDownvote'],
 			'currentVotes' => $currentVotes,
 			'title' => 'Публикации пользователя ' . e($username),
+			'rssFeed' => [
+				'title' => 'Публикации ' . e($username),
+				'url' => '/u/' . e($username) . '/rss',
+			],
 		]);
 	}
 }

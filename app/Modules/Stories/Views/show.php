@@ -179,14 +179,28 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
                     <?php endif; ?>
                 <?php endif; ?>
 
-                <?php if ($isAuthor): ?> <br><br>
-                    <form method="POST" action="/story/<?= $story['id'] ?>/follow" class="d-inline">
-                        <?= csrf_field() ?>
-                        <button type="submit" class="btn btn-sm <?= $story['user_is_following'] ? 'btn-primary' : 'btn-outline-primary' ?>">
-                            <?= $story['user_is_following'] ? '🔔 Вы подписаны' : '🔕 Подписаться на ответы' ?>
-                        </button>
-                    </form>
-                <?php endif; ?>
+                 <div class="story_btn">
+
+					<?php if ($isAuthor): ?>  
+						<form method="POST" action="/story/<?= $story['id'] ?>/follow" class="d-inline">
+							<?= csrf_field() ?>
+							<button type="submit" class="btn btn-sm <?= $story['user_is_following'] ? 'btn-danger' : 'btn-outline-primary' ?>">
+								<?= $story['user_is_following'] ? '🔔 Вы подписаны' : '🔕 Подписаться на ответы' ?>
+							</button>
+						</form>
+					<?php endif; ?>
+
+
+					<?php if ($currentUserId > 0): ?>
+						<form method="POST" action="/saved/toggle/<?= (int)$story['id'] ?>" class="d-inline">
+							<?= csrf_field() ?>
+							<button type="submit" class="btn <?= ($isStorySaved ?? false) ? 'btn-danger' : '' ?>">
+								<?= ($isStorySaved ?? false) ? '🔖 В закладках' : '🔖 В закладки' ?>
+							</button>
+						</form>
+					<?php endif; ?>
+				</div>
+
 
                 <?php if ($showMarkReadButton): ?> <br><br>
                     <form action="/story/<?= (int)$story['id'] ?>/mark-read" method="POST" style="display:inline">
@@ -196,7 +210,12 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
                         </button>
                     </form>
                 <?php endif; ?>
-            </div>
+            
+
+
+ 
+
+ </div>
 
         </div>
     </li>
@@ -242,7 +261,7 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
 <?php else: ?>
 
     <?php
-    $renderTree = function (int $parentId) use (&$renderTree, $commentsTree, $currentUserId, $isAdmin, $isModerator, $canUserDownvote, $isAuthor, $currentCommentVotes) {
+    $renderTree = function (int $parentId) use (&$renderTree, $commentsTree, $currentUserId, $isAdmin, $isModerator, $canUserDownvote, $isAuthor, $currentCommentVotes, $lastReadCommentId) {
         if (!isset($commentsTree[$parentId])) {
             return;
         }
@@ -252,7 +271,7 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
                 <?php
                 $commentId = (int)$comment['id'];
                 $isCommentDeleted = !empty($comment['deleted_at']);
-                // ✅ Получаем голос за комментарий из переданного массива
+                // Получаем голос за комментарий из переданного массива
                 $currentCommentVote = $currentCommentVotes[$commentId] ?? null;
                 ?>
                 
@@ -268,6 +287,7 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
 					'showCollapseToggle' => true,
 					'renderTree' => $renderTree,
 					'commentsTree' => $commentsTree,
+					'lastReadCommentId' => $lastReadCommentId ?? 0,
 				]); ?>
 			
             <?php endforeach; ?>

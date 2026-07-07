@@ -20,7 +20,10 @@ $isOwner = ((int)$comment['user_id'] === $currentUserId);
 // Опциональные параметры с дефолтами
 $showStoryContext = $showStoryContext ?? false;
 $showCollapseToggle = $showCollapseToggle ?? true;
-$isNew = $isNew ?? false;
+
+// Логика подсветки: комментарий новый, если его ID больше отметки прочтения
+$isNew = $lastReadCommentId > 0 && $commentId > $lastReadCommentId;
+
 ?>
 
 <li class="comment comment-thread <?= $isDeleted ? 'deleted' : '' ?> <?= $isNew ? 'is-new' : '' ?>" 

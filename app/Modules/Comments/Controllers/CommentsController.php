@@ -77,7 +77,11 @@ class CommentsController extends Controller
 			'isModerator' => Auth::isModerator(),
 			'canDownvote' => $canDownvote,
 			'currentCommentVotes' => $currentCommentVotes,
-			'title' => 'Последние комментарии'
+			'title' => 'Последние комментарии',
+			'rssFeed' => [
+				'title' => 'Новые комментарии',
+				'url' => '/comments/rss',
+			],
 		]);
 	}
 

@@ -51,3 +51,18 @@
 .comment-thread.deleted {
     opacity: 0.6;
 }
+
+.comment.is-new {
+    border-left: 3px solid #ff9800; /* оранжевый акцент */
+    background-color: #fff8e1;      /* лёгкий тёплый фон */
+}
+
+.comment.is-new .comment-header {
+    font-weight: 600;
+    color: #000;
+}
+
+/* При наведении фон становится чуть ярче для интерактивности */
+.comment.is-new:hover {
+    background-color: #ffecb3;
+}
