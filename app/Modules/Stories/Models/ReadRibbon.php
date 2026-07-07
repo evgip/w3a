@@ -117,46 +117,56 @@ class ReadRibbon extends Model
         );
     }
 
-    /**
-     * Пакетный подсчёт количества новых комментариев для списка историй
-     * Один эффективный запрос вместо N+1
-     *
-     * @param int   $userId   ID пользователя
-     * @param array $storyIds Список ID историй
-     * @return array<int, int> story_id => количество новых комментариев
-     */
-    public function getNewCommentsCounts(int $userId, array $storyIds): array
-    {
-        if ($userId <= 0 || empty($storyIds)) {
-            return [];
-        }
+	/**
+	 * Пакетный подсчёт количества новых комментариев для списка историй
+	 * Один эффективный запрос вместо N+1
+	 * @param int   $userId        ID пользователя
+	 * @param array $storyIds      Список ID историй
+	 * @param array $mutedUserIds  Список ID замьюченных пользователей
+	 * @return array<int, int>     story_id => количество новых комментариев
+	 */
+	public function getNewCommentsCounts(int $userId, array $storyIds, array $mutedUserIds = []): array
+	{
+		if ($userId <= 0 || empty($storyIds)) {
+			return [];
+		}
 
-        $placeholders = implode(',', array_fill(0, count($storyIds), '?'));
+		$storyPlaceholders = implode(',', array_fill(0, count($storyIds), '?'));
 
-        // LEFT JOIN с read_ribbons, чтобы учесть истории, которые пользователь ещё не открывал
-        // Для таких историй last_read_comment_id = 0, значит все комментарии — новые
-        $sql = "SELECT 
-                    s.id AS story_id,
-                    COUNT(c.id) AS new_count
-                FROM `stories` s
-                LEFT JOIN `read_ribbons` rr 
-                    ON rr.story_id = s.id AND rr.user_id = ?
-                LEFT JOIN `comments` c 
-                    ON c.story_id = s.id 
-                    AND c.id > COALESCE(rr.last_read_comment_id, 0)
-                    AND c.deleted_at IS NULL
-                WHERE s.id IN ($placeholders)
-                GROUP BY s.id";
+		$sql = "SELECT 
+					s.id AS story_id,
+					COUNT(c.id) AS new_count
+				FROM `stories` s
+				LEFT JOIN `read_ribbons` rr 
+					ON rr.story_id = s.id AND rr.user_id = ?
+				LEFT JOIN `comments` c 
+					ON c.story_id = s.id 
+					AND c.id > COALESCE(rr.last_read_comment_id, 0)
+					AND c.deleted_at IS NULL";
 
-        $stmt = $this->db->query($sql, array_merge([$userId], $storyIds));
+		$bindings = [$userId];
 
-        $result = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $result[(int)$row['story_id']] = (int)$row['new_count'];
-        }
+		// Исключаем комментарии от замьюченных пользователей
+		if (!empty($mutedUserIds)) {
+			$mutedPlaceholders = implode(',', array_fill(0, count($mutedUserIds), '?'));
+			$sql .= " AND c.user_id NOT IN ({$mutedPlaceholders})";
+			$bindings = array_merge($bindings, $mutedUserIds);
+		}
 
-        return $result;
-    }
+		$sql .= " WHERE s.id IN ({$storyPlaceholders})
+				GROUP BY s.id";
+
+		$bindings = array_merge($bindings, $storyIds);
+
+		$stmt = $this->db->query($sql, $bindings);
+
+		$result = [];
+		foreach ($stmt->fetchAll() as $row) {
+			$result[(int)$row['story_id']] = (int)$row['new_count'];
+		}
+
+		return $result;
+	}
 
     /**
      * Подсчёт новых комментариев для одной истории

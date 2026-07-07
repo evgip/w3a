@@ -1,6 +1,4 @@
 <?php
-// app/Modules/Comments/Views/index.php
-
 $currentUserId = $currentUserId ?? 0;
 $isAdmin = $isAdmin ?? false;
 $isModerator = $isModerator ?? false;
@@ -20,6 +18,7 @@ $comments = $comments ?? [];
             <?php 
             $dividerShown = false;
             foreach ($comments as $comment): 
+                // Определяем новый комментарий по timestamp
                 $isNew = $lastReadAt && strtotime($comment['created_at']) > strtotime($lastReadAt);
                 $commentId = (int)$comment['id'];
                 $currentVote = $currentCommentVotes[$commentId] ?? null;
@@ -44,7 +43,8 @@ $comments = $comments ?? [];
                     'currentVote' => $currentVote,
                     'showStoryContext' => true,
                     'showCollapseToggle' => false,
-                    'isNew' => $isNew,
+                    'lastReadAt' => $lastReadAt, // Передаём timestamp
+                    'isNew' => $isNew, // Передаём вычисленное значение
                 ]); ?>
                 
             <?php endforeach; ?>

@@ -10,6 +10,7 @@ use App\Modules\Stories\Models\ReadRibbon;
 use App\Modules\Origins\Models\Domain;
 use App\Modules\Tags\Models\TagFilter;
 use App\Modules\Auth\Services\Auth;
+use App\Modules\Muted\Services\MuteService;
 
 /**
  * Сервис для фильтрации и получения списков историй.
@@ -19,6 +20,7 @@ class StoryFilterService
     private Story $storyModel;
     private Domain $domainModel;
     private Container $container;
+	private MuteService $muteService;
 
     /**
      * Конструктор с инъекцией зависимостей.
@@ -30,11 +32,12 @@ class StoryFilterService
      * @param Domain $domainModel Модель доменов
      * @param Container $container DI-контейнер
      */
-    public function __construct(Story $storyModel, Domain $domainModel, Container $container)
+    public function __construct(Story $storyModel, Domain $domainModel, Container $container, ?MuteService $muteService = null)
     {
         $this->storyModel = $storyModel;
         $this->domainModel = $domainModel;
         $this->container = $container;
+		$this->muteService = $muteService;
     }
 
     /**
@@ -57,8 +60,9 @@ class StoryFilterService
     {
         $showDeleted = Auth::isAdmin();
         $excludeTagIds = $this->getUserExcludedTags();
+		$mutedUserIds = $this->getMutedUserIds();  
 
-        return $this->storyModel->getFeed($perPage, $offset, $tagslug, $showDeleted, $domain, $excludeTagIds, $sort, $author);
+        return $this->storyModel->getFeed($perPage, $offset, $tagslug, $showDeleted, $domain, $excludeTagIds, $sort, $author, $mutedUserIds);
     }
 
     /**
@@ -71,7 +75,8 @@ class StoryFilterService
     ): int
     {
         $excludeTagIds = $this->getUserExcludedTags();
-        return $this->storyModel->getTotalCount($tagname, $domain, $excludeTagIds, $author);
+		$mutedUserIds = $this->getMutedUserIds(); 
+        return $this->storyModel->getTotalCount($tagname, $domain, $excludeTagIds, $author, $mutedUserIds);
     }
 
     /**
@@ -80,6 +85,15 @@ class StoryFilterService
     public function getCommentsTree(int $storyId): array
     {
         $flatComments = $this->storyModel->getCommentsForStory($storyId);
+		$mutedUserIds = $this->getMutedUserIds();
+
+		// Фильтруем комментарии от замьюченных пользователей
+		if (!empty($mutedUserIds)) {
+			$flatComments = array_filter($flatComments, function($comment) use ($mutedUserIds) {
+				return !in_array((int)$comment['user_id'], $mutedUserIds, true);
+			});
+			$flatComments = array_values($flatComments); // переиндексируем
+		}
 
         // Добавляем confidence_score к каждому комментарию, если его нет
         foreach ($flatComments as &$comment) {
@@ -148,16 +162,25 @@ class StoryFilterService
      * @param array $storyIds Массив ID историй
      * @return array Массив [story_id => count]
      */
-    public function getNewCommentsCounts(array $storyIds): array
-    {
-        if (!Auth::check() || empty($storyIds)) {
-            return [];
-        }
+	public function getNewCommentsCounts(array $storyIds): array
+	{
+		if (!Auth::check() || empty($storyIds)) {
+			return [];
+		}
 
-        // ✅ Получаем модель из контейнера вместо new ReadRibbon()
-        $readRibbon = $this->container->get(ReadRibbon::class);
-        return $readRibbon->getNewCommentsCounts(Auth::id(), array_map('intval', $storyIds));
-    }
+		$readRibbon = $this->container->get(ReadRibbon::class);
+		
+		// Получаем замьюченных
+		$mutedUserIds = $this->getMutedUserIds();
+		
+		return $readRibbon->getNewCommentsCounts(
+			Auth::id(), 
+			array_map('intval', $storyIds),
+			$mutedUserIds // Передаём в модель
+		);
+	}
+
+
 
     /**
      * Получает одну историю с информацией об авторе.
@@ -205,4 +228,15 @@ class StoryFilterService
             'author_url' => route('user.profile', ['username' => $story['author_name']]),
         ];
     }
+	
+	/**
+	 * Получить ID замьюченных пользователей
+	 */
+	private function getMutedUserIds(): array
+	{
+		if (!Auth::check() || $this->muteService === null) {
+			return [];
+		}
+		return $this->muteService->getMutedUserIds(Auth::id());
+	}
 }

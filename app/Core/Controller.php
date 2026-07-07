@@ -254,7 +254,7 @@ abstract class Controller
 
     protected function renderBreadcrumbs(array $items): string
     {
-        $html = '<nav class="breadcrumb" aria-label="breadcrumb"><ol>';
+        $html = '<nav aria-label="breadcrumb"><ol class="breadcrumb">';
         foreach ($items as $item) {
             $label = $item['label'] ?? $item['title'] ?? '';
             if (isset($item['url'])) {

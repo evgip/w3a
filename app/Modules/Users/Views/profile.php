@@ -29,14 +29,22 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
         
         <span class="profile-status">Активный пользователь</span>
 
-        <?php if (!$isOwnProfile && $currentUserId > 0): ?>
-            <div class="profile-message-btn">
-                <form action="<?= route('messages.start', ['userId' => $profileUser['id']]) ?>" method="POST">
-                    <?= csrf_field() ?>
-                    <button type="submit">✉️ Написать сообщение</button>
-                </form>
-            </div>
-        <?php endif; ?>
+		<?php if (!$isOwnProfile && $currentUserId > 0): ?>
+			<div class="profile-actions">
+				<form action="<?= route('messages.start', ['userId' => $profileUser['id']]) ?>" method="POST" class="d-inline">
+					<?= csrf_field() ?>
+					<button type="submit">✉️ Написать сообщение</button>
+				</form>
+
+				<form action="/mute/toggle/<?= (int)$profileUser['id'] ?>" method="POST" class="d-inline">
+					<?= csrf_field() ?>
+					<button type="submit" class="btn btn-sm <?= $isMuted ? 'btn-warning' : 'btn-outline-secondary' ?>"
+							title="<?= $isMuted ? 'Размьютить' : 'Скрыть истории и комментарии этого пользователя' ?>">
+						<?= $isMuted ? '🔊 Размьютить' : '🔇 Замьютить' ?>
+					</button>
+				</form>
+			</div>
+		<?php endif; ?>
 		
 		<?php if (\App\Modules\Auth\Services\Auth::isModerator() && $profileUser['id'] !== \App\Modules\Auth\Services\Auth::id()): ?>
 			<div class="mod-actions">

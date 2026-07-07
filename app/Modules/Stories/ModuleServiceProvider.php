@@ -26,6 +26,7 @@ use App\Modules\Stories\Services\StoryValidator;
 use App\Modules\Tags\Services\TagValidator;
 use App\Modules\Origins\Models\Domain;
 use App\Modules\Notifications\Services\NotificationService;
+use App\Modules\Muted\Services\MuteService;
 
 class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
 {
@@ -75,12 +76,12 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
 			);
 		});
 
-        // ✅ ИЗМЕНЕНО: Передаём Container в StoryFilterService
         $container->singleton(StoryFilterService::class, function (Container $c) {
             return new StoryFilterService(
                 $c->get(Story::class),
                 $c->get(Domain::class),
-                $c  // ← Передаём контейнер
+                $c,
+				$c->get(MuteService::class)
             );
         });
 

@@ -1280,3 +1280,28 @@ ADD COLUMN `deleted_at` TIMESTAMP NULL DEFAULT NULL AFTER `updated_at`,
 ADD INDEX `idx_deleted_at` (`deleted_at`);
 
 ALTER TABLE users ADD COLUMN last_read_comments_at TIMESTAMP NULL DEFAULT NULL;
+
+
+CREATE TABLE `saved_stories` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT UNSIGNED NOT NULL,
+    `story_id` INT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uniq_user_story` (`user_id`, `story_id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_story_id` (`story_id`),
+    CONSTRAINT `fk_saved_stories_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_saved_stories_story` FOREIGN KEY (`story_id`) REFERENCES `stories` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `muted_users` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT UNSIGNED NOT NULL,
+    `muted_user_id` INT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uniq_user_muted` (`user_id`, `muted_user_id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_muted_user_id` (`muted_user_id`),
+    CONSTRAINT `fk_muted_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_muted_target` FOREIGN KEY (`muted_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

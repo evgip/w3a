@@ -198,7 +198,7 @@ class Notification extends Model
     /**
      * Получить уведомления пользователя с пагинацией и фильтрацией по типу
      */
-    public function getUserNotifications(int $userId, ?string $type = null, int $limit = 25, int $page = 1): array
+    public function getUserNotifications(int $userId, ?string $type = null, int $limit = 25, int $page = 1,  array $mutedUserIds = []): array
     {
         $where = "n.user_id = :user_id";
         $params = [
@@ -209,6 +209,12 @@ class Notification extends Model
             $where .= " AND n.type = :type";
             $params['type'] = $type;
         }
+
+		// Исключаем уведомления от замьюченных
+		if (!empty($mutedUserIds)) {
+			$placeholders = implode(',', array_fill(0, count($mutedUserIds), '?'));
+			$where .= " AND n.actor_id NOT IN ({$placeholders})";
+		}
 
         $sql = "
             SELECT
@@ -231,12 +237,19 @@ class Notification extends Model
             LIMIT :limit OFFSET :offset
         ";
 
-        // ✅ Используем prepare() для bindValue с LIMIT/OFFSET
+        // Используем prepare() для bindValue с LIMIT/OFFSET
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':user_id', $userId, \PDO::PARAM_INT);
         if (isset($params['type'])) {
             $stmt->bindValue(':type', $params['type']);
         }
+		
+		// Привязываем параметры замьюченных
+		$paramIndex = 1;
+		foreach ($mutedUserIds as $mutedId) {
+			$stmt->bindValue($paramIndex++, (int)$mutedId, \PDO::PARAM_INT);
+		}
+		
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->bindValue(':offset', ($page - 1) * $limit, \PDO::PARAM_INT);
         $stmt->execute();
@@ -247,28 +260,45 @@ class Notification extends Model
     /**
      * Получить количество непрочитанных уведомлений
      */
-    public function getUnreadCount(int $userId): int
-    {
-        // ✅ Используем $this->db->fetchColumn()
-        return (int)$this->db->fetchColumn("
-            SELECT COUNT(*) FROM `{$this->table}` 
-            WHERE user_id = :user_id AND is_read = 0
-        ", ['user_id' => $userId]);
-    }
+	public function getUnreadCount(int $userId, array $mutedUserIds = []): int
+	{
+		$where = "user_id = :user_id AND is_read = 0";
+		$params = ['user_id' => $userId];
+		
+		if (!empty($mutedUserIds)) {
+			$placeholders = implode(',', array_fill(0, count($mutedUserIds), '?'));
+			$where .= " AND actor_id NOT IN ({$placeholders})";
+			$params = array_merge($params, $mutedUserIds);
+		}
+
+		return (int)$this->db->fetchColumn(
+			"SELECT COUNT(*) FROM `{$this->table}` WHERE {$where}",
+			$params
+		);
+	}
 
     /**
      * Получить количество непрочитанных уведомлений по типам
      */
-    public function getUnreadCountByType(int $userId): array
-    {
-        // ✅ Используем $this->db->fetchAll()
-        return $this->db->fetchAll("
-            SELECT type, COUNT(*) as count 
-            FROM `{$this->table}` 
-            WHERE user_id = :user_id AND is_read = 0 
-            GROUP BY type
-        ", ['user_id' => $userId]);
-    }
+	public function getUnreadCountByType(int $userId, array $mutedUserIds = []): array
+	{
+		$where = "user_id = :user_id AND is_read = 0";
+		$params = ['user_id' => $userId];
+		
+		if (!empty($mutedUserIds)) {
+			$placeholders = implode(',', array_fill(0, count($mutedUserIds), '?'));
+			$where .= " AND actor_id NOT IN ({$placeholders})";
+			$params = array_merge($params, $mutedUserIds);
+		}
+
+		return $this->db->fetchAll(
+			"SELECT type, COUNT(*) as count 
+			 FROM `{$this->table}` 
+			 WHERE {$where} 
+			 GROUP BY type",
+			$params
+		);
+	}
 
     /**
      * Пометить одно уведомление как прочитанное

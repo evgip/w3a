@@ -65,12 +65,10 @@ $sortLinks = [
 
             <li class="story <?= $isStoryDeleted ? 'deleted' : '' ?>">
 
-                <!-- Голосование (1 строка вместо 20) -->
                 <?php partial('Votes::_voters', [
                     'type' => 'story',
                     'id' => (int)$story['id'],
                     'score' => (int)$story['score'],
-                    // ✅ Используем переданные данные вместо создания модели
                     'currentVoteState' => $currentVotes[$story['id']] ?? null,
                     'canDownvote' => $canUserDownvote,
                     'isLoggedIn' => $currentUserId > 0,
@@ -136,7 +134,6 @@ $sortLinks = [
                         <?php endif; ?>
                     </div>
 
-                    <!-- Метаданные (1 строка вместо 30) -->
                     <?php partial('Users::_story_meta', [
                         'story' => $story,
                         'currentUserId' => $currentUserId,

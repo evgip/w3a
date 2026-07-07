@@ -38,7 +38,8 @@ class Story extends Model
         ?string $domain = '', 
         array $excludeTagIds = [], 
         string $sort = 'hot',
-        string $author = ''
+        string $author = '',
+		array $mutedUserIds = []
     ): array
     {
         // Возвращаем tag_list как строку для обратной совместимости с шаблоном
@@ -51,6 +52,7 @@ class Story extends Model
                 LEFT JOIN `user_profiles` up ON u.id = up.user_id
                 LEFT JOIN `taggings` tg ON s.id = tg.story_id
                 LEFT JOIN `tags` t ON tg.tag_id = t.id";
+
 
         $where = [];
         $bindings = [];
@@ -73,6 +75,19 @@ class Story extends Model
             $where[] = "u.username = :author";
             $bindings[':author'] = $author;
         }
+
+		// Исключаем истории от замьюченных пользователей
+		if (!empty($mutedUserIds)) {
+			$mutedPlaceholders = [];
+			foreach ($mutedUserIds as $index => $mutedId) {
+				$paramName = ":muted_user_{$index}";
+				$mutedPlaceholders[] = $paramName;
+				$bindings[$paramName] = (int)$mutedId;
+			}
+
+			$mutedPlaceholdersStr = implode(',', $mutedPlaceholders);
+			$where[] = "s.user_id NOT IN ($mutedPlaceholdersStr)";
+		}
 
         // Генерируем именованные параметры для каждого исключаемого тега
         if (!empty($excludeTagIds)) {
@@ -170,7 +185,8 @@ class Story extends Model
             string $tagslug = '', 
             ?string $domain = '', 
             array $excludeTagIds = [],
-            string $author = ''
+            string $author = '',
+			array $mutedUserIds = []
         ): int
     {
         $sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
@@ -195,6 +211,18 @@ class Story extends Model
             $where[] = "u.username = :author";
             $bindings[':author'] = $author;
         }
+
+		if (!empty($mutedUserIds)) {
+			$mutedPlaceholders = [];
+			foreach ($mutedUserIds as $index => $mutedId) {
+				$paramName = ":muted_user_{$index}";
+				$mutedPlaceholders[] = $paramName;
+				$bindings[$paramName] = (int)$mutedId;
+			}
+
+			$mutedPlaceholdersStr = implode(',', $mutedPlaceholders);
+			$where[] = "s.user_id NOT IN ($mutedPlaceholdersStr)";
+		}
 
         // Генерируем именованные параметры для каждого исключаемого тега
         if (!empty($excludeTagIds)) {

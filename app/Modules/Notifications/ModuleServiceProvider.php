@@ -7,6 +7,7 @@ namespace App\Modules\Notifications;
 use App\Core\Container;
 use App\Core\Logger;
 use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
+use App\Modules\Muted\Services\MuteService;
 use App\Modules\Notifications\Services\NotificationService;
 use App\Modules\Comments\Models\Comment;
 use App\Modules\Users\Models\User;
@@ -14,7 +15,7 @@ use App\Modules\Users\Models\User;
 /**
  * Провайдер сервисов модуля Notifications.
  * 
- * ✅ ИЗМЕНЕНО: Не дублирует регистрацию моделей из других модулей.
+ * Не дублирует регистрацию моделей из других модулей.
  * Модели Notification, User, Comment уже зарегистрированы в своих модулях.
  */
 class ModuleServiceProvider extends BaseModuleServiceProvider
@@ -24,7 +25,7 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
         parent::register($container);
 
         // === СЕРВИСЫ ===
-        // ✅ Все зависимости уже зарегистрированы в других модулях:
+        // Все зависимости уже зарегистрированы в других модулях:
         // - Notification → Users/ModuleServiceProvider
         // - Comment → Stories/ModuleServiceProvider
         // - User → Users/ModuleServiceProvider
@@ -33,7 +34,8 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
                 $c->get(\App\Modules\Notifications\Models\Notification::class),
                 $c->get(Comment::class),
                 $c->get(User::class),
-                $c->get(Logger::class)
+                $c->get(Logger::class),
+				$c->get(MuteService::class)
             );
         });
     }

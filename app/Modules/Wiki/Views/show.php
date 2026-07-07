@@ -3,22 +3,10 @@
  * Wiki show - отображение wiki страницы
  * Дизайн в стиле Stories show
  */
- 
-$userId = \App\Modules\Auth\Services\Auth::check() ? \App\Modules\Auth\Services\Auth::id() : 0;
-$isAdmin = \App\Modules\Auth\Services\Auth::isAdmin();
-$isModerator = \App\Modules\Auth\Services\Auth::isModerator();
 
-$canEdit = false;
-$canDelete = false;
-
-if ($userId > 0) {
-    $permissionService = new \App\Modules\Wiki\Services\WikiPermissionService(
-        new \App\Modules\Wiki\Models\WikiPermission(),
-        new \App\Modules\Tags\Models\Tag()
-    );
-    $canEdit = $permissionService->canEditPage($page, $userId);
-    $canDelete = $permissionService->canDeletePage($page, $userId);
-}
+// ✅ Все данные приходят из контроллера
+$canEdit = $canEdit ?? false;
+$canDelete = $canDelete ?? false;
 ?>
 
 <?= $breadcrumbs ?>
@@ -42,16 +30,16 @@ if ($userId > 0) {
                     📅 Обновлено: <?= e(date('d.m.Y H:i', strtotime($page['updated_at']))) ?>
                 </span>
                 <span class="divider">|</span>
-                👁️ <?= $page['view_count'] ?> <?= plural($page['view_count'], ['просмотр', 'просмотра', 'просмотров']) ?>
+                👁️ <?= (int)$page['view_count'] ?> <?= plural((int)$page['view_count'], ['просмотр', 'просмотра', 'просмотров']) ?>
                 
                 <?php if ($canEdit || $canDelete): ?>
                     <span class="divider">|</span>
                     <?php if ($canEdit): ?>
-                        <a href="/t/<?= e($tag['slug']) ?>/wiki/<?= $page['id'] ?>/edit">✏️ Редактировать</a>
+                        <a href="/t/<?= e($tag['slug']) ?>/wiki/<?= (int)$page['id'] ?>/edit">✏️ Редактировать</a>
                     <?php endif; ?>
                     <?php if ($canDelete): ?>
                         <span class="divider">|</span>
-                        <form action="/t/<?= e($tag['slug']) ?>/wiki/<?= $page['id'] ?>/delete" 
+                        <form action="/t/<?= e($tag['slug']) ?>/wiki/<?= (int)$page['id'] ?>/delete" 
                               method="POST" 
                               class="inline-form js-confirm-delete"
                               data-confirm-message="Вы уверены, что хотите удалить эту страницу?"
@@ -73,8 +61,8 @@ if ($userId > 0) {
                 <?php if ($page['created_at'] != $page['updated_at']): ?>
                     <span class="divider">|</span>
                     <span class="hint">
-                        Создано: <?= dt($page['created_at'], 'd.m.Y H:i:s') ?> | 
-                        Последнее изменение: <?= dt($page['updated_at'], 'd.m.Y H:i:s') ?>
+                        Создано: <?= e(date('d.m.Y H:i', strtotime($page['created_at']))) ?> | 
+                        Последнее изменение: <?= e(date('d.m.Y H:i', strtotime($page['updated_at']))) ?>
                     </span>
                 <?php endif; ?>
             </div>

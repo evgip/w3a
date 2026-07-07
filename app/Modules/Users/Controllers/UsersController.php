@@ -61,12 +61,20 @@ class UsersController extends Controller
         $stats = $this->container->get(User::class)->getProfileStats((int)$user['id']);
         $userKarma = $this->container->get(User::class)->getUserKarma((int)$user['id']);
 
+		// Передаём статус мьюта в шаблон
+		$isMuted = false;
+		if (Auth::check() && (int)$user['id'] !== Auth::id()) {
+			$muteService = $this->service(\App\Modules\Muted\Services\MuteService::class);
+			$isMuted = $muteService->isMuted(Auth::id(), (int)$user['id']);
+		}
+
         $this->render('profile', [
             'title' => 'Профиль пользователя ' . e($user['username']),
             'profileUser' => $user,
             'storiesCount' => $stats['stories_count'] ?? 0,
             'commentsCount' => $stats['comments_count'] ?? 0,
-            'userKarma' => $userKarma ?? 0
+            'userKarma' => $userKarma ?? 0,
+			'isMuted' => $isMuted,
         ]);
     }
 

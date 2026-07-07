@@ -1209,6 +1209,157 @@ a.navbar-logo:hover { opacity: 0.8; }
     border-bottom: none;
 }
 
+/* ---------- Хлебные крошки (Breadcrumb) ---------- */
+.breadcrumb {
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;            /* расстояние между элементами */
+  font-size: 0.95rem;
+}
+
+.breadcrumb li {
+  display: contents;       /* чтобы стилизовать ссылки, а не li */
+}
+
+.breadcrumb a {
+  color: var(--opacity-fg-59);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover,
+.breadcrumb a:focus {
+  color: #007bff;          /* цвет при наведении/фокусе */
+  text-decoration: underline;
+}
+
+/* разделитель между пунктами */
+.breadcrumb li:not(:last-child)::after {
+  content: "/";            /* символ: ›, >, /, → — на выбор */
+  margin-left: 0.5rem;
+  color: var(--opacity-fg-63);
+}
+
+/* убираем разделитель после последнего элемента */
+.breadcrumb li:last-child::after {
+  content: none;
+}
+
+/* стиль для текущего пункта (не ссылка) */
+.breadcrumb [aria-current="page"] {
+  color: var(--color-fg-accent);
+}
+
+/* ---------- Профиль пользователя ---------- */
+.profile-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5em;
+    margin-bottom: 1.5em;
+}
+
+.profile-avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid var(--color-box-border);
+    flex-shrink: 0;
+}
+
+/* ✅ ВОЗВРАЩЁННЫЙ КЛАСС */
+.profile-avatar-placeholder-large {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    height: 100px;
+    border-radius: 3px;
+    background-color: var(--color-fg-accent);
+    color: white;
+    font-size: 3em;
+    font-weight: bold;
+    border: 1px solid var(--color-box-border);
+    flex-shrink: 0;
+}
+
+.profile-info {
+    flex-grow: 1;
+}
+
+.profile-username {
+    margin: 0 0 0.3em 0;
+    font-size: 1.5em;
+}
+
+.profile-status {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    background-color: var(--color-box-bg-shaded);
+    border: 1px solid var(--color-box-border);
+    border-radius: 3px;
+    font-size: 0.85em;
+    color: var(--opacity-fg-67);
+}
+
+.profile-bio {
+    margin: 1em 0;
+    padding: 1em;
+    background-color: var(--color-box-bg-shaded);
+    border-left: 3px solid var(--color-fg-shape);
+    font-style: italic;
+    color: var(--opacity-fg-75);
+}
+
+.profile-details {
+    width: 100%;
+    max-width: 600px;
+    border-collapse: collapse;
+    margin-top: 1.5em;
+}
+
+.profile-details td {
+    padding: 0.5em 0;
+    border-bottom: 1px solid var(--color-box-bg-shaded);
+}
+
+.profile-details td:first-child {
+    font-weight: bold;
+    color: var(--opacity-fg-67);
+    width: 200px;
+    vertical-align: top;
+}
+
+.profile-details td:last-child {
+    color: var(--color-fg);
+}
+
+.profile-karma-positive {
+    color: var(--color-fg-affirmative);
+    font-weight: bold;
+}
+
+.profile-karma-negative {
+    color: var(--color-fg-negative);
+    font-weight: bold;
+}
+
+.profile-karma-neutral {
+    color: var(--opacity-fg-67);
+}
+
+.profile-id-subtext {
+    color: var(--opacity-fg-59);
+    font-size: 0.85em;
+    margin-left: 0.5em;
+}
+
+.profile-message-btn {
+    margin-top: 0.5em;
+}
+
 /* ---------- Переключатель темы ---------- */
 .theme-toggle {
     background: none;

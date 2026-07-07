@@ -21,8 +21,15 @@ $isOwner = ((int)$comment['user_id'] === $currentUserId);
 $showStoryContext = $showStoryContext ?? false;
 $showCollapseToggle = $showCollapseToggle ?? true;
 
-// Логика подсветки: комментарий новый, если его ID больше отметки прочтения
-$isNew = $lastReadCommentId > 0 && $commentId > $lastReadCommentId;
+// Логика: используем переданный $isNew или вычисляем по $lastReadAt
+if (!isset($isNew)) {
+    // Для страницы истории — используем lastReadCommentId
+    $lastReadCommentId = $lastReadCommentId ?? 0;
+    $isNew = $lastReadCommentId > 0 && $commentId > $lastReadCommentId;
+} else {
+    // Для глобальной ленты — $isNew уже вычислен в шаблоне
+    $isNew = (bool)$isNew;
+}
 
 ?>
 

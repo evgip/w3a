@@ -45,9 +45,9 @@ class WikiController extends Controller
             'canSeeDeleted' => $canSeeDeleted,
             'request' => $this->request,
             'breadcrumbs' => $this->renderBreadcrumbs([
-                ['url' => '/', 'label' => 'Главная'],
+                ['url' => '/', 'label' => 'Главная2'],
                 ['url' => "/t/{$tagslug}", 'label' => "#{$tagData['name']}", 'active_pattern' => "/t/{$tagslug}"],
-                ['url' => "/t/{$tagslug}/wiki", 'label' => 'Wiki'],
+                ['label' => 'Wiki'],
             ])
         ]);
     }
@@ -55,30 +55,44 @@ class WikiController extends Controller
     // =========================================================================
     // ПРОСМОТР WIKI СТРАНИЦЫ
     // =========================================================================
+	public function show(string $tagslug, string $slug): void
+	{
+		$tagData = $this->getTagOr404($tagslug);
 
-    public function show(string $tagslug, string $slug): void
-    {
-        $tagData = $this->getTagOr404($tagslug);
+		$page = $this->wikiService()->getPageBySlug($slug, $tagData['id']);
+		
+		if (!$page) {
+			throw new NotFoundException('Wiki страница не найдена');
+		}
 
-        $page = $this->wikiService()->getPageBySlug($slug, $tagData['id']);
-        
-        if (!$page) {
-            throw new NotFoundException('Wiki страница не найдена');
-        }
+		// Увеличиваем счётчик просмотров
+		$this->container->get(WikiPage::class)->incrementViewCount((int)$page['id']);
 
-        $this->render('show', [
-            'title' => $page['title'] . ' — Wiki',
-            'tag' => $tagData,
-            'page' => $page,
-            'request' => $this->request,
-            'breadcrumbs' => $this->renderBreadcrumbs([
-                ['url' => '/', 'label' => 'Главная'],
-                ['url' => "/t/{$tagslug}", 'label' => "#{$tagData['name']}", 'active_pattern' => "/t/{$tagslug}"],
-                ['url' => "/t/{$tagslug}/wiki", 'label' => 'Wiki', 'active_pattern' => "/t/{$tagslug}/wiki"],
-                ['url' => "#", 'label' => $page['title']],
-            ])
-        ]);
-    }
+		// Вычисляем права в контроллере
+		$userId = Auth::check() ? Auth::id() : 0;
+		$canEdit = false;
+		$canDelete = false;
+		
+		if ($userId > 0) {
+			$canEdit = $this->permissionService()->canEditPage($page, $userId);
+			$canDelete = $this->permissionService()->canDeletePage($page, $userId);
+		}
+
+		$this->render('show', [
+			'title' => $page['title'] . ' — Wiki',
+			'tag' => $tagData,
+			'page' => $page,
+			'canEdit' => $canEdit,
+			'canDelete' => $canDelete,
+			'request' => $this->request,
+			'breadcrumbs' => $this->renderBreadcrumbs([
+				['url' => '/', 'label' => 'Главная'],
+				['url' => "/t/{$tagslug}", 'label' => "#{$tagData['name']}", 'active_pattern' => "/t/{$tagslug}"],
+				['url' => "/t/{$tagslug}/wiki", 'label' => 'Wiki', 'active_pattern' => "/t/{$tagslug}/wiki"],
+				['label' => $page['title']],
+			])
+		]);
+	}
 
     // =========================================================================
     // СОЗДАНИЕ WIKI СТРАНИЦЫ

@@ -108,6 +108,8 @@
 							<a href="<?= route('account.settings') ?>" class="dropdown-menu-item">⚙️ <?= __('settings') ?></a>
 							
 							<a href="<?= route('saved.index') ?>" class="dropdown-menu-item">🔖 Закладки</a>
+							
+							<a href="/muted" class="dropdown-menu-item">🔇 Замьюченные</a>
 
 							<?php if (!empty($currentUser['isAdmin'])): ?>
 								<div class="dropdown-divider"></div>
