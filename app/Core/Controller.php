@@ -148,15 +148,17 @@ abstract class Controller
     /**
      * Получить количество непрочитанных уведомлений
      */
-    private function getUnreadNotificationsCount(int $userId): int
-    {
-        try {
-            $notifModel = $this->container->get(\App\Modules\Notifications\Models\Notification::class);
-            return $notifModel->getUnreadCount($userId);
-        } catch (\Throwable $e) {
-            return 0;
-        }
-    }
+	private function getUnreadNotificationsCount(int $userId): int
+	{
+		try {
+			$notifModel = $this->container->get(Notification::class);
+			$muteService = $this->container->get(\App\Modules\Muted\Services\MuteService::class);
+			$mutedUserIds = $muteService->getMutedUserIds($userId);
+			return $notifModel->getUnreadCount($userId, $mutedUserIds);
+		} catch (\Throwable $e) {
+			return 0;
+		}
+	}
 
     /**
      * Получить количество ожидающих флагов
