@@ -195,80 +195,75 @@ class Notification extends Model
         return $this->db->fetchOne($sql, $params);
     }
 
-    /**
-     * Получить уведомления пользователя с пагинацией и фильтрацией по типу
-     */
-    public function getUserNotifications(int $userId, ?string $type = null, int $limit = 25, int $page = 1,  array $mutedUserIds = []): array
-    {
-        $where = "n.user_id = :user_id";
-        $params = [
-            'user_id' => $userId,
-        ];
+	/**
+	 * Получить уведомления пользователя с пагинацией и фильтрацией по типу
+	 */
+	public function getUserNotifications(int $userId, ?string $type = null, int $limit = 25, int $page = 1, array $mutedUserIds = []): array
+	{
+		$where = "n.user_id = :user_id";
+		$params = [
+			'user_id' => $userId,
+		];
 
-        if ($type && $type !== 'all') {
-            $where .= " AND n.type = :type";
-            $params['type'] = $type;
-        }
+		if ($type && $type !== 'all') {
+			$where .= " AND n.type = :type";
+			$params['type'] = $type;
+		}
 
-		// Исключаем уведомления от замьюченных
+		// Исключаем уведомления от замьюченных — используем именованные плейсхолдеры
 		if (!empty($mutedUserIds)) {
-			$placeholders = implode(',', array_fill(0, count($mutedUserIds), '?'));
-			$where .= " AND n.actor_id NOT IN ({$placeholders})";
+			$placeholders = [];
+			foreach ($mutedUserIds as $index => $mutedId) {
+				$key = 'muted_' . $index;
+				$placeholders[] = ':' . $key;
+				$params[$key] = (int)$mutedId;
+			}
+			$where .= " AND n.actor_id NOT IN (" . implode(',', $placeholders) . ")";
 		}
 
-        $sql = "
-            SELECT
-                n.*,
-                u.username as actor_name,
-                up.avatar as actor_avatar,
-                c.comment as comment_text,
-                c.story_id,
-                s.title as story_title,
-                m.message,
-                m.conversation_id
-            FROM `{$this->table}` n
-            LEFT JOIN users u ON n.actor_id = u.id
-            LEFT JOIN `user_profiles` up ON u.id = up.user_id
-            LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
-            LEFT JOIN stories s ON c.story_id = s.id
-            LEFT JOIN messages m ON n.notifiable_type = 'Message' AND n.notifiable_id = m.id
-            WHERE {$where}
-            ORDER BY n.created_at DESC
-            LIMIT :limit OFFSET :offset
-        ";
+		$params['limit'] = $limit;
+		$params['offset'] = ($page - 1) * $limit;
 
-        // Используем prepare() для bindValue с LIMIT/OFFSET
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':user_id', $userId, \PDO::PARAM_INT);
-        if (isset($params['type'])) {
-            $stmt->bindValue(':type', $params['type']);
-        }
-		
-		// Привязываем параметры замьюченных
-		$paramIndex = 1;
-		foreach ($mutedUserIds as $mutedId) {
-			$stmt->bindValue($paramIndex++, (int)$mutedId, \PDO::PARAM_INT);
-		}
-		
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->bindValue(':offset', ($page - 1) * $limit, \PDO::PARAM_INT);
-        $stmt->execute();
+		$sql = "
+			SELECT
+				n.*,
+				u.username as actor_name,
+				up.avatar as actor_avatar,
+				c.comment as comment_text,
+				c.story_id,
+				s.title as story_title,
+				m.message,
+				m.conversation_id
+			FROM `{$this->table}` n
+			LEFT JOIN users u ON n.actor_id = u.id
+			LEFT JOIN `user_profiles` up ON u.id = up.user_id
+			LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
+			LEFT JOIN stories s ON c.story_id = s.id
+			LEFT JOIN messages m ON n.notifiable_type = 'Message' AND n.notifiable_id = m.id
+			WHERE {$where}
+			ORDER BY n.created_at DESC
+			LIMIT :limit OFFSET :offset
+		";
 
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
+		return $this->db->fetchAll($sql, $params);
+	}
 
-    /**
-     * Получить количество непрочитанных уведомлений
-     */
+	/**
+	 * Получить количество непрочитанных уведомлений
+	 */
 	public function getUnreadCount(int $userId, array $mutedUserIds = []): int
 	{
 		$where = "user_id = :user_id AND is_read = 0";
 		$params = ['user_id' => $userId];
-		
+
 		if (!empty($mutedUserIds)) {
-			$placeholders = implode(',', array_fill(0, count($mutedUserIds), '?'));
-			$where .= " AND actor_id NOT IN ({$placeholders})";
-			$params = array_merge($params, $mutedUserIds);
+			$placeholders = [];
+			foreach ($mutedUserIds as $index => $mutedId) {
+				$key = 'muted_' . $index;
+				$placeholders[] = ':' . $key;
+				$params[$key] = (int)$mutedId;
+			}
+			$where .= " AND actor_id NOT IN (" . implode(',', $placeholders) . ")";
 		}
 
 		return (int)$this->db->fetchColumn(
@@ -286,9 +281,13 @@ class Notification extends Model
 		$params = ['user_id' => $userId];
 		
 		if (!empty($mutedUserIds)) {
-			$placeholders = implode(',', array_fill(0, count($mutedUserIds), '?'));
-			$where .= " AND actor_id NOT IN ({$placeholders})";
-			$params = array_merge($params, $mutedUserIds);
+			$placeholders = [];
+			foreach ($mutedUserIds as $index => $mutedId) {
+				$key = 'muted_' . $index;
+				$placeholders[] = ':' . $key;
+				$params[$key] = $mutedId;
+			}
+			$where .= " AND actor_id NOT IN (" . implode(',', $placeholders) . ")";
 		}
 
 		return $this->db->fetchAll(

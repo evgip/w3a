@@ -526,8 +526,8 @@ if (!function_exists('calculate_hotness')) {
         $epoch   = 1134316800; 
         $seconds = strtotime($createdAt) - $epoch;
         
-        // 4. Финальная формула с инверсией (отрицание)
-        $hotness = -(($sign * $order + $seconds / 45000) + $base);
+        // 4. Финальная формула с инверсией
+        $hotness = (($sign * $order + $seconds / 45000) + $base);
         
         return round($hotness, 7);
     }

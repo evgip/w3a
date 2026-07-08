@@ -140,12 +140,18 @@ class StoriesController extends Controller
             $voteModel = $this->container->get(Vote::class);
             $currentStoryVote = $voteModel->getUserVote($currentUserId, 'story', $storyId);
 
+			$allCommentIds = [];
             foreach ($commentsTree as $parentId => $comments) {
                 foreach ($comments as $comment) {
                     $commentId = (int)$comment['id'];
-                    $currentCommentVotes[$commentId] = $voteModel->getUserVote($currentUserId, 'comment', $commentId);
                 }
             }
+
+			if (!empty($allCommentIds)) {
+				$currentCommentVotes = $voteModel->getUserVotesForComments($currentUserId, $allCommentIds);
+			} else {
+				$currentCommentVotes = [];
+			}
 
             $isAdmin = Auth::isAdmin();
             $isModerator = Auth::isModerator();

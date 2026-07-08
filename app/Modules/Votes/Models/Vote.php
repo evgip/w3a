@@ -264,4 +264,42 @@ class Vote extends Model
         $userId = $this->db->fetchColumn($sql, ['id' => $id]);
         return $userId !== false && $userId !== null ? (int)$userId : null;
     }
+	
+	/**
+	 * Получить голоса пользователя за несколько комментариев одним запросом
+	 * 
+	 * @param int $userId
+	 * @param array $commentIds
+	 * @return array [comment_id => vote_value]
+	 */
+	public function getUserVotesForComments(int $userId, array $commentIds): array
+	{
+		if (empty($commentIds)) {
+			return [];
+		}
+
+		$placeholders = [];
+		$params = ['user_id' => $userId];
+		
+		foreach ($commentIds as $index => $id) {
+			$key = 'cid_' . $index;
+			$placeholders[] = ':' . $key;
+			$params[$key] = (int)$id;
+		}
+
+		$sql = "SELECT comment_id, vote_value 
+				FROM {$this->table}
+				WHERE user_id = :user_id 
+				  AND comment_id IN (" . implode(',', $placeholders) . ")
+				  AND entity_type = 'comment'";
+
+		$rows = $this->db->fetchAll($sql, $params);
+
+		$result = [];
+		foreach ($rows as $row) {
+			$result[(int)$row['comment_id']] = (int)$row['vote_value'];
+		}
+
+		return $result;
+	}
 }

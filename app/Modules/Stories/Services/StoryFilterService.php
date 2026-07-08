@@ -25,9 +25,6 @@ class StoryFilterService
     /**
      * Конструктор с инъекцией зависимостей.
      * 
-     * ✅ ИЗМЕНЕНО: Добавлен Container для получения моделей,
-     * которые создаются внутри методов (TagFilter, ReadRibbon).
-     *
      * @param Story $storyModel Модель историй
      * @param Domain $domainModel Модель доменов
      * @param Container $container DI-контейнер
@@ -79,54 +76,46 @@ class StoryFilterService
         return $this->storyModel->getTotalCount($tagname, $domain, $excludeTagIds, $author, $mutedUserIds);
     }
 
-    /**
-     * Получает комментарии для истории в виде дерева с сортировкой по Вильсону
-     */
-    public function getCommentsTree(int $storyId): array
-    {
-        $flatComments = $this->storyModel->getCommentsForStory($storyId);
+	/**
+	 * Получает комментарии для истории в виде дерева с сортировкой по Вильсону
+	 */
+	public function getCommentsTree(int $storyId): array
+	{
 		$mutedUserIds = $this->getMutedUserIds();
 
-		// Фильтруем комментарии от замьюченных пользователей
-		if (!empty($mutedUserIds)) {
-			$flatComments = array_filter($flatComments, function($comment) use ($mutedUserIds) {
-				return !in_array((int)$comment['user_id'], $mutedUserIds, true);
-			});
-			$flatComments = array_values($flatComments); // переиндексируем
+		$flatComments = $this->storyModel->getCommentsForStory($storyId, $mutedUserIds);
+
+		// Вычисляем confidence_score только если его нет в БД
+		foreach ($flatComments as &$comment) {
+			if (empty($comment['confidence_score'])) {
+				$comment['confidence_score'] = wilson_score(
+					(int)$comment['score'],
+					(int)$comment['flag_count']
+				);
+			}
+		}
+		unset($comment);
+
+		// Строим дерево (уже отсортировано благодаря SQL ORDER BY)
+		$commentsTree = [];
+		foreach ($flatComments as $comment) {
+			$parentId = $comment['parent_id'] ?? 0;
+			$commentsTree[$parentId][] = $comment;
 		}
 
-        // Добавляем confidence_score к каждому комментарию, если его нет
-        foreach ($flatComments as &$comment) {
-            if (!isset($comment['confidence_score']) || $comment['confidence_score'] == 0) {
-                $comment['confidence_score'] = wilson_score(
-                    (int)$comment['score'],
-                    (int)$comment['flag_count']
-                );
-            }
-        }
-        unset($comment);
+		foreach ($commentsTree as $parentId => &$children) {
+			usort($children, function ($a, $b) {
+				$scoreDiff = $b['confidence_score'] <=> $a['confidence_score'];
+				if ($scoreDiff !== 0) {
+					return $scoreDiff;
+				}
+				return strtotime($b['created_at']) <=> strtotime($a['created_at']);
+			});
+		}
+		unset($children);
 
-        // Строим дерево комментариев
-        $commentsTree = [];
-        foreach ($flatComments as $comment) {
-            $parentId = $comment['parent_id'] ?? 0;
-            $commentsTree[$parentId][] = $comment;
-        }
-
-        // Сортируем дочерние комментарии по confidence_score (убывание)
-        foreach ($commentsTree as $parentId => &$children) {
-            usort($children, function ($a, $b) {
-                $scoreDiff = $b['confidence_score'] <=> $a['confidence_score'];
-                if ($scoreDiff !== 0) {
-                    return $scoreDiff;
-                }
-                return strtotime($b['created_at']) <=> strtotime($a['created_at']);
-            });
-        }
-        unset($children);
-
-        return $commentsTree;
-    }
+		return $commentsTree;
+	}
 
     /**
      * Получает список забаненных доменов (в нижнем регистре).

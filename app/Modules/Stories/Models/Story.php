@@ -112,7 +112,7 @@ class Story extends Model
         $orderBy = match ($sort) {
             'new' => 's.created_at DESC',
             'top' => 's.score DESC, s.created_at DESC',
-            default => 's.hotness ASC',  // hot — по умолчанию
+            default => 's.hotness DESC',  // hot — по умолчанию
         };
 
         $sql .= " GROUP BY s.id ORDER BY {$orderBy} LIMIT :limit OFFSET :offset";
@@ -279,21 +279,43 @@ class Story extends Model
         return null;
     }
 
-    /**
-     * Выгрузить ВСЕ комментарии к истории за ОДИН запрос
-     */
-    public function getCommentsForStory(int $storyId): array
-    {
-        // Мы НЕ фильтруем тут deleted_at IS NULL, чтобы не ломать дерево (обработаем в шаблоне)
-        $sql = "SELECT c.*, u.username as author_name, up.avatar as author_avatar 
-                FROM `comments` c 
-                JOIN `users` u ON c.user_id = u.id 
-                LEFT JOIN `user_profiles` up ON u.id = up.user_id 
-                WHERE c.story_id = :story_id 
-                ORDER BY c.parent_id ASC, c.id ASC";
-        
-        return $this->db->fetchAll($sql, ['story_id' => $storyId]);
-    }
+	/**
+	 * Получить комментарии для истории с фильтрацией игнорируемых и сортировкой
+	 */
+	public function getCommentsForStory(int $storyId, array $mutedUserIds = []): array
+	{
+		$sql = "SELECT 
+					c.*,
+					u.username as author_name,
+					up.avatar as author_avatar,
+					CASE 
+						WHEN c.confidence_score > 0 THEN c.confidence_score
+						ELSE 0  -- будет вычислено в PHP, если нужно
+					END as calculated_confidence
+				FROM comments c
+				JOIN users u ON c.user_id = u.id
+				LEFT JOIN user_profiles up ON u.id = up.user_id
+				WHERE c.story_id = :story_id
+				  AND c.deleted_at IS NULL";
+		
+		$params = ['story_id' => $storyId];
+		
+		// ✅ Фильтрация игнорируемых в SQL
+		if (!empty($mutedUserIds)) {
+			$placeholders = [];
+			foreach ($mutedUserIds as $index => $mutedId) {
+				$key = 'muted_' . $index;
+				$placeholders[] = ':' . $key;
+				$params[$key] = (int)$mutedId;
+			}
+			$sql .= " AND c.user_id NOT IN (" . implode(',', $placeholders) . ")";
+		}
+		
+		// ✅ Сортировка в SQL (по parent_id для группировки, потом по score)
+		$sql .= " ORDER BY c.parent_id ASC, calculated_confidence DESC, c.created_at DESC";
+		
+		return $this->db->fetchAll($sql, $params);
+	}
 
     /**
      * Fetch an array of only the tag IDs currently bound to a specific story
@@ -324,7 +346,6 @@ class Story extends Model
             try {
                 return $this->db->execute("DELETE FROM `taggings` WHERE `story_id` = ?", [$storyId]) > 0;
             } catch (\Exception $e) {
-                // ✅ Используем $this->logger вместо статического вызова
                 if ($this->logger) {
                     $this->logger->error("Failed to clear tags: " . $e->getMessage());
                 }
@@ -333,7 +354,6 @@ class Story extends Model
         }
 
         try {
-            // ✅ Используем $this->db для транзакций
             $this->db->beginTransaction();
 
             // 1. Удаляем старые теги
@@ -423,103 +443,79 @@ class Story extends Model
     /**
      * Получить ленту историй с учётом фильтров тегов
      */
-    public function getFeedWithFilters(int $limit, int $offset, array $excludeTagIds = [], ?string $tagslug = null): array
-    {
-        $sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
-                GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list
-                FROM `stories` s
-                JOIN `users` u ON s.user_id = u.id
-                LEFT JOIN `user_profiles` up ON u.id = up.user_id 
-                LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                LEFT JOIN `tags` t ON tg.tag_id = t.id";
+	public function getFeedWithFilters(int $limit, int $offset, array $excludeTagIds = [], ?string $tagslug = null): array
+	{
+		$sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
+				GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list
+				FROM `stories` s
+				JOIN `users` u ON s.user_id = u.id
+				LEFT JOIN `user_profiles` up ON u.id = up.user_id 
+				LEFT JOIN `taggings` tg ON s.id = tg.story_id
+				LEFT JOIN `tags` t ON tg.tag_id = t.id";
 
-        $bindings = [];
-        $where = ["s.deleted_at IS NULL"];
+		$bindings = [];
+		$where = ["s.deleted_at IS NULL"];
 
-        // Исключаем истории с отфильтрованными тегами
-        if (!empty($excludeTagIds)) {
-            $placeholders = implode(',', array_fill(0, count($excludeTagIds), '?'));
-            $where[] = "s.id NOT IN (
-                SELECT DISTINCT story_id FROM taggings 
-                WHERE tag_id IN ($placeholders)
-            )";
-            $bindings = array_merge($bindings, $excludeTagIds);
-        }
+		// Исключаем истории с отфильтрованными тегами — используем именованные плейсхолдеры
+		if (!empty($excludeTagIds)) {
+			$placeholders = [];
+			foreach ($excludeTagIds as $index => $tagId) {
+				$key = 'exclude_tag_' . $index;
+				$placeholders[] = ':' . $key;
+				$bindings[$key] = $tagId;
+			}
+			$where[] = "s.id NOT IN (
+				SELECT DISTINCT story_id FROM taggings 
+				WHERE tag_id IN (" . implode(',', $placeholders) . ")
+			)";
+		}
 
-        if ($tagslug) {
-            $where[] = "t.slug = :slug";
-            $bindings['slug'] = $tagslug;
-        }
+		if ($tagslug) {
+			$where[] = "t.slug = :slug";
+			$bindings['slug'] = $tagslug;
+		}
 
-        $sql .= " WHERE " . implode(" AND ", $where);
-        $sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
+		$sql .= " WHERE " . implode(" AND ", $where);
+		$sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
 
-        $stmt = $this->db->query($sql);
+		$bindings['limit'] = $limit;
+		$bindings['offset'] = $offset;
 
-        // Привязываем параметры
-        $paramIndex = 1;
-        foreach ($excludeTagIds as $tagId) {
-            $stmt->bindValue($paramIndex++, $tagId, \PDO::PARAM_INT);
-        }
-
-        if (isset($bindings['slug'])) {
-            $stmt->bindValue(':slug', $bindings['slug']);
-        }
-
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
-
-        $stmt->execute();
-        $stories = $stmt->fetchAll();
-
-        foreach ($stories as &$story) {
-            $story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
-        }
-
-        return $stories;
-    }
+		return $this->db->fetchAll($sql, $bindings);
+	}
 
     /**
      * Получить общее количество историй с учётом фильтров
      */
-    public function getTotalCountWithFilters(array $excludeTagIds = [], ?string $tagslug = null): int
-    {
-        $sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
-                LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                LEFT JOIN `tags` t ON tg.tag_id = t.id
-                WHERE s.deleted_at IS NULL";
+	public function getTotalCountWithFilters(array $excludeTagIds = [], ?string $tagslug = null): int
+	{
+		$sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
+				LEFT JOIN `taggings` tg ON s.id = tg.story_id
+				LEFT JOIN `tags` t ON tg.tag_id = t.id
+				WHERE s.deleted_at IS NULL";
 
-        $bindings = [];
+		$bindings = [];
 
-        if (!empty($excludeTagIds)) {
-            $placeholders = implode(',', array_fill(0, count($excludeTagIds), '?'));
-            $sql .= " AND s.id NOT IN (
-                SELECT DISTINCT story_id FROM taggings 
-                WHERE tag_id IN ($placeholders)
-            )";
-            $bindings = array_merge($bindings, $excludeTagIds);
-        }
+		if (!empty($excludeTagIds)) {
+			$placeholders = [];
+			foreach ($excludeTagIds as $index => $tagId) {
+				$key = 'exclude_tag_' . $index;
+				$placeholders[] = ':' . $key;
+				$bindings[$key] = $tagId;
+			}
+			$sql .= " AND s.id NOT IN (
+				SELECT DISTINCT story_id FROM taggings 
+				WHERE tag_id IN (" . implode(',', $placeholders) . ")
+			)";
+		}
 
-        if ($tagslug) {
-            $sql .= " AND t.slug = :slug";
-            $bindings['slug'] = $tagslug;
-        }
+		if ($tagslug) {
+			$sql .= " AND t.slug = :slug";
+			$bindings['slug'] = $tagslug;
+		}
 
-        $stmt = $this->db->query($sql);
-
-        $paramIndex = 1;
-        foreach ($excludeTagIds as $tagId) {
-            $stmt->bindValue($paramIndex++, $tagId, \PDO::PARAM_INT);
-        }
-
-        if (isset($bindings['slug'])) {
-            $stmt->bindValue(':slug', $bindings['slug']);
-        }
-
-        $stmt->execute();
-
-        return (int)$stmt->fetchColumn();
-    }
+		return (int)$this->db->fetchColumn($sql, $bindings);
+	}
 
     /**
      * Атомарно изменяет счётчик комментариев.
