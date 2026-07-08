@@ -6,7 +6,7 @@ class Validator
 {
     protected array $errors = [];
     protected array $data = [];
-    protected ?Database $db;  // ✅ ДОБАВЛЕНО
+    protected ?Database $db;
 
     /**
      * ✅ Конструктор с инъекцией Database
@@ -100,8 +100,10 @@ class Validator
                         $table = substr($param, 0, $commaPos);
                         $column = substr($param, $commaPos + 1);
 
-                        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table) || 
-                            !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
+                        if (
+                            !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table) ||
+                            !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)
+                        ) {
                             throw new \InvalidArgumentException("Недопустимое имя таблицы или колонки в правиле unique");
                         }
 

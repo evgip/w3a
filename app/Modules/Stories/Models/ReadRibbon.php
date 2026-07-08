@@ -245,4 +245,62 @@ class ReadRibbon extends Model
             [$userId, $storyId]
         );
     }
+	
+	/**
+	 * Пакетная синхронизация отметок прочтения для списка историй
+	 * Находит последний комментарий для каждой истории и обновляет read_ribbons
+	 * 
+	 * @param int   $userId   ID пользователя
+	 * @param array $storyIds Список ID историй
+	 * @return void
+	 */
+	public function syncForStories(int $userId, array $storyIds): void
+	{
+		if ($userId <= 0 || empty($storyIds)) {
+			return;
+		}
+
+		try {
+			// 1. Одним запросом находим последний комментарий для каждой истории
+			$placeholders = implode(',', array_fill(0, count($storyIds), '?'));
+			
+			$sql = "SELECT story_id, COALESCE(MAX(id), 0) AS last_comment_id
+					FROM `comments`
+					WHERE `story_id` IN ({$placeholders}) 
+					  AND `deleted_at` IS NULL
+					GROUP BY `story_id`";
+
+			$stmt = $this->db->query($sql, $storyIds);
+			$lastComments = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+			if (empty($lastComments)) {
+				return;
+			}
+
+			// 2. Формируем batch UPSERT
+			$valuesPlaceholders = [];
+			$values = [];
+			
+			foreach ($lastComments as $row) {
+				$valuesPlaceholders[] = '(?, ?, ?)';
+				$values[] = $userId;
+				$values[] = (int)$row['story_id'];
+				$values[] = (int)$row['last_comment_id'];
+			}
+
+			$sql = "INSERT INTO `read_ribbons` 
+						(`user_id`, `story_id`, `last_read_comment_id`, `updated_at`) 
+					VALUES " . implode(', ', $valuesPlaceholders) . "
+					ON DUPLICATE KEY UPDATE 
+						`last_read_comment_id` = GREATEST(`last_read_comment_id`, VALUES(`last_read_comment_id`)),
+						`updated_at` = NOW()";
+
+			$this->db->query($sql, $values);
+			
+		} catch (\Exception $e) {
+			if ($this->logger) {
+				$this->logger->error("ReadRibbon::syncForStories failed: " . $e->getMessage());
+			}
+		}
+	}
 }

@@ -14,8 +14,8 @@ abstract class Controller
     protected Request $request;
     protected EventDispatcher $eventDispatcher;
     protected Container $container;
-	
-	private ?array $commonViewDataCache = null;
+
+    private ?array $commonViewDataCache = null;
 
     public function __construct(
         Request $request,
@@ -39,15 +39,15 @@ abstract class Controller
     {
         $data['csrf_token'] = $this->request->getCsrfToken();
         $data = array_merge($data, $this->getCommonViewData());
-        
+
         $calledClass = get_called_class();
         $parts = explode('\\', $calledClass);
         $moduleName = $parts[2] ?? '';
-        
+
         if (!empty($moduleName)) {
             \App\Core\Lang::loadModuleLang($moduleName);
         }
-        
+
         $modulePath = dirname(__DIR__) . "/Modules/{$moduleName}";
         $viewFile = "{$modulePath}/Views/{$viewName}.php";
         $layoutFile = "{$modulePath}/Views/layout.php";
@@ -59,7 +59,7 @@ abstract class Controller
 
         // Рендерим view-файл в отдельной области видимости
         ob_start();
-        (function() use ($data, $viewFile) {
+        (function () use ($data, $viewFile) {
             extract($data, EXTR_SKIP);
             include $viewFile;
         })();
@@ -69,14 +69,14 @@ abstract class Controller
 
         // Рендерим layout
         if (file_exists($layoutFile)) {
-            (function() use ($data, $layoutFile) {
+            (function () use ($data, $layoutFile) {
                 extract($data, EXTR_SKIP);
                 include $layoutFile;
             })();
         } else {
             $fallbackLayout = dirname(__DIR__) . '/Modules/Common/Views/layout.php';
             if (file_exists($fallbackLayout)) {
-                (function() use ($data, $fallbackLayout) {
+                (function () use ($data, $fallbackLayout) {
                     extract($data, EXTR_SKIP);
                     include $fallbackLayout;
                 })();
@@ -91,12 +91,12 @@ abstract class Controller
      */
     protected function getCommonViewData(): array
     {
-		
+
         // Возвращаем кеш, если уже вычисляли
         if ($this->commonViewDataCache !== null) {
             return $this->commonViewDataCache;
         }
-		
+
         $data = [
             'currentUser' => [
                 'id' => null,
@@ -111,11 +111,11 @@ abstract class Controller
             'pendingFlagsCount' => 0,
             'activeSuggestionsCount' => 0,
         ];
-        
+
         try {
             $session = $this->container->get(Session::class);
             $userId = $session->get('user_id');
-            
+
             $data['currentUser'] = [
                 'id' => $userId,
                 'name' => $session->get('user_name'),
@@ -125,11 +125,11 @@ abstract class Controller
                 'isAdmin' => ($session->get('user_role') === 'admin'),
                 'isModerator' => in_array($session->get('user_role'), ['admin', 'moderator']),
             ];
-            
+
             // Счётчики для шапки (только для авторизованных)
             if ($data['currentUser']['isLoggedIn']) {
                 $data['unreadNotificationsCount'] = $this->getUnreadNotificationsCount($userId);
-                
+
                 if ($data['currentUser']['isModerator']) {
                     $data['pendingFlagsCount'] = $this->getPendingFlagsCount();
                     $data['activeSuggestionsCount'] = $this->getActiveSuggestionsCount();
@@ -138,8 +138,8 @@ abstract class Controller
         } catch (\Throwable $e) {
             // Fallback: возвращаем пустые данные (уже установлены выше)
         }
-        
-		
+
+
         // Кешируем результат
         $this->commonViewDataCache = $data;
         return $data;
@@ -148,17 +148,17 @@ abstract class Controller
     /**
      * Получить количество непрочитанных уведомлений
      */
-	private function getUnreadNotificationsCount(int $userId): int
-	{
-		try {
-			$notifModel = $this->container->get(Notification::class);
-			$muteService = $this->container->get(\App\Modules\Muted\Services\MuteService::class);
-			$mutedUserIds = $muteService->getMutedUserIds($userId);
-			return $notifModel->getUnreadCount($userId, $mutedUserIds);
-		} catch (\Throwable $e) {
-			return 0;
-		}
-	}
+    private function getUnreadNotificationsCount(int $userId): int
+    {
+        try {
+            $notifModel = $this->container->get(\App\Modules\Notifications\Models\Notification::class);
+            $muteService = $this->container->get(\App\Modules\Muted\Services\MuteService::class);
+            $mutedUserIds = $muteService->getMutedUserIds($userId);
+            return $notifModel->getUnreadCount($userId, $mutedUserIds);
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
 
     /**
      * Получить количество ожидающих флагов

@@ -70,7 +70,7 @@ class Audit
             return;
         }
         $this->isLogging = true;
-        
+
         try {
             // Получаем данные пользователя из сессии
             $userId    = (int)$this->session->get('user_id', 0);
@@ -134,10 +134,10 @@ class Audit
      */
     public function getAll(int $limit = 100, int $offset = 0, ?string $category = null): array
     {
-		// Если категория передана - делегируем getByCategory()
-		if ($category !== null && $category !== '') {
-			return $this->getByCategory($category, $limit, $offset);
-		}
+        // Если категория передана - делегируем getByCategory()
+        if ($category !== null && $category !== '') {
+            return $this->getByCategory($category, $limit, $offset);
+        }
 
         return $this->db->fetchAll(
             "SELECT * FROM audit_logs 

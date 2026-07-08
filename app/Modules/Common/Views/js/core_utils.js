@@ -1,3 +1,86 @@
+/**
+ * CSRF Protection - автоматическая отправка токена для AJAX-запросов
+ * Double-Submit Cookie Pattern
+ */
+const CsrfProtection = {
+    cookieName: 'XSRF-TOKEN',
+    headerName: 'X-XSRF-TOKEN',
+
+    /**
+     * Получает токен из cookie
+     */
+    getToken() {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === this.cookieName) {
+                return decodeURIComponent(value);
+            }
+        }
+        return null;
+    },
+
+    /**
+     * Инициализация - перехватываем все AJAX-запросы
+     */
+    init() {
+        this.interceptFetch();
+        this.interceptXMLHttpRequest();
+    },
+
+    /**
+     * Перехватываем fetch API
+     */
+    interceptFetch() {
+        const originalFetch = window.fetch;
+        
+        window.fetch = function(url, options = {}) {
+            // Инициализируем headers если их нет
+            options.headers = options.headers || {};
+            
+            // Если headers - это объект (не FormData), добавляем токен
+            if (!(options.headers instanceof Headers)) {
+                const token = CsrfProtection.getToken();
+                if (token) {
+                    options.headers[CsrfProtection.headerName] = token;
+                }
+            }
+
+            return originalFetch(url, options);
+        };
+    },
+
+    /**
+     * Перехватываем XMLHttpRequest
+     */
+    interceptXMLHttpRequest() {
+        const originalOpen = XMLHttpRequest.prototype.open;
+        const originalSend = XMLHttpRequest.prototype.send;
+
+        XMLHttpRequest.prototype.open = function(method, url) {
+            this._csrfMethod = method;
+            return originalOpen.apply(this, arguments);
+        };
+
+        XMLHttpRequest.prototype.send = function(data) {
+            // Добавляем токен только для изменяющих методов
+            if (this._csrfMethod && !['GET', 'HEAD', 'OPTIONS'].includes(this._csrfMethod.toUpperCase())) {
+                const token = CsrfProtection.getToken();
+                if (token) {
+                    this.setRequestHeader(CsrfProtection.headerName, token);
+                }
+            }
+            return originalSend.apply(this, arguments);
+        };
+    }
+};
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    CsrfProtection.init();
+});
+
+
 (function() {
     'use strict';
     

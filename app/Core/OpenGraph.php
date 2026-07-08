@@ -20,9 +20,9 @@ class OpenGraph
         'url' => null,
         'locale' => 'ru_RU',
     ];
-    
+
     private static array $extra = []; // Для article:author, og:video и т.д.
-    
+
     /**
      * Установить основные OG-данные
      */
@@ -36,7 +36,7 @@ class OpenGraph
             }
         }
     }
-    
+
     /**
      * Установить отдельное свойство
      */
@@ -48,7 +48,7 @@ class OpenGraph
             self::$extra[$key] = $value;
         }
     }
-    
+
     /**
      * Получить все данные
      */
@@ -56,7 +56,7 @@ class OpenGraph
     {
         return array_merge(self::$data, self::$extra);
     }
-    
+
     /**
      * Сбросить данные (для тестов)
      */
@@ -73,19 +73,19 @@ class OpenGraph
         ];
         self::$extra = [];
     }
-    
+
     /**
      * Сгенерировать HTML мета-тегов
      */
     public static function render(): string
     {
         $tags = [];
-        
+
         // Заполняем site_name по умолчанию из конфига
         if (empty(self::$data['site_name'])) {
             self::$data['site_name'] = config('app.name', 'W3a', 'string');
         }
-        
+
         foreach (self::$data as $key => $value) {
             if ($value !== null && $value !== '') {
                 $tags[] = sprintf(
@@ -95,7 +95,7 @@ class OpenGraph
                 );
             }
         }
-        
+
         foreach (self::$extra as $key => $value) {
             if ($value !== null && $value !== '') {
                 $tags[] = sprintf(
@@ -105,7 +105,7 @@ class OpenGraph
                 );
             }
         }
-        
+
         return implode("\n    ", $tags);
     }
 }

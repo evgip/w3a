@@ -159,7 +159,6 @@
 html {
     font-size: var(--font-size-default);
     overflow-y: scroll;
-    text-size-adjust: none;
     scroll-behavior: smooth;
 }
 
@@ -1433,8 +1432,6 @@ a.dropdown-item-admin:hover {
 
 /* ---------- Адаптивность ---------- */
 @media only screen and (max-width: 480px) {
-    html { text-size-adjust: none; }
-    
     body { padding: 0 0.5em 1em 0.5em; }
     
     header#nav { flex-wrap: wrap; }

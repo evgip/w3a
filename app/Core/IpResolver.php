@@ -41,7 +41,7 @@ class IpResolver
     public function getClientIp(): string
     {
         $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-        
+
         // Проверяем, пришёл ли запрос от доверенного proxy
         if ($this->isTrustedProxy($remoteAddr)) {
             // Cloudflare
@@ -51,7 +51,7 @@ class IpResolver
                     return $ip;
                 }
             }
-            
+
             // Другие proxy
             if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
                 $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
@@ -60,7 +60,7 @@ class IpResolver
                     return $ip;
                 }
             }
-            
+
             // Другие заголовки proxy
             if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
                 $ip = $_SERVER['HTTP_X_REAL_IP'];
@@ -69,34 +69,34 @@ class IpResolver
                 }
             }
         }
-        
+
         return $remoteAddr;
     }
-    
+
     /**
      * Проверить, является ли IP доверенным proxy
      */
     public function isTrustedProxy(string $ip): bool
     {
         $trustedProxies = $this->trustedProxies;
-        
+
         if (empty($trustedProxies) && $this->useCloudflareDefaults) {
             $trustedProxies = $this->getCloudflareIps();
         }
-        
+
         if (empty($trustedProxies)) {
             return false;
         }
-        
+
         foreach ($trustedProxies as $cidr) {
             if ($this->ipInCidr($ip, $cidr)) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * Получить диапазоны IP Cloudflare
      */
@@ -127,46 +127,46 @@ class IpResolver
             '2c0f:f248::/32',
         ];
     }
-    
+
     /**
      * Проверить, входит ли IP в CIDR диапазон
      */
     public function ipInCidr(string $ip, string $cidr): bool
     {
         list($subnet, $bits) = explode('/', $cidr);
-        
+
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             $ip = ip2long($ip);
             $subnet = ip2long($subnet);
-            
+
             if ($ip === false || $subnet === false) {
                 return false;
             }
-            
+
             $mask = -1 << (32 - (int)$bits);
             $subnet &= $mask;
-            
+
             return ($ip & $mask) === $subnet;
         } elseif (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
             $ip = inet_pton($ip);
             $subnet = inet_pton($subnet);
-            
+
             if ($ip === false || $subnet === false) {
                 return false;
             }
-            
+
             $ip = unpack('A16', $ip)[1];
             $subnet = unpack('A16', $subnet)[1];
-            
+
             $fullMask = str_repeat("\xff", (int)($bits / 8));
             if ($bits % 8 !== 0) {
                 $fullMask .= chr(~(0xff >> ($bits % 8)));
             }
             $fullMask = str_pad($fullMask, 16, "\x00");
-            
+
             return ($ip & $fullMask) === ($subnet & $fullMask);
         }
-        
+
         return false;
     }
 

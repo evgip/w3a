@@ -10,17 +10,12 @@ use App\Core\Session;
 
 /**
  * Сервис для работы с отметками прочитанного.
- * 
- * ✅ ИЗМЕНЕНО: Session внедряется через конструктор.
  */
 class ReadRibbonService
 {
     private ReadRibbon $readRibbon;
     private Session $session;
 
-    /**
-     * ✅ ИЗМЕНЕНО: Добавлен Session в конструктор
-     */
     public function __construct(ReadRibbon $readRibbon, Session $session)
     {
         $this->readRibbon = $readRibbon;
@@ -111,5 +106,20 @@ class ReadRibbonService
 		}
 
 		$this->readRibbon->syncForUserAndStory(Auth::id(), $storyId);
+	}
+	
+	/**
+	 * Массовая отметка историй как прочитанных (batch-операция)
+	 * 
+	 * @param array $storyIds Массив ID историй
+	 * @return void
+	 */
+	public function markStoriesAsRead(array $storyIds): void
+	{
+		if (empty($storyIds) || !Auth::check()) {
+			return;
+		}
+
+		$this->readRibbon->syncForStories(Auth::id(), $storyIds);
 	}
 }

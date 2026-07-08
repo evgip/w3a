@@ -33,7 +33,7 @@ class Firewall
             "SELECT `reason` FROM `banned_ips` WHERE `ip_address` = :ip LIMIT 1",
             ['ip' => $ip]
         );
-        
+
         $reason = $stmt->fetchColumn();
 
         if ($reason !== false) {

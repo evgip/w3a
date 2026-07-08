@@ -55,103 +55,105 @@ abstract class Model
         return $this;
     }
 
-	/**
-	 * Вспомогательный метод для добавления SQL-фильтра мягкого удаления
-	 * Учитывает вложенность скобок и строковые литералы
-	 */
-	protected function applySoftDeleteConstraint(string $sql): string
-	{
-		if ($this->includeTrashed) {
-			$this->includeTrashed = false;
-			return $sql;
-		}
-		
-		// Проверяем, есть ли WHERE на верхнем уровне (вне скобок)
-		$hasTopLevelWhere = $this->hasTopLevelKeyword($sql, 'WHERE');
-		
-		if ($hasTopLevelWhere) {
-			$sql .= " AND `deleted_at` IS NULL";
-		} else {
-			$sql .= " WHERE `deleted_at` IS NULL";
-		}
-		
-		return $sql;
-	}
+    /**
+     * Вспомогательный метод для добавления SQL-фильтра мягкого удаления
+     * Учитывает вложенность скобок и строковые литералы
+     */
+    protected function applySoftDeleteConstraint(string $sql): string
+    {
+        if ($this->includeTrashed) {
+            $this->includeTrashed = false;
+            return $sql;
+        }
 
-	/**
-	 * Проверяет наличие ключевого слова на верхнем уровне SQL (вне скобок и строк)
-	 */
-	private function hasTopLevelKeyword(string $sql, string $keyword): bool
-	{
-		$sql = strtoupper($sql);
-		$keyword = strtoupper($keyword);
-		$keywordLength = strlen($keyword);
-		
-		$parenDepth = 0;      // Глубина вложенности скобок
-		$inString = false;    // Внутри строкового литерала
-		$stringChar = '';     // Тип кавычки (' или ")
-		$escaped = false;     // Предыдущий символ был escape
-		
-		$length = strlen($sql);
-		
-		for ($i = 0; $i < $length; $i++) {
-			$char = $sql[$i];
-			
-			// Обработка escape-символов
-			if ($escaped) {
-				$escaped = false;
-				continue;
-			}
-			
-			if ($char === '\\') {
-				$escaped = true;
-				continue;
-			}
-			
-			// Обработка строковых литералов
-			if ($inString) {
-				if ($char === $stringChar) {
-					$inString = false;
-				}
-				continue;
-			}
-			
-			// Начало строкового литерала
-			if ($char === '\'' || $char === '"') {
-				$inString = true;
-				$stringChar = $char;
-				continue;
-			}
-			
-			// Обработка скобок
-			if ($char === '(') {
-				$parenDepth++;
-				continue;
-			}
-			
-			if ($char === ')') {
-				$parenDepth--;
-				continue;
-			}
-			
-			// Проверяем ключевое слово только на верхнем уровне
-			if ($parenDepth === 0) {
-				// Проверяем совпадение ключевого слова
-				if (substr($sql, $i, $keywordLength) === $keyword) {
-					// Проверяем границы слова (не часть другого слова)
-					$before = ($i > 0) ? $sql[$i - 1] : ' ';
-					$after = ($i + $keywordLength < $length) ? $sql[$i + $keywordLength] : ' ';
-					
-					if (!ctype_alnum($before) && $before !== '_' && 
-						!ctype_alnum($after) && $after !== '_') {
-						return true;
-					}
-				}
-			}
-		}
-		
-		return false;
-	}
+        // Проверяем, есть ли WHERE на верхнем уровне (вне скобок)
+        $hasTopLevelWhere = $this->hasTopLevelKeyword($sql, 'WHERE');
+
+        if ($hasTopLevelWhere) {
+            $sql .= " AND `deleted_at` IS NULL";
+        } else {
+            $sql .= " WHERE `deleted_at` IS NULL";
+        }
+
+        return $sql;
+    }
+
+    /**
+     * Проверяет наличие ключевого слова на верхнем уровне SQL (вне скобок и строк)
+     */
+    private function hasTopLevelKeyword(string $sql, string $keyword): bool
+    {
+        $sql = strtoupper($sql);
+        $keyword = strtoupper($keyword);
+        $keywordLength = strlen($keyword);
+
+        $parenDepth = 0;      // Глубина вложенности скобок
+        $inString = false;    // Внутри строкового литерала
+        $stringChar = '';     // Тип кавычки (' или ")
+        $escaped = false;     // Предыдущий символ был escape
+
+        $length = strlen($sql);
+
+        for ($i = 0; $i < $length; $i++) {
+            $char = $sql[$i];
+
+            // Обработка escape-символов
+            if ($escaped) {
+                $escaped = false;
+                continue;
+            }
+
+            if ($char === '\\') {
+                $escaped = true;
+                continue;
+            }
+
+            // Обработка строковых литералов
+            if ($inString) {
+                if ($char === $stringChar) {
+                    $inString = false;
+                }
+                continue;
+            }
+
+            // Начало строкового литерала
+            if ($char === '\'' || $char === '"') {
+                $inString = true;
+                $stringChar = $char;
+                continue;
+            }
+
+            // Обработка скобок
+            if ($char === '(') {
+                $parenDepth++;
+                continue;
+            }
+
+            if ($char === ')') {
+                $parenDepth--;
+                continue;
+            }
+
+            // Проверяем ключевое слово только на верхнем уровне
+            if ($parenDepth === 0) {
+                // Проверяем совпадение ключевого слова
+                if (substr($sql, $i, $keywordLength) === $keyword) {
+                    // Проверяем границы слова (не часть другого слова)
+                    $before = ($i > 0) ? $sql[$i - 1] : ' ';
+                    $after = ($i + $keywordLength < $length) ? $sql[$i + $keywordLength] : ' ';
+
+                    if (
+                        !ctype_alnum($before) && $before !== '_' &&
+                        !ctype_alnum($after) && $after !== '_'
+                    ) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
 
     /**
      * Получить все активные записи из таблицы
@@ -217,7 +219,7 @@ abstract class Model
         if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
             throw new InvalidArgumentException("Invalid column name");
         }
-        
+
         $sql = "SELECT * FROM `{$this->table}` WHERE `{$column}` = :value";
         $sql = $this->applySoftDeleteConstraint($sql);
         $sql .= " LIMIT 1";
@@ -280,7 +282,7 @@ abstract class Model
         $placeholders = ':' . implode(', :', array_keys($data));
 
         $sql = "INSERT INTO `{$this->table}` ({$columns}) VALUES ({$placeholders})";
-        
+
         $this->db->query($sql, $data);
 
         return (int)$this->db->lastInsertId();
@@ -310,9 +312,9 @@ abstract class Model
         $fields = rtrim($fields, ', ');
 
         $sql = "UPDATE `{$this->table}` SET {$fields} WHERE `{$this->primaryKey}` = :_id";
-        
+
         $data['_id'] = $id;
-        
+
         return $this->db->execute($sql, $data) > 0;
     }
 
@@ -358,7 +360,7 @@ abstract class Model
         }
 
         $sql = "DELETE FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id";
-        
+
         return $this->db->execute($sql, ['id' => $id]) > 0;
     }
 
@@ -372,15 +374,15 @@ abstract class Model
     public function count(string $where = '', array $params = []): int
     {
         $sql = "SELECT COUNT(*) as count FROM `{$this->table}`";
-        
+
         if (!empty($where)) {
             $sql .= " WHERE " . $where;
         }
-        
+
         $sql = $this->applySoftDeleteConstraint($sql);
-        
+
         $result = $this->db->fetchOne($sql, $params);
-        
+
         return (int)($result['count'] ?? 0);
     }
 
@@ -395,27 +397,27 @@ abstract class Model
      * @return array Массив записей
      */
     public function where(
-        string $where, 
-        array $params = [], 
-        string $orderBy = '', 
+        string $where,
+        array $params = [],
+        string $orderBy = '',
         ?int $limit = null,
         ?int $offset = null
     ): array {
         $sql = "SELECT * FROM `{$this->table}` WHERE " . $where;
         $sql = $this->applySoftDeleteConstraint($sql);
-        
+
         if (!empty($orderBy)) {
             $sql .= " ORDER BY " . $orderBy;
         }
-        
+
         if ($limit !== null) {
             $sql .= " LIMIT " . (int)$limit;
         }
-        
+
         if ($offset !== null) {
             $sql .= " OFFSET " . (int)$offset;
         }
-        
+
         return $this->db->fetchAll($sql, $params);
     }
 

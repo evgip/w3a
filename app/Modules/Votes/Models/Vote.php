@@ -287,19 +287,20 @@ class Vote extends Model
 			$params[$key] = (int)$id;
 		}
 
-		$sql = "SELECT comment_id, vote_value 
+		$sql = "SELECT votable_id, vote_type 
 				FROM {$this->table}
 				WHERE user_id = :user_id 
-				  AND comment_id IN (" . implode(',', $placeholders) . ")
-				  AND entity_type = 'comment'";
+				  AND votable_id IN (" . implode(',', $placeholders) . ")
+				  AND votable_type = 'comment'";
 
 		$rows = $this->db->fetchAll($sql, $params);
 
 		$result = [];
 		foreach ($rows as $row) {
-			$result[(int)$row['comment_id']] = (int)$row['vote_value'];
+			$result[(int)$row['votable_id']] = (int)$row['vote_type'];
 		}
 
 		return $result;
 	}
+	
 }

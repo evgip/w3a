@@ -83,8 +83,8 @@ class Env
      */
     public static function has(string $key): bool
     {
-        return getenv($key) !== false 
-            || isset($_ENV[$key]) 
+        return getenv($key) !== false
+            || isset($_ENV[$key])
             || isset($_SERVER[$key]);
     }
 }

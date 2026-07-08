@@ -24,13 +24,13 @@ class Session
         if ($this->started) {
             return;
         }
-        
+
         // Если сессия уже активна (запущена где-то ещё)
         if (session_status() === PHP_SESSION_ACTIVE) {
             $this->started = true;
             return;
         }
-        
+
         if (session_status() === PHP_SESSION_NONE) {
             if (!session_start()) {
                 throw new \RuntimeException('Failed to start session');
@@ -96,10 +96,10 @@ class Session
                     $params["httponly"]
                 );
             }
-            
+
             session_destroy();
         }
-        
+
         $_SESSION = [];
         $this->started = false;
     }
@@ -149,7 +149,7 @@ class Session
     {
         return session_regenerate_id($deleteOldSession);
     }
-    
+
     /**
      * Получить имя сессии
      */

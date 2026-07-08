@@ -27,7 +27,7 @@ class Application
 
         $this->container = new Container();
         $this->container->instance(Container::class, $this->container);
-        
+
         $configPath = dirname(__DIR__) . '/Config';
         $this->config = new Config($configPath);
         $this->container->instance(Config::class, $this->config);
@@ -61,7 +61,7 @@ class Application
     {
         $database = $this->container->get(Database::class);
         $ipResolver = $this->container->get(IpResolver::class);
-        
+
         $firewall = new Firewall($database, $this->container, $ipResolver);
         $firewall->check();
     }
@@ -72,7 +72,7 @@ class Application
         $coreProvider->register($this->container);
 
         $modulesPath = dirname(__DIR__) . '/Modules';
-        
+
         if (!is_dir($modulesPath)) {
             return;
         }
@@ -82,7 +82,7 @@ class Application
 
         foreach ($modules as $module) {
             $providerClass = "App\\Modules\\{$module}\\ModuleServiceProvider";
-            
+
             if (class_exists($providerClass)) {
                 $configPath = $modulesPath . '/' . $module . '/Config';
                 if (is_dir($configPath)) {
@@ -119,16 +119,16 @@ class Application
             $this->handleException($e);
         }
     }
-	
+
     /**
      * Обработка редиректов (без логирования!)
      */
-	private function handleRedirect(RedirectException $e): void
-	{
-		http_response_code($e->statusCode);
-		header('Location: ' . $e->url);
-		exit;
-	}
+    private function handleRedirect(RedirectException $e): void
+    {
+        http_response_code($e->statusCode);
+        header('Location: ' . $e->url);
+        exit;
+    }
 
 
     /**
@@ -147,7 +147,7 @@ class Application
     private function handleHttpException(HttpException $e): void
     {
         http_response_code($e->getStatusCode());
-        
+
         // Логируем ошибки 5xx
         if ($e->getStatusCode() >= 500) {
             try {
@@ -162,12 +162,12 @@ class Application
         }
 
         $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-        
+
         if (class_exists($errorController)) {
             try {
                 $controller = $this->container->make($errorController);
-                
-                match($e->getStatusCode()) {
+
+                match ($e->getStatusCode()) {
                     400 => $controller->badRequest($e->getMessage()),
                     403 => $controller->forbidden($e->getMessage()),
                     404 => $controller->notFound($e->getMessage()),
@@ -193,7 +193,7 @@ class Application
     private function handleException(\Throwable $e): void
     {
         $errorMessage = $e->getMessage() . " в файле " . $e->getFile() . " на строке " . $e->getLine();
-        
+
         try {
             $logger = $this->container->get(Logger::class);
             $logger->error($errorMessage, [
@@ -210,7 +210,7 @@ class Application
         }
 
         $isDevelopment = $this->config->get('config.app.env', 'development') === 'development';
-        
+
         http_response_code(500);
 
         if ($isDevelopment) {
@@ -230,14 +230,14 @@ class Application
         echo '</div>';
     }
 
-	private function showProductionError(): void
-	{
-		$errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-		if (class_exists($errorController)) {
-			$controller = $this->container->make($errorController);
-			$controller->serverError("Извините, на сервере произошла внутренняя ошибка. Инженеры уже уведомлены.");
-			exit;
-		}
-		echo "<h1>500 Internal Server Error</h1><p>Извините, на сервере произошла непредвиденная ошибка.</p>";
-	}
+    private function showProductionError(): void
+    {
+        $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
+        if (class_exists($errorController)) {
+            $controller = $this->container->make($errorController);
+            $controller->serverError("Извините, на сервере произошла внутренняя ошибка. Инженеры уже уведомлены.");
+            exit;
+        }
+        echo "<h1>500 Internal Server Error</h1><p>Извините, на сервере произошла непредвиденная ошибка.</p>";
+    }
 }

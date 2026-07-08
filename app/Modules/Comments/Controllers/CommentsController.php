@@ -40,25 +40,21 @@ class CommentsController extends Controller
 			
 			// Получаем уникальные story_id из комментариев
 			$storyIds = array_unique(array_column($comments, 'story_id'));
-			
-			// Обновляем read_ribbon для каждой истории
-			foreach ($storyIds as $storyId) {
-				$readRibbonService->markStoryAsRead($storyId);
-			}
+
+			$readRibbonService->markStoriesAsRead($storyIds);
 		}
 
 		// Получаем голоса для комментариев
 		$currentCommentVotes = [];
-		if ($currentUserId > 0) {
+		if ($currentUserId > 0 && !empty($comments)) {
 			$voteModel = $this->container->get(\App\Modules\Votes\Models\Vote::class);
-			foreach ($comments as $comment) {
-				$currentCommentVotes[(int)$comment['id']] = $voteModel->getUserVote(
-					$currentUserId, 
-					'comment', 
-					(int)$comment['id']
-				);
-			}
+			$commentIds = array_map('intval', array_column($comments, 'id'));
+			
+			$currentCommentVotes = $voteModel->getUserVotesForComments(
+				$currentUserId, $commentIds
+			);
 		}
+		
 
 		// Контекст голосования
 		$canDownvote = false;

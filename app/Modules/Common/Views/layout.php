@@ -29,7 +29,8 @@
 			}
 		})();
 	</script>
-
+    <meta name="csrf-token" content="<?= htmlspecialchars($csrf_token) ?>">
+    
 	<link rel="stylesheet" href="/css/app.min.css">
 </head>
 

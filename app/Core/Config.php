@@ -27,18 +27,18 @@ class Config
      * Кэш загруженных конфигурационных файлов
      */
     private array $cache = [];
-    
+
     /**
      * Путь к директории с основной конфигурацией
      */
     private string $configPath;
-    
+
     /**
      * 🔑 Пути к конфигам модулей
      * Формат: ['module_name' => '/path/to/module/Config']
      */
     private array $modulePaths = [];
-    
+
     /**
      * Конструктор с путем к основной конфигурации
      * 
@@ -47,12 +47,12 @@ class Config
     public function __construct(string $configPath)
     {
         $this->configPath = rtrim($configPath, '/');
-        
+
         if (!is_dir($this->configPath)) {
             throw new \InvalidArgumentException("Config path does not exist: {$configPath}");
         }
     }
-    
+
     /**
      * 🔑 Зарегистрировать путь к конфигам модуля
      * 
@@ -63,7 +63,7 @@ class Config
     {
         $this->modulePaths[strtolower($moduleName)] = rtrim($path, '/');
     }
-    
+
     /**
      * 🔑 Получить все зарегистрированные пути модулей
      * 
@@ -73,7 +73,7 @@ class Config
     {
         return $this->modulePaths;
     }
-    
+
     /**
      * 🔑 Найти путь к файлу конфигурации
      * 
@@ -84,11 +84,11 @@ class Config
     {
         // Проверяем, есть ли префикс модуля (формат: "module_name.file_name")
         $parts = explode('.', $file, 2);
-        
+
         if (count($parts) === 2) {
             $moduleName = strtolower($parts[0]);
             $fileName = $parts[1];
-            
+
             // Ищем в зарегистрированных модулях
             if (isset($this->modulePaths[$moduleName])) {
                 $filePath = $this->modulePaths[$moduleName] . '/' . $fileName . '.php';
@@ -97,16 +97,16 @@ class Config
                 }
             }
         }
-        
+
         // Если не нашли в модулях — ищем в основном Config
         $mainPath = $this->configPath . '/' . $file . '.php';
         if (file_exists($mainPath)) {
             return $mainPath;
         }
-        
+
         return null;
     }
-    
+
     /**
      * Загрузить конфигурационный файл
      * 
@@ -120,25 +120,25 @@ class Config
         if (isset($this->cache[$file])) {
             return $this->cache[$file];
         }
-        
+
         $filePath = $this->resolveFilePath($file);
-        
+
         if ($filePath === null) {
             throw new \Exception("Configuration file not found: {$file}");
         }
-        
+
         $config = require $filePath;
-        
+
         if (!is_array($config)) {
             throw new \Exception("Configuration file must return an array: {$file}");
         }
-        
+
         // Кэшируем загруженный файл
         $this->cache[$file] = $config;
-        
+
         return $config;
     }
-    
+
     /**
      * Получить значение из конфигурации
      * 
@@ -149,14 +149,14 @@ class Config
     public function get(string $key, mixed $default = null): mixed
     {
         $parts = explode('.', $key);
-        
+
         if (count($parts) < 2) {
             return $default;
         }
-        
+
         // Определяем имя файла
         $possibleModule = strtolower($parts[0]);
-        
+
         if (isset($this->modulePaths[$possibleModule]) && count($parts) >= 3) {
             // Формат: module.file.key...
             $file = $parts[0] . '.' . $parts[1];
@@ -166,13 +166,13 @@ class Config
             // Формат: file.key...
             $file = array_shift($parts);
         }
-        
+
         try {
             $config = $this->loadFile($file);
         } catch (\Exception $e) {
             return $default;
         }
-        
+
         // Проходим по вложенным ключам
         foreach ($parts as $part) {
             if (!is_array($config) || !array_key_exists($part, $config)) {
@@ -180,10 +180,10 @@ class Config
             }
             $config = $config[$part];
         }
-        
+
         return $config;
     }
-    
+
     /**
      * Получить целое число из конфигурации
      */
@@ -191,7 +191,7 @@ class Config
     {
         return (int) $this->get($key, $default);
     }
-    
+
     /**
      * Получить строку из конфигурации
      */
@@ -199,7 +199,7 @@ class Config
     {
         return (string) $this->get($key, $default);
     }
-    
+
     /**
      * Получить булево значение из конфигурации
      */
@@ -207,7 +207,7 @@ class Config
     {
         return (bool) $this->get($key, $default);
     }
-    
+
     /**
      * Получить массив из конфигурации
      */
@@ -216,7 +216,7 @@ class Config
         $value = $this->get($key, $default);
         return is_array($value) ? $value : $default;
     }
-    
+
     /**
      * Проверить существование ключа
      */
@@ -225,7 +225,7 @@ class Config
         $sentinel = new \stdClass();
         return $this->get($key, $sentinel) !== $sentinel;
     }
-    
+
     /**
      * Получить все значения из файла конфигурации
      */
@@ -237,21 +237,21 @@ class Config
             return [];
         }
     }
-    
+
     /**
      * Получить всю конфигурацию (все загруженные файлы)
      */
     public function all(): array
     {
         $result = [];
-        
+
         // Загружаем все файлы из основной директории
         $files = glob($this->configPath . '/*.php');
         foreach ($files as $file) {
             $fileName = basename($file, '.php');
             $result[$fileName] = $this->getFile($fileName);
         }
-        
+
         // Загружаем все файлы из модулей
         foreach ($this->modulePaths as $moduleName => $path) {
             $files = glob($path . '/*.php');
@@ -260,10 +260,10 @@ class Config
                 $result[$moduleName][$fileName] = $this->getFile("{$moduleName}.{$fileName}");
             }
         }
-        
+
         return $result;
     }
-    
+
     /**
      * Очистить кэш конфигурации
      */
@@ -271,21 +271,21 @@ class Config
     {
         $this->cache = [];
     }
-    
+
     /**
      * Установить значение (только в runtime, не сохраняется в файл)
      */
     public function set(string $key, mixed $value): void
     {
         $parts = explode('.', $key);
-        
+
         if (count($parts) < 2) {
             return;
         }
-        
+
         // Определяем имя файла
         $possibleModule = strtolower($parts[0]);
-        
+
         if (isset($this->modulePaths[$possibleModule]) && count($parts) >= 3) {
             $file = $parts[0] . '.' . $parts[1];
             array_shift($parts);
@@ -293,7 +293,7 @@ class Config
         } else {
             $file = array_shift($parts);
         }
-        
+
         if (!isset($this->cache[$file])) {
             try {
                 $this->loadFile($file);
@@ -301,9 +301,9 @@ class Config
                 $this->cache[$file] = [];
             }
         }
-        
+
         $config = &$this->cache[$file];
-        
+
         foreach ($parts as $i => $part) {
             if ($i === count($parts) - 1) {
                 $config[$part] = $value;

@@ -18,10 +18,10 @@ class Logger
         if ($logFile === null) {
             $logFile = dirname(__DIR__, 2) . '/storage/logs/app.log';
         }
-        
+
         $this->logFile = $logFile;
         $this->dateFormat = $dateFormat;
-        
+
         // Создаём директорию, если её нет
         $logDir = dirname($this->logFile);
         if (!is_dir($logDir)) {
@@ -37,10 +37,10 @@ class Logger
         $timestamp = date($this->dateFormat);
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'CLI';
 
-        $contextStr = !empty($context) 
-            ? ' | Контекст: ' . json_encode($context, JSON_UNESCAPED_UNICODE) 
+        $contextStr = !empty($context)
+            ? ' | Контекст: ' . json_encode($context, JSON_UNESCAPED_UNICODE)
             : '';
-        
+
         $logMessage = "[{$timestamp}] [{$ip}] [{$level}]: {$message}{$contextStr}" . PHP_EOL;
 
         file_put_contents($this->logFile, $logMessage, FILE_APPEND);

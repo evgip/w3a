@@ -227,10 +227,10 @@ class Router
     protected function applyRateLimiting(string $uri, string $method): void
     {
         $rateLimiter = $this->container->get(RateLimiter::class);
-        
+
         // Получаем правила из конфига
         $rateLimitConfig = $this->config->getArray('rate_limit.rules', []);
-        
+
         if ($method === 'POST') {
             // Проверяем auth routes
             $authRoutes = $rateLimitConfig['auth.submit']['routes'] ?? ['/login', '/register'];
@@ -240,7 +240,7 @@ class Router
                 }
                 return;
             }
-            
+
             // Global POST
             if (!$rateLimiter->check('global.post')) {
                 $rateLimiter->block();
@@ -270,7 +270,7 @@ class Router
             }
         }
 
-        $destination = function() use ($action, $params) {
+        $destination = function () use ($action, $params) {
             $this->executeAction($action, $params);
         };
 
@@ -314,8 +314,8 @@ class Router
 
         if (class_exists($errorControllerClass)) {
             $controller = $this->container->make($errorControllerClass);
-            
-            match($code) {
+
+            match ($code) {
                 404 => $controller->notFound($message),
                 403 => $controller->forbidden($message),
                 419 => $controller->csrf($message),
