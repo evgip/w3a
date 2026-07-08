@@ -51,13 +51,10 @@ class StoriesController extends Controller
         $currentUserId = Auth::check() ? Auth::id() : 0;
         $votingContext = $this->getVotingContext($currentUserId);
 
-        // Получаем голоса для всех историй
         $currentVotes = [];
         if ($currentUserId > 0) {
             $voteModel = $this->container->get(Vote::class);
-            foreach ($storyIds as $storyId) {
-                $currentVotes[$storyId] = $voteModel->getUserVote($currentUserId, 'story', (int)$storyId);
-            }
+            $currentVotes = $voteModel->getUserVotesForStories($currentUserId, $storyIds);
         }
 
         // Формируем заголовок и OG-данные
@@ -140,18 +137,18 @@ class StoriesController extends Controller
             $voteModel = $this->container->get(Vote::class);
             $currentStoryVote = $voteModel->getUserVote($currentUserId, 'story', $storyId);
 
-			$allCommentIds = [];
+            $allCommentIds = [];
             foreach ($commentsTree as $parentId => $comments) {
                 foreach ($comments as $comment) {
-                    $commentId = (int)$comment['id'];
+                    $allCommentIds[] = (int)$comment['id'];
                 }
             }
 
-			if (!empty($allCommentIds)) {
-				$currentCommentVotes = $voteModel->getUserVotesForComments($currentUserId, $allCommentIds);
-			} else {
-				$currentCommentVotes = [];
-			}
+            if (!empty($allCommentIds)) {
+                $currentCommentVotes = $voteModel->getUserVotesForComments($currentUserId, $allCommentIds);
+            } else {
+                $currentCommentVotes = [];
+            }
 
             $isAdmin = Auth::isAdmin();
             $isModerator = Auth::isModerator();
@@ -529,9 +526,7 @@ class StoriesController extends Controller
         $currentVotes = [];
         if ($currentUserId > 0) {
             $voteModel = $this->container->get(Vote::class);
-            foreach ($storyIds as $storyId) {
-                $currentVotes[$storyId] = $voteModel->getUserVote($currentUserId, 'story', (int)$storyId);
-            }
+            $currentVotes = $voteModel->getUserVotesForStories($currentUserId, $storyIds);
         }
 
         $this->render('index', [

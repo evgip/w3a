@@ -203,8 +203,6 @@ hr {
     margin: 1em 0;
 }
 
-ul { list-style-type: none; }
-
 pre {
     overflow-x: auto;
     background-color: var(--color-box-bg-shaded);

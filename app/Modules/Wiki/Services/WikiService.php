@@ -15,8 +15,6 @@ use App\Core\Events\WikiPageDeleted;
 
 /**
  * Сервис для работы с wiki страницами (бизнес-логика).
- * 
- * ✅ ИЗМЕНЕНО: Session и Audit внедряются через конструктор.
  */
 class WikiService
 {
@@ -26,9 +24,6 @@ class WikiService
     private Audit $audit;
     private ?EventDispatcher $eventDispatcher;
 
-    /**
-     * ✅ ИЗМЕНЕНО: 5 зависимостей
-     */
     public function __construct(
         WikiPage $wikiPage,
         WikiRevision $wikiRevision,
@@ -100,7 +95,7 @@ class WikiService
                 'user_id' => $userId
             ]);
 
-            // ✅ Используем внедрённый Audit
+            // Используем внедрённый Audit
             $this->audit->log('wiki.created', 'Пользователь создал wiki страницу', 'wiki', [
                 'page_id' => $pageId,
                 'tag_id' => $data['tag_id'] ?? null,

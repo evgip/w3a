@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Tags\Controllers;
 
 use App\Core\Controller;
@@ -52,7 +54,6 @@ class TagsController extends Controller
             return;
         }
 
-        // ✅ Получаем данные для голосования
         $currentUserId = Auth::check() ? Auth::id() : 0;
         $isAdmin = Auth::isAdmin();
         $canUserDownvote = false;
@@ -65,12 +66,9 @@ class TagsController extends Controller
             $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
             $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
             
-            // Получаем голоса для всех историй
             $storyIds = array_column($data['stories'], 'id');
             $voteModel = $this->container->get(Vote::class);
-            foreach ($storyIds as $storyId) {
-                $currentVotes[$storyId] = $voteModel->getUserVote($currentUserId, 'story', (int)$storyId);
-            }
+            $currentVotes = $voteModel->getUserVotesForStories($currentUserId, $storyIds);
         }
 
         $this->render('categories-show', [
@@ -117,7 +115,6 @@ class TagsController extends Controller
         
         $result = $this->service(TagFilterService::class)->addFilter($userId, $tagId);
         
-        // ✅ Используем Session через контейнер
         $session = $this->container->get(Session::class);
         if ($result['success']) {
             $session->flash('success', $result['message'] ?? 'Фильтр добавлен');
@@ -138,7 +135,6 @@ class TagsController extends Controller
         
         $result = $this->service(TagFilterService::class)->removeFilter($userId, $tagId);
         
-        // ✅ Используем Session через контейнер
         $session = $this->container->get(Session::class);
         if ($result['success']) {
             $session->flash('success', $result['message'] ?? 'Фильтр удалён');

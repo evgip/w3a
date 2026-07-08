@@ -38,7 +38,7 @@ class AuthController extends Controller
 
         $this->getPasswordResetService()->sendResetLink($email);
 
-        $session->flash('success', 'Ссылка для восстановления отправлена на ' . $email);
+        $session->flash('success', 'Если email найден в системе, инструкция по восстановлению отправлена на почту.');
         $this->redirect(route('password.request'));
     }
 

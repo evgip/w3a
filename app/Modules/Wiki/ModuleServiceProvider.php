@@ -65,13 +65,16 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
             );
         });
 
-        $container->singleton(WikiService::class, function (Container $c) {
-            return new WikiService(
-                $c->get(WikiPage::class),
-                $c->get(WikiRevision::class),
-                $c->get(EventDispatcher::class)
-            );
-        });
+		$container->singleton(WikiService::class, function (Container $c) {
+			return new WikiService(
+				$c->get(WikiPage::class),
+				$c->get(WikiRevision::class),
+				$c->get(Session::class),
+				$c->get(Audit::class),
+				$c->get(EventDispatcher::class)
+			);
+		});
+		
     }
 
     public function boot(): void

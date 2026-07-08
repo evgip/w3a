@@ -140,7 +140,7 @@ class StoryFilterService
             return [];
         }
 
-        // ✅ Получаем модель из контейнера вместо new TagFilter()
+        // Получаем модель из контейнера вместо new TagFilter()
         $filterModel = $this->container->get(TagFilter::class);
         return $filterModel->getFilteredTagIds(Auth::id());
     }
@@ -206,7 +206,7 @@ class StoryFilterService
         // Изображение: превью ссылки или дефолтное
         $image = null;
         if (!empty($story['url'])) {
-            $image = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/' . $story['id'] . '.png';
+			$image = rtrim(config('config.app.url'), '/') . '/' . $story['id'] . '.png';
         }
         
         return [

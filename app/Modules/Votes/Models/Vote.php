@@ -303,4 +303,41 @@ class Vote extends Model
 		return $result;
 	}
 	
+	/**
+	 * Получить голоса пользователя за несколько историй одним запросом
+	 * 
+	 * @param int $userId
+	 * @param array $storyIds
+	 * @return array [story_id => vote_value]
+	 */
+	public function getUserVotesForStories(int $userId, array $storyIds): array
+	{
+		if (empty($storyIds)) {
+			return [];
+		}
+
+		$placeholders = [];
+		$params = ['user_id' => $userId];
+		
+		foreach ($storyIds as $index => $id) {
+			$key = 'sid_' . $index;
+			$placeholders[] = ':' . $key;
+			$params[$key] = (int)$id;
+		}
+
+		$sql = "SELECT votable_id, vote_type 
+				FROM {$this->table}
+				WHERE user_id = :user_id 
+				  AND votable_id IN (" . implode(',', $placeholders) . ")
+				  AND votable_type = 'story'";
+
+		$rows = $this->db->fetchAll($sql, $params);
+
+		$result = [];
+		foreach ($rows as $row) {
+			$result[(int)$row['votable_id']] = (int)$row['vote_type'];
+		}
+
+		return $result;
+	}
 }

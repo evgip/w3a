@@ -36,7 +36,7 @@ class SearchController extends Controller
             $session->flash('error', 'Поисковый запрос должен содержать минимум 3 символа.');
         }
 
-        // ✅ Получаем данные для голосования
+        // Получаем данные для голосования
         $currentUserId = Auth::check() ? Auth::id() : 0;
         $canUserDownvote = false;
         $currentVotes = [];
@@ -48,12 +48,10 @@ class SearchController extends Controller
             $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
             $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
             
-            // Получаем голоса для всех результатов (если это истории)
             if ($what === 'stories' && !empty($results)) {
                 $voteModel = $this->container->get(Vote::class);
-                foreach ($results as $story) {
-                    $currentVotes[$story['id']] = $voteModel->getUserVote($currentUserId, 'story', (int)$story['id']);
-                }
+                $storyIds = array_column($results, 'id');
+                $currentVotes = $voteModel->getUserVotesForStories($currentUserId, $storyIds);
             }
         }
 
@@ -63,7 +61,6 @@ class SearchController extends Controller
             'sortBy'  => $sortBy,
             'what'    => $what,
             'results' => $results,
-            // ✅ Передаём данные для голосования в шаблон
             'currentUserId' => $currentUserId,
             'canUserDownvote' => $canUserDownvote,
             'currentVotes' => $currentVotes,
