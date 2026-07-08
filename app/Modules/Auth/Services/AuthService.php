@@ -87,7 +87,7 @@ class AuthService
         }
 
         if ((int)$user['is_active'] !== 1) {
-            $this->session->flash('error', 'Аккаунт не активирован.');
+            $this->session->flash('error', 'Неверный email или пароль.'); // «Аккаунт не активирован» раскрывает, что email зарегистрирован в системе
             $this->logFailedAttempt($ip, $email, 'inactive_account');
             return null;
         }

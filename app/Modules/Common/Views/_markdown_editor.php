@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Универсальный Markdown-редактор
  * 
@@ -49,7 +50,7 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
     <?php if (!empty($editor['hint'])): ?>
         <p class="hint"><?= e($editor['hint']) ?></p>
     <?php endif; ?>
-    
+
     <!-- Панель инструментов Markdown -->
     <div class="markdown-toolbar <?= e($toolbarClass) ?>">
         <button type="button" class="btn-markdown" data-action="bold" title="Жирный (Ctrl+B)">
@@ -71,19 +72,19 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
         <button type="button" class="btn-markdown" data-action="list" title="Список">
             ☰
         </button>
-        
+
         <span class="toolbar-spacer"></span>
-        
+
         <button type="button" id="<?= e($previewBtnId) ?>" class="btn-markdown" title="Предпросмотр (Ctrl+Enter)">
             👁 Предпросмотр
         </button>
     </div>
-    
-    <textarea id="<?= e($textareaId) ?>" name="<?= e($editor['name']) ?>" 
-              rows="<?= (int)$editor['rows'] ?>"
-              placeholder="<?= e($editor['placeholder']) ?>"
-              <?= !empty($editor['required']) ? 'required' : '' ?>><?= e($editor['value']) ?></textarea>
-    
+
+    <textarea id="<?= e($textareaId) ?>" name="<?= e($editor['name']) ?>"
+        rows="<?= (int)$editor['rows'] ?>"
+        placeholder="<?= e($editor['placeholder']) ?>"
+        <?= !empty($editor['required']) ? 'required' : '' ?>><?= e($editor['value']) ?></textarea>
+
     <!-- Область предпросмотра -->
     <div id="<?= e($previewAreaId) ?>" class="preview-area" style="display: none;">
         <div class="preview-header">
@@ -95,193 +96,196 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
 </div>
 
 <script nonce="<?= csp_nonce(); ?>">
-document.addEventListener('DOMContentLoaded', function() {
-    const textareaId = '<?= e($textareaId) ?>';
-    const previewAreaId = '<?= e($previewAreaId) ?>';
-    const previewContentId = '<?= e($previewContentId) ?>';
-    const previewBtnId = '<?= e($previewBtnId) ?>';
-    const closePreviewId = '<?= e($closePreviewId) ?>';
-    const toolbarClass = '<?= e($toolbarClass) ?>';
-    const previewUrl = '<?= e($editor['preview_url']) ?>';
-    const allowImages = <?= $editor['allow_images'] ? 'true' : 'false' ?>;
-    
-    const textarea = document.getElementById(textareaId);
-    const previewArea = document.getElementById(previewAreaId);
-    const previewContent = document.getElementById(previewContentId);
-    const previewBtn = document.getElementById(previewBtnId);
-    const closePreview = document.getElementById(closePreviewId);
-    
-    if (!textarea) return;
-    
-    // ==================== УТИЛИТЫ ====================
-    
-    function getCsrfToken() {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        if (meta) return meta.content;
-        
-        const input = document.querySelector('input[name="csrf_token"]');
-        if (input) return input.value;
-        
-        return '';
-    }
-    
-    // ==================== ПРЕДПРОСМОТР MARKDOWN ====================
-    
-    function showPreview() {
-        const text = textarea.value.trim();
-        
-        if (!text) {
-            previewArea.style.display = 'none';
-            return;
+    document.addEventListener('DOMContentLoaded', function() {
+        const textareaId = '<?= e($textareaId) ?>';
+        const previewAreaId = '<?= e($previewAreaId) ?>';
+        const previewContentId = '<?= e($previewContentId) ?>';
+        const previewBtnId = '<?= e($previewBtnId) ?>';
+        const closePreviewId = '<?= e($closePreviewId) ?>';
+        const toolbarClass = '<?= e($toolbarClass) ?>';
+        const previewUrl = '<?= e($editor['preview_url']) ?>';
+        const allowImages = <?= $editor['allow_images'] ? 'true' : 'false' ?>;
+
+        const textarea = document.getElementById(textareaId);
+        const previewArea = document.getElementById(previewAreaId);
+        const previewContent = document.getElementById(previewContentId);
+        const previewBtn = document.getElementById(previewBtnId);
+        const closePreview = document.getElementById(closePreviewId);
+
+        if (!textarea) return;
+
+        // ==================== УТИЛИТЫ ====================
+
+        function getCsrfToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) return meta.content;
+
+            const input = document.querySelector('input[name="csrf_token"]');
+            if (input) return input.value;
+
+            return '';
         }
-        
-        const csrfToken = getCsrfToken();
-        
-        if (!csrfToken) {
-            alert('CSRF токен не найден. Обновите страницу.');
-            return;
-        }
-        
-        previewBtn.disabled = true;
-        previewBtn.textContent = '⏳ Загрузка...';
-        
-        fetch(previewUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: 'text=' + encodeURIComponent(text) + '&csrf_token=' + encodeURIComponent(csrfToken) + '&allow_images=' + (allowImages ? '1' : '0'),
-            credentials: 'same-origin'
-        })
-        .then(response => {
-            if (response.status === 419) {
-                throw new Error('Сессия истекла. Обновите страницу.');
-            }
-            if (!response.ok) {
-                throw new Error('HTTP error! status: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                alert('Ошибка: ' + data.error);
+
+        // ==================== ПРЕДПРОСМОТР MARKDOWN ====================
+
+        function showPreview() {
+            const text = textarea.value.trim();
+
+            if (!text) {
+                previewArea.style.display = 'none';
                 return;
             }
-            
-            if (data.html) {
-                previewContent.innerHTML = data.html;
-                previewArea.style.display = 'block';
-                previewArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            const csrfToken = getCsrfToken();
+
+            if (!csrfToken) {
+                alert('CSRF токен не найден. Обновите страницу.');
+                return;
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Ошибка при предпросмотре: ' + error.message);
-        })
-        .finally(() => {
-            previewBtn.disabled = false;
-            previewBtn.textContent = '👁 Предпросмотр';
-        });
-    }
-    
-    previewBtn.addEventListener('click', showPreview);
-    
-    closePreview.addEventListener('click', function() {
-        previewArea.style.display = 'none';
-    });
-    
-    textarea.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.key === 'Enter') {
-            e.preventDefault();
-            showPreview();
+
+            previewBtn.disabled = true;
+            previewBtn.textContent = '⏳ Загрузка...';
+
+            fetch(previewUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: 'text=' + encodeURIComponent(text) + '&csrf_token=' + encodeURIComponent(csrfToken) + '&allow_images=' + (allowImages ? '1' : '0'),
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (response.status === 419) {
+                        throw new Error('Сессия истекла. Обновите страницу.');
+                    }
+                    if (!response.ok) {
+                        throw new Error('HTTP error! status: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        alert('Ошибка: ' + data.error);
+                        return;
+                    }
+
+                    if (data.html) {
+                        previewContent.innerHTML = data.html;
+                        previewArea.style.display = 'block';
+                        previewArea.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'nearest'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Ошибка при предпросмотре: ' + error.message);
+                })
+                .finally(() => {
+                    previewBtn.disabled = false;
+                    previewBtn.textContent = '👁 Предпросмотр';
+                });
         }
-    });
-    
-    // ==================== ПАНЕЛЬ ИНСТРУМЕНТОВ MARKDOWN ====================
-    
-    function insertMarkdown(action) {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = textarea.value.substring(start, end);
-        let replacement = '';
-        let cursorOffset = 0;
-        
-        switch(action) {
-            case 'bold':
-                replacement = `**${selectedText || 'жирный текст'}**`;
-                cursorOffset = selectedText ? replacement.length : 2;
-                break;
-            case 'italic':
-                replacement = `_${selectedText || 'курсив'}_`;
-                cursorOffset = selectedText ? replacement.length : 1;
-                break;
-            case 'code':
-                if (selectedText.includes('\n')) {
-                    replacement = `\n\`\`\`\n${selectedText}\n\`\`\`\n`;
-                } else {
-                    replacement = `\`${selectedText || 'код'}\``;
-                }
-                cursorOffset = selectedText ? replacement.length : 1;
-                break;
-            case 'link':
-                const url = prompt('Введите URL:', 'https://');
-                if (url) {
-                    const linkText = selectedText || 'ссылка';
-                    replacement = `[${linkText}](${url})`;
+
+        previewBtn.addEventListener('click', showPreview);
+
+        closePreview.addEventListener('click', function() {
+            previewArea.style.display = 'none';
+        });
+
+        textarea.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                showPreview();
+            }
+        });
+
+        // ==================== ПАНЕЛЬ ИНСТРУМЕНТОВ MARKDOWN ====================
+
+        function insertMarkdown(action) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            let replacement = '';
+            let cursorOffset = 0;
+
+            switch (action) {
+                case 'bold':
+                    replacement = `**${selectedText || 'жирный текст'}**`;
+                    cursorOffset = selectedText ? replacement.length : 2;
+                    break;
+                case 'italic':
+                    replacement = `_${selectedText || 'курсив'}_`;
+                    cursorOffset = selectedText ? replacement.length : 1;
+                    break;
+                case 'code':
+                    if (selectedText.includes('\n')) {
+                        replacement = `\n\`\`\`\n${selectedText}\n\`\`\`\n`;
+                    } else {
+                        replacement = `\`${selectedText || 'код'}\``;
+                    }
+                    cursorOffset = selectedText ? replacement.length : 1;
+                    break;
+                case 'link':
+                    const url = prompt('Введите URL:', 'https://');
+                    if (url) {
+                        const linkText = selectedText || 'ссылка';
+                        replacement = `[${linkText}](${url})`;
+                        cursorOffset = replacement.length;
+                    }
+                    break;
+                case 'quote':
+                    if (selectedText) {
+                        replacement = selectedText.split('\n').map(line => `> ${line}`).join('\n');
+                    } else {
+                        replacement = `\n> цитата\n`;
+                    }
                     cursorOffset = replacement.length;
-                }
-                break;
-            case 'quote':
-                if (selectedText) {
-                    replacement = selectedText.split('\n').map(line => `> ${line}`).join('\n');
-                } else {
-                    replacement = `\n> цитата\n`;
-                }
-                cursorOffset = replacement.length;
-                break;
-            case 'list':
-                if (selectedText) {
-                    const lines = selectedText.split('\n');
-                    replacement = lines.map(line => `- ${line}`).join('\n');
-                } else {
-                    replacement = `\n- элемент списка\n`;
-                }
-                cursorOffset = replacement.length;
-                break;
-        }
-        
-        if (replacement) {
-            textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
-            textarea.focus();
-            const newPos = start + cursorOffset;
-            textarea.selectionStart = newPos;
-            textarea.selectionEnd = newPos;
-        }
-    }
-    
-    // Привязываем обработчики к кнопкам этой панели
-    const toolbar = document.querySelector('.' + toolbarClass);
-    if (toolbar) {
-        toolbar.querySelectorAll('.btn-markdown[data-action]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                insertMarkdown(this.dataset.action);
-            });
-        });
-    }
-    
-    // Горячие клавиши
-    textarea.addEventListener('keydown', function(e) {
-        if (e.ctrlKey || e.metaKey) {
-            if (e.key === 'b') {
-                e.preventDefault();
-                insertMarkdown('bold');
-            } else if (e.key === 'i') {
-                e.preventDefault();
-                insertMarkdown('italic');
+                    break;
+                case 'list':
+                    if (selectedText) {
+                        const lines = selectedText.split('\n');
+                        replacement = lines.map(line => `- ${line}`).join('\n');
+                    } else {
+                        replacement = `\n- элемент списка\n`;
+                    }
+                    cursorOffset = replacement.length;
+                    break;
+            }
+
+            if (replacement) {
+                textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+                textarea.focus();
+                const newPos = start + cursorOffset;
+                textarea.selectionStart = newPos;
+                textarea.selectionEnd = newPos;
             }
         }
+
+        // Привязываем обработчики к кнопкам этой панели
+        const toolbar = document.querySelector('.' + toolbarClass);
+        if (toolbar) {
+            toolbar.querySelectorAll('.btn-markdown[data-action]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    insertMarkdown(this.dataset.action);
+                });
+            });
+        }
+
+        // Горячие клавиши
+        textarea.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'b') {
+                    e.preventDefault();
+                    insertMarkdown('bold');
+                } else if (e.key === 'i') {
+                    e.preventDefault();
+                    insertMarkdown('italic');
+                }
+            }
+        });
     });
-});
 </script>

@@ -4,32 +4,32 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="<?= e($csrf_token ?? '') ?>">
+	<meta name="csrf-token" content="<?= e($csrf_token ?? '') ?>">
 	<title><?= e($title ?? 'Лента историй') ?> | <?= e(app_name()); ?> <?= __('forum') ?></title>
 	<?= \App\Core\OpenGraph::render() ?>
-	 
-    <?php if (!empty($rssFeed)): ?>
-        <link rel="alternate" type="application/rss+xml" 
-              title="<?= e($rssFeed['title']) ?>" 
-              href="<?= e($rssFeed['url']) ?>">
-    <?php else: ?>
-        <link rel="alternate" type="application/rss+xml" 
-              title="<?= e(app_name()) ?>" 
-              href="/rss">
-    <?php endif; ?>
-	
+
+	<?php if (!empty($rssFeed)): ?>
+		<link rel="alternate" type="application/rss+xml"
+			title="<?= e($rssFeed['title']) ?>"
+			href="<?= e($rssFeed['url']) ?>">
+	<?php else: ?>
+		<link rel="alternate" type="application/rss+xml"
+			title="<?= e(app_name()) ?>"
+			href="/rss">
+	<?php endif; ?>
+
 	<script nonce="<?= csp_nonce(); ?>">
-	(function() {
-		var theme = localStorage.getItem('w3a_theme');
-		if (!theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-			theme = 'dark';
-		}
-		if (theme === 'dark') {
-			document.documentElement.setAttribute('data-theme', 'dark');
-		}
-	})();
+		(function() {
+			var theme = localStorage.getItem('w3a_theme');
+			if (!theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+				theme = 'dark';
+			}
+			if (theme === 'dark') {
+				document.documentElement.setAttribute('data-theme', 'dark');
+			}
+		})();
 	</script>
-	
+
 	<link rel="stylesheet" href="/css/app.min.css">
 </head>
 
@@ -40,10 +40,11 @@
 			<a href="<?= route('home') ?>" class="navbar-logo"><?= e(app_name()); ?></a>
 
 			<nav class="navbar-links">
+				<a href="<?= route('comments.index') ?>"><?= __('comments') ?></a>
 				<a href="<?= route('tags.index') ?>"><?= __('tags') ?></a>
 				<a href="<?= route('search.index') ?>"><?= __('search') ?></a>
 
-				<button type="button" id="theme-toggle" class="theme-toggle" title="Переключить тему" aria-label="Переключить тему">
+				<button type="button" id="theme-toggle" class="theme-toggle" title="<?= __('toggle_theme') ?>" aria-label="<?= __('toggle_theme') ?>">
 					<svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
 					</svg>
@@ -61,24 +62,24 @@
 				</button>
 
 				<?php if (!empty($currentUser['isLoggedIn'])): ?>
-					<a href="/notifications" class="header-notification-link" id="header-notifications-link" aria-label="Уведомления">
+					<a href="/notifications" class="header-notification-link" id="header-notifications-link" aria-label="<?= __('notifications') ?>">
 
-					<svg class="header-notification-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-						<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
-					</svg>
-					
-					<span id="header-notification-badge" class="header-notification-badge"><?= (int)($unreadNotificationsCount ?? 0) ?></span>
-				</a>
-					
-				<?php if (!empty($currentUser['isModerator'])): ?>
-					<a href="/admin/flags" class="nav-flag">
-						🚩 
-						<?php if (($pendingFlagsCount ?? 0) > 0): ?>
-							<span class="badge">(<?= (int)$pendingFlagsCount ?>)</span>
-						<?php endif; ?>
+						<svg class="header-notification-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+							<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+						</svg>
+
+						<span id="header-notification-badge" class="header-notification-badge"><?= (int)($unreadNotificationsCount ?? 0) ?></span>
 					</a>
-				<?php endif; ?>
+
+					<?php if (!empty($currentUser['isModerator'])): ?>
+						<a href="/admin/flags" class="nav-flag">
+							🚩
+							<?php if (($pendingFlagsCount ?? 0) > 0): ?>
+								<span class="badge">(<?= (int)$pendingFlagsCount ?>)</span>
+							<?php endif; ?>
+						</a>
+					<?php endif; ?>
 
 					<div class="navbar-user-dropdown-container" id="user-dropdown-wrapper">
 
@@ -106,10 +107,10 @@
 							</a>
 
 							<a href="<?= route('account.settings') ?>" class="dropdown-menu-item">⚙️ <?= __('settings') ?></a>
-							
-							<a href="<?= route('saved.index') ?>" class="dropdown-menu-item">🔖 Закладки</a>
-							
-							<a href="/muted" class="dropdown-menu-item">🔇 Игнорируемые</a>
+
+							<a href="<?= route('saved.index') ?>" class="dropdown-menu-item">🔖 <?= __('bookmarks') ?></a>
+
+							<a href="/muted" class="dropdown-menu-item">🔇 <?= __('muted') ?></a>
 
 							<?php if (!empty($currentUser['isAdmin'])): ?>
 								<div class="dropdown-divider"></div>
@@ -123,9 +124,9 @@
 								<a href="/mod/stats" class="dropdown-menu-item dropdown-item-mod">📈 <?= __('activity') ?></a>
 								<a href="/admin/domains" class="dropdown-menu-item dropdown-item-mod">🌐 <?= __('domains') ?></a>
 								<a href="<?= route('domains.index') ?>" class="dropdown-menu-item dropdown-item-mod">🚫 <?= __('ban') ?></a>
-								
+
 								<a href="/mod/suggestions" class="dropdown-menu-item dropdown-item-mod">
-									💡 Предложения
+									💡 <?= __('suggestions') ?>
 									<?php if (($activeSuggestionsCount ?? 0) > 0): ?>
 										<span class="red">
 											<?= (int)$activeSuggestionsCount ?>
@@ -136,10 +137,9 @@
 
 							<div class="dropdown-divider"></div>
 							<form action="<?= route('auth.logout') ?>" method="POST" style="display:inline;">
-								 <?= csrf_field() ?>
+								<?= csrf_field() ?>
 								<button type="submit" class="button-no bold">🚪 <?= __('logout') ?></button>
 							</form>
-														
 						</div>
 
 					</div>
@@ -169,9 +169,9 @@
 				<a href="/t/meta/wiki/about"><?= __('about') ?></a>
 				<a href="<?= route('stats.index') ?>"><?= __('statistics') ?></a>
 				<?php if (!empty($currentUser['isLoggedIn'])): ?>
-				  <a href="<?= route('tags.filters') ?>"><?= __('filters') ?></a>
+					<a href="<?= route('tags.filters') ?>"><?= __('filters') ?></a>
 				<?php endif; ?>
-				
+
 				<a href="/rss" title="RSS лента">RSS</a>
 			</nav>
 			<?= \App\Core\Benchmark::renderStats() ?>
