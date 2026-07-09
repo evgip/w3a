@@ -191,123 +191,129 @@ class Notification extends Model
 
         $sql = "SELECT * FROM `{$this->table}` WHERE " . implode(' AND ', $where) . " LIMIT 1";
         
-        // ✅ Используем $this->db->fetchOne()
         return $this->db->fetchOne($sql, $params);
     }
 
-	/**
-	 * Получить уведомления пользователя с пагинацией и фильтрацией по типу
-	 */
-	public function getUserNotifications(int $userId, ?string $type = null, int $limit = 25, int $page = 1, array $mutedUserIds = []): array
-	{
-		$where = "n.user_id = :user_id";
-		$params = [
-			'user_id' => $userId,
-		];
+    /**
+     * Получить уведомления пользователя с пагинацией и фильтрацией по типу
+     */
+    public function getUserNotifications(int $userId, ?string $type = null, int $limit = 25, int $page = 1, array $mutedUserIds = []): array
+    {
+        $where = "n.user_id = :user_id";
+        $params = [
+            'user_id' => $userId,
+        ];
 
-		if ($type && $type !== 'all') {
-			$where .= " AND n.type = :type";
-			$params['type'] = $type;
-		}
+        if ($type && $type !== 'all') {
+            $where .= " AND n.type = :type";
+            $params['type'] = $type;
+        }
 
-		// Исключаем уведомления от замьюченных — используем именованные плейсхолдеры
-		if (!empty($mutedUserIds)) {
-			$placeholders = [];
-			foreach ($mutedUserIds as $index => $mutedId) {
-				$key = 'muted_' . $index;
-				$placeholders[] = ':' . $key;
-				$params[$key] = (int)$mutedId;
-			}
-			$where .= " AND n.actor_id NOT IN (" . implode(',', $placeholders) . ")";
-		}
+        // Исключаем уведомления от замьюченных
+        if (!empty($mutedUserIds)) {
+            $placeholders = [];
+            foreach ($mutedUserIds as $index => $mutedId) {
+                $key = 'muted_' . $index;
+                $placeholders[] = ':' . $key;
+                $params[$key] = (int)$mutedId;
+            }
+            $where .= " AND n.actor_id NOT IN (" . implode(',', $placeholders) . ")";
+        }
 
-		$params['limit'] = $limit;
-		$params['offset'] = ($page - 1) * $limit;
+        $params['limit'] = $limit;
+        $params['offset'] = ($page - 1) * $limit;
 
-		$sql = "
-			SELECT
-				n.*,
-				u.username as actor_name,
-				up.avatar as actor_avatar,
-				c.comment as comment_text,
-				c.story_id,
-				s.title as story_title,
-				m.message,
-				m.conversation_id
-			FROM `{$this->table}` n
-			LEFT JOIN users u ON n.actor_id = u.id
-			LEFT JOIN `user_profiles` up ON u.id = up.user_id
-			LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
-			LEFT JOIN stories s ON c.story_id = s.id
-			LEFT JOIN messages m ON n.notifiable_type = 'Message' AND n.notifiable_id = m.id
-			WHERE {$where}
-			ORDER BY n.created_at DESC
-			LIMIT :limit OFFSET :offset
-		";
+        $sql = "
+            SELECT
+                n.*,
+                u.username as actor_name,
+                up.avatar as actor_avatar,
+                c.comment as comment_text,
+                COALESCE(c.story_id, 0) as story_id,
+                s.title as story_title,
+                m.message,
+                m.conversation_id
+            FROM `{$this->table}` n
+            LEFT JOIN users u ON n.actor_id = u.id
+            LEFT JOIN `user_profiles` up ON u.id = up.user_id
+            LEFT JOIN comments c ON n.notifiable_type = 'Comment' AND n.notifiable_id = c.id
+            LEFT JOIN stories s ON c.story_id = s.id
+            LEFT JOIN messages m ON n.notifiable_type = 'Message' AND n.notifiable_id = m.id
+            WHERE {$where}
+            ORDER BY n.created_at DESC
+            LIMIT :limit OFFSET :offset
+        ";
 
-		return $this->db->fetchAll($sql, $params);
-	}
+        return $this->db->fetchAll($sql, $params);
+    }
 
-	/**
-	 * Получить количество непрочитанных уведомлений
-	 */
-	public function getUnreadCount(int $userId, array $mutedUserIds = []): int
-	{
-		$where = "user_id = :user_id AND is_read = 0";
-		$params = ['user_id' => $userId];
+    /**
+     * Получить количество непрочитанных уведомлений
+     */
+    public function getUnreadCount(int $userId, array $mutedUserIds = []): int
+    {
+        $where = "user_id = :user_id AND is_read = 0";
+        $params = ['user_id' => $userId];
 
-		if (!empty($mutedUserIds)) {
-			$placeholders = [];
-			foreach ($mutedUserIds as $index => $mutedId) {
-				$key = 'muted_' . $index;
-				$placeholders[] = ':' . $key;
-				$params[$key] = (int)$mutedId;
-			}
-			$where .= " AND actor_id NOT IN (" . implode(',', $placeholders) . ")";
-		}
+        if (!empty($mutedUserIds)) {
+            $placeholders = [];
+            foreach ($mutedUserIds as $index => $mutedId) {
+                $key = 'muted_' . $index;
+                $placeholders[] = ':' . $key;
+                $params[$key] = (int)$mutedId;
+            }
+            $where .= " AND actor_id NOT IN (" . implode(',', $placeholders) . ")";
+        }
 
-		return (int)$this->db->fetchColumn(
-			"SELECT COUNT(*) FROM `{$this->table}` WHERE {$where}",
-			$params
-		);
-	}
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `{$this->table}` WHERE {$where}",
+            $params
+        );
+    }
 
     /**
      * Получить количество непрочитанных уведомлений по типам
      */
-	public function getUnreadCountByType(int $userId, array $mutedUserIds = []): array
-	{
-		$where = "user_id = :user_id AND is_read = 0";
-		$params = ['user_id' => $userId];
-		
-		if (!empty($mutedUserIds)) {
-			$placeholders = [];
-			foreach ($mutedUserIds as $index => $mutedId) {
-				$key = 'muted_' . $index;
-				$placeholders[] = ':' . $key;
-				$params[$key] = $mutedId;
-			}
-			$where .= " AND actor_id NOT IN (" . implode(',', $placeholders) . ")";
-		}
+    public function getUnreadCountByType(int $userId, array $mutedUserIds = []): array
+    {
+        $where = "user_id = :user_id AND is_read = 0";
+        $params = ['user_id' => $userId];
+        
+        if (!empty($mutedUserIds)) {
+            $placeholders = [];
+            foreach ($mutedUserIds as $index => $mutedId) {
+                $key = 'muted_' . $index;
+                $placeholders[] = ':' . $key;
+                $params[$key] = (int)$mutedId;
+            }
+            $where .= " AND actor_id NOT IN (" . implode(',', $placeholders) . ")";
+        }
 
-		return $this->db->fetchAll(
-			"SELECT type, COUNT(*) as count 
-			 FROM `{$this->table}` 
-			 WHERE {$where} 
-			 GROUP BY type",
-			$params
-		);
-	}
+        return $this->db->fetchAll(
+            "SELECT type, COUNT(*) as count 
+             FROM `{$this->table}` 
+             WHERE {$where} 
+             GROUP BY type",
+            $params
+        );
+    }
 
     /**
      * Пометить одно уведомление как прочитанное
+     * Проверяет принадлежность уведомления пользователю
      */
     public function markAsRead(int $notificationId, int $userId): bool
     {
-        return $this->update($notificationId, [
-            'is_read' => 1,
-            'read_at' => date('Y-m-d H:i:s')
-        ]);
+        // Один запрос с проверкой принадлежности пользователю
+        // Один запрос с проверкой принадлежности пользователю
+        return $this->db->execute("
+            UPDATE `{$this->table}` 
+            SET is_read = 1, read_at = NOW() 
+            WHERE id = :id AND user_id = :user_id AND is_read = 0
+        ", [
+            'id' => $notificationId,
+            'user_id' => $userId
+        ]) > 0;
     }
 
     /**
@@ -315,7 +321,6 @@ class Notification extends Model
      */
     public function markAllAsRead(int $userId): bool
     {
-        // ✅ Используем $this->db->execute()
         return $this->db->execute("
             UPDATE `{$this->table}` 
             SET is_read = 1, read_at = NOW() 
@@ -356,7 +361,6 @@ class Notification extends Model
         }
 
         try {
-            // ✅ Используем $this->db->fetchOne()
             $result = $this->db->fetchOne("
                 SELECT `{$setting}`
                 FROM `user_settings`
@@ -374,7 +378,7 @@ class Notification extends Model
             if ($this->logger) {
                 $this->logger->error("[NOTIFICATIONS] Error checking user settings: " . $e->getMessage());
             }
-            return true; // При ошибке — уведомляем (безопасное поведение)
+            return true;
         }
     } 
 }

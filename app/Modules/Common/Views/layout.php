@@ -175,7 +175,9 @@
 
 				<a href="/rss" title="RSS лента">RSS</a>
 			</nav>
-			<?= \App\Core\Benchmark::renderStats() ?>
+			<?php if (!empty($currentUser['isAdmin'])): ?>
+				<?= \App\Core\Benchmark::renderStats() ?>
+			<?php endif; ?>	
 		</div>
 	</footer>
 

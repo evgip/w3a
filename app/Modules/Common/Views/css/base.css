@@ -269,7 +269,7 @@ header .user-info a { color: var(--color-fg-link); }
 footer {
     display: flex;
     justify-content: space-between;
-    padding: 2em 0.5em;
+    padding: 0.5em 0.5em 2em 0.5em;
     margin-top: 2em;
     border-top: 1px solid var(--color-fg-shape);
     font-size: 0.85em;
@@ -282,8 +282,6 @@ footer a {
 }
 
 footer a:hover { text-decoration: underline; }
-
-footer nav { border-bottom: 1px solid var(--color-box-bg-shaded); }
 
 /* ---------- Список публикаций (Stories) ---------- */
 ol.stories {
@@ -1428,7 +1426,7 @@ a.dropdown-item-admin:hover {
 .inline-form { display: inline; }
 .hidden { display: none; }
 .w-60 { width: 60%; }
-
+.right { float: right; }
 
 /* ---------- Адаптивность ---------- */
 @media only screen and (max-width: 480px) {

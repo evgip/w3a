@@ -15,6 +15,13 @@ class Database implements DatabaseInterface
     private array $config;
     private ?Logger $logger;
 
+    // Статический счётчик SQL запросов
+    private static int $queryCount = 0;
+    
+    // Опционально: логирование всех запросов (для отладки)
+    private static array $queryLog = [];
+    private static bool $enableQueryLog = false;
+
     public function __construct(array $config, ?Logger $logger = null)
     {
         if (empty($config)) {
@@ -75,6 +82,18 @@ class Database implements DatabaseInterface
 
     public function query(string $sql, array $params = []): \PDOStatement
     {
+        // Инкрементируем счётчик запросов
+        self::$queryCount++;
+        
+        // Логируем запрос если включено
+        if (self::$enableQueryLog) {
+            self::$queryLog[] = [
+                'sql' => $sql,
+                'params' => $params,
+                'time' => microtime(true),
+            ];
+        }
+        
         $stmt = $this->getConnection()->prepare($sql);
         $stmt->execute($params);
         return $stmt;
@@ -125,5 +144,52 @@ class Database implements DatabaseInterface
     public function prepare(string $sql): \PDOStatement
     {
         return $this->getConnection()->prepare($sql);
+    }
+
+    // Методы для работы со счётчиком запросов
+
+    /**
+     * Получить количество выполненных SQL запросов
+     */
+    public static function getQueryCount(): int
+    {
+        return self::$queryCount;
+    }
+
+    /**
+     * Сбросить счётчик запросов
+     */
+    public static function resetQueryCount(): void
+    {
+        self::$queryCount = 0;
+        self::$queryLog = [];
+    }
+
+    /**
+     * Включить логирование всех SQL запросов (для отладки)
+     */
+    public static function enableQueryLog(bool $enable = true): void
+    {
+        self::$enableQueryLog = $enable;
+    }
+
+    /**
+     * Получить лог всех SQL запросов (если логирование включено)
+     */
+    public static function getQueryLog(): array
+    {
+        return self::$queryLog;
+    }
+
+    /**
+     * Получить детальную информацию о запросах
+     */
+    public static function getQueryStats(): array
+    {
+        return [
+            'count' => self::$queryCount,
+            'log' => self::$queryLog,
+            'log_enabled' => self::$enableQueryLog,
+        ];
     }
 }
