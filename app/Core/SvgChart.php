@@ -82,8 +82,7 @@ class SvgChart
         // Генерируем SVG
         $svg = '<svg width="' . $this->width . '" height="' . $this->height . '" ' .
             'viewBox="0 0 ' . $this->width . ' ' . $this->height . '" ' .
-            'xmlns="http://www.w3.org/2000/svg" ' .
-            'style="max-width: 100%; height: auto;">';
+            'xmlns="http://www.w3.org/2000/svg"';
 
         if ($title) {
             $svg .= '<text x="' . ($this->width / 2) . '" y="20" text-anchor="middle" ' .
@@ -167,8 +166,7 @@ class SvgChart
 
         $svg = '<svg width="' . $this->width . '" height="' . $this->height . '" ' .
             'viewBox="0 0 ' . $this->width . ' ' . $this->height . '" ' .
-            'xmlns="http://www.w3.org/2000/svg" ' .
-            'style="max-width: 100%; height: auto;">';
+            'xmlns="http://www.w3.org/2000/svg">';
 
         if ($title) {
             $svg .= '<text x="' . ($this->width / 2) . '" y="20" text-anchor="middle" ' .

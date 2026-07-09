@@ -36,7 +36,7 @@ $router->group(['middleware' => ['web', 'moderator'], 'prefix' => '/admin/domain
      */
     $router->add(
         'GET', 
-        '/', 
+        '', 
         OriginsController::class . '@adminIndex', 
         'admin.domains'
     );

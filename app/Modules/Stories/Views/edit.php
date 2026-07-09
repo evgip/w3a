@@ -26,16 +26,16 @@
             <strong>Ссылка (URL)</strong>
             <span class="form-field-hint-inline">— необязательно</span>
         </label>
-        <div style="display: flex; gap: 8px; align-items: center;">
+        <div>
             <input type="url" id="story-url" name="url"
                 value="<?= e($story['url'] ?? '') ?>"
                 placeholder="https://example.com/article"
-                class="form-input-wide" style="flex: 1;">
-            <button type="button" id="fetch-title-btn" class="btn-secondary" style="white-space: nowrap;">
+                class="form-input-wide">
+            <button type="button" id="fetch-title-btn" class="btn-secondary">
                 Извлечь заголовок
             </button>
         </div>
-        <div id="fetch-status" style="margin-top: 5px; font-size: 0.85em; color: var(--opacity-fg-contrast-5);"></div>
+        <div id="fetch-status" class="red"></div>
     </div>
 
     <div class="form-field-group">
@@ -121,71 +121,75 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== ИЗВЛЕЧЕНИЕ ЗАГОЛОВКА ====================
     
+    // Функция извлечения заголовка
     function fetchTitle() {
         const url = urlInput.value.trim();
         
         if (!url) {
-            setStatus('Введите URL', 'error');
+            statusDiv.textContent = 'Введите URL';
+            statusDiv.style.color = '#c00';
             return;
         }
 
+        // Валидация URL
         try {
             new URL(url);
         } catch (e) {
-            setStatus('Некорректный URL', 'error');
+            statusDiv.textContent = 'Некорректный URL';
+            statusDiv.style.color = '#c00';
             return;
         }
 
-        const csrfToken = getCsrfToken();
-        
-        if (!csrfToken) {
-            setStatus('CSRF токен не найден. Обновите страницу.', 'error');
-            return;
-        }
-
+        // Показываем статус загрузки
         fetchBtn.disabled = true;
         fetchBtn.textContent = 'Загрузка...';
-        setStatus('Извлекаем заголовок...', 'loading');
+        statusDiv.textContent = 'Извлекаем заголовок...';
+        statusDiv.style.color = '#666';
 
-        fetch('/stories/fetch-url-title', {
-            method: 'POST',
+        // ✅ Используем GET запрос (совпадает с маршрутом)
+        fetch('/stories/fetch-url-title?url=' + encodeURIComponent(url), {
+            method: 'GET',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             },
-            body: 'url=' + encodeURIComponent(url) + '&csrf_token=' + encodeURIComponent(csrfToken),
             credentials: 'same-origin'
         })
         .then(response => {
-            if (response.status === 419) {
-                throw new Error('Сессия истекла. Обновите страницу.');
-            }
+            console.log('Response status:', response.status);
+            
             if (!response.ok) {
-                throw new Error('HTTP error! status: ' + response.status);
+                return response.json().then(data => {
+                    throw new Error(data.error || 'HTTP error! status: ' + response.status);
+                });
             }
             return response.json();
         })
         .then(data => {
             if (data.error) {
-                setStatus(data.error, 'error');
+                statusDiv.textContent = data.error;
+                statusDiv.style.color = '#c00';
                 return;
             }
 
             if (data.title) {
                 titleInput.value = data.title;
-                setStatus('✓ Заголовок извлечен', 'success');
+                statusDiv.textContent = '✓ Заголовок извлечен';
+                statusDiv.style.color = '#0a0';
                 
+                // Обновляем URL если найден canonical
                 if (data.url && data.url !== url) {
                     urlInput.value = data.url;
                 }
             } else {
-                setStatus('Не удалось извлечь заголовок', 'error');
+                statusDiv.textContent = 'Не удалось извлечь заголовок';
+                statusDiv.style.color = '#c00';
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            setStatus('Ошибка: ' + error.message, 'error');
+            statusDiv.textContent = 'Ошибка: ' + error.message;
+            statusDiv.style.color = '#c00';
         })
         .finally(() => {
             fetchBtn.disabled = false;

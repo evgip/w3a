@@ -86,7 +86,7 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
         <?= !empty($editor['required']) ? 'required' : '' ?>><?= e($editor['value']) ?></textarea>
 
     <!-- Область предпросмотра -->
-    <div id="<?= e($previewAreaId) ?>" class="preview-area" style="display: none;">
+    <div id="<?= e($previewAreaId) ?>" class="preview-area hidden">
         <div class="preview-header">
             <strong>Предпросмотр</strong>
             <button type="button" id="<?= e($closePreviewId) ?>" class="btn-close-preview" title="Закрыть">×</button>
@@ -126,13 +126,24 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
             return '';
         }
 
+        // ✅ Функции для управления видимостью через классы
+        function showPreviewArea() {
+            previewArea.classList.remove('hidden');
+            previewArea.classList.add('preview-visible');
+        }
+
+        function hidePreviewArea() {
+            previewArea.classList.remove('preview-visible');
+            previewArea.classList.add('hidden');
+        }
+
         // ==================== ПРЕДПРОСМОТР MARKDOWN ====================
 
         function showPreview() {
             const text = textarea.value.trim();
 
             if (!text) {
-                previewArea.style.display = 'none';
+                hidePreviewArea();
                 return;
             }
 
@@ -146,14 +157,20 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
             previewBtn.disabled = true;
             previewBtn.textContent = '⏳ Загрузка...';
 
+            // ✅ Используем FormData вместо строки
+            const formData = new FormData();
+            formData.append('text', text);
+            formData.append('csrf_token', csrfToken);
+            formData.append('allow_images', allowImages ? '1' : '0');
+
             fetch(previewUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
                         'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
                     },
-                    body: 'text=' + encodeURIComponent(text) + '&csrf_token=' + encodeURIComponent(csrfToken) + '&allow_images=' + (allowImages ? '1' : '0'),
+                    body: formData,
                     credentials: 'same-origin'
                 })
                 .then(response => {
@@ -161,7 +178,9 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
                         throw new Error('Сессия истекла. Обновите страницу.');
                     }
                     if (!response.ok) {
-                        throw new Error('HTTP error! status: ' + response.status);
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'HTTP error! status: ' + response.status);
+                        });
                     }
                     return response.json();
                 })
@@ -173,7 +192,7 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
 
                     if (data.html) {
                         previewContent.innerHTML = data.html;
-                        previewArea.style.display = 'block';
+                        showPreviewArea();
                         previewArea.scrollIntoView({
                             behavior: 'smooth',
                             block: 'nearest'
@@ -193,7 +212,7 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
         previewBtn.addEventListener('click', showPreview);
 
         closePreview.addEventListener('click', function() {
-            previewArea.style.display = 'none';
+            hidePreviewArea();
         });
 
         textarea.addEventListener('keydown', function(e) {

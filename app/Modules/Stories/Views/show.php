@@ -203,18 +203,13 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
 
 
                 <?php if ($showMarkReadButton): ?> <br><br>
-                    <form action="/story/<?= (int)$story['id'] ?>/mark-read" method="POST" style="display:inline">
+                    <form action="/story/<?= (int)$story['id'] ?>/mark-read" method="POST">
                         <?= csrf_field() ?>
                         <button type="submit" class="btn btn-sm btn-outline-secondary" title="Сбросить счётчик новых комментариев">
                             ✓ Отметить прочитанным
                         </button>
                     </form>
                 <?php endif; ?>
-            
-
-
- 
-
  </div>
 
         </div>

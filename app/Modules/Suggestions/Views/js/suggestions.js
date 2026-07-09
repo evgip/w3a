@@ -33,7 +33,7 @@ class SuggestionsManager {
         
         // Закрытие по Escape
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !this.modal.classList.contains('modal-hidden')) {
+            if (e.key === 'Escape' && !this.modal.classList.contains('hidden')) {
                 this.closeModal();
             }
         });
@@ -63,13 +63,13 @@ class SuggestionsManager {
     }
     
     showModal() {
-        this.modal.classList.remove('modal-hidden');
+        this.modal.classList.remove('hidden');
         this.modal.classList.add('modal-visible');
     }
     
     closeModal() {
         this.modal.classList.remove('modal-visible');
-        this.modal.classList.add('modal-hidden');
+        this.modal.classList.add('hidden');
     }
     
     showElement(element) {

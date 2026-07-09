@@ -851,25 +851,6 @@ ol.notification-list {
 
 .new-comments:hover { opacity: 0.8; }
 
-/* ---------- Утилитарные классы ---------- */
-.clear { clear: both; }
-
-.hint {
-    color: var(--opacity-fg-63);
-    font-style: italic;
-    font-size: 0.85em;
-}
-
-.delete, .red { color: var(--color-fg-negative); }
-.delete { font-size: 0.85em; }
-.delete:hover { opacity: 0.8; }
-
-.green { color: var(--color-fg-affirmative); }
-.bold { font-weight: bold; }
-.mb-1 { margin-bottom: 1em; }
-
-.inline-form { display: inline; }
-
 /* ---------- Пагинация ---------- */
 .page_link_buttons {
     font-weight: bold;
@@ -1168,8 +1149,6 @@ a.dropdown-item-admin:hover {
 .nav-badge-counter { margin-left: auto; }
 .nav-notification-badge { margin-left: 0.3em; }
 
-.badge-hidden { display: none; }
-
 /* ---------- Навигационные вкладки (фильтры, сортировки) ---------- */
 .nav {
     display: flex;
@@ -1266,7 +1245,6 @@ a.dropdown-item-admin:hover {
     flex-shrink: 0;
 }
 
-/* ✅ ВОЗВРАЩЁННЫЙ КЛАСС */
 .profile-avatar-placeholder-large {
     display: flex;
     align-items: center;
@@ -1413,11 +1391,6 @@ a.dropdown-item-admin:hover {
     z-index: 1000;
 }
 
-/* Скрытое состояние модального окна */
-.modal-hidden {
-    display: none;
-}
-
 /* Видимое состояние модального окна */
 .modal-visible {
     display: flex;
@@ -1437,6 +1410,25 @@ a.dropdown-item-admin:hover {
     max-height: 90vh;
     overflow-y: auto;
 }
+
+/* ---------- Утилитарные классы ---------- */
+.hint {
+    color: var(--opacity-fg-63);
+    font-style: italic;
+    font-size: 0.85em;
+}
+
+.clear { clear: both; }
+.delete, .red { color: var(--color-fg-negative); }
+.delete { font-size: 0.85em; }
+.delete:hover { opacity: 0.8; }
+.green { color: var(--color-fg-affirmative); }
+.bold { font-weight: bold; }
+.mb-1 { margin-bottom: 1em; }
+.inline-form { display: inline; }
+.hidden { display: none; }
+.w-60 { width: 60%; }
+
 
 /* ---------- Адаптивность ---------- */
 @media only screen and (max-width: 480px) {

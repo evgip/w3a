@@ -62,7 +62,7 @@
                 <td><?= nl2br(htmlspecialchars($note['note'])) ?></td>
                 <td><?= $note['is_private'] ? '🔒 Приватная' : '🌐 Публичная' ?></td>
                 <td>
-                    <form method="POST" action="/mod/notes/<?= $note['id'] ?>/delete" style="display:inline">
+                    <form method="POST" action="/mod/notes/<?= $note['id'] ?>/delete">
                         <?= csrf_field() ?>
                         <button type="submit" class="btn btn-sm btn-danger flag-link" data-confirm="Удалить заметку?">✕</button>
                     </form>

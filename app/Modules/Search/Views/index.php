@@ -11,7 +11,7 @@ $currentVotes = $currentVotes ?? [];
     <p>
         <input type="text" name="q" value="<?= e($query) ?>" 
                placeholder="Поисковый запрос..." required autofocus
-               style="width: 60%; padding: 4px 6px;">
+			   class="w-60">
         <button type="submit">Искать</button>
     </p>
 
@@ -50,7 +50,6 @@ $currentVotes = $currentVotes ?? [];
                             'type' => 'story',
                             'id' => (int)$story['id'],
                             'score' => (int)$story['score'],
-                            // ✅ Используем переданный голос вместо создания модели
                             'currentVoteState' => $currentVotes[$story['id']] ?? null,
                             'canDownvote' => $canUserDownvote,
                             'isLoggedIn' => $currentUserId > 0,
@@ -123,7 +122,7 @@ $currentVotes = $currentVotes ?? [];
             <ol class="comments">
                 <?php foreach ($results as $comment): ?>
                     <li class="comment">
-                        <div class="byline" style="margin-bottom: 0.3em;">
+                        <div class="byline">
                             📌 В теме:
                             <a href="<?= route('story.show', ['id' => $comment['story_id']]) ?>#comment-block-<?= $comment['id'] ?>">
                                 <strong><?= e($comment['story_title']) ?></strong>
