@@ -1,5 +1,10 @@
 class SuggestionsManager {
     constructor() {
+        this.modal = document.getElementById('suggest-modal');
+        this.tagsGroup = document.getElementById('suggest-tags-group');
+        this.textGroup = document.getElementById('suggest-text-group');
+        this.form = document.getElementById('suggest-form');
+        
         this.init();
     }
     
@@ -19,13 +24,19 @@ class SuggestionsManager {
         });
         
         // Отправка формы
-        const form = document.getElementById('suggest-form');
-        if (form) {
-            form.addEventListener('submit', (e) => {
+        if (this.form) {
+            this.form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.submitSuggestion();
             });
         }
+        
+        // Закрытие по Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !this.modal.classList.contains('modal-hidden')) {
+                this.closeModal();
+            }
+        });
     }
     
     openSuggestModal(button) {
@@ -33,28 +44,50 @@ class SuggestionsManager {
         const targetId = button.dataset.targetId;
         const currentTitle = button.dataset.currentTitle || '';
         
+        // Заполняем данные формы
         document.getElementById('suggest-target-type').value = targetType;
         document.getElementById('suggest-target-id').value = targetId;
         document.getElementById('suggest-title').value = currentTitle;
         
+        // Показываем/скрываем группы полей через классы
         if (targetType === 'Story') {
-            document.getElementById('suggest-tags-group').style.display = 'block';
-            document.getElementById('suggest-text-group').style.display = 'none';
+            this.showElement(this.tagsGroup);
+            this.hideElement(this.textGroup);
         } else if (targetType === 'Comment') {
-            document.getElementById('suggest-tags-group').style.display = 'none';
-            document.getElementById('suggest-text-group').style.display = 'block';
+            this.hideElement(this.tagsGroup);
+            this.showElement(this.textGroup);
         }
         
-        document.getElementById('suggest-modal').style.display = 'block';
+        // Показываем модальное окно
+        this.showModal();
+    }
+    
+    showModal() {
+        this.modal.classList.remove('modal-hidden');
+        this.modal.classList.add('modal-visible');
     }
     
     closeModal() {
-        document.getElementById('suggest-modal').style.display = 'none';
+        this.modal.classList.remove('modal-visible');
+        this.modal.classList.add('modal-hidden');
+    }
+    
+    showElement(element) {
+        if (element) {
+            element.classList.remove('field-hidden');
+            element.classList.add('field-visible');
+        }
+    }
+    
+    hideElement(element) {
+        if (element) {
+            element.classList.remove('field-visible');
+            element.classList.add('field-hidden');
+        }
     }
     
     async submitSuggestion() {
-        const form = document.getElementById('suggest-form');
-        const formData = new FormData(form);
+        const formData = new FormData(this.form);
         
         const targetType = formData.get('target_type');
         const csrfToken = formData.get('csrf_token');
@@ -96,7 +129,7 @@ class SuggestionsManager {
             const result = await response.json();
             
             if (result.success) {
-                // ПЕРЕЗАГРУЖАЕМ страницу, чтобы увидеть обновления
+                this.closeModal();
                 window.location.reload();
             } else {
                 alert('Ошибка: ' + result.error);

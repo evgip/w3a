@@ -295,12 +295,11 @@ class Story extends Model
 				FROM comments c
 				JOIN users u ON c.user_id = u.id
 				LEFT JOIN user_profiles up ON u.id = up.user_id
-				WHERE c.story_id = :story_id
-				  AND c.deleted_at IS NULL";
+				WHERE c.story_id = :story_id";
 		
 		$params = ['story_id' => $storyId];
 		
-		// ✅ Фильтрация игнорируемых в SQL
+		// Фильтрация игнорируемых в SQL
 		if (!empty($mutedUserIds)) {
 			$placeholders = [];
 			foreach ($mutedUserIds as $index => $mutedId) {
@@ -311,7 +310,7 @@ class Story extends Model
 			$sql .= " AND c.user_id NOT IN (" . implode(',', $placeholders) . ")";
 		}
 		
-		// ✅ Сортировка в SQL (по parent_id для группировки, потом по score)
+		// Сортировка в SQL (по parent_id для группировки, потом по score)
 		$sql .= " ORDER BY c.parent_id ASC, calculated_confidence DESC, c.created_at DESC";
 		
 		return $this->db->fetchAll($sql, $params);

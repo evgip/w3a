@@ -137,7 +137,7 @@
 							<?php endif; ?>
 
 							<div class="dropdown-divider"></div>
-							<form action="<?= route('auth.logout') ?>" method="POST" style="display:inline;">
+							<form action="<?= route('auth.logout') ?>" method="POST">
 								<?= csrf_field() ?>
 								<button type="submit" class="button-no bold">🚪 <?= __('logout') ?></button>
 							</form>

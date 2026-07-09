@@ -46,17 +46,17 @@ $isModerator = \App\Modules\Auth\Services\Auth::isModerator() || \App\Modules\Au
                     <?php if ($isModerator): ?>
                         <!-- Кнопки для модератора -->
                         <div class="moderator-actions" style="margin-top: 10px;">
-                            <form action="/suggestions/<?= $group['suggestion_id'] ?>/approve" method="POST" style="display:inline;">
+                            <form action="/suggestions/<?= $group['suggestion_id'] ?>/approve" method="POST">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="btn-link" style="color: var(--color-fg-affirmative);">
                                     ✓ Одобрить
                                 </button>
                             </form>
                             <span class="divider">|</span>
-                            <form action="/suggestions/<?= $group['suggestion_id'] ?>/reject" method="POST" style="display:inline;">
+                            <form action="/suggestions/<?= $group['suggestion_id'] ?>/reject" method="POST">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="reason" value="Отклонено модератором">
-                                <button type="submit" class="btn-link" style="color: var(--color-fg-negative);">
+                                <button type="submit" class="btn-link red">
                                     ✗ Отклонить
                                 </button>
                             </form>

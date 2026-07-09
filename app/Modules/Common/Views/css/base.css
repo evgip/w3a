@@ -1413,6 +1413,16 @@ a.dropdown-item-admin:hover {
     z-index: 1000;
 }
 
+/* Скрытое состояние модального окна */
+.modal-hidden {
+    display: none;
+}
+
+/* Видимое состояние модального окна */
+.modal-visible {
+    display: flex;
+}
+
 .modal-content {
     position: absolute;
     top: 50%;

@@ -61,7 +61,7 @@ $isDeleted = !empty($story['deleted_at']);
         <?php else: ?>
             <form action="/admin/stories/<?= (int)$story['id'] ?>/delete" method="POST" class="inline-form">
                 <?= csrf_field() ?>
-                <button type="submit" class="btn-link" style="color: var(--color-fg-negative);">удалить</button>
+                <button type="submit" class="btn-link red">удалить</button>
             </form>
         <?php endif; ?>
     <?php endif; ?>

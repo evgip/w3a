@@ -104,7 +104,7 @@ $sortLinks = [
                                     title="<?= $isBannedDomain ? '⚠ Домен заблокирован модераторами' : '' ?>">
                                     <?= e($domainHost) ?>
                                     <?php if ($isBannedDomain): ?>
-                                        <span style="color:#ac130d;">🚫</span>
+                                        🚫
                                     <?php endif; ?>
                                 </a>
                             <?php endif; ?>

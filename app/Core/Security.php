@@ -62,7 +62,7 @@ class Security
             "default-src 'self' " . $mergeOrigins('default_src'),
             "script-src 'self' 'nonce-{$nonce}' " . $mergeOrigins('script_src'),
             "style-src-elem 'self' 'unsafe-inline' " . $mergeOrigins('style_src'),
-            "style-src-attr 'self' 'unsafe-inline'",
+            "style-src-attr 'self'",
             "frame-src 'self' " . $mergeOrigins('frame_src'),
             "connect-src 'self' " . $mergeOrigins('connect_src'),
             "img-src 'self' data: " . $mergeOrigins('img_src'),

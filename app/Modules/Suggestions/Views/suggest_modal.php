@@ -1,4 +1,4 @@
-<div id="suggest-modal" class="modal" style="display:none;">
+<div id="suggest-modal" class="modal modal-hidden">
     <div class="modal-content">
         <h3>Предложить изменения</h3>
 
@@ -40,7 +40,7 @@
                 <?php endforeach; ?>
             </div>
 
-            <div class="form-field-group" id="suggest-text-group" style="display:none;">
+            <div class="form-field-group modal-hidden" id="suggest-text-group">
                 <label for="suggest-text"><strong>Текст</strong></label>
                 <textarea id="suggest-text" name="text" rows="5"></textarea>
             </div>

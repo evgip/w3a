@@ -174,7 +174,7 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
                     <?php else: ?>
                         <form action="/admin/stories/<?= (int)$story['id'] ?>/delete" method="POST" class="inline-form">
                             <?= csrf_field() ?>
-                            <button type="submit" class="btn-link" style="color: var(--color-fg-negative);">удалить</button>
+                            <button type="submit" class="btn-link red">удалить</button>
                         </form>
                     <?php endif; ?>
                 <?php endif; ?>
@@ -234,7 +234,7 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
                 placeholder="Ваш комментарий... (поддерживается Markdown)"></textarea>
 
             <button type="submit">Опубликовать комментарий</button>
-            <button type="button" id="btn-cancel-reply" style="display: none;">Отмена</button>
+            <button type="button" id="btn-cancel-reply">Отмена</button>
         </form>
     <?php else: ?>
         <p class="hint">
@@ -246,8 +246,8 @@ $showMarkReadButton = ($currentUserId > 0 && ($newCount ?? 0) > 0);
 <hr>
 
 <!-- КОММЕНТАРИИ -->
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-    <h3 id="comments" style="margin: 0;">Комментарии (<?= (int)$story['comments_count'] ?>)</h3>
+<div class="comment-head">
+    <h3 id="comments">Комментарии (<?= (int)$story['comments_count'] ?>)</h3>
     <?php if (!empty($commentsTree)): ?>
         <button type="button" id="collapse-all-comments" class="btn btn-sm btn-outline-secondary">
             Свернуть все ветки
