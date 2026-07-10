@@ -328,7 +328,7 @@ class Request
     /**
      * Проверка AJAX-запроса
      */
-    private function isAjaxRequest(): bool
+    public function isAjaxRequest(): bool
     {
         return (
             (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])

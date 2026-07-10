@@ -113,24 +113,50 @@ class CommentsController extends Controller
 		}
 	}
 
-    /**
-     * Редактирование комментария
-     */
-    public function edit(string $id): void
-    {
-        $commentId = (int)$id;
-        $newText = $this->request->getParams('comment_text');
-        $userId = Auth::id();
+	/**
+	 * Редактирование комментария
+	 */
+	public function edit(string $id): void
+	{
+		$commentId = (int)$id;
+		$newText = $this->request->getParams('comment_text');
+		$userId = Auth::id();
 
-        $result = $this->service(CommentService::class)->updateComment($commentId, $newText, $userId);
+		$session = $this->container->get(\App\Core\Session::class);
+		$result = $this->service(CommentService::class)->updateComment($commentId, $newText, $userId);
 
-        if ($result === null) {
-            $this->redirectBack();
-            return;
-        }
+		// AJAX-ответ
+		if ($this->request->isAjaxRequest()) {
+			header('Content-Type: application/json; charset=utf-8');
+			
+			if ($result === null) {
+				// Ошибка — читаем flash-сообщение из сессии
+				$error = $session->getFlash('error') ?? 'Не удалось обновить комментарий';
+				echo json_encode([
+					'success' => false,
+					'error' => $error
+				], JSON_UNESCAPED_UNICODE);
+				exit;
+			}
 
-        $this->redirect(comment_url((int)$result['comment']['story_id'], $commentId));
-    }
+			// Успех — рендерим Markdown в HTML
+			$html = markdown_comment($result['comment']['comment']);
+			echo json_encode([
+				'success' => true,
+				'html' => $html,
+				'raw' => $result['comment']['comment']
+			], JSON_UNESCAPED_UNICODE);
+			exit;
+		}
+
+		// Обычный POST — redirect (fallback) если JS отключён
+		if ($result === null) {
+			$this->redirectBack();
+			return;
+		}
+
+		$this->redirect(comment_url((int)$result['comment']['story_id'], $commentId));
+	}
 
     /**
      * Удаление комментария

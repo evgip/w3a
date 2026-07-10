@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			// Извлекаем исходный Markdown из data-raw
 			const currentText = textBlock.getAttribute('data-raw') || '';
 
-			// ✅ Берём CSRF-токен из cookie через глобальную функцию из core_utils.js
+			//  Берём CSRF-токен из cookie через глобальную функцию из core_utils.js
 			const csrfToken = window.getCsrfToken ? window.getCsrfToken() : '';
 
 			// Создаём динамическую форму редактирования
@@ -174,10 +174,57 @@ document.addEventListener('DOMContentLoaded', function() {
 				editTextarea.focus();
 			}
 
-			// Обработка кнопки "Отмена"
+			// ✅ Обработка кнопки "Отмена"
 			editForm.querySelector('.comment-edit-cancel').addEventListener('click', function() {
 				editForm.remove();
 				textBlock.style.display = 'block';
+			});
+
+			// ✅ ПЕРЕХВАТ SUBMIT — отправляем через AJAX
+			editForm.addEventListener('submit', async function(e) {
+				e.preventDefault();
+
+				const submitBtn = editForm.querySelector('button[type="submit"]');
+				const originalText = submitBtn.textContent;
+				submitBtn.disabled = true;
+				submitBtn.textContent = '⏳ Сохранение...';
+
+				const formData = new FormData(editForm);
+
+				try {
+					const response = await fetch(editForm.action, {
+						method: 'POST',
+						body: formData,
+						credentials: 'same-origin'
+						// ✅ CSRF-токен добавляется автоматически перехватчиком из core_utils.js
+					});
+
+					if (response.status === 419) {
+						throw new Error('Сессия истекла. Обновите страницу.');
+					}
+
+					const data = await response.json();
+
+					if (data.success) {
+						// ✅ Обновляем текст комментария
+						textBlock.innerHTML = data.html;
+						textBlock.setAttribute('data-raw', data.raw);
+
+						// Удаляем форму и показываем текст
+						editForm.remove();
+						textBlock.style.display = 'block';
+					} else {
+						// Ошибка — показываем сообщение
+						alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+						submitBtn.disabled = false;
+						submitBtn.textContent = originalText;
+					}
+				} catch (error) {
+					console.error('Error:', error);
+					alert('Ошибка соединения с сервером: ' + error.message);
+					submitBtn.disabled = false;
+					submitBtn.textContent = originalText;
+				}
 			});
 		});
 	});

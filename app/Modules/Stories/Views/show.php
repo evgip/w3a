@@ -1,5 +1,4 @@
 <?php
-// ✅ Все данные приходят из контроллера, не создаём модели здесь
 $currentUserId = $currentUserId ?? 0;
 $isAdmin = $isAdmin ?? false;
 $isModerator = $isModerator ?? false;
