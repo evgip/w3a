@@ -29,7 +29,6 @@
 			}
 		})();
 	</script>
-    <meta name="csrf-token" content="<?= htmlspecialchars($csrf_token) ?>">
     
 	<link rel="stylesheet" href="/css/app.min.css">
 </head>
@@ -149,7 +148,7 @@
 					<?php if (config('invitations.config.invitations_enabled')): ?>
 						<a class="nav-link" href="<?= route('home') ?>invite/request"><?= __('request_invitation') ?></a>
 					<?php else: ?>
-						<a class="btn-nav-create" href="<?= route('auth.register') ?>"><?= __('register') ?></a>
+						<a class="btn-nav-create mb-none" href="<?= route('auth.register') ?>"><?= __('register') ?></a>
 					<?php endif; ?>
 				<?php endif; ?>
 			</nav>

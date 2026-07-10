@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
 /**
@@ -10,7 +12,6 @@ namespace App\Core;
  */
 class Request
 {
-    private const CSRF_TOKEN_KEY = 'csrf_token';           // Ключ в сессии
     private const CSRF_TOKEN_NAME = 'csrf_token';          // Имя поля в POST
     private const CSRF_COOKIE_NAME = 'XSRF-TOKEN';         // Имя cookie
     private const CSRF_HEADER_NAME = 'HTTP_X_XSRF_TOKEN';  // Заголовок для AJAX
@@ -25,7 +26,7 @@ class Request
     private ?Container $container = null;
 
     /**
-     * ✅ Конструктор с опциональными зависимостями
+     * Конструктор с опциональными зависимостями
      * 
      * Зависимости можно передать позже через сеттеры, если Request
      * создаётся до инициализации контейнера.
@@ -41,7 +42,7 @@ class Request
     }
 
     /**
-     * ✅ Сеттер для Audit (если не передан в конструктор)
+     * Сеттер для Audit (если не передан в конструктор)
      */
     public function setAudit(Audit $audit): void
     {
@@ -49,7 +50,7 @@ class Request
     }
 
     /**
-     * ✅ Сеттер для Session (если не передан в конструктор)
+     * Сеттер для Session (если не передан в конструктор)
      */
     public function setSession(Session $session): void
     {
@@ -57,7 +58,7 @@ class Request
     }
 
     /**
-     * ✅ Сеттер для Container (если не передан в конструктор)
+     * Сеттер для Container (если не передан в конструктор)
      */
     public function setContainer(Container $container): void
     {
@@ -154,43 +155,23 @@ class Request
         return $this->getParams($key, $default);
     }
 
-	/**
-	 * Получить или сгенерировать CSRF-токен (Double-Submit Cookie Pattern)
-	 * 
-	 * Токен хранится в cookie (доступен JS) и в сессии (для серверной проверки).
-	 * Cookie устанавливается с SameSite=Strict для защиты от CSRF.
-	 */
-	public function getCsrfToken(): string
-	{
-		// Убеждаемся, что сессия запущена
-		if (session_status() === PHP_SESSION_NONE) {
-			session_start();
-		}
+    /**
+     * Получить или сгенерировать CSRF-токен (Double-Submit Cookie Pattern)
+     * 
+     * Токен хранится ТОЛЬКО в cookie (доступен JS).
+     * Сессия не используется для CSRF.
+     */
+    public function getCsrfToken(): string
+    {
+        $token = $_COOKIE[self::CSRF_COOKIE_NAME] ?? null;
 
-		// 1. Проверяем cookie
-		$cookieToken = $_COOKIE[self::CSRF_COOKIE_NAME] ?? null;
-		
-		// 2. Проверяем сессию
-		$sessionToken = $_SESSION[self::CSRF_TOKEN_KEY] ?? null;
+        if (!$token) {
+            $token = bin2hex(random_bytes(32));
+            $this->setCsrfCookie($token);
+        }
 
-		// 3. Если оба есть и совпадают — используем их
-		if ($cookieToken && $sessionToken && hash_equals($cookieToken, $sessionToken)) {
-			return $cookieToken;
-		}
-
-		// 4. Если cookie есть, но сессия пустая/не совпадает — синхронизируем сессию из cookie
-		if ($cookieToken && !$sessionToken) {
-			$_SESSION[self::CSRF_TOKEN_KEY] = $cookieToken;
-			return $cookieToken;
-		}
-
-		// 5. Если cookie нет или не совпадает с сессией — генерируем новый токен
-		$token = bin2hex(random_bytes(32));
-		$this->setCsrfCookie($token);
-		$_SESSION[self::CSRF_TOKEN_KEY] = $token;
-
-		return $token;
-	}
+        return $token;
+    }
 
     /**
      * HTML-поле с токеном для вставки в формы
@@ -203,44 +184,38 @@ class Request
 
     /**
      * Валидация CSRF-токена (Double-Submit Cookie Pattern)
+     * 
+     * Проверяет:
+     * 1. Cookie == POST-параметр (для форм)
+     * 2. Cookie == Заголовок (для AJAX)
+     * 
+     * Сессия не используется.
      */
-	public function validateCsrf(): void
-	{
-		// GET-запросы не требуют CSRF
-		if ($this->isGet()) {
-			return;
-		}
+    public function validateCsrf(): void
+    {
+        // GET-запросы не требуют CSRF
+        if ($this->isGet()) {
+            return;
+        }
 
-		// 1. Получаем токен из cookie
-		$cookieToken = $_COOKIE[self::CSRF_COOKIE_NAME] ?? '';
+        // 1. Получаем токен из cookie
+        $cookieToken = $_COOKIE[self::CSRF_COOKIE_NAME] ?? '';
 
-		// 2. Получаем токен из запроса (заголовок или POST-параметр)
-		$requestToken = $this->getCsrfTokenFromRequest();
+        // 2. Получаем токен из запроса (заголовок или POST-параметр)
+        $requestToken = $this->getCsrfTokenFromRequest();
 
-		// 3. Double-submit проверка: cookie == запрос
-		if (
-			empty($cookieToken) || empty($requestToken) ||
-			!hash_equals((string)$cookieToken, (string)$requestToken)
-		) {
-			$this->handleCsrfFailure();
-			return;
-		}
+        // 3. Double-submit проверка: cookie == запрос
+        if (
+            empty($cookieToken) || empty($requestToken) ||
+            !hash_equals((string)$cookieToken, (string)$requestToken)
+        ) {
+            $this->handleCsrfFailure();
+            return;
+        }
 
-		// 4. Дополнительная проверка: токен есть в сессии (опционально, можно убрать)
-		// Теперь getCsrfToken() гарантирует синхронизацию, так что эта проверка избыточна
-		// Но оставим для дополнительной безопасности
-		if (session_status() === PHP_SESSION_NONE) {
-			session_start();
-		}
-		$sessionToken = $_SESSION[self::CSRF_TOKEN_KEY] ?? '';
-		if (empty($sessionToken) || !hash_equals((string)$sessionToken, (string)$cookieToken)) {
-			$this->handleCsrfFailure();
-			return;
-		}
-
-		// 5. Ротация токена после успешной проверки
-		$this->regenerateCsrfToken();
-	}
+        // 4. Ротация токена после успешной проверки
+        $this->regenerateCsrfToken();
+    }
 
     /**
      * Валидация CSRF без редиректа (для AJAX-запросов)
@@ -275,21 +250,13 @@ class Request
 
     /**
      * Регенерация CSRF-токена
-     * Вызывается после успешной проверки для обеспечения одноразовости
+     * Вызывается после успешной проверки для обеспечения одноразовости.
+     * Обновляет ТОЛЬКО cookie, сессия не используется.
      */
     public function regenerateCsrfToken(): void
     {
-        // Генерируем новый токен
         $token = bin2hex(random_bytes(32));
-
-        // Обновляем cookie
         $this->setCsrfCookie($token);
-
-        // Обновляем сессию
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $_SESSION[self::CSRF_TOKEN_KEY] = $token;
     }
 
     /**
@@ -327,10 +294,6 @@ class Request
 
         // 2. Регенерируем токен (предотвращает повторное использование)
         unset($_COOKIE[self::CSRF_COOKIE_NAME]);
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        unset($_SESSION[self::CSRF_TOKEN_KEY]);
 
         // 3. Flash-сообщение для пользователя
         $session = $this->session ?? $this->container?->get(Session::class);
@@ -349,7 +312,7 @@ class Request
             exit;
         }
 
-        // 5. ✅ ИСПРАВЛЕНО: Для обычных запросов — используем контейнер
+        // 5. Для обычных запросов — используем контейнер
         http_response_code(419);
 
         if ($this->container === null) {

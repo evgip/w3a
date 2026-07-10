@@ -98,16 +98,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== УТИЛИТЫ ====================
     
-    function getCsrfToken() {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        if (meta) return meta.content;
-        
-        const input = document.querySelector('input[name="csrf_token"]');
-        if (input) return input.value;
-        
-        return '';
-    }
-
     function setStatus(message, type) {
         statusDiv.textContent = message;
         if (type === 'success') {
@@ -121,7 +111,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== ИЗВЛЕЧЕНИЕ ЗАГОЛОВКА ====================
     
-    // Функция извлечения заголовка
     function fetchTitle() {
         const url = urlInput.value.trim();
         
@@ -146,17 +135,22 @@ document.addEventListener('DOMContentLoaded', function() {
         statusDiv.textContent = 'Извлекаем заголовок...';
         statusDiv.style.color = '#666';
 
-        // ✅ Используем GET запрос (совпадает с маршрутом)
-        fetch('/stories/fetch-url-title?url=' + encodeURIComponent(url), {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            },
+        // Используем POST запрос с CSRF-защитой
+        const formData = new FormData();
+        formData.append('url', url);
+
+        fetch('/stories/fetch-url-title', {
+            method: 'POST',
+            body: formData,
             credentials: 'same-origin'
+            // headers (X-XSRF-TOKEN, X-Requested-With) добавляются автоматически перехватчиком из core_utils.js
         })
         .then(response => {
             console.log('Response status:', response.status);
+            
+            if (response.status === 419) {
+                throw new Error('Сессия истекла. Обновите страницу.');
+            }
             
             if (!response.ok) {
                 return response.json().then(data => {

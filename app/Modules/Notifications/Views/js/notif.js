@@ -68,14 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         
         const destinationUrl = link.href;
-        const csrfToken = getCsrfToken();
         
+        // ✅ CSRF-токен добавляется автоматически перехватчиком из core_utils.js
         fetch(`/notifications/${notificationId}/read`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: `csrf_token=${encodeURIComponent(csrfToken)}`,
             credentials: 'same-origin'
         })
         .then(response => {
@@ -106,14 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('mark-all-read-btn')?.addEventListener('click', function(e) {
     e.preventDefault();
     
-    const csrfToken = getCsrfToken();
-    
+    // ✅ CSRF-токен добавляется автоматически перехватчиком из core_utils.js
     fetch('/notifications/mark-all-read', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: `csrf_token=${encodeURIComponent(csrfToken)}`,
         credentials: 'same-origin'
     })
     .then(response => {
@@ -134,29 +125,3 @@ document.getElementById('mark-all-read-btn')?.addEventListener('click', function
         alert('Ошибка соединения с сервером.');
     });
 });
-
-/**
- * Получить CSRF-токен из разных источников
- */
-function getCsrfToken() {
-    // Приоритет 1: cookie XSRF-TOKEN (обновляется middleware при каждом POST)
-    const name = 'XSRF-TOKEN=';
-    const decodedCookie = decodeURIComponent(document.cookie);
-    const ca = decodedCookie.split(';');
-    for (let i = 0; i < ca.length; i++) {
-        let c = ca[i].trim();
-        if (c.indexOf(name) === 0) {
-            return c.substring(name.length, c.length);
-        }
-    }
-    
-    // Приоритет 2: meta-тег
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    if (meta) return meta.content;
-    
-    // Приоритет 3: скрытое поле в форме
-    const input = document.querySelector('input[name="csrf_token"]');
-    if (input) return input.value;
-    
-    return '';
-}

@@ -40,7 +40,7 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
     $router->add('GET', '/stories/create', StoriesController::class . '@showCreateForm', 'story.form');
     $router->add('POST', '/stories/create', StoriesController::class . '@create', 'story.create');
 	
-	$router->add('GET', '/stories/fetch-url-title', StoriesController::class . '@fetchUrlTitle', 'story.fetch_url_title');
+	$router->add('POST', '/stories/fetch-url-title', StoriesController::class . '@fetchUrlTitle', 'story.fetch_url_title');
 
     // Предпросмотр Markdown
     $router->add('POST', '/stories/preview', StoriesController::class . '@preview', 'story.preview');

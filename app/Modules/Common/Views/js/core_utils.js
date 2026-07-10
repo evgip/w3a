@@ -1,6 +1,6 @@
 /**
- * Глобальная функция для ручного получения CSRF-токена
- * Используется в особых случаях (WebSocket, кастомные библиотеки)
+ * Глобальная функция для получения CSRF-токена
+ * Используется для отправки токена в body формы (не в headers)
  */
 window.getCsrfToken = function() {
     const name = 'XSRF-TOKEN=';
@@ -12,15 +12,9 @@ window.getCsrfToken = function() {
             return c.substring(name.length, c.length);
         }
     }
-
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    if (meta) return meta.content;
-
-    const input = document.querySelector('input[name="csrf_token"]');
-    if (input) return input.value;
-
     return '';
 };
+
 
 /**
  * CSRF Protection - автоматическая отправка токена для AJAX-запросов

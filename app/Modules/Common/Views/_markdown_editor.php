@@ -116,16 +116,6 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
 
         // ==================== УТИЛИТЫ ====================
 
-        function getCsrfToken() {
-            const meta = document.querySelector('meta[name="csrf-token"]');
-            if (meta) return meta.content;
-
-            const input = document.querySelector('input[name="csrf_token"]');
-            if (input) return input.value;
-
-            return '';
-        }
-
         // ✅ Функции для управления видимостью через классы
         function showPreviewArea() {
             previewArea.classList.remove('hidden');
@@ -147,29 +137,17 @@ $toolbarClass = 'markdown-toolbar-' . $uid;
                 return;
             }
 
-            const csrfToken = getCsrfToken();
-
-            if (!csrfToken) {
-                alert('CSRF токен не найден. Обновите страницу.');
-                return;
-            }
-
             previewBtn.disabled = true;
             previewBtn.textContent = '⏳ Загрузка...';
 
             // ✅ Используем FormData вместо строки
             const formData = new FormData();
             formData.append('text', text);
-            formData.append('csrf_token', csrfToken);
             formData.append('allow_images', allowImages ? '1' : '0');
 
+            // ✅ CSRF-токен добавляется автоматически перехватчиком из core_utils.js
             fetch(previewUrl, {
                     method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    },
                     body: formData,
                     credentials: 'same-origin'
                 })

@@ -120,68 +120,67 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ============================================
-    // 2. ДИНАМИЧЕСКОЕ РЕДАКТИРОВАНИЕ КОММЕНТАРИЯ (EDIT)
-    // ============================================
-    editButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
+	// ============================================
+	// 2. ДИНАМИЧЕСКОЕ РЕДАКТИРОВАНИЕ КОММЕНТАРИЯ (EDIT)
+	// ============================================
+	editButtons.forEach(button => {
+		button.addEventListener('click', function(e) {
+			e.preventDefault();
 
-            const commentId = this.getAttribute('data-id');
+			const commentId = this.getAttribute('data-id');
 
-            // Находим родительский комментарий (li.comment)
-            const commentLi = this.closest('li.comment');
-            if (!commentLi) return;
+			// Находим родительский комментарий (li.comment)
+			const commentLi = this.closest('li.comment');
+			if (!commentLi) return;
 
-            // Находим блок текста комментария
-            const textBlock = document.getElementById(`comment-text-content-${commentId}`);
-            if (!textBlock) return;
+			// Находим блок текста комментария
+			const textBlock = document.getElementById(`comment-text-content-${commentId}`);
+			if (!textBlock) return;
 
-            // Если форма редактирования уже открыта — выходим
-            if (commentLi.querySelector('.comment-dynamic-edit-form')) return;
+			// Если форма редактирования уже открыта — выходим
+			if (commentLi.querySelector('.comment-dynamic-edit-form')) return;
 
-            // Скрываем текущий текст
-            textBlock.style.display = 'none';
+			// Скрываем текущий текст
+			textBlock.style.display = 'none';
 
-            // Извлекаем исходный Markdown из data-raw
-            const currentText = textBlock.getAttribute('data-raw') || '';
+			// Извлекаем исходный Markdown из data-raw
+			const currentText = textBlock.getAttribute('data-raw') || '';
 
-            // Извлекаем CSRF токен из основной формы
-            const csrfInput = document.querySelector('input[name="csrf_token"]');
-            const csrfToken = csrfInput ? csrfInput.value : '';
+			// ✅ Берём CSRF-токен из cookie через глобальную функцию из core_utils.js
+			const csrfToken = window.getCsrfToken ? window.getCsrfToken() : '';
 
-            // Создаём динамическую форму редактирования
-            const editForm = document.createElement('form');
-            editForm.action = `/comments/${commentId}/edit`;
-            editForm.method = 'POST';
-            editForm.className = 'comment-dynamic-edit-form';
+			// Создаём динамическую форму редактирования
+			const editForm = document.createElement('form');
+			editForm.action = `/comments/${commentId}/edit`;
+			editForm.method = 'POST';
+			editForm.className = 'comment-dynamic-edit-form';
 
-            editForm.innerHTML = `
-                <input type="hidden" name="csrf_token" value="${escapeHtml(csrfToken)}">
-                <textarea name="comment_text" required>${escapeHtml(currentText)}</textarea>
-                <div class="comment_actions">
-                    <button type="submit">Сохранить</button>
-                    <span class="divider">|</span>
-                    <button type="button" class="comment-edit-cancel btn-link">Отмена</button>
-                </div>
-            `;
+			editForm.innerHTML = `
+				<input type="hidden" name="csrf_token" value="${escapeHtml(csrfToken)}">
+				<textarea name="comment_text" required>${escapeHtml(currentText)}</textarea>
+				<div class="comment_actions">
+					<button type="submit">Сохранить</button>
+					<span class="divider">|</span>
+					<button type="button" class="comment-edit-cancel btn-link">Отмена</button>
+				</div>
+			`;
 
-            // Вставляем форму после блока текста
-            textBlock.parentNode.insertBefore(editForm, textBlock.nextSibling);
+			// Вставляем форму после блока текста
+			textBlock.parentNode.insertBefore(editForm, textBlock.nextSibling);
 
-            // Фокус на textarea
-            const editTextarea = editForm.querySelector('textarea');
-            if (editTextarea) {
-                editTextarea.focus();
-            }
+			// Фокус на textarea
+			const editTextarea = editForm.querySelector('textarea');
+			if (editTextarea) {
+				editTextarea.focus();
+			}
 
-            // Обработка кнопки "Отмена"
-            editForm.querySelector('.comment-edit-cancel').addEventListener('click', function() {
-                editForm.remove();
-                textBlock.style.display = 'block';
-            });
-        });
-    });
+			// Обработка кнопки "Отмена"
+			editForm.querySelector('.comment-edit-cancel').addEventListener('click', function() {
+				editForm.remove();
+				textBlock.style.display = 'block';
+			});
+		});
+	});
 
     // ============================================
     // ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: Экранирование HTML

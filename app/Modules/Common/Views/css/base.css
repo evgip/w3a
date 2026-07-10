@@ -1431,6 +1431,8 @@ a.dropdown-item-admin:hover {
 /* ---------- Адаптивность ---------- */
 @media only screen and (max-width: 480px) {
     body { padding: 0 0.5em 1em 0.5em; }
+	
+	.mb-none { display: none; }	
     
     header#nav { flex-wrap: wrap; }
     
