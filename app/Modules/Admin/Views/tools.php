@@ -145,12 +145,13 @@ document.getElementById('recalculate-confidence-form').addEventListener('submit'
     let totalProcessed = 0;
     let total = 0;
     
-    // Получаем CSRF токен
-    const csrfToken = form.querySelector('input[name="csrf_token"]')?.value || '';
-    
     try {
         while (true) {
             statusText.textContent = `Обработано ${totalProcessed} из ${total > 0 ? total : '...'}...`;
+            
+            // Читаем СВЕЖИЙ токен перед каждым запросом
+            // (middleware ротирует токен при каждом POST)
+            const csrfToken = getCsrfToken();
             
             const formData = new FormData();
             formData.append('offset', offset);
@@ -159,10 +160,8 @@ document.getElementById('recalculate-confidence-form').addEventListener('submit'
             const response = await fetch(form.action, {
                 method: 'POST',
                 body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-Token': csrfToken
-                }
+                credentials: 'same-origin'
+                // ✅ headers (X-XSRF-TOKEN, X-Requested-With) добавляются автоматически перехватчиком из core_utils.js
             });
             
             // Проверяем статус ответа

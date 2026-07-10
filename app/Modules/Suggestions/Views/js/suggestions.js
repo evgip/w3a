@@ -90,7 +90,7 @@ class SuggestionsManager {
         const formData = new FormData(this.form);
         
         const targetType = formData.get('target_type');
-        const csrfToken = formData.get('csrf_token');
+        const csrfToken = getCsrfToken(); // Используем глобальную функцию из core_utils.js
         
         const proposedData = {};
         
@@ -120,10 +120,8 @@ class SuggestionsManager {
         try {
             const response = await fetch('/suggestions', {
                 method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken
-                }
+                body: formData
+                // CSRF-токен добавляется автоматически перехватчиком из core_utils.js
             });
             
             const result = await response.json();

@@ -25,7 +25,6 @@ function updateHeaderNotificationCount() {
 				return null; 
             }
             
-			// Защита от парсинга HTML (если сервер всё же редиректнул на страницу логина)
 			const contentType = response.headers.get("content-type");
 			if (!contentType || !contentType.includes("application/json")) {
 				const badge = document.getElementById('header-notification-badge');
@@ -74,9 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(`/notifications/${notificationId}/read`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
+                'Content-Type': 'application/x-www-form-urlencoded'
             },
             body: `csrf_token=${encodeURIComponent(csrfToken)}`,
             credentials: 'same-origin'
@@ -114,9 +111,7 @@ document.getElementById('mark-all-read-btn')?.addEventListener('click', function
     fetch('/notifications/mark-all-read', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
+            'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: `csrf_token=${encodeURIComponent(csrfToken)}`,
         credentials: 'same-origin'
@@ -141,14 +136,25 @@ document.getElementById('mark-all-read-btn')?.addEventListener('click', function
 });
 
 /**
- * ✅ НОВАЯ ФУНКЦИЯ: Получить CSRF-токен из разных источников
+ * Получить CSRF-токен из разных источников
  */
 function getCsrfToken() {
-    // Приоритет 1: meta-тег (самый надёжный)
+    // Приоритет 1: cookie XSRF-TOKEN (обновляется middleware при каждом POST)
+    const name = 'XSRF-TOKEN=';
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const ca = decodedCookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i].trim();
+        if (c.indexOf(name) === 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+    
+    // Приоритет 2: meta-тег
     const meta = document.querySelector('meta[name="csrf-token"]');
     if (meta) return meta.content;
     
-    // Приоритет 2: скрытое поле в любой форме на странице
+    // Приоритет 3: скрытое поле в форме
     const input = document.querySelector('input[name="csrf_token"]');
     if (input) return input.value;
     

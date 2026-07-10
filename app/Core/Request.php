@@ -154,33 +154,43 @@ class Request
         return $this->getParams($key, $default);
     }
 
-    /**
-     * Получить или сгенерировать CSRF-токен (Double-Submit Cookie Pattern)
-     * 
-     * Токен хранится в cookie (доступен JS) и в сессии (для серверной проверки).
-     * Cookie устанавливается с SameSite=Strict для защиты от CSRF.
-     */
-    public function getCsrfToken(): string
-    {
-        // 1. Проверяем cookie
-        $token = $_COOKIE[self::CSRF_COOKIE_NAME] ?? null;
+	/**
+	 * Получить или сгенерировать CSRF-токен (Double-Submit Cookie Pattern)
+	 * 
+	 * Токен хранится в cookie (доступен JS) и в сессии (для серверной проверки).
+	 * Cookie устанавливается с SameSite=Strict для защиты от CSRF.
+	 */
+	public function getCsrfToken(): string
+	{
+		// Убеждаемся, что сессия запущена
+		if (session_status() === PHP_SESSION_NONE) {
+			session_start();
+		}
 
-        if (!$token) {
-            // 2. Генерируем новый токен
-            $token = bin2hex(random_bytes(32));
+		// 1. Проверяем cookie
+		$cookieToken = $_COOKIE[self::CSRF_COOKIE_NAME] ?? null;
+		
+		// 2. Проверяем сессию
+		$sessionToken = $_SESSION[self::CSRF_TOKEN_KEY] ?? null;
 
-            // 3. Устанавливаем cookie
-            $this->setCsrfCookie($token);
+		// 3. Если оба есть и совпадают — используем их
+		if ($cookieToken && $sessionToken && hash_equals($cookieToken, $sessionToken)) {
+			return $cookieToken;
+		}
 
-            // 4. Также сохраняем в сессии (для дополнительной проверки)
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
-            $_SESSION[self::CSRF_TOKEN_KEY] = $token;
-        }
+		// 4. Если cookie есть, но сессия пустая/не совпадает — синхронизируем сессию из cookie
+		if ($cookieToken && !$sessionToken) {
+			$_SESSION[self::CSRF_TOKEN_KEY] = $cookieToken;
+			return $cookieToken;
+		}
 
-        return $token;
-    }
+		// 5. Если cookie нет или не совпадает с сессией — генерируем новый токен
+		$token = bin2hex(random_bytes(32));
+		$this->setCsrfCookie($token);
+		$_SESSION[self::CSRF_TOKEN_KEY] = $token;
+
+		return $token;
+	}
 
     /**
      * HTML-поле с токеном для вставки в формы
@@ -193,48 +203,44 @@ class Request
 
     /**
      * Валидация CSRF-токена (Double-Submit Cookie Pattern)
-     * 
-     * Проверяет:
-     * 1. Cookie == POST-параметр (для форм)
-     * 2. Cookie == Заголовок (для AJAX)
-     * 3. Cookie == Сессия (дополнительная проверка)
      */
-    public function validateCsrf(): void
-    {
-        // GET-запросы не требуют CSRF
-        if ($this->isGet()) {
-            return;
-        }
+	public function validateCsrf(): void
+	{
+		// GET-запросы не требуют CSRF
+		if ($this->isGet()) {
+			return;
+		}
 
-        // 1. Получаем токен из cookie
-        $cookieToken = $_COOKIE[self::CSRF_COOKIE_NAME] ?? '';
+		// 1. Получаем токен из cookie
+		$cookieToken = $_COOKIE[self::CSRF_COOKIE_NAME] ?? '';
 
-        // 2. Получаем токен из запроса (заголовок или POST-параметр)
-        $requestToken = $this->getCsrfTokenFromRequest();
+		// 2. Получаем токен из запроса (заголовок или POST-параметр)
+		$requestToken = $this->getCsrfTokenFromRequest();
 
-        // 3. Double-submit проверка: cookie == запрос
-        if (
-            empty($cookieToken) || empty($requestToken) ||
-            !hash_equals((string)$cookieToken, (string)$requestToken)
-        ) {
+		// 3. Double-submit проверка: cookie == запрос
+		if (
+			empty($cookieToken) || empty($requestToken) ||
+			!hash_equals((string)$cookieToken, (string)$requestToken)
+		) {
+			$this->handleCsrfFailure();
+			return;
+		}
 
-            $this->handleCsrfFailure();
-            return;
-        }
+		// 4. Дополнительная проверка: токен есть в сессии (опционально, можно убрать)
+		// Теперь getCsrfToken() гарантирует синхронизацию, так что эта проверка избыточна
+		// Но оставим для дополнительной безопасности
+		if (session_status() === PHP_SESSION_NONE) {
+			session_start();
+		}
+		$sessionToken = $_SESSION[self::CSRF_TOKEN_KEY] ?? '';
+		if (empty($sessionToken) || !hash_equals((string)$sessionToken, (string)$cookieToken)) {
+			$this->handleCsrfFailure();
+			return;
+		}
 
-        // 4. Дополнительная проверка: токен есть в сессии
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $sessionToken = $_SESSION[self::CSRF_TOKEN_KEY] ?? '';
-        if (empty($sessionToken) || !hash_equals((string)$sessionToken, (string)$cookieToken)) {
-            $this->handleCsrfFailure();
-            return;
-        }
-
-        // 5. Ротация токена после успешной проверки
-        $this->regenerateCsrfToken();
-    }
+		// 5. Ротация токена после успешной проверки
+		$this->regenerateCsrfToken();
+	}
 
     /**
      * Валидация CSRF без редиректа (для AJAX-запросов)

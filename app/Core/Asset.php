@@ -174,28 +174,46 @@ class Asset
         }
     }
 
-    private static function buildJs(): void
-    {
-        $compiled = "/* JavaScript Bundle: " . date('Y-m-d H:i:s') . " */" . PHP_EOL;
-        $files = self::discoverFiles('js');
+	private static function buildJs(): void
+	{
+		$compiled = "/* JavaScript Bundle: " . date('Y-m-d H:i:s') . " */" . PHP_EOL;
+		$files = self::discoverFiles('js');
 
-        foreach ($files as $path) {
-            if (file_exists($path)) {
-                $short = str_replace(dirname(__DIR__, 2), '', $path);
-                $compiled .= ";" . PHP_EOL . "/* Source: {$short} */" . PHP_EOL . file_get_contents($path) . PHP_EOL;
-            }
-        }
+		// Приоритетный файл, который должен быть первым
+		$priorityFile = dirname(__DIR__) . '/Modules/Common/Views/js/core_utils.js';
+		
+		// Разделяем файлы на приоритетные и обычные
+		$orderedFiles = [];
+		$otherFiles = [];
+		
+		foreach ($files as $path) {
+			if (realpath($path) === realpath($priorityFile)) {
+				array_unshift($orderedFiles, $path); // Вставляем в начало
+			} else {
+				$otherFiles[] = $path;
+			}
+		}
+		
+		// Объединяем: сначала приоритетные, потом остальные
+		$files = array_merge($orderedFiles, $otherFiles);
 
-        $compiled = preg_replace('!/\*[^*]*\*+([^/*][^*]*\*+)*/!', '', $compiled);
-        $compiled = preg_replace('/^[ \t]*\/\/.*$/m', '', $compiled);
-        $compiled = str_replace("\t", " ", $compiled);
-        $compiled = preg_replace('/ +/', ' ', $compiled);
+		foreach ($files as $path) {
+			if (file_exists($path)) {
+				$short = str_replace(dirname(__DIR__, 2), '', $path);
+				$compiled .= ";" . PHP_EOL . "/* Source: {$short} */" . PHP_EOL . file_get_contents($path) . PHP_EOL;
+			}
+		}
 
-        $dir = dirname(self::$distJsFile);
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-        file_put_contents(self::$distJsFile, $compiled);
+		$compiled = preg_replace('!/\*[^*]*\*+([^/*][^*]*\*+)*/!', '', $compiled);
+		$compiled = preg_replace('/^[ \t]*\/\/.*$/m', '', $compiled);
+		$compiled = str_replace("\t", " ", $compiled);
+		$compiled = preg_replace('/ +/', ' ', $compiled);
 
-        $logger = app(Logger::class);
-        $logger->info("Asset Compiler: JS сборка обновлена. Файлов: " . count($files));
-    }
+		$dir = dirname(self::$distJsFile);
+		if (!is_dir($dir)) mkdir($dir, 0755, true);
+		file_put_contents(self::$distJsFile, $compiled);
+
+		$logger = app(Logger::class);
+		$logger->info("Asset Compiler: JS сборка обновлена. Файлов: " . count($files));
+	}
 }

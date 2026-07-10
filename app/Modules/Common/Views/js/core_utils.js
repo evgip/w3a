@@ -1,4 +1,28 @@
 /**
+ * Глобальная функция для ручного получения CSRF-токена
+ * Используется в особых случаях (WebSocket, кастомные библиотеки)
+ */
+window.getCsrfToken = function() {
+    const name = 'XSRF-TOKEN=';
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const ca = decodedCookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i].trim();
+        if (c.indexOf(name) === 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) return meta.content;
+
+    const input = document.querySelector('input[name="csrf_token"]');
+    if (input) return input.value;
+
+    return '';
+};
+
+/**
  * CSRF Protection - автоматическая отправка токена для AJAX-запросов
  * Double-Submit Cookie Pattern
  */
@@ -33,16 +57,17 @@ const CsrfProtection = {
      */
     interceptFetch() {
         const originalFetch = window.fetch;
+        const self = this;
         
         window.fetch = function(url, options = {}) {
-            // Инициализируем headers если их нет
             options.headers = options.headers || {};
             
-            // Если headers - это объект (не FormData), добавляем токен
-            if (!(options.headers instanceof Headers)) {
-                const token = CsrfProtection.getToken();
+            // Проверяем, что headers — это обычный объект (не массив, не Headers)
+            if (options.headers.constructor === Object) {
+                const token = self.getToken();
                 if (token) {
-                    options.headers[CsrfProtection.headerName] = token;
+                    options.headers[self.headerName] = token;
+                    options.headers['X-Requested-With'] = 'XMLHttpRequest';
                 }
             }
 
@@ -56,6 +81,7 @@ const CsrfProtection = {
     interceptXMLHttpRequest() {
         const originalOpen = XMLHttpRequest.prototype.open;
         const originalSend = XMLHttpRequest.prototype.send;
+        const self = this;
 
         XMLHttpRequest.prototype.open = function(method, url) {
             this._csrfMethod = method;
@@ -63,11 +89,11 @@ const CsrfProtection = {
         };
 
         XMLHttpRequest.prototype.send = function(data) {
-            // Добавляем токен только для изменяющих методов
             if (this._csrfMethod && !['GET', 'HEAD', 'OPTIONS'].includes(this._csrfMethod.toUpperCase())) {
-                const token = CsrfProtection.getToken();
+                const token = self.getToken();
                 if (token) {
-                    this.setRequestHeader(CsrfProtection.headerName, token);
+                    this.setRequestHeader(self.headerName, token);
+                    this.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                 }
             }
             return originalSend.apply(this, arguments);
@@ -80,7 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
     CsrfProtection.init();
 });
 
-
+/**
+ * Управление темой (светлая/тёмная)
+ */
 (function() {
     'use strict';
     
@@ -120,8 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 })();
 
+/**
+ * Подтверждение действий для ссылок с классами .flag-link, .delete-link, .restore-link
+ */
 document.addEventListener('DOMContentLoaded', function() {
-    // Массив классов, требующих подтверждения
     const confirmClasses = ['.flag-link', '.delete-link', '.restore-link'];
     
     confirmClasses.forEach(function(selector) {

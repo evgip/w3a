@@ -55,12 +55,6 @@ class NotificationsController extends Controller
     {
         header('Content-Type: application/json; charset=utf-8');
 
-        if (!$this->validateCsrfFromHeader()) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
-            exit;
-        }
-
         $notificationId = (int)$id;
         $userId = (int)Auth::id();
 
@@ -86,12 +80,6 @@ class NotificationsController extends Controller
     public function markAllAsRead(): void
     {
         header('Content-Type: application/json; charset=utf-8');
-
-        if (!$this->validateCsrfFromHeader()) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Ошибка CSRF']);
-            exit;
-        }
 
         $userId = (int)Auth::id();
 
