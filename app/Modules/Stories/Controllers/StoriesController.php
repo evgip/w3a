@@ -229,7 +229,7 @@ class StoriesController extends Controller
             $this->redirectBack('/');
         }
 
-        $this->redirectBack('/story/' . $storyId);
+        $this->redirect('/story/' . $storyId);
     }
 
     // =========================================================================
@@ -286,7 +286,7 @@ class StoriesController extends Controller
 
         $this->container->get(Session::class)->flash('success', 'Публикация успешно отредактирована.');
 
-        $this->redirectBack('/story/' . $storyId);
+        $this->redirect('/story/' . $storyId);
     }
 
     // =========================================================================

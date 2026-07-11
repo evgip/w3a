@@ -14,13 +14,13 @@
     <?php endif; ?>
 </div>
 
-<div class="form-actions" style="margin-bottom: 1em;">
+<div class="form-actions">
     <a href="<?= route('wiki.tag.create', ['tagslug' => $tag['slug']]) ?>" class="btn-nav-create">
         ➕ Создать страницу
     </a>
     
-    <form action="<?= route('wiki.tag.search', ['tagslug' => $tag['slug']]) ?>" method="GET" class="inline-form" style="margin-left: 1em; display: inline-block;">
-        <input type="text" name="q" placeholder="Поиск по wiki..." required style="width: 200px;">
+    <form action="<?= route('wiki.tag.search', ['tagslug' => $tag['slug']]) ?>" method="GET" class="inline-form">
+        <input type="text" name="q" placeholder="Поиск по wiki..." required>
         <button type="submit">🔍 Найти</button>
     </form>
 </div>
@@ -50,7 +50,7 @@ $otherPages = array_filter($pages, function($p) use ($primaryId) {
 <?php endif; ?>
 
 <?php if (empty($pages)): ?>
-    <div class="hint" style="text-align: center; padding: 2em 0;">
+    <div class="hint">
         <p>Для этого тега еще нет wiki страниц.</p>
         <p><a href="<?= route('wiki.tag.create', ['tagslug' => $tag['slug']]) ?>" class="btn-nav-create">Создайте первую страницу!</a></p>
     </div>

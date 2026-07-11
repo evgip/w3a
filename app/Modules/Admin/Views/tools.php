@@ -31,7 +31,7 @@
     
     <form action="<?= route('admin.tools.clear_file_logs') ?>" method="POST">
         <?= csrf_field() ?>
-        <button type="submit" class="button restore-link" style="color: #ac130d;" data-confirm="Вы уверены, что хотите полностью очистить файлы логов на диске?">
+        <button type="submit" class="button restore-link" data-confirm="Вы уверены, что хотите полностью очистить файлы логов на диске?">
             🗑️ Очистить логи на диске
         </button>
     </form>
@@ -48,7 +48,7 @@
     
     <form action="<?= route('admin.tools.clear_db_audit') ?>" method="POST">
         <?= csrf_field() ?>
-        <button type="submit" class="button restore-link" style="color: #ac130d;" data-confirm="ВНИМАНИЕ! Вы уверены, что хотите БЕЗВОЗВРАТНО удалить все логи аудита из Базы Данных?">
+        <button type="submit" class="button restore-link" data-confirm="ВНИМАНИЕ! Вы уверены, что хотите БЕЗВОЗВРАТНО удалить все логи аудита из Базы Данных?">
             🚨 Очистить аудит в БД
         </button>
     </form>
@@ -65,14 +65,14 @@
     </p>
     
     <div class="form-actions">
-        <form action="<?= route('admin.tools.cache_routes') ?>" method="POST" style="display:inline;">
+        <form action="<?= route('admin.tools.cache_routes') ?>" method="POST">
             <?= csrf_field() ?>
             <button type="submit" class="btn-primary">🚀 Включить кэш роутов</button>
         </form>
         
-        <form action="<?= route('admin.tools.clear_cache_routes') ?>" method="POST" style="display:inline;">
+        <form action="<?= route('admin.tools.clear_cache_routes') ?>" method="POST">
             <?= csrf_field() ?>
-            <button type="submit" class="button restore-link" style="color: #ac130d;" data-confirm="Вы уверены, что хотите сбросить кэш маршрутов?">
+            <button type="submit" class="button restore-link" data-confirm="Вы уверены, что хотите сбросить кэш маршрутов?">
                 🗑️ Сбросить кэш
             </button>
         </form>
@@ -108,13 +108,13 @@
         Обработка идет пакетами по 1000 записей для предотвращения таймаутов.
     </p>
     
-    <div id="confidence-progress" style="display: none; margin: 15px 0;">
-        <div style="background: #e0e0e0; border-radius: 4px; overflow: hidden; height: 24px;">
-            <div id="confidence-progress-bar" style="background: #4CAF50; height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">
+    <div id="confidence-progress">
+        <div class="progress-bar">
+            <div id="confidence-progress-bar" class="confidence-progress-bar">
                 <span id="confidence-progress-text">0%</span>
             </div>
         </div>
-        <p id="confidence-status" style="margin-top: 8px; color: #666;"></p>
+        <p id="confidence-status"></p>
     </div>
     
     <form id="recalculate-confidence-form" action="<?= route('admin.tools.recalculate_confidence_score') ?>" method="POST">
@@ -207,12 +207,12 @@ document.getElementById('recalculate-confidence-form').addEventListener('submit'
             await new Promise(resolve => setTimeout(resolve, 100));
         }
         
-        statusText.innerHTML = '<strong style="color: #4CAF50;">✅ Пересчет завершен успешно!</strong>';
+        statusText.innerHTML = '<span>✅ Пересчет завершен успешно!</span>';
         submitBtn.textContent = '✅ Готово';
         
     } catch (error) {
         console.error('Error:', error);
-        statusText.innerHTML = '<strong style="color: #f44336;">❌ Ошибка: ' + error.message + '</strong>';
+        statusText.innerHTML = '<span color="red">❌ Ошибка: ' + error.message + '</span>';
         submitBtn.disabled = false;
         submitBtn.textContent = '🔄 Повторить';
     }

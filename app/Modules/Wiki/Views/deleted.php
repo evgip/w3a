@@ -6,7 +6,7 @@
 </div>
 
 <?php if (empty($deletedPages)): ?>
-    <div class="hint" style="text-align: center; padding: 2em 0;">
+    <div class="hint">
         <p>Нет удалённых wiki страниц.</p>
     </div>
 <?php else: ?>
@@ -29,8 +29,7 @@
                         <form action="/t/<?= e($tag['slug']) ?>/wiki/<?= $page['id'] ?>/restore" 
                               method="POST" 
                               class="inline-form js-confirm-delete"
-                              data-confirm-message="Восстановить эту страницу?"
-                              style="display: inline;">
+                              data-confirm-message="Восстановить эту страницу?">
                             <?= $request->csrfField() ?>
                             <button type="submit" class="btn-link">♻️ Восстановить</button>
                         </form>

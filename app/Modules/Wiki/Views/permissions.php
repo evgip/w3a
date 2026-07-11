@@ -42,8 +42,7 @@
                             <td>
                                 <form action="<?= route('wiki.tag.permissions.revoke', ['slug' => $tag['slug']]) ?>"
                                     method="POST"
-                                    onsubmit="return confirm('Отозвать права?')"
-                                    style="display: inline;">
+                                    onsubmit="return confirm('Отозвать права?')">
                                     <input type="hidden" name="user_id" value="<?= $editor['user_id'] ?>">
                                     <button type="submit" class="btn btn-sm btn-danger">Отозвать</button>
                                 </form>

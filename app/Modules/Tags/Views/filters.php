@@ -30,7 +30,7 @@
                         </span>
                     <?php endif; ?>
                     
-                    <form action="/filters/remove" method="POST" style="display: inline;">
+                    <form action="/filters/remove" method="POST">
                         <?= csrf_field() ?>
                         <input type="hidden" name="tag_id" value="<?= e($filter['tag_id']) ?>">
                         <button type="submit" class="btn-remove-filter delete" 

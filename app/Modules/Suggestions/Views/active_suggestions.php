@@ -45,10 +45,10 @@ $isModerator = \App\Modules\Auth\Services\Auth::isModerator() || \App\Modules\Au
 
                     <?php if ($isModerator): ?>
                         <!-- Кнопки для модератора -->
-                        <div class="moderator-actions" style="margin-top: 10px;">
+                        <div class="moderator-actions">
                             <form action="/suggestions/<?= $group['suggestion_id'] ?>/approve" method="POST">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="btn-link" style="color: var(--color-fg-affirmative);">
+                                <button type="submit" class="btn-link">
                                     ✓ Одобрить
                                 </button>
                             </form>

@@ -56,7 +56,7 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
 				
 				<?php if (empty($profileUser['is_banned'])): ?>
 					<!-- Форма бана -->
-					<form method="POST" action="<?= route('mod.ban', ['id' => $profileUser['id']]) ?>" style="display: inline;">
+					<form method="POST" action="<?= route('mod.ban', ['id' => $profileUser['id']]) ?>">
 						<?= csrf_field() ?>
 						<input type="hidden" name="action" value="ban">
 						<button type="submit" class="btn btn-sm btn-danger" 
@@ -66,7 +66,7 @@ $isOwnProfile = ($currentUserId === (int)$profileUser['id']);
 					</form>
 				<?php else: ?>
 					<!-- Форма разбана -->
-					<form method="POST" action="<?= route('mod.ban', ['id' => $profileUser['id']]) ?>" style="display: inline;">
+					<form method="POST" action="<?= route('mod.ban', ['id' => $profileUser['id']]) ?>">
 						<?= csrf_field() ?>
 						<input type="hidden" name="action" value="unban">
 						<button type="submit" class="btn btn-sm btn-success"
