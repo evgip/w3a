@@ -10,8 +10,6 @@ use App\Core\Logger;
 /**
  * Конвейер middleware.
  * Последовательно выполняет middleware, передавая управление по цепочке.
- * 
- * ✅ ИЗМЕНЕНО: Убран fallback на new — все middleware должны создаваться через контейнер
  */
 class MiddlewarePipeline
 {

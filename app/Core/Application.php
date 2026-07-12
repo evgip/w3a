@@ -15,6 +15,22 @@ class Application
     private Request $request;
     private Config $config;
 
+    /**
+     * Путь к кэшу списка провайдеров
+     */
+    private function getProvidersCachePath(): string
+    {
+        return dirname(__DIR__, 2) . '/storage/cache/providers.php';
+    }
+
+    /**
+     * Путь к директории модулей
+     */
+    private function getModulesPath(): string
+    {
+        return dirname(__DIR__) . '/Modules';
+    }
+
     public function __construct()
     {
         $this->setupErrorHandling();
@@ -66,40 +82,228 @@ class Application
         $firewall->check();
     }
 
+    /**
+     * Регистрация провайдеров модулей с кэшированием списка.
+     *
+     * Логика:
+     *  - В production: всегда используем кэш (если есть)
+     *  - В development: проверяем актуальность кэша по mtime
+     *  - Если кэш устарел или отсутствует — пересобираем
+     */
     private function registerProviders(): void
     {
+        // 1. Ядро — всегда регистрируется отдельно (не кэшируется)
         $coreProvider = new ModuleServiceProvider($this->request);
         $coreProvider->register($this->container);
 
-        $modulesPath = dirname(__DIR__) . '/Modules';
+        // 2. Получаем список модульных провайдеров (из кэша или сканированием)
+        $moduleProvidersData = $this->getModuleProvidersData();
 
-        if (!is_dir($modulesPath)) {
-            return;
+        // 3. Регистрируем модульные провайдеры и собираем для boot
+        $providers = [];
+        foreach ($moduleProvidersData as $module => $data) {
+            $providerClass = $data['class'];
+            $configPath = $data['config_path'] ?? null;
+
+            // Подключаем конфиг модуля (как было)
+            if ($configPath !== null && is_dir($configPath)) {
+                $this->config->addModulePath(strtolower($module), $configPath);
+            }
+
+            $provider = new $providerClass();
+            $provider->register($this->container);
+            $providers[] = $provider;
         }
 
+        // 4. Boot phase
+        foreach ($providers as $provider) {
+            if (method_exists($provider, 'boot')) {
+                $provider->boot();
+            }
+        }
+    }
+
+    /**
+     * Получение списка провайдеров модулей с кэшированием.
+     *
+     * @return array<string, array{class: string, config_path: string|null}>
+     */
+    private function getModuleProvidersData(): array
+    {
+        $modulesPath = $this->getModulesPath();
+        $cacheFile = $this->getProvidersCachePath();
+
+        if (!is_dir($modulesPath)) {
+            return [];
+        }
+
+        $env = $this->config->get('config.app.env', 'development');
+
+        // Production: всегда используем кэш, если он есть
+        if ($env === 'production' && file_exists($cacheFile)) {
+            $cache = @include $cacheFile;
+            if (is_array($cache) && isset($cache['providers'])) {
+                return $cache['providers'];
+            }
+        }
+
+        // Development: проверяем актуальность кэша
+        if (file_exists($cacheFile) && !$this->isProvidersCacheStale($cacheFile, $modulesPath)) {
+            $cache = @include $cacheFile;
+            if (is_array($cache) && isset($cache['providers'])) {
+                return $cache['providers'];
+            }
+        }
+
+        // Кэш отсутствует или устарел — пересобираем
+        return $this->rebuildProvidersCache($cacheFile, $modulesPath);
+    }
+
+    /**
+     * Проверка актуальности кэша провайдеров.
+     * Кэш считается устаревшим, если:
+     *  - Изменилась директория Modules (добавлен/удалён модуль)
+     *  - Изменился любой ModuleServiceProvider.php
+     *  - Изменилась директория Config любого модуля
+     */
+    private function isProvidersCacheStale(string $cacheFile, string $modulesPath): bool
+    {
+        $cache = @include $cacheFile;
+        if (!is_array($cache) || !isset($cache['cache_time'])) {
+            return true;
+        }
+
+        $cacheTime = $cache['cache_time'];
+
+        // Проверяем mtime директории Modules
+        if (filemtime($modulesPath) > $cacheTime) {
+            return true;
+        }
+
+        // Проверяем каждый модуль
         $modules = array_diff(scandir($modulesPath), ['.', '..']);
+        foreach ($modules as $module) {
+            $modulePath = $modulesPath . '/' . $module;
+            if (!is_dir($modulePath)) {
+                continue;
+            }
+
+            // Проверяем ModuleServiceProvider.php
+            $providerFile = $modulePath . '/ModuleServiceProvider.php';
+            if (file_exists($providerFile) && filemtime($providerFile) > $cacheTime) {
+                return true;
+            }
+
+            // Проверяем директорию Config модуля
+            $configPath = $modulePath . '/Config';
+            if (is_dir($configPath) && filemtime($configPath) > $cacheTime) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Пересборка кэша провайдеров.
+     *
+     * @return array<string, array{class: string, config_path: string|null}>
+     */
+    private function rebuildProvidersCache(string $cacheFile, string $modulesPath): array
+    {
         $providers = [];
+        $modules = array_diff(scandir($modulesPath), ['.', '..']);
 
         foreach ($modules as $module) {
             $providerClass = "App\\Modules\\{$module}\\ModuleServiceProvider";
 
             if (class_exists($providerClass)) {
                 $configPath = $modulesPath . '/' . $module . '/Config';
-                if (is_dir($configPath)) {
-                    $this->config->addModulePath(strtolower($module), $configPath);
-                }
-
-                $provider = new $providerClass();
-                $provider->register($this->container);
-                $providers[] = $provider;
+                $providers[$module] = [
+                    'class' => $providerClass,
+                    'config_path' => is_dir($configPath) ? $configPath : null,
+                ];
             }
         }
 
-        foreach ($providers as $provider) {
-            if (method_exists($provider, 'boot')) {
-                $provider->boot();
+        // Формируем данные для кэша
+        $cacheData = [
+            'providers' => $providers,
+            'cache_time' => time(),
+            'generated_at' => date('Y-m-d H:i:s'),
+            'modules_mtime' => filemtime($modulesPath),
+        ];
+
+        // Атомарная запись
+        $this->writeCacheAtomic($cacheFile, $cacheData);
+
+        return $providers;
+    }
+
+    /**
+     * Атомарная запись кэша (защита от race condition).
+     */
+    private function writeCacheAtomic(string $file, array $data): void
+    {
+        $dir = dirname($file);
+        if (!is_dir($dir)) {
+            if (!mkdir($dir, 0755, true) && !is_dir($dir)) {
+                throw new \RuntimeException("Failed to create cache directory: {$dir}");
             }
         }
+
+        $code = "<?php\n";
+        $code .= "// Auto-generated at {$data['generated_at']}\n";
+        $code .= "// DO NOT EDIT - regenerated automatically\n\n";
+        $code .= "return " . var_export($data, true) . ";\n";
+
+        // Сначала пишем во временный файл
+        $tmp = $file . '.tmp.' . getmypid();
+        if (file_put_contents($tmp, $code, LOCK_EX) === false) {
+            throw new \RuntimeException("Failed to write cache file: {$file}");
+        }
+
+        // Атомарное переименование
+        if (!@rename($tmp, $file)) {
+            @unlink($tmp);
+            throw new \RuntimeException("Failed to rename cache file: {$tmp} -> {$file}");
+        }
+
+        // Сбрасываем opcache для этого файла
+        if (function_exists('opcache_invalidate')) {
+            opcache_invalidate($file, true);
+        }
+    }
+
+    /**
+     * Принудительная пересборка кэша провайдеров.
+     * Используется из CLI или админки.
+     *
+     * @return array{success: bool, providers_count: int, cache_file: string, providers: array}
+     */
+    public function rebuildProvidersCacheManual(): array
+    {
+        $modulesPath = $this->getModulesPath();
+        $cacheFile = $this->getProvidersCachePath();
+
+        if (!is_dir($modulesPath)) {
+            return [
+                'success' => false,
+                'providers_count' => 0,
+                'cache_file' => $cacheFile,
+                'providers' => [],
+                'error' => 'Modules directory not found',
+            ];
+        }
+
+        $providers = $this->rebuildProvidersCache($cacheFile, $modulesPath);
+
+        return [
+            'success' => true,
+            'providers_count' => count($providers),
+            'cache_file' => $cacheFile,
+            'providers' => array_keys($providers),
+        ];
     }
 
     public function run(): void
@@ -129,7 +333,6 @@ class Application
         header('Location: ' . $e->url);
         exit;
     }
-
 
     /**
      * Обработка JSON ответов
