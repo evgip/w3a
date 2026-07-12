@@ -26,8 +26,11 @@ use App\Modules\Users\Models\Notification;
 use App\Modules\Tags\Models\Tag;
 use App\Modules\Tags\Models\Category;
 use App\Modules\Stories\Models\Story;
+use App\Modules\Stories\Services\RankingService; 
 use App\Modules\Comments\Models\Comment;
 use App\Modules\Invitations\Models\InvitationRequest;
+use App\Modules\Mail\Core\Mailer;
+
 
 class ModuleServiceProvider extends BaseModuleServiceProvider
 {
@@ -109,7 +112,8 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
                 $c->get(Audit::class),
                 $c->get(Logger::class),
                 $c->get(Comment::class),
-				$c->get(\App\Modules\Mail\Core\Mailer::class)
+                $c->get(Mailer::class),
+                $c->get(RankingService::class)
             );
         });
 

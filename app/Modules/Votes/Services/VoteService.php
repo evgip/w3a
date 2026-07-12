@@ -7,8 +7,10 @@ namespace App\Modules\Votes\Services;
 use App\Modules\Votes\Models\Vote;
 use App\Modules\Users\Models\User;
 use App\Modules\Comments\Models\Comment;
+use App\Modules\Stories\Services\RankingService; 
 use App\Core\Logger;
 use App\Core\Database;
+
 
 /**
  * Сервис голосования.
@@ -20,6 +22,7 @@ class VoteService
     private Comment $commentModel;
     private Logger $logger;
     private Database $db;
+    private RankingService $rankingService;
     
     private const DEFAULT_MIN_KARMA = 10;
 
@@ -28,13 +31,15 @@ class VoteService
         User $userModel, 
         Comment $commentModel,
         Logger $logger,
-        Database $db
+        Database $db,
+        RankingService $rankingService
     ) {
         $this->voteModel = $voteModel;
         $this->userModel = $userModel;
         $this->commentModel = $commentModel;
         $this->logger = $logger;
         $this->db = $db;
+        $this->rankingService = $rankingService;
     }
 
     public function handleVote(int $userId, string $type, int $targetId, int $voteValue): array
@@ -87,7 +92,8 @@ class VoteService
             $comment = $this->commentModel->getCommentById($commentId);
             
             if ($comment) {
-                $confidenceScore = wilson_score(
+
+                $confidenceScore = $this->rankingService->wilsonScore(
                     (int)$comment['score'],
                     (int)$comment['flag_count']
                 );
@@ -171,7 +177,7 @@ class VoteService
             if ($story) {
                 $tagMods = [(float)$story['tag_hotness_mod']];
                 
-                $hotness = calculate_hotness(
+                $hotness = $this->rankingService->calculateHotness(
                     (int)$story['score'], 
                     $story['created_at'],
                     $tagMods

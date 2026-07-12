@@ -12,6 +12,7 @@ use App\Modules\Votes\Models\Vote;
 use App\Modules\Votes\Services\VoteService;
 use App\Modules\Users\Models\User;
 use App\Modules\Comments\Models\Comment;
+use App\Modules\Stories\Services\RankingService; 
 
 /**
  * Провайдер сервисов модуля Votes.
@@ -37,7 +38,8 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
                 $c->get(User::class),
                 $c->get(Comment::class),
                 $c->get(Logger::class),
-                $c->get(Database::class)
+                $c->get(Database::class),
+                $c->get(RankingService::class)
             );
         });
     }

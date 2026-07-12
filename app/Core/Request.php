@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\Exceptions\CsrfException;
+
 /**
  * Класс для работы с HTTP-запросом.
  * 
@@ -276,6 +278,9 @@ class Request
     /**
      * Обработка провала CSRF-валидации
      * 
+     * ИЗМЕНЕНО: Вместо exit() выбрасывается CsrfException
+     * Исключение будет обработано централизованно в Application::handleException()
+     * 
      * Используем внедрённые Audit, Session и Container
      */
     private function handleCsrfFailure(): void
@@ -301,28 +306,16 @@ class Request
             $session->flash('error', 'Срок действия формы истёк. Пожалуйста, обновите страницу и попробуйте снова.');
         }
 
-        // 4. Для AJAX — возвращаем JSON
-        if ($this->isAjaxRequest()) {
-            http_response_code(419);
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode([
-                'error' => 'CSRF token validation failed',
-                'message' => 'Срок действия формы истёк. Обновите страницу.',
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-
-        // 5. Для обычных запросов — используем контейнер
-        http_response_code(419);
-
-        if ($this->container === null) {
-            // Критическая ошибка — контейнер должен быть всегда доступен
-            exit('CSRF validation failed. Please reload the page.');
-        }
-
-        $errorController = $this->container->make(\App\Modules\Errors\Controllers\ErrorsController::class);
-        $errorController->csrf('Срок действия формы истёк. Пожалуйста, обновите страницу и попробуйте снова.');
-        exit;
+        // Исключение содержит контекст (AJAX или обычный запрос) для обработки в Application
+        throw new CsrfException(
+            'Срок действия формы истёк. Пожалуйста, обновите страницу и попробуйте снова.',
+            [
+                'is_ajax' => $this->isAjaxRequest(),
+                'url' => $_SERVER['REQUEST_URI'] ?? '/',
+                'method' => $this->getMethod(),
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+            ]
+        );
     }
 
     /**

@@ -6,20 +6,32 @@ namespace App\Modules\Wiki\Controllers;
 
 use App\Core\Controller;
 use App\Core\Session;
+use App\Core\Logger;
 use App\Core\Exceptions\NotFoundException;
-use App\Core\Exceptions\ForbiddenException;
 use App\Modules\Wiki\Services\WikiService;
 use App\Modules\Wiki\Services\WikiPermissionService;
 use App\Modules\Wiki\Models\WikiPage;
 use App\Modules\Tags\Models\Tag;
-use App\Modules\Auth\Services\Auth;
 
+/**
+ * Контроллер Wiki модуля.
+ * 
+ * Обрабатывает:
+ * - Просмотр списка wiki страниц тега
+ * - Создание/редактирование/удаление wiki страниц
+ * - Восстановление удалённых страниц (для модераторов)
+ * - Поиск по wiki
+ * - Управление правами доступа
+ */
 class WikiController extends Controller
 {
     // =========================================================================
     // СПИСОК WIKI СТРАНИЦ ТЕГА
     // =========================================================================
 
+    /**
+     * Страница со списком wiki страниц для тега
+     */
     public function index(string $tagslug): void
     {
         $tagData = $this->getTagOr404($tagslug);
@@ -28,7 +40,8 @@ class WikiController extends Controller
         $pages = $wikiService->getPagesForTag($tagData['id']);
         $primaryPage = $wikiService->getPrimaryPageForTag($tagData['id']);
 
-        $canSeeDeleted = Auth::check() && (Auth::isAdmin() || Auth::isModerator());
+        $userContext = $this->getUserContext();
+        $canSeeDeleted = $userContext['isAdmin'] || $userContext['isModerator'];
         
         if (!$canSeeDeleted) {
             $pages = array_filter($pages, fn($p) => empty($p['deleted_at']));
@@ -55,49 +68,56 @@ class WikiController extends Controller
     // =========================================================================
     // ПРОСМОТР WIKI СТРАНИЦЫ
     // =========================================================================
-	public function show(string $tagslug, string $slug): void
-	{
-		$tagData = $this->getTagOr404($tagslug);
 
-		$page = $this->wikiService()->getPageBySlug($slug, $tagData['id']);
-		
-		if (!$page) {
-			throw new NotFoundException('Wiki страница не найдена');
-		}
+    /**
+     * Просмотр конкретной wiki страницы
+     */
+    public function show(string $tagslug, string $slug): void
+    {
+        $tagData = $this->getTagOr404($tagslug);
 
-		// Увеличиваем счётчик просмотров
-		$this->container->get(WikiPage::class)->incrementViewCount((int)$page['id']);
+        $page = $this->wikiService()->getPageBySlug($slug, $tagData['id']);
+        
+        if (!$page) {
+            throw new NotFoundException('Wiki страница не найдена');
+        }
 
-		// Вычисляем права в контроллере
-		$userId = Auth::check() ? Auth::id() : 0;
-		$canEdit = false;
-		$canDelete = false;
-		
-		if ($userId > 0) {
-			$canEdit = $this->permissionService()->canEditPage($page, $userId);
-			$canDelete = $this->permissionService()->canDeletePage($page, $userId);
-		}
+        // Увеличиваем счётчик просмотров
+        $this->container->get(WikiPage::class)->incrementViewCount((int)$page['id']);
 
-		$this->render('show', [
-			'title' => $page['title'] . ' — Wiki',
-			'tag' => $tagData,
-			'page' => $page,
-			'canEdit' => $canEdit,
-			'canDelete' => $canDelete,
-			'request' => $this->request,
-			'breadcrumbs' => $this->renderBreadcrumbs([
-				['url' => '/', 'label' => 'Главная'],
-				['url' => "/t/{$tagslug}", 'label' => "#{$tagData['name']}", 'active_pattern' => "/t/{$tagslug}"],
-				['url' => "/t/{$tagslug}/wiki", 'label' => 'Wiki', 'active_pattern' => "/t/{$tagslug}/wiki"],
-				['label' => $page['title']],
-			])
-		]);
-	}
+        $userContext = $this->getUserContext();
+        
+        $canEdit = false;
+        $canDelete = false;
+        
+        if ($userContext['isLoggedIn']) {
+            $canEdit = $this->permissionService()->canEditPage($page, $userContext['id']);
+            $canDelete = $this->permissionService()->canDeletePage($page, $userContext['id']);
+        }
+
+        $this->render('show', [
+            'title' => $page['title'] . ' — Wiki',
+            'tag' => $tagData,
+            'page' => $page,
+            'canEdit' => $canEdit,
+            'canDelete' => $canDelete,
+            'request' => $this->request,
+            'breadcrumbs' => $this->renderBreadcrumbs([
+                ['url' => '/', 'label' => 'Главная'],
+                ['url' => "/t/{$tagslug}", 'label' => "#{$tagData['name']}", 'active_pattern' => "/t/{$tagslug}"],
+                ['url' => "/t/{$tagslug}/wiki", 'label' => 'Wiki', 'active_pattern' => "/t/{$tagslug}/wiki"],
+                ['label' => $page['title']],
+            ])
+        ]);
+    }
 
     // =========================================================================
     // СОЗДАНИЕ WIKI СТРАНИЦЫ
     // =========================================================================
 
+    /**
+     * Форма создания wiki страницы
+     */
     public function showCreateForm(string $tagslug): void
     {
         $tagData = $this->getTagOr404($tagslug);
@@ -110,6 +130,9 @@ class WikiController extends Controller
         ]);
     }
 
+    /**
+     * Обработка создания wiki страницы
+     */
     public function create(string $tagslug): void
     {
         $tagData = $this->getTagOr404($tagslug);
@@ -117,8 +140,7 @@ class WikiController extends Controller
 
         $slug = trim($this->request->post('slug', ''));
         if ($this->container->get(WikiPage::class)->slugExists($slug, (int)$tagData['id'])) {
-            $this->session()->flash('error', 'Страница с таким URL уже существует в этом теге');
-            $this->redirect("/t/{$tagslug}/wiki/create");
+            $this->backWithMessage('Страница с таким URL уже существует в этом теге', 'error', "/t/{$tagslug}/wiki/create");
             return;
         }
 
@@ -131,12 +153,12 @@ class WikiController extends Controller
             'status' => $this->request->getParams('status', 'published')
         ];
 
-        $pageId = $this->wikiService()->createPage($data, Auth::id());
+        $userContext = $this->getUserContext();
+        $pageId = $this->wikiService()->createPage($data, $userContext['id']);
 
         if ($pageId > 0) {
-            $this->session()->flash('success', 'Wiki страница успешно создана!');
             $page = $this->wikiService()->getById($pageId);
-            $this->redirect('/t/' . $tagslug . '/wiki/' . $page['slug']);
+            $this->redirectWithMessage('/t/' . $tagslug . '/wiki/' . $page['slug'], 'Wiki страница успешно создана!', 'success');
             return;
         }
 
@@ -147,6 +169,9 @@ class WikiController extends Controller
     // РЕДАКТИРОВАНИЕ WIKI СТРАНИЦЫ
     // =========================================================================
 
+    /**
+     * Форма редактирования wiki страницы
+     */
     public function showEditForm(string $tagslug, string $id): void
     {
         $tagData = $this->getTagOr404($tagslug);
@@ -169,6 +194,9 @@ class WikiController extends Controller
         ]);
     }
 
+    /**
+     * Обработка обновления wiki страницы
+     */
     public function update(string $tagslug, string $id): void
     {
         $tagData = $this->getTagOr404($tagslug);
@@ -186,15 +214,16 @@ class WikiController extends Controller
         ];
 
         if ($this->container->get(WikiPage::class)->slugExists($data['slug'], (int)$tagData['id'], $pageId)) {
-            $this->session()->flash('error', 'Страница с таким URL уже существует в этом теге');
-            $this->redirect("/t/{$tagslug}/wiki/{$pageId}/edit");
+            $this->backWithMessage('Страница с таким URL уже существует в этом теге', 'error', "/t/{$tagslug}/wiki/{$pageId}/edit");
             return;
         }
 
-        if ($this->wikiService()->updatePage($pageId, $data, Auth::id())) {
-            $this->session()->flash('success', 'Wiki страница успешно обновлена!');
+        $userContext = $this->getUserContext();
+        
+        if ($this->wikiService()->updatePage($pageId, $data, $userContext['id'])) {
             $page = $this->wikiService()->getById($pageId);
-            $this->redirect('/t/' . $tagslug . '/wiki/' . $page['slug']);
+
+            $this->redirectWithMessage('/t/' . $tagslug . '/wiki/' . $page['slug'], 'Wiki страница успешно обновлена!', 'success');
             return;
         }
 
@@ -206,57 +235,67 @@ class WikiController extends Controller
     // УДАЛЕНИЕ WIKI СТРАНИЦЫ
     // =========================================================================
 
+    /**
+     * Удаление wiki страницы (soft delete)
+     */
     public function delete(string $tagslug, string $id): void
     {
         $tagData = $this->getTagOr404($tagslug);
         $page = $this->getPageOr404((int)$id, $tagData['id']);
         $this->checkDeletePermission($page);
 
-        if ($this->wikiService()->deletePage((int)$id, Auth::id())) {
-            $this->session()->flash('success', 'Wiki страница удалена!');
+        // ✅ Используем getUserContext()
+        $userContext = $this->getUserContext();
+        
+        if ($this->wikiService()->deletePage((int)$id, $userContext['id'])) {
+            // ✅ Используем redirectWithMessage()
+            $this->redirectWithMessage("/t/{$tagslug}/wiki", 'Wiki страница удалена!', 'success');
+            return;
         }
 
-        $this->redirectBack('/t/' . $tagslug . '/wiki');
+        $this->redirectBack("/t/{$tagslug}/wiki");
     }
 
+    /**
+     * Восстановление удалённой wiki страницы (только для модераторов/админов)
+     */
     public function restore(string $tagslug, int $id): void
     {
-        if (!Auth::check()) {
-            $this->session()->flash('error', 'Необходима авторизация');
-            $this->redirect('/login');
+        $userContext = $this->getUserContext();
+        
+        if (!$userContext['isLoggedIn']) {
+            $this->redirectWithMessage('/login', 'Необходима авторизация', 'error');
             return;
         }
         
-        if (!Auth::isAdmin() && !Auth::isModerator()) {
-            $this->session()->flash('error', 'Недостаточно прав для восстановления');
-            $this->redirect("/t/{$tagslug}/wiki");
+        if (!$userContext['isAdmin'] && !$userContext['isModerator']) {
+            $this->backWithMessage('Недостаточно прав для восстановления', 'error', "/t/{$tagslug}/wiki");
             return;
         }
         
         try {
-            $success = $this->wikiService()->restorePage($id, Auth::id());
+            $success = $this->wikiService()->restorePage($id, $userContext['id']);
             
             if ($success) {
-                $this->session()->flash('success', 'Wiki страница успешно восстановлена');
+                $this->redirectWithMessage("/t/{$tagslug}/wiki", 'Wiki страница успешно восстановлена', 'success');
             } else {
-                $this->session()->flash('error', 'Не удалось восстановить страницу');
+                $this->redirectWithMessage("/t/{$tagslug}/wiki", 'Не удалось восстановить страницу', 'error');
             }
-            
         } catch (\Throwable $e) {
-
-            $this->container->get(\App\Core\Logger::class)->error(
+            $this->container->get(Logger::class)->error(
                 "[WIKI] Error in restore controller: " . $e->getMessage()
             );
-            $this->session()->flash('error', 'Произошла ошибка при восстановлении страницы');
+            $this->redirectWithMessage("/t/{$tagslug}/wiki", 'Произошла ошибка при восстановлении страницы', 'error');
         }
-        
-        $this->redirect("/t/{$tagslug}/wiki");
     }
 
     // =========================================================================
     // ПОИСК ПО WIKИ
     // =========================================================================
 
+    /**
+     * Поиск по wiki страницам тега
+     */
     public function search(string $tagslug): void
     {
         $tagData = $this->getTagOr404($tagslug);
@@ -281,6 +320,9 @@ class WikiController extends Controller
     // УПРАВЛЕНИЕ ПРАВАМИ
     // =========================================================================
 
+    /**
+     * Страница управления правами wiki для тега
+     */
     public function permissions(string $tagslug): void
     {
         $tagData = $this->getTagOr404($tagslug);
@@ -295,6 +337,9 @@ class WikiController extends Controller
         ]);
     }
 
+    /**
+     * Выдача прав пользователю на wiki
+     */
     public function grantPermission(string $tagslug): void
     {
         $tagData = $this->getTagOr404($tagslug);
@@ -305,24 +350,33 @@ class WikiController extends Controller
         $canDelete = is_numeric($this->request->getParams('can_delete'));
 
         if (empty($targetUsername)) {
-            $this->session()->flash('error', 'Укажите имя пользователя');
-            $this->redirectBack('/t/' . $tagslug . '/wiki/permissions');
+            $this->backWithMessage('Укажите имя пользователя', 'error', "/t/{$tagslug}/wiki/permissions");
             return;
         }
 
+        $userContext = $this->getUserContext();
+        
         if ($this->permissionService()->grantPermission(
             $tagData['id'],
             $targetUsername,
-            Auth::id(),
+            $userContext['id'],
             $canEdit,
             $canDelete
         )) {
-            $this->session()->flash('success', 'Права успешно выданы пользователю ' . e($targetUsername));
+            $this->redirectWithMessage(
+                "/t/{$tagslug}/wiki/permissions",
+                'Права успешно выданы пользователю ' . e($targetUsername),
+                'success'
+            );
+            return;
         }
 
-        $this->redirectBack('/t/' . $tagslug . '/wiki/permissions');
+        $this->redirectBack("/t/{$tagslug}/wiki/permissions");
     }
 
+    /**
+     * Отзыв прав у пользователя
+     */
     public function revokePermission(string $tagslug): void
     {
         $tagData = $this->getTagOr404($tagslug);
@@ -331,16 +385,22 @@ class WikiController extends Controller
         $targetUserId = (int)$this->request->getParams('user_id', 0);
 
         if (!$targetUserId) {
-            $this->session()->flash('error', 'Не указан пользователь');
-            $this->redirectBack('/t/' . $tagslug . '/wiki/permissions');
+            $this->backWithMessage('Не указан пользователь', 'error', "/t/{$tagslug}/wiki/permissions");
             return;
         }
 
-        if ($this->permissionService()->revokePermission($tagData['id'], $targetUserId, Auth::id())) {
-            $this->session()->flash('success', 'Права успешно отозваны');
+        $userContext = $this->getUserContext();
+        
+        if ($this->permissionService()->revokePermission($tagData['id'], $targetUserId, $userContext['id'])) {
+            $this->redirectWithMessage(
+                "/t/{$tagslug}/wiki/permissions",
+                'Права успешно отозваны',
+                'success'
+            );
+            return;
         }
 
-        $this->redirectBack('/t/' . $tagslug . '/wiki/permissions');
+        $this->redirectBack("/t/{$tagslug}/wiki/permissions");
     }
 
     // =========================================================================
@@ -348,7 +408,7 @@ class WikiController extends Controller
     // =========================================================================
 
     /**
-     * ✅ НОВОЕ: Получить Session из контейнера
+     * Получить Session из контейнера
      */
     private function session(): Session
     {
@@ -356,7 +416,7 @@ class WikiController extends Controller
     }
 
     /**
-     * ✅ НОВОЕ: Получить WikiService из контейнера
+     * Получить WikiService из контейнера
      */
     private function wikiService(): WikiService
     {
@@ -364,7 +424,7 @@ class WikiController extends Controller
     }
 
     /**
-     * ✅ НОВОЕ: Получить WikiPermissionService из контейнера
+     * Получить WikiPermissionService из контейнера
      */
     private function permissionService(): WikiPermissionService
     {
@@ -372,7 +432,7 @@ class WikiController extends Controller
     }
 
     /**
-     * ✅ НОВОЕ: Получить тег или выбросить 404
+     * Получить тег или выбросить 404
      */
     private function getTagOr404(string $tagslug): array
     {
@@ -386,7 +446,7 @@ class WikiController extends Controller
     }
 
     /**
-     * ✅ НОВОЕ: Получить wiki страницу или выбросить 404
+     * Получить wiki страницу или выбросить 404
      */
     private function getPageOr404(int $pageId, int $tagId): array
     {
@@ -400,50 +460,66 @@ class WikiController extends Controller
     }
 
     /**
-     * ✅ НОВОЕ: Проверить права на создание wiki
+     * Проверить права на создание wiki.
      */
     private function checkCreatePermission(array $tagData): void
     {
-        if (!$this->permissionService()->canCreateWikiForTag($tagData['id'], Auth::id())) {
-            $this->session()->flash('error', 'У вас нет прав создавать wiki для этого тега');
-            $this->redirectBack('/t/' . $tagData['slug'] . '/wiki');
-            exit; // Временный exit до полного рефакторинга
+        $userContext = $this->getUserContext();
+        
+        if (!$this->permissionService()->canCreateWikiForTag($tagData['id'], $userContext['id'])) {
+            $this->backWithMessage(
+                'У вас нет прав создавать wiki для этого тега',
+                'error',
+                '/t/' . $tagData['slug'] . '/wiki'
+            );
         }
     }
 
     /**
-     * ✅ НОВОЕ: Проверить права на редактирование wiki
+     * Проверить права на редактирование wiki.
      */
     private function checkEditPermission(array $page): void
     {
-        if (!$this->permissionService()->canEditPage($page, Auth::id())) {
-            $this->session()->flash('error', 'У вас нет прав редактировать эту страницу');
-            $this->redirectBack('/t/' . $page['tag_slug'] . '/wiki/' . $page['slug']);
-            exit; // Временный exit до полного рефакторинга
+        $userContext = $this->getUserContext();
+        
+        if (!$this->permissionService()->canEditPage($page, $userContext['id'])) {
+            $this->backWithMessage(
+                'У вас нет прав редактировать эту страницу',
+                'error',
+                '/t/' . $page['tag_slug'] . '/wiki/' . $page['slug']
+            );
         }
     }
 
     /**
-     * ✅ НОВОЕ: Проверить права на удаление wiki
+     * Проверить права на удаление wiki.
      */
     private function checkDeletePermission(array $page): void
     {
-        if (!$this->permissionService()->canDeletePage($page, Auth::id())) {
-            $this->session()->flash('error', 'У вас нет прав удалять эту страницу');
-            $this->redirectBack('/t/' . $page['tag_slug'] . '/wiki');
-            exit; // Временный exit до полного рефакторинга
+        $userContext = $this->getUserContext();
+        
+        if (!$this->permissionService()->canDeletePage($page, $userContext['id'])) {
+            $this->backWithMessage(
+                'У вас нет прав удалять эту страницу',
+                'error',
+                '/t/' . $page['tag_slug'] . '/wiki'
+            );
         }
     }
 
     /**
-     * ✅ НОВОЕ: Проверить что пользователь владелец тега или админ
+     * Проверить что пользователь владелец тега или админ.
      */
     private function checkTagOwnerOrAdmin(array $tagData, string $errorMessage): void
     {
-        if ($tagData['user_id'] != Auth::id() && !Auth::isAdmin()) {
-            $this->session()->flash('error', $errorMessage);
-            $this->redirectBack('/t/' . $tagData['slug'] . '/wiki');
-            exit; // Временный exit до полного рефакторинга
+        $userContext = $this->getUserContext();
+        
+        if ($tagData['user_id'] != $userContext['id'] && !$userContext['isAdmin']) {
+            $this->backWithMessage(
+                $errorMessage,
+                'error',
+                '/t/' . $tagData['slug'] . '/wiki'
+            );
         }
     }
 }

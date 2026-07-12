@@ -8,11 +8,10 @@ use App\Core\Audit;
 use App\Core\Logger;
 use App\Modules\Comments\Models\Comment;
 use App\Modules\Mail\Core\Mailer;
+use App\Modules\Stories\Services\RankingService; 
 
 /**
  * Сервис для инструментов разработчика.
- * 
- * ✅ ИЗМЕНЕНО: Mailer внедряется через конструктор.
  */
 class AdminToolsService
 {
@@ -20,17 +19,20 @@ class AdminToolsService
     private Logger $logger;
     private Comment $commentModel;
     private Mailer $mailer;
+    private RankingService $rankingService;
 
     public function __construct(
         Audit $audit,
         Logger $logger,
         Comment $commentModel,
-        Mailer $mailer
+        Mailer $mailer,
+        RankingService $rankingService
     ) {
         $this->audit = $audit;
         $this->logger = $logger;
         $this->commentModel = $commentModel;
         $this->mailer = $mailer;
+        $this->rankingService = $rankingService;
     }
 
     public function compileAssets(): void
@@ -76,7 +78,6 @@ class AdminToolsService
         $message = 'Это тестовое письмо для проверки работоспособности настроек почты в системе.';
 
         try {
-            // ✅ Используем внедрённый Mailer
             $success = $this->mailer->send($email, $subject, $message);
 
             if ($success) {
@@ -90,6 +91,9 @@ class AdminToolsService
         }
     }
 
+    /**
+     * Пакетный пересчёт confidence_score для всех комментариев.
+     */
     public function recalculateConfidenceScoreBatch(int $offset, int $batchSize = 1000): array
     {
         try {
@@ -100,11 +104,7 @@ class AdminToolsService
 
             foreach ($comments as $comment) {
                 try {
-                    if (!function_exists('wilson_score')) {
-                        throw new \Exception('Функция wilson_score() не найдена. Проверьте app/helpers.php');
-                    }
-
-                    $confidenceScore = wilson_score(
+                    $confidenceScore = $this->rankingService->wilsonScore(
                         (int)$comment['score'],
                         (int)$comment['flag_count']
                     );

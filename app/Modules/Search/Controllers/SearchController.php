@@ -9,23 +9,27 @@ use App\Core\Session;
 use App\Modules\Search\Models\SearchResult;
 use App\Modules\Votes\Models\Vote;
 use App\Modules\Users\Models\User;
-use App\Modules\Auth\Services\Auth;
 
+/**
+ * Контроллер поиска.
+ * 
+ * Обрабатывает контекстный поиск по историям и комментариям.
+ */
 class SearchController extends Controller
 {
     /**
-     * Handles contextual searching across stories or comments (GET /search?q=...)
+     * Обработка контекстного поиска по историям или комментариям (GET /search?q=...)
      */
     public function index(): void
     {
         $query  = trim($this->request->getParams('q', ''));
-        $sortBy = $this->request->getParams('order', 'relevance'); 
+        $sortBy = $this->request->getParams('order', 'relevance');
         $what   = $this->request->getParams('what', 'stories');
 
         $results = [];
         if (strlen($query) >= 3) {
             $searchModel = $this->service(SearchResult::class);
-            
+
             if ($what === 'comments') {
                 $results = $searchModel->searchComments($query, $sortBy);
             } else {
@@ -36,22 +40,23 @@ class SearchController extends Controller
             $session->flash('error', 'Поисковый запрос должен содержать минимум 3 символа.');
         }
 
-        // Получаем данные для голосования
-        $currentUserId = Auth::check() ? Auth::id() : 0;
+        $userContext = $this->getUserContext();
+
         $canUserDownvote = false;
         $currentVotes = [];
-        
-        if ($currentUserId > 0) {
-            // Получаем модель User из контейнера
+
+        if ($userContext['isLoggedIn']) {
+            // Получаем карму пользователя для проверки возможности downvote
             $userModel = $this->container->get(User::class);
-            $viewerKarma = $userModel->getUserKarma($currentUserId);
+            $viewerKarma = $userModel->getUserKarma($userContext['id']);
             $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
             $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
-            
+
+            // Получаем голоса пользователя за истории (если ищем истории)
             if ($what === 'stories' && !empty($results)) {
                 $voteModel = $this->container->get(Vote::class);
                 $storyIds = array_column($results, 'id');
-                $currentVotes = $voteModel->getUserVotesForStories($currentUserId, $storyIds);
+                $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
             }
         }
 
@@ -61,7 +66,7 @@ class SearchController extends Controller
             'sortBy'  => $sortBy,
             'what'    => $what,
             'results' => $results,
-            'currentUserId' => $currentUserId,
+            'currentUserId' => $userContext['id'],
             'canUserDownvote' => $canUserDownvote,
             'currentVotes' => $currentVotes,
         ]);

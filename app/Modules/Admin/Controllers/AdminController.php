@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Controllers;
 
 use App\Core\Controller;
-use App\Core\Session;
 use App\Core\Audit;
-use App\Core\Logger;
-use App\Modules\Auth\Services\Auth;
+use App\Core\Router;
+use App\Core\Exceptions\JsonResponseException;
 use App\Modules\Admin\Services\AdminUserService;
 use App\Modules\Admin\Services\AdminTagService;
 use App\Modules\Admin\Services\AdminCategoryService;
@@ -18,6 +17,21 @@ use App\Modules\Admin\Services\AdminFirewallService;
 use App\Modules\Admin\Services\AdminInvitationService;
 use App\Modules\Wiki\Models\WikiPage;
 
+/**
+ * Административный контроллер.
+ * 
+ * Обрабатывает все функции админ-панели:
+ * - Управление пользователями (редактирование, бан, архив)
+ * - Управление тегами и категориями
+ * - Управление wiki страницами
+ * - Журнал аудита и security alerts
+ * - Firewall (бан IP)
+ * - Инструменты разработчика (кэш, логи, почта)
+ * - Запросы приглашений
+ * 
+ * Все действия логируются через Audit сервис.
+ * Все маршруты защищены middleware ['web', 'auth', 'admin'].
+ */
 class AdminController extends Controller
 {
     // =========================================================================
@@ -25,15 +39,7 @@ class AdminController extends Controller
     // =========================================================================
 
     /**
-     * ✅ Хелпер: получить Session из контейнера
-     */
-    private function session(): Session
-    {
-        return $this->container->get(Session::class);
-    }
-
-    /**
-     * ✅ Хелпер: получить Audit из контейнера
+     * Получить Audit из контейнера
      */
     private function audit(): Audit
     {
@@ -41,25 +47,30 @@ class AdminController extends Controller
     }
 
     /**
-     * ✅ Хелпер: получить Logger из контейнера
-     */
-    private function logger(): Logger
-    {
-        return $this->container->get(Logger::class);
-    }
-
-    /**
-     * ✅ Хелпер: получить WikiPage из контейнера
+     * Получить WikiPage из контейнера
      */
     private function wikiPage(): WikiPage
     {
         return $this->container->get(WikiPage::class);
     }
 
+    /**
+     * Получить Router из контейнера
+     */
+    private function router(): Router
+    {
+        return $this->container->get(Router::class);
+    }
+
     // =========================================================================
     // DASHBOARD
     // =========================================================================
 
+    /**
+     * Главная страница админ-панели (GET /admin).
+     * 
+     * Показывает общую статистику: количество пользователей и администраторов.
+     */
     public function index(): void
     {
         $users = $this->service(AdminUserService::class)->getAllUsers();
@@ -75,6 +86,9 @@ class AdminController extends Controller
     // ПОЛЬЗОВАТЕЛИ
     // =========================================================================
 
+    /**
+     * Список всех пользователей (GET /admin/users).
+     */
     public function users(): void
     {
         $user = $this->service(AdminUserService::class)->getAllUsers();
@@ -85,6 +99,11 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Список пользователей с админскими правами (GET /admin/users/index).
+     * 
+     * Ограничивает выборку до 100 записей для производительности.
+     */
     public function usersIndex(): void
     {
         $this->render('users_list', [
@@ -94,12 +113,18 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Форма редактирования профиля пользователя (GET /admin/users/{id}/edit).
+     * 
+     * Если пользователь не найден — редирект на список.
+     */
     public function editUser(string $id): void
     {
         $user = $this->service(AdminUserService::class)->findUser((int)$id);
 
         if (!$user) {
             $this->redirectBack('/admin/users');
+            return;
         }
 
         $this->render('user_edit_panel', [
@@ -109,6 +134,12 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Обновление данных профиля пользователя (POST /admin/users/{id}).
+     * 
+     * Обновляет email, роль и биографию. После успешного обновления
+     * возвращает администратора на список пользователей с flash-сообщением.
+     */
     public function updateUser(string $id): void
     {
         $this->service(AdminUserService::class)->updateUserProfile((int)$id, [
@@ -117,65 +148,91 @@ class AdminController extends Controller
             'bio' => $this->request->getParams('bio'),
         ]);
 
-        // ✅ Используем хелпер
-        $this->session()->flash('success', 'Данные профиля пользователя успешно изменены администратором.');
-        $this->redirectBack('/admin/users');
+        $this->redirectWithMessage('/admin/users', 'Данные профиля пользователя успешно изменены администратором.', 'success');
     }
 
+    /**
+     * Архивация пользователя (POST /admin/users/{id}/archive).
+     * 
+     * Помечает пользователя как архивного. Действие выполняется от имени
+     * текущего администратора и логируется.
+     */
     public function archiveUser(string $id): void
     {
-        $userId = Auth::id();
-        $success = $this->service(AdminUserService::class)->archiveUser((int)$id, $userId);
+        $userContext = $this->getUserContext();
+        $success = $this->service(AdminUserService::class)->archiveUser((int)$id, $userContext['id']);
 
         if ($success) {
-            $this->session()->flash('success', 'Пользователь успешно отправлен в архив.');
+            $this->redirectWithMessage('/admin/users', 'Пользователь успешно отправлен в архив.', 'success');
+            return;
         }
 
         $this->redirectBack('/admin/users');
     }
 
+    /**
+     * Восстановление пользователя из архива (POST /admin/users/{id}/restore).
+     */
     public function restoreUser(string $id): void
     {
         $this->service(AdminUserService::class)->restoreUser((int)$id);
-        $this->session()->flash('success', 'Аккаунт пользователя успешно восстановлен из архива.');
-
-        $this->redirectBack('/admin/users');
+        $this->redirectWithMessage('/admin/users', 'Аккаунт пользователя успешно восстановлен из архива.', 'success');
     }
 
+    /**
+     * Переключение статуса блокировки пользователя (POST /admin/users/{id}/toggle-status).
+     * 
+     * Возвращаемые значения сервиса:
+     * - -2: ошибка (уже установлена в сервисе)
+     * - -1: пользователь не найден
+     * -  0: пользователь заблокирован
+     * -  1: доступ восстановлен
+     */
     public function toggleUserStatus(string $id): void
     {
-        $userId = Auth::id();
-        $result = $this->service(AdminUserService::class)->toggleUserStatus((int)$id, $userId);
+        $userContext = $this->getUserContext();
+        $result = $this->service(AdminUserService::class)->toggleUserStatus((int)$id, $userContext['id']);
 
         if ($result === -2) {
-            // Уже установлена ошибка в сервисе
+            // Ошибка уже установлена в сервисе
         } elseif ($result === -1) {
-            $this->session()->flash('error', 'Пользователь не найден.');
+            $this->backWithMessage('Пользователь не найден.', 'error', '/admin/users');
+            return;
         } elseif ($result === 0) {
-            $this->session()->flash('success', 'Пользователь успешно заблокирован.');
+            $this->redirectWithMessage('/admin/users', 'Пользователь успешно заблокирован.', 'success');
+            return;
         } else {
-            $this->session()->flash('success', 'Доступ для пользователя успешно восстановлен.');
+            $this->redirectWithMessage('/admin/users', 'Доступ для пользователя успешно восстановлен.', 'success');
+            return;
         }
 
         $this->redirectBack('/admin/users');
     }
 
+    /**
+     * Удаление аватара пользователя (POST /admin/users/{id}/delete-avatar).
+     * 
+     * После удаления возвращает на страницу редактирования пользователя.
+     */
     public function deleteUserAvatar(string $id): void
     {
         $userId = (int)$id;
 
         if ($this->service(AdminUserService::class)->deleteUserAvatar($userId)) {
-            $this->session()->flash('success', 'Аватар пользователя успешно удален.');
+            $this->redirectWithMessage("/admin/users/{$userId}/edit", 'Аватар пользователя успешно удален.', 'success');
+            return;
         }
 
-        header("Location: /admin/users/{$userId}/edit");
-        exit;
+        $this->redirect("/admin/users/{$userId}/edit");
     }
 
     // =========================================================================
     // ТЕГИ
     // =========================================================================
 
+    /**
+     * Список всех тегов (GET /admin/tags).
+     */
     public function tagsIndex(): void
     {
         $this->render('tags_list', [
@@ -184,6 +241,9 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Форма создания нового тега (GET /admin/tags/create).
+     */
     public function showTagCreateForm(): void
     {
         $this->render('tag_create', [
@@ -192,6 +252,11 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Создание нового тега (POST /admin/tags).
+     * 
+     * При успехе редиректит на список тегов, при ошибке — возвращает на форму.
+     */
     public function createTag(): void
     {
         $result = $this->service(AdminTagService::class)->createTag([
@@ -203,19 +268,25 @@ class AdminController extends Controller
         ]);
 
         if ($result) {
-            $this->session()->flash('success', "Тег успешно добавлен.");
-            $this->redirectBack('/admin/tags');
+            $this->redirectWithMessage('/admin/tags', 'Тег успешно добавлен.', 'success');
+            return;
         }
 
         $this->redirectBack('/admin/tags/create');
     }
 
+    /**
+     * Форма редактирования тега (GET /admin/tags/{id}/edit).
+     * 
+     * Если тег не найден — редирект на список.
+     */
     public function showTagEditForm(string $id): void
     {
         $tag = $this->service(AdminTagService::class)->getTagById((int)$id);
 
         if (!$tag) {
             $this->redirectBack('/admin/tags');
+            return;
         }
 
         $this->render('tag_edit', [
@@ -225,6 +296,12 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Обновление параметров тега (POST /admin/tags/{id}).
+     * 
+     * Обновляет название, slug, описание, флаг is_media, категорию
+     * и модификатор hotness. При ошибке возвращает на форму редактирования.
+     */
     public function updateTag(string $id): void
     {
         $tagId = (int)$id;
@@ -238,45 +315,55 @@ class AdminController extends Controller
         ]);
 
         if ($success) {
-            $this->session()->flash('success', "Параметры тега сохранены.");
-            $this->redirectBack('/admin/tags');
+            $this->redirectWithMessage('/admin/tags', 'Параметры тега сохранены.', 'success');
+            return;
         }
 
-        $this->redirectBack('/admin/tags/' . $tagId . '/edit');
+        $this->backWithMessage('Не удалось сохранить параметры тега.', 'error', "/admin/tags/{$tagId}/edit");
     }
 
+    /**
+     * Мягкое удаление тега (POST /admin/tags/{id}/delete).
+     * 
+     * Тег помечается как удалённый, но остаётся в базе данных.
+     * Может быть восстановлен позже.
+     */
     public function deleteTag(string $id): void
     {
         $tagId = (int)$id;
         $success = $this->service(AdminTagService::class)->softDeleteTag($tagId);
 
         if ($success) {
-            $this->session()->flash('success', "Тег успешно удален (перемещен в архив).");
-        } else {
-            $this->session()->flash('error', "Не удалось удалить тег.");
+            $this->redirectWithMessage('/admin/tags', 'Тег успешно удален (перемещен в архив).', 'success');
+            return;
         }
 
-        $this->redirectBack('/admin/tags');
+        $this->redirectWithMessage('/admin/tags', 'Не удалось удалить тег.', 'error');
     }
 
+    /**
+     * Восстановление тега из архива (POST /admin/tags/{id}/restore).
+     */
     public function restoreTag(string $id): void
     {
         $tagId = (int)$id;
         $success = $this->service(AdminTagService::class)->restoreTag($tagId);
 
         if ($success) {
-            $this->session()->flash('success', "Тег успешно восстановлен.");
-        } else {
-            $this->session()->flash('error', "Не удалось восстановить тег.");
+            $this->redirectWithMessage('/admin/tags', 'Тег успешно восстановлен.', 'success');
+            return;
         }
 
-        $this->redirectBack('/admin/tags');
+        $this->redirectWithMessage('/admin/tags', 'Не удалось восстановить тег.', 'error');
     }
 
     // =========================================================================
     // КАТЕГОРИИ
     // =========================================================================
 
+    /**
+     * Список всех категорий тегов (GET /admin/categories).
+     */
     public function categoriesIndex(): void
     {
         $this->render('categories_list', [
@@ -285,6 +372,9 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Форма создания новой категории (GET /admin/categories/create).
+     */
     public function showCategoryCreateForm(): void
     {
         $this->render('category_create', [
@@ -293,6 +383,11 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Создание новой категории (POST /admin/categories).
+     * 
+     * При успехе редиректит на список категорий, при ошибке — возвращает на форму.
+     */
     public function createCategory(): void
     {
         $result = $this->service(AdminCategoryService::class)->createCategory([
@@ -303,20 +398,25 @@ class AdminController extends Controller
         ]);
 
         if ($result) {
-            $this->session()->flash('success', "Категория успешно создана.");
-            $this->redirectBack('/admin/categories');
+            $this->redirectWithMessage('/admin/categories', 'Категория успешно создана.', 'success');
+            return;
         }
 
         $this->redirectBack('/admin/categories/create');
     }
 
+    /**
+     * Форма редактирования категории (GET /admin/categories/{id}/edit).
+     * 
+     * Если категория не найдена — редирект на список с flash-сообщением.
+     */
     public function showCategoryEditForm(string $id): void
     {
         $category = $this->service(AdminCategoryService::class)->getCategoryById((int)$id);
 
         if (!$category) {
-            $this->session()->flash('error', 'Категория не найдена.');
-            $this->redirectBack('/admin/categories');
+            $this->backWithMessage('Категория не найдена.', 'error', '/admin/categories');
+            return;
         }
 
         $this->render('category_edit', [
@@ -326,6 +426,12 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Обновление параметров категории (POST /admin/categories/{id}).
+     * 
+     * Обновляет название, slug, описание и порядок сортировки.
+     * При ошибке возвращает на форму редактирования.
+     */
     public function updateCategory(string $id): void
     {
         $categoryId = (int)$id;
@@ -337,18 +443,21 @@ class AdminController extends Controller
         ]);
 
         if ($success) {
-            $this->session()->flash('success', "Категория успешно обновлена.");
-            $this->redirectBack('/admin/categories');
-        } else {
-            header("Location: /admin/categories/{$categoryId}/edit");
+            $this->redirectWithMessage('/admin/categories', 'Категория успешно обновлена.', 'success');
+            return;
         }
-        exit;
+
+        $this->backWithMessage('Не удалось обновить категорию.', 'error', "/admin/categories/{$categoryId}/edit");
     }
 
+    /**
+     * Удаление категории (POST /admin/categories/{id}/delete).
+     */
     public function deleteCategory(string $id): void
     {
         if ($this->service(AdminCategoryService::class)->deleteCategory((int)$id)) {
-            $this->session()->flash('success', "Категория успешно удалена.");
+            $this->redirectWithMessage('/admin/categories', 'Категория успешно удалена.', 'success');
+            return;
         }
 
         $this->redirectBack('/admin/categories');
@@ -359,21 +468,23 @@ class AdminController extends Controller
     // =========================================================================
 
     /**
-     * Список всех wiki страниц
+     * Список всех wiki страниц с пагинацией (GET /admin/wiki).
+     * 
+     * Показывает 50 страниц на странице, включая информацию
+     * о количестве удалённых страниц.
      */
     public function wikiIndex(): void
     {
-        // ✅ Получаем WikiPage из контейнера через хелпер
         $wikiPage = $this->wikiPage();
-        
+
         $page = max(1, (int)$this->request->query('page', 1));
         $perPage = 50;
         $offset = ($page - 1) * $perPage;
-        
+
         $pages = $wikiPage->getAllPagesWithTags($perPage, $offset);
         $totalPages = $wikiPage->getTotalPagesCount();
         $deletedPages = $wikiPage->getDeletedPagesCount();
-        
+
         $this->render('wiki_list', [
             'title' => 'Управление Wiki страницами',
             'pages' => $pages,
@@ -386,69 +497,83 @@ class AdminController extends Controller
     }
 
     /**
-     * Мягкое удаление wiki страницы
+     * Мягкое удаление wiki страницы (POST /admin/wiki/{id}/delete).
+     * 
+     * Страница помечается как удалённая, но остаётся в базе данных.
+     * Действие логируется в аудит с указанием ID администратора.
      */
     public function deleteWikiPage(string $id): void
     {
-        // ✅ Получаем WikiPage из контейнера
         $wikiPage = $this->wikiPage();
         $page = $wikiPage->findWithDeleted((int)$id);
-        
+
         if (!$page) {
-            $this->session()->flash('error', 'Wiki страница не найдена');
-            $this->redirectBack('/admin/wiki');
+            $this->backWithMessage('Wiki страница не найдена', 'error', '/admin/wiki');
+            return;
         }
-        
+
         if ($wikiPage->softDelete((int)$id)) {
-            // ✅ Получаем Audit из контейнера
+            $userContext = $this->getUserContext();
+
             $this->audit()->log('admin.wiki.deleted', 'Wiki страница удалена администратором', 'wiki', [
                 'page_id' => (int)$id,
                 'title' => $page['title'],
-                'admin_id' => Auth::id(),
+                'admin_id' => $userContext['id'],
             ]);
-            
-            $this->session()->flash('success', "Wiki страница «{$page['title']}» удалена");
-        } else {
-            $this->session()->flash('error', 'Ошибка при удалении wiki страницы');
+
+            $this->redirectWithMessage('/admin/wiki', "Wiki страница «{$page['title']}» удалена", 'success');
+            return;
         }
-        
-        $this->redirectBack('/admin/wiki');
+
+        $this->redirectWithMessage('/admin/wiki', 'Ошибка при удалении wiki страницы', 'error');
     }
 
     /**
-     * Восстановить wiki страницу
+     * Восстановление wiki страницы из архива (POST /admin/wiki/{id}/restore).
+     * 
+     * Действие логируется в аудит с указанием ID администратора.
      */
     public function restoreWikiPage(string $id): void
     {
-        // ✅ Получаем WikiPage из контейнера
         $wikiPage = $this->wikiPage();
         $page = $wikiPage->findWithDeleted((int)$id);
-        
+
         if (!$page) {
-            $this->session()->flash('error', 'Wiki страница не найдена');
-            $this->redirectBack('/admin/wiki');
+            $this->backWithMessage('Wiki страница не найдена', 'error', '/admin/wiki');
+            return;
         }
-        
+
         if ($wikiPage->restore((int)$id)) {
-            // ✅ Получаем Audit из контейнера
+            $userContext = $this->getUserContext();
+
             $this->audit()->log('admin.wiki.restored', 'Wiki страница восстановлена администратором', 'wiki', [
                 'page_id' => (int)$id,
                 'title' => $page['title'],
-                'admin_id' => Auth::id(),
+                'admin_id' => $userContext['id'],
             ]);
-            
-            $this->session()->flash('success', "Wiki страница «{$page['title']}» восстановлена");
-        } else {
-            $this->session()->flash('error', 'Ошибка при восстановлении wiki страницы');
+
+            $this->redirectWithMessage('/admin/wiki', "Wiki страница «{$page['title']}» восстановлена", 'success');
+            return;
         }
-        
-        $this->redirectBack('/admin/wiki');
+
+        $this->redirectWithMessage('/admin/wiki', 'Ошибка при восстановлении wiki страницы', 'error');
     }
 
     // =========================================================================
     // АУДИТ
     // =========================================================================
 
+    /**
+     * Журнал аудита системы с фильтрами (GET /admin/audit).
+     * 
+     * Поддерживает фильтрацию по:
+     * - ID пользователя (filter_user_id)
+     * - Типу действия (filter_action)
+     * - Поисковому запросу (search)
+     * - Категории (category)
+     * 
+     * Пагинация: 25 записей на странице.
+     */
     public function auditLogs(): void
     {
         $filterUserIdRaw = $this->request->query('filter_user_id');
@@ -476,7 +601,7 @@ class AdminController extends Controller
         $offset = ($currentPage - 1) * $perPage;
 
         $auditService = $this->service(AdminAuditService::class);
-        
+
         $logs = $auditService->getFilteredLogs(
             $perPage,
             $offset,
@@ -485,14 +610,14 @@ class AdminController extends Controller
             $searchQuery,
             $filterCategory
         );
-        
+
         $totalLogs = $auditService->getFilteredCount(
             $filterUserId,
             $filterAction,
             $searchQuery,
             $filterCategory
         );
-        
+
         $totalPages = max(1, (int)ceil($totalLogs / $perPage));
 
         $this->render('audit_list', [
@@ -518,22 +643,30 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * API для получения последних security alerts (GET /admin/security-alerts).
+     * 
+     * Возвращает JSON с недавними событиями безопасности для отображения
+     * в админ-панели в реальном времени.
+     */
     public function getSecurityAlertsApi(): void
     {
-        header('Content-Type: application/json');
-
-        echo json_encode([
+        $this->json([
             'status' => 'success',
             'alerts' => $this->service(AdminAuditService::class)->getRecentSecurityAlerts(),
             'timestamp' => time()
         ]);
-        exit;
     }
 
     // =========================================================================
     // FIREWALL
     // =========================================================================
 
+    /**
+     * Страница управления firewall (GET /admin/firewall).
+     * 
+     * Показывает список заблокированных IP-адресов.
+     */
     public function firewallIndex(): void
     {
         $this->render('firewall', [
@@ -543,30 +676,40 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Блокировка IP-адреса (POST /admin/firewall/ban).
+     * 
+     * Валидирует формат IP и проверяет, не заблокирован ли он уже.
+     * При ошибке показывает соответствующее сообщение.
+     */
     public function banIp(): void
     {
         $ip = trim($this->request->getParams('ip_address'));
         $reason = trim($this->request->getParams('reason')) ?: 'Нарушение правил сообщества';
 
         if ($this->service(AdminFirewallService::class)->banIp($ip, $reason)) {
-            $this->session()->flash('success', "IP-адрес {$ip} успешно внесен в черный список.");
-        } else {
-            if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-                $this->session()->flash('error', 'Указан некорректный IP-адрес.');
-            } else {
-                $this->session()->flash('error', 'Этот IP-адрес уже заблокирован.');
-            }
+            $this->redirectWithMessage('/admin/firewall', "IP-адрес {$ip} успешно внесен в черный список.", 'success');
+            return;
         }
 
-        $this->redirectBack('/admin/firewall');
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            $this->redirectWithMessage('/admin/firewall', 'Указан некорректный IP-адрес.', 'error');
+            return;
+        }
+
+        $this->redirectWithMessage('/admin/firewall', 'Этот IP-адрес уже заблокирован.', 'error');
     }
 
+    /**
+     * Разблокировка IP-адреса (POST /admin/firewall/unban/{id}).
+     */
     public function unbanIp(string $id): void
     {
         $ip = $this->service(AdminFirewallService::class)->unbanIp((int)$id);
 
         if ($ip) {
-            $this->session()->flash('success', "IP-адрес {$ip} успешно разблокирован.");
+            $this->redirectWithMessage('/admin/firewall', "IP-адрес {$ip} успешно разблокирован.", 'success');
+            return;
         }
 
         $this->redirectBack('/admin/firewall');
@@ -576,6 +719,9 @@ class AdminController extends Controller
     // ИНСТРУМЕНТЫ
     // =========================================================================
 
+    /**
+     * Страница инструментов разработчика (GET /admin/tools).
+     */
     public function tools(): void
     {
         $this->render('tools', [
@@ -583,86 +729,119 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Компиляция CSS ассетов всех модулей (POST /admin/tools/compile-assets).
+     * 
+     * Находит все CSS файлы модулей, объединяет и сжимает их.
+     * Результат кэшируется для ускорения загрузки страниц.
+     */
     public function compileAssets(): void
     {
         $this->service(AdminToolsService::class)->compileAssets();
-        $this->session()->flash('success', 'Все CSS файлы модулей успешно найдены, объединены и сжаты силами PHP!');
-
-        $this->redirectBack('/admin/tools');
+        $this->redirectWithMessage('/admin/tools', 'Все CSS файлы модулей успешно найдены, объединены и сжаты силами PHP!', 'success');
     }
 
+    /**
+     * Очистка текстовых файлов логов (POST /admin/tools/clear-logs).
+     * 
+     * Обнуляет файлы app.log и audit.log в storage/logs/.
+     */
     public function clearFileLogs(): void
     {
         $count = $this->service(AdminToolsService::class)->clearFileLogs();
-        $this->session()->flash('success', "Текстовые логи успешно очищены (обнулено файлов: {$count}).");
-
-        $this->redirectBack('/admin/tools');
+        $this->redirectWithMessage('/admin/tools', "Текстовые логи успешно очищены (обнулено файлов: {$count}).", 'success');
     }
 
+    /**
+     * Полная очистка таблицы аудита в БД (POST /admin/tools/clear-audit).
+     * 
+     * Выполняет TRUNCATE таблицы audit_logs. Действие необратимо
+     * и логируется перед выполнением.
+     */
     public function clearDbAudit(): void
     {
         if ($this->service(AdminAuditService::class)->clearAuditLogs()) {
-            // ✅ Получаем Audit из контейнера
             $this->audit()->log('admin.tools_clear_db', 'Администратор выполнил полную очистку (TRUNCATE) таблицы аудита в базе данных', 'admin');
-            $this->session()->flash('success', 'Таблица логов аудита в базе данных успешно и полностью очищена.');
-        } else {
-            $this->session()->flash('error', 'Не удалось очистить таблицу в БД.');
+            $this->redirectWithMessage('/admin/tools', 'Таблица логов аудита в базе данных успешно и полностью очищена.', 'success');
+            return;
         }
 
-        $this->redirectBack('/admin/tools');
+        $this->redirectWithMessage('/admin/tools', 'Не удалось очистить таблицу в БД.', 'error');
     }
 
+    /**
+     * Кэширование маршрутов всех модулей (POST /admin/tools/cache-routes).
+     * 
+     * Компилирует маршруты в кэш-файл для ускорения обработки запросов.
+     * Router получается из DI-контейнера (без использования global).
+     */
     public function cacheRoutes(): void
     {
-        global $router;
+        $router = $this->router();
         $this->service(AdminToolsService::class)->cacheRoutes($router);
-        $this->session()->flash('success', 'Маршруты всех модулей успешно оптимизированы и сохранены в кэш-файл.');
-
-        $this->redirectBack('/admin/tools');
+        $this->redirectWithMessage('/admin/tools', 'Маршруты всех модулей успешно оптимизированы и сохранены в кэш-файл.', 'success');
     }
 
+    /**
+     * Сброс кэша маршрутов (POST /admin/tools/clear-cache-routes).
+     * 
+     * Удаляет кэш-файл маршрутов, заставляя систему пересобрать его
+     * при следующем запросе.
+     * Router получается из DI-контейнера (без использования global).
+     */
     public function clearCacheRoutes(): void
     {
-        global $router;
+        $router = $this->router();
         $this->service(AdminToolsService::class)->clearCacheRoutes($router);
-        $this->session()->flash('success', 'Кэш маршрутов успешно сброшен.');
-
-        $this->redirectBack('/admin/tools');
+        $this->redirectWithMessage('/admin/tools', 'Кэш маршрутов успешно сброшен.', 'success');
     }
 
+    /**
+     * Отправка тестового письма (POST /admin/tools/send-test-email).
+     * 
+     * Проверяет работоспособность настроек почты (PHP mail() или SMTP).
+     */
     public function sendTestEmail(): void
     {
         $email = $this->request->getParams('email');
 
         if (!$email) {
-            $this->session()->flash('error', 'Не удалось определить email администратора.');
-            $this->redirectBack('/admin/tools');
+            $this->redirectWithMessage('/admin/tools', 'Не удалось определить email администратора.', 'error');
+            return;
         }
 
         $error = $this->service(AdminToolsService::class)->sendTestEmail($email);
 
         if ($error === null) {
-            $this->session()->flash('success', 'Тестовое письмо отправлено успешно на ' . e($email));
-        } else {
-            $this->session()->flash('error', $error);
+            $this->redirectWithMessage('/admin/tools', 'Тестовое письмо отправлено успешно на ' . e($email), 'success');
+            return;
         }
 
-        $this->redirectBack('/admin/tools');
+        $this->redirectWithMessage('/admin/tools', $error, 'error');
     }
 
     /**
-     * Пересчитать confidence_score для комментариев (AJAX)
+     * Пересчёт confidence_score для всех комментариев (AJAX POST /admin/tools/recalculate-confidence).
+     * 
+     * Выполняется батчами по 1000 записей для избежания таймаутов.
+     * Возвращает JSON с информацией о прогрессе:
+     * - processed: обработано записей
+     * - total: всего записей
+     * - hasMore: остались ли ещё записи
+     * - nextOffset: смещение для следующего батча
+     * 
+     * ВАЖНО: JsonResponseException пробрасывается дальше,
+     * чтобы Application корректно обработал ответ.
      */
     public function recalculateConfidenceScore(): void
     {
         try {
-            // Очищаем буфер вывода (на случай если что-то уже выведено)
             if (ob_get_level()) {
                 ob_clean();
             }
 
             $offset = (int)$this->request->getParams('offset', 0);
-            $batchSize = 1000; // пересчет за раз (один проход)
+            $batchSize = 1000;
 
             $result = $this->service(AdminToolsService::class)->recalculateConfidenceScoreBatch($offset, $batchSize);
 
@@ -673,12 +852,12 @@ class AdminController extends Controller
                 'hasMore' => $result['hasMore'],
                 'nextOffset' => $result['nextOffset'],
             ]);
-        } catch (\Exception $e) {
-            // ✅ Используем хелпер для логирования
-            $this->logger()->error('Recalculate confidence score error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+        } catch (JsonResponseException $e) {
+            // ✅ НЕ перехватываем JsonResponseException — Application обработает
+            throw $e;
+        } catch (\Throwable $e) {
+            // ✅ Логируем реальную ошибку через единый метод из базового Controller
+            $this->logError($e, 'Admin.recalculateConfidence');
 
             $this->json([
                 'success' => false,
@@ -691,6 +870,11 @@ class AdminController extends Controller
     // ПРИГЛАШЕНИЯ
     // =========================================================================
 
+    /**
+     * Список запросов приглашений (GET /admin/invitations).
+     * 
+     * Фильтруется по статусу: pending (ожидающие), approved (одобренные), rejected (отклонённые).
+     */
     public function invitationsIndex(): void
     {
         $status = $this->request->query('status', 'pending');
@@ -702,25 +886,31 @@ class AdminController extends Controller
         ], 'Invitations');
     }
 
+    /**
+     * Одобрение запроса приглашения (POST /admin/invitations/{id}/approve).
+     * 
+     * После одобрения пользователь получает приглашение на регистрацию.
+     */
     public function approveInvitation(int $id): void
     {
         if ($this->service(AdminInvitationService::class)->approveRequest($id)) {
-            $this->session()->flash('success', 'Запрос одобрен.');
-        } else {
-            $this->session()->flash('error', 'Не удалось одобрить запрос.');
+            $this->redirectWithMessage('/admin/invitations?status=pending', 'Запрос одобрен.', 'success');
+            return;
         }
 
-        $this->redirectBack('/admin/invitations?status=pending');
+        $this->redirectWithMessage('/admin/invitations?status=pending', 'Не удалось одобрить запрос.', 'error');
     }
 
+    /**
+     * Отклонение запроса приглашения (POST /admin/invitations/{id}/reject).
+     */
     public function rejectInvitation(int $id): void
     {
         if ($this->service(AdminInvitationService::class)->rejectRequest($id)) {
-            $this->session()->flash('success', 'Запрос отклонён.');
-        } else {
-            $this->session()->flash('error', 'Не удалось отклонить запрос.');
+            $this->redirectWithMessage('/admin/invitations?status=pending', 'Запрос отклонён.', 'success');
+            return;
         }
 
-        $this->redirectBack('/admin/invitations?status=pending');
+        $this->redirectWithMessage('/admin/invitations?status=pending', 'Не удалось отклонить запрос.', 'error');
     }
 }

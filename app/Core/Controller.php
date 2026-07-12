@@ -9,14 +9,45 @@ use App\Core\Events\EventDispatcher;
 use App\Core\Exceptions\HttpException;
 use App\Core\Exceptions\JsonResponseException;
 
+/**
+ * Базовый абстрактный контроллер для всех модулей.
+ * 
+ * Предоставляет общую функциональность:
+ * - Рендеринг шаблонов с автоматической передачей общих данных
+ * - Работа с JSON-ответами через исключения
+ * - Редиректы через исключения (без exit)
+ * - Контекст пользователя с кэшированием
+ * - Open Graph мета-теги
+ * - Хлебные крошки
+ * 
+ * Все дочерние контроллеры наследуют эту функциональность.
+ */
 abstract class Controller
 {
+    /** @var Request Объект HTTP-запроса */
     protected Request $request;
+    
+    /** @var EventDispatcher Диспетчер событий для публикации domain events */
     protected EventDispatcher $eventDispatcher;
+    
+    /** @var Container DI-контейнер для получения сервисов */
     protected Container $container;
 
+    /** @var array|null Кеш общих данных для view (вычисляется один раз за запрос) */
     private ?array $commonViewDataCache = null;
+    
+    /** @var array|null Кеш контекста пользователя (вычисляется один раз за запрос) */
+    private ?array $userContextCache = null;
 
+    /**
+     * Конструктор базового контроллера.
+     * 
+     * Все зависимости внедряются через DI-контейнер автоматически.
+     * 
+     * @param Request $request HTTP-запрос
+     * @param EventDispatcher $eventDispatcher Диспетчер событий
+     * @param Container $container DI-контейнер
+     */
     public function __construct(
         Request $request,
         EventDispatcher $eventDispatcher,
@@ -27,37 +58,139 @@ abstract class Controller
         $this->container = $container;
     }
 
+    /**
+     * Опубликовать domain event.
+     * 
+     * Используется для слабой связанности между модулями.
+     * Например, после создания истории можно опубликовать StoryCreated event.
+     * 
+     * @param Event $event Событие для публикации
+     */
     protected function dispatch(Event $event): void
     {
         $this->eventDispatcher->dispatch($event);
     }
 
+    // =========================================================================
+    // КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ
+    // =========================================================================
+
     /**
-     * Рендеринг шаблона
+     * Получить контекст текущего пользователя.
+     * 
+     * Возвращает массив с данными авторизации для использования в контроллерах.
+     * Результат кэшируется в рамках одного запроса для избежания повторных вызовов Auth.
+     * 
+     * Структура возвращаемого массива:
+     * - id: int — ID пользователя (0 для гостей)
+     * - isLoggedIn: bool — Авторизован ли пользователь
+     * - isAdmin: bool — Является ли администратором
+     * - isModerator: bool — Является ли модератором (включая админов)
+     * - isAuthor: callable — Функция для проверки авторства: fn(int $authorId): bool
+     * 
+     * Пример использования:
+     * ```php
+     * $userContext = $this->getUserContext();
+     * 
+     * if (!$userContext['isLoggedIn']) {
+     *     $this->redirect('/login');
+     *     return;
+     * }
+     * 
+     * if ($userContext['isAdmin']) {
+     *     // Админские действия
+     * }
+     * 
+     * if ($userContext['isAuthor']($story['user_id'])) {
+     *     // Действия только для автора
+     * }
+     * ```
+     * 
+     * @return array{
+     *     id: int,
+     *     isLoggedIn: bool,
+     *     isAdmin: bool,
+     *     isModerator: bool,
+     *     isAuthor: callable
+     * }
+     */
+    protected function getUserContext(): array
+    {
+        // Возвращаем кеш, если уже вычисляли в этом запросе
+        if ($this->userContextCache !== null) {
+            return $this->userContextCache;
+        }
+
+        // Получаем данные авторизации из Auth сервиса
+        $isLoggedIn = \App\Modules\Auth\Services\Auth::check();
+        $userId = $isLoggedIn ? (int)\App\Modules\Auth\Services\Auth::id() : 0;
+        $isAdmin = \App\Modules\Auth\Services\Auth::isAdmin();
+        $isModerator = \App\Modules\Auth\Services\Auth::isModerator();
+
+        // Формируем контекст с callback для проверки авторства
+        $this->userContextCache = [
+            'id' => $userId,
+            'isLoggedIn' => $isLoggedIn,
+            'isAdmin' => $isAdmin,
+            'isModerator' => $isModerator,
+            // Callback для удобной проверки: является ли пользователь автором контента
+            'isAuthor' => fn(int $authorId): bool => $isLoggedIn && $userId === $authorId,
+        ];
+
+        return $this->userContextCache;
+    }
+
+    // =========================================================================
+    // РЕНДЕРИНГ ШАБЛОНОВ
+    // =========================================================================
+
+    /**
+     * Рендеринг шаблона с layout.
+     * 
+     * Автоматически добавляет в данные:
+     * - csrf_token — токен для защиты форм
+     * - currentUser — данные текущего пользователя
+     * - unreadNotificationsCount — количество непрочитанных уведомлений
+     * - pendingFlagsCount — количество ожидающих флагов (для модераторов)
+     * - activeSuggestionsCount — количество активных предложений (для модераторов)
+     * 
+     * Путь к шаблону определяется автоматически по namespace контроллера:
+     * App\Modules\Stories\Controllers\StoriesController → Modules/Stories/Views/
+     * 
+     * @param string $viewName Имя шаблона (без расширения .php)
+     * @param array $data Данные для передачи в шаблон
+     * 
+     * @throws HttpException Если файл шаблона не найден
      */
     protected function render(string $viewName, array $data = []): void
     {
+        // Добавляем CSRF токен для всех форм
         $data['csrf_token'] = $this->request->getCsrfToken();
+        
+        // Добавляем общие данные (пользователь, уведомления и т.д.)
         $data = array_merge($data, $this->getCommonViewData());
 
+        // Определяем модуль по namespace контроллера
         $calledClass = get_called_class();
         $parts = explode('\\', $calledClass);
         $moduleName = $parts[2] ?? '';
 
+        // Загружаем языковые файлы модуля
         if (!empty($moduleName)) {
             \App\Core\Lang::loadModuleLang($moduleName);
         }
 
+        // Формируем пути к файлам
         $modulePath = dirname(__DIR__) . "/Modules/{$moduleName}";
         $viewFile = "{$modulePath}/Views/{$viewName}.php";
         $layoutFile = "{$modulePath}/Views/layout.php";
 
-        // Выбрасываем исключение вместо die()
+        // Проверяем существование шаблона
         if (!file_exists($viewFile)) {
             throw new HttpException(500, "View file not found: {$viewName}");
         }
 
-        // Рендерим view-файл в отдельной области видимости
+        // Рендерим view-файл в отдельной области видимости (изолированные переменные)
         ob_start();
         (function () use ($data, $viewFile) {
             extract($data, EXTR_SKIP);
@@ -65,15 +198,17 @@ abstract class Controller
         })();
         $content = ob_get_clean();
 
+        // Передаём содержимое view в layout
         $data['content'] = $content;
 
-        // Рендерим layout
+        // Рендерим layout модуля
         if (file_exists($layoutFile)) {
             (function () use ($data, $layoutFile) {
                 extract($data, EXTR_SKIP);
                 include $layoutFile;
             })();
         } else {
+            // Fallback: используем layout из модуля Common
             $fallbackLayout = dirname(__DIR__) . '/Modules/Common/Views/layout.php';
             if (file_exists($fallbackLayout)) {
                 (function () use ($data, $fallbackLayout) {
@@ -81,22 +216,28 @@ abstract class Controller
                     include $fallbackLayout;
                 })();
             } else {
+                // Если layout вообще нет — выводим только content
                 echo $content;
             }
         }
     }
 
     /**
-     * Получение общих данных для всех шаблонов
+     * Получение общих данных для всех шаблонов.
+     * 
+     * Данные кэшируются в рамках одного запроса для оптимизации.
+     * Включает информацию о текущем пользователе и счётчики для шапки.
+     * 
+     * @return array Общие данные для view
      */
     protected function getCommonViewData(): array
     {
-
         // Возвращаем кеш, если уже вычисляли
         if ($this->commonViewDataCache !== null) {
             return $this->commonViewDataCache;
         }
 
+        // Базовая структура данных (для неавторизованных пользователей)
         $data = [
             'currentUser' => [
                 'id' => null,
@@ -113,9 +254,11 @@ abstract class Controller
         ];
 
         try {
+            // Получаем данные пользователя из сессии
             $session = $this->container->get(Session::class);
             $userId = $session->get('user_id');
 
+            // Заполняем данные пользователя
             $data['currentUser'] = [
                 'id' => $userId,
                 'name' => $session->get('user_name'),
@@ -126,10 +269,12 @@ abstract class Controller
                 'isModerator' => in_array($session->get('user_role'), ['admin', 'moderator']),
             ];
 
-            // Счётчики для шапки (только для авторизованных)
+            // Для авторизованных пользователей загружаем счётчики
             if ($data['currentUser']['isLoggedIn']) {
+                // Количество непрочитанных уведомлений
                 $data['unreadNotificationsCount'] = $this->getUnreadNotificationsCount($userId);
 
+                // Для модераторов и админов — дополнительные счётчики
                 if ($data['currentUser']['isModerator']) {
                     $data['pendingFlagsCount'] = $this->getPendingFlagsCount();
                     $data['activeSuggestionsCount'] = $this->getActiveSuggestionsCount();
@@ -137,16 +282,20 @@ abstract class Controller
             }
         } catch (\Throwable $e) {
             // Fallback: возвращаем пустые данные (уже установлены выше)
+            // Это гарантирует, что шаблон не упадёт из-за ошибок в сервисах
         }
 
-
-        // Кешируем результат
+        // Кешируем результат для повторных вызовов
         $this->commonViewDataCache = $data;
         return $data;
     }
 
     /**
-     * Получить количество непрочитанных уведомлений
+     * Получить количество непрочитанных уведомлений.
+     * Учитывает замьюченных пользователей (их уведомления не считаются).
+     * 
+     * @param int $userId ID пользователя
+     * @return int Количество непрочитанных уведомлений
      */
     private function getUnreadNotificationsCount(int $userId): int
     {
@@ -161,7 +310,10 @@ abstract class Controller
     }
 
     /**
-     * Получить количество ожидающих флагов
+     * Получить количество ожидающих проверки флагов.
+     * Доступно только модераторам и админам.
+     * 
+     * @return int Количество флагов со статусом "pending"
      */
     private function getPendingFlagsCount(): int
     {
@@ -174,7 +326,10 @@ abstract class Controller
     }
 
     /**
-     * Получить количество активных предложений
+     * Получить количество активных предложений по изменениям.
+     * Доступно только модераторам и админам.
+     * 
+     * @return int Количество активных предложений
      */
     private function getActiveSuggestionsCount(): int
     {
@@ -186,8 +341,24 @@ abstract class Controller
         }
     }
 
+    // =========================================================================
+    // ОТВЕТЫ И РЕДИРЕКТЫ
+    // =========================================================================
+
     /**
-     * Используем JsonResponseException вместо exit
+     * Отправить JSON ответ.
+     * 
+     * Использует JsonResponseException вместо прямого echo + exit.
+     * Исключение перехватывается в Application::handleJsonResponse().
+     * 
+     * Пример:
+     * ```php
+     * $this->json(['status' => 'success', 'data' => $data]);
+     * $this->json(['error' => 'Not found'], 404);
+     * ```
+     * 
+     * @param array $data Данные для JSON ответа
+     * @param int $statusCode HTTP статус код (по умолчанию 200)
      */
     protected function json(array $data, int $statusCode = 200): void
     {
@@ -195,29 +366,64 @@ abstract class Controller
     }
 
     /**
-     * Используем RedirectException вместо exit
+     * Выполнить HTTP редирект.
+     * 
+     * Использует RedirectException вместо header() + exit.
+     * Исключение перехватывается в Application::handleRedirect().
+     * 
+     * @param string $url URL для редиректа
+     * @param int $code HTTP код редиректа (302 по умолчанию)
      */
     protected function redirect(string $url, int $code = 302): void
     {
         throw new \App\Core\Exceptions\RedirectException($url, $code);
     }
 
+    /**
+     * Редирект на предыдущую страницу (HTTP_REFERER).
+     * 
+     * Если referer отсутствует или ведёт на внешний сайт — используется fallback.
+     * 
+     * @param string $fallback URL для использования, если referer недоступен
+     */
     protected function redirectBack(string $fallback = '/'): void
     {
         $this->redirect($this->getSafeBackUrl($fallback));
     }
 
+    /**
+     * Получить безопасный URL для редиректа назад.
+     * 
+     * Проверяет, что URL:
+     * - Относительный (начинается с /)
+     * - Не является протокольно-относительным (не начинается с //)
+     * - Или ведёт на тот же домен, что и приложение
+     * 
+     * Защита от Open Redirect уязвимостей.
+     * 
+     * @param string $fallback URL по умолчанию
+     * @return string Безопасный URL
+     */
     private function getSafeBackUrl(string $fallback = '/'): string
     {
         $referer = $this->request->header('HTTP_REFERER', $fallback);
         return $this->isSafeUrl($referer) ? $referer : $fallback;
     }
 
+    /**
+     * Проверить безопасность URL для редиректа.
+     * 
+     * @param string $url URL для проверки
+     * @return bool true, если URL безопасен
+     */
     private function isSafeUrl(string $url): bool
     {
+        // Разрешаем относительные URL (начинаются с /)
         if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
             return true;
         }
+        
+        // Проверяем домен для абсолютных URL
         $urlHost = parse_url($url, PHP_URL_HOST);
         if ($urlHost === null) {
             return false;
@@ -227,6 +433,15 @@ abstract class Controller
         return $urlHost === $appHost;
     }
 
+    /**
+     * Редирект с flash-сообщением.
+     * 
+     * Сообщение сохраняется в сессии и отображается на следующей странице.
+     * 
+     * @param string $url URL для редиректа
+     * @param string $message Текст сообщения
+     * @param string $type Тип сообщения (success, error, warning, info)
+     */
     protected function redirectWithMessage(string $url, string $message, string $type = 'success'): void
     {
         $session = $this->container->get(Session::class);
@@ -234,18 +449,60 @@ abstract class Controller
         $this->redirect($url);
     }
 
+    /**
+     * Редирект назад с flash-сообщением.
+     * 
+     * @param string $message Текст сообщения
+     * @param string $type Тип сообщения
+     * @param string $fallback URL по умолчанию
+     */
     protected function backWithMessage(string $message, string $type = 'success', string $fallback = '/'): void
     {
         $this->redirectWithMessage($this->getSafeBackUrl($fallback), $message, $type);
     }
 
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * Получить сервис из DI-контейнера.
+     * 
+     * Короткий алиас для $this->container->get($class).
+     * 
+     * Пример:
+     * ```php
+     * $storyService = $this->service(StoryService::class);
+     * ```
+     * 
+     * @param string $class Имя класса сервиса
+     * @return mixed Экземпляр сервиса
+     */
     protected function service(string $class): mixed
     {
         return $this->container->get($class);
     }
 
+    /**
+     * Установить Open Graph мета-теги для страницы.
+     * 
+     * Если URL не указан, генерируется автоматически из текущего запроса.
+     * 
+     * Пример:
+     * ```php
+     * $this->setOpenGraph([
+     *     'type' => 'article',
+     *     'title' => $story['title'],
+     *     'description' => $description,
+     *     'image' => $imageUrl,
+     * ]);
+     * ```
+     * 
+     * @param array $data Данные Open Graph
+     */
     protected function setOpenGraph(array $data): void
     {
+        // Автоматически добавляем URL, если не указан
         if (!isset($data['url'])) {
             $host = $this->request->header('HTTP_HOST', 'localhost');
             $uri = $this->request->getUri();
@@ -254,18 +511,79 @@ abstract class Controller
         OpenGraph::set($data);
     }
 
+    /**
+     * Отрендерить хлебные крошки (breadcrumbs).
+     * 
+     * Генерирует HTML-разметку навигации с поддержкой schema.org/BreadcrumbList.
+     * 
+     * Пример:
+     * ```php
+     * $html = $this->renderBreadcrumbs([
+     *     ['label' => 'Главная', 'url' => '/'],
+     *     ['label' => 'Истории', 'url' => '/stories'],
+     *     ['label' => $story['title']], // Без url — текущая страница
+     * ]);
+     * ```
+     * 
+     * @param array $items Массив элементов крошек
+     * @return string HTML-разметка breadcrumbs
+     */
     protected function renderBreadcrumbs(array $items): string
     {
         $html = '<nav aria-label="breadcrumb"><ol class="breadcrumb">';
         foreach ($items as $item) {
             $label = $item['label'] ?? $item['title'] ?? '';
             if (isset($item['url'])) {
+                // Кликабельный элемент
                 $html .= '<li><a href="' . e($item['url']) . '">' . e($label) . '</a></li>';
             } else {
+                // Текущая страница (некликабельная)
                 $html .= '<li class="active" aria-current="page">' . e($label) . '</li>';
             }
         }
         $html .= '</ol></nav>';
         return $html;
     }
+	
+	// =========================================================================
+	// ЛОГИРОВАНИЕ
+	// =========================================================================
+
+	/**
+	 * Логирование ошибки с полным контекстом.
+	 * 
+	 * Используется во всех контроллерах для единообразного логирования.
+	 * Записывает ошибку в storage/logs/app.log через Logger сервис.
+	 * 
+	 * Формат записи:
+	 * - level: error
+	 * - message: [Prefix] сообщение ошибки
+	 * - context: file, line, trace, user_id, url
+	 * 
+	 * Если Logger недоступен — fallback на error_log().
+	 * 
+	 * @param \Throwable $e Исключение для логирования
+	 * @param string $prefix Префикс для сообщения (обычно "Модуль.метод")
+	 */
+	protected function logError(\Throwable $e, string $prefix = ''): void
+	{
+		// Авто-определение префикса из имени класса, если не указан
+		if ($prefix === '') {
+			$prefix = (new \ReflectionClass($this))->getShortName();
+		}
+		
+		try {
+			$logger = $this->container->get(\App\Core\Logger::class);
+			$logger->error("[{$prefix}] " . $e->getMessage(), [
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString(),
+				'user_id' => $this->getUserContext()['id'] ?? 0,
+				'url' => $this->request->getUri(),
+			]);
+		} catch (\Throwable $logError) {
+			// Если логгер недоступен — используем error_log как последний шанс
+			error_log("[{$prefix}] " . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+		}
+	}
 }

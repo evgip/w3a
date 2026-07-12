@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Tags\Controllers;
 
 use App\Core\Controller;
-use App\Core\Session;
-use App\Modules\Auth\Services\Auth;
 use App\Modules\Tags\Services\CategoryService;
 use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Votes\Models\Vote;
@@ -54,21 +52,22 @@ class TagsController extends Controller
             return;
         }
 
-        $currentUserId = Auth::check() ? Auth::id() : 0;
-        $isAdmin = Auth::isAdmin();
+        $userContext = $this->getUserContext();
+
         $canUserDownvote = false;
         $currentVotes = [];
-        
-        if ($currentUserId > 0) {
-            // Получаем модель User из контейнера
+
+        if ($userContext['isLoggedIn']) {
+            // Получаем карму пользователя для проверки возможности downvote
             $userModel = $this->container->get(User::class);
-            $viewerKarma = $userModel->getUserKarma($currentUserId);
+            $viewerKarma = $userModel->getUserKarma($userContext['id']);
             $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
             $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
-            
+
+            // Получаем голоса пользователя за истории
             $storyIds = array_column($data['stories'], 'id');
             $voteModel = $this->container->get(Vote::class);
-            $currentVotes = $voteModel->getUserVotesForStories($currentUserId, $storyIds);
+            $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
         }
 
         $this->render('categories-show', [
@@ -78,8 +77,8 @@ class TagsController extends Controller
             'currentPage' => $data['currentPage'],
             'totalPages' => $data['totalPages'],
             'newCommentsMap' => $data['newCommentsMap'],
-            'currentUserId' => $currentUserId,
-            'isAdmin' => $isAdmin,
+            'currentUserId' => $userContext['id'],
+            'isAdmin' => $userContext['isAdmin'],
             'canUserDownvote' => $canUserDownvote,
             'currentVotes' => $currentVotes,
         ]);
@@ -94,8 +93,8 @@ class TagsController extends Controller
      */
     public function filters(): void
     {
-        $userId = Auth::id();
-        $data = $this->service(TagFilterService::class)->getFiltersData($userId);
+        $userContext = $this->getUserContext();
+        $data = $this->service(TagFilterService::class)->getFiltersData($userContext['id']);
 
         $this->render('filters', [
             'title' => 'Фильтры тегов',
@@ -111,18 +110,15 @@ class TagsController extends Controller
     public function addFilter(): void
     {
         $tagId = (int)$this->request->post('tag_id', 0);
-        $userId = (int)Auth::id();
-        
-        $result = $this->service(TagFilterService::class)->addFilter($userId, $tagId);
-        
-        $session = $this->container->get(Session::class);
-        if ($result['success']) {
-            $session->flash('success', $result['message'] ?? 'Фильтр добавлен');
-        } else {
-            $session->flash('error', $result['message'] ?? 'Ошибка добавления фильтра');
-        }
-        
-        $this->redirect('/filters');
+
+        $userContext = $this->getUserContext();
+
+        $result = $this->service(TagFilterService::class)->addFilter($userContext['id'], $tagId);
+
+        $message = $result['message'] ?? ($result['success'] ? 'Фильтр добавлен' : 'Ошибка добавления фильтра');
+        $type = $result['success'] ? 'success' : 'error';
+
+        $this->redirectWithMessage('/filters', $message, $type);
     }
 
     /**
@@ -131,17 +127,14 @@ class TagsController extends Controller
     public function removeFilter(): void
     {
         $tagId = (int)$this->request->post('tag_id', 0);
-        $userId = (int)Auth::id();
-        
-        $result = $this->service(TagFilterService::class)->removeFilter($userId, $tagId);
-        
-        $session = $this->container->get(Session::class);
-        if ($result['success']) {
-            $session->flash('success', $result['message'] ?? 'Фильтр удалён');
-        } else {
-            $session->flash('error', $result['message'] ?? 'Ошибка удаления фильтра');
-        }
-        
-        $this->redirect('/filters');
+
+        $userContext = $this->getUserContext();
+
+        $result = $this->service(TagFilterService::class)->removeFilter($userContext['id'], $tagId);
+
+        $message = $result['message'] ?? ($result['success'] ? 'Фильтр удалён' : 'Ошибка удаления фильтра');
+        $type = $result['success'] ? 'success' : 'error';
+
+        $this->redirectWithMessage('/filters', $message, $type);
     }
 }

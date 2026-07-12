@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Votes\Controllers;
 
 use App\Core\Controller;
-use App\Core\Logger;
+use App\Core\Exceptions\JsonResponseException;
 use App\Modules\Votes\Services\VoteService;
-use App\Modules\Auth\Services\Auth;
 
 /**
  * Контроллер голосования.
  * Маршрут защищён middleware: web + auth.
- * 
- * ✅ ИЗМЕНЕНО: VoteService получается из контейнера
  */
 class VotesController extends Controller
 {
@@ -21,7 +18,7 @@ class VotesController extends Controller
     private const ALLOWED_DIRECTIONS = ['up', 'down'];
 
     /**
-     * ✅ Хелпер: получить VoteService из контейнера
+     * Получить VoteService из контейнера
      */
     private function voteService(): VoteService
     {
@@ -29,22 +26,21 @@ class VotesController extends Controller
     }
 
     /**
-     * ✅ Хелпер: получить Logger из контейнера
+     * Обработка голоса за историю или комментарий
+     * 
+     * @param string $type Тип сущности (story/comment)
+     * @param string $id ID сущности
+     * @param string $direction Направление голоса (up/down)
+     * 
+     * @throws JsonResponseException
      */
-    private function logger(): Logger
-    {
-        return $this->container->get(Logger::class);
-    }
-
     public function handle(string $type, string $id, string $direction): void
     {
         // 1. Быстрая валидация
-        if (!$this->validateInput($type, $id, $direction)) {
-            return;
-        }
+        $this->validateInput($type, $id, $direction);
 
-        // ✅ Используем Auth::id() вместо $_SESSION
-        $userId = (int) Auth::id();
+        $userContext = $this->getUserContext();
+        $userId = $userContext['id'];
         $targetId = (int)$id;
         $voteValue = ($direction === 'down') ? -1 : 1;
 
@@ -52,59 +48,56 @@ class VotesController extends Controller
         try {
             $result = $this->voteService()->handleVote($userId, $type, $targetId, $voteValue);
         } catch (\Throwable $e) {
-            // ✅ Используем внедрённый Logger
-            $this->logger()->error('Vote failed', [
-                'user_id' => $userId,
-                'type' => $type,
-                'target_id' => $targetId,
-                'error' => $e->getMessage(),
-            ]);
-            $this->jsonError('Внутренняя ошибка сервера.', 500);
-            return;
+
+            $this->logError($e, 'Votes.handle');
+
+            throw new JsonResponseException([
+                'status' => 'error',
+                'message' => 'Внутренняя ошибка сервера.',
+            ], 500);
         }
 
         if (!$result['success']) {
-            $this->jsonError($result['message'], 403);
-            return;
+            throw new JsonResponseException([
+                'status' => 'error',
+                'message' => $result['message'],
+            ], 403);
         }
 
         // 3. Возвращаем актуальные данные
-        $this->jsonSuccess([
+        throw new JsonResponseException([
+            'status' => 'success',
             'new_score'  => $this->voteService()->getNewScore($type, $targetId),
             'vote_state' => $this->voteService()->getUserVote($userId, $type, $targetId),
-        ]);
+        ], 200);
     }
 
-    private function validateInput(string $type, string $id, string $direction): bool
+    /**
+     * Валидация входных параметров
+     * 
+     * @throws JsonResponseException Если параметры невалидны
+     */
+    private function validateInput(string $type, string $id, string $direction): void
     {
         if (!in_array($type, self::ALLOWED_TYPES, true)) {
-            $this->jsonError('Недопустимый тип сущности.', 400);
-            return false;
+            throw new JsonResponseException([
+                'status' => 'error',
+                'message' => 'Недопустимый тип сущности.',
+            ], 400);
         }
+
         if (!ctype_digit($id) || (int)$id <= 0) {
-            $this->jsonError('Недопустимый ID.', 400);
-            return false;
+            throw new JsonResponseException([
+                'status' => 'error',
+                'message' => 'Недопустимый ID.',
+            ], 400);
         }
+
         if (!in_array($direction, self::ALLOWED_DIRECTIONS, true)) {
-            $this->jsonError('Недопустимое направление.', 400);
-            return false;
+            throw new JsonResponseException([
+                'status' => 'error',
+                'message' => 'Недопустимое направление.',
+            ], 400);
         }
-        return true;
-    }
-
-    private function jsonSuccess(array $data): void
-    {
-        http_response_code(200);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['status' => 'success'] + $data, JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    private function jsonError(string $message, int $code = 400): void
-    {
-        http_response_code($code);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['status' => 'error', 'message' => $message], JSON_UNESCAPED_UNICODE);
-        exit;
     }
 }

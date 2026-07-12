@@ -6,60 +6,71 @@ namespace App\Modules\Muted\Controllers;
 
 use App\Core\Controller;
 use App\Modules\Muted\Services\MuteService;
-use App\Modules\Auth\Services\Auth;
 use App\Modules\Users\Models\User;
 
+/**
+ * Контроллер управления игнорируемыми пользователями (mute).
+ * 
+ * Все маршруты защищены middleware ['web', 'auth'],
+ * поэтому проверки авторизации в контроллере не требуются.
+ */
 class MuteController extends Controller
 {
     /**
-     * Список игнорируемых пользователей
+     * Список игнорируемых пользователей (GET /muted).
+     * 
+     * Показывает всех пользователей, которых текущий пользователь
+     * добавил в список игнорируемых.
      */
     public function list(): void
     {
-        if (!Auth::check()) {
-            $this->redirect('/login');
-            return;
-        }
-
-        $userId = Auth::id();
+        $userContext = $this->getUserContext();
         $muteService = $this->service(MuteService::class);
-        $mutedUsers = $muteService->getMutedList($userId);
+        $mutedUsers = $muteService->getMutedList($userContext['id']);
 
         $this->render('list', [
             'title' => 'Игнорируемые пользователи',
             'mutedUsers' => $mutedUsers,
-            'currentUserId' => $userId,
+            'currentUserId' => $userContext['id'],
         ]);
     }
 
     /**
-     * Переключить мьют (AJAX + обычный запрос)
+     * Переключение статуса игнорирования пользователя (POST /mute/toggle/{id}).
+     * 
+     * Если пользователь уже в списке игнорируемых — удаляет его.
+     * Если не в списке — добавляет.
+     * 
+     * Валидация:
+     * - Нельзя игнорировать самого себя
+     * - Нельзя игнорировать несуществующего пользователя
+     * 
+     * Поддерживает два режима ответа:
+     * - AJAX: возвращает JSON с новым статусом is_muted
+     * - Обычный POST: редирект с flash-сообщением
      */
     public function toggle(string $id): void
     {
-        if (!Auth::check()) {
-            $this->json(['error' => 'Необходима авторизация'], 401);
-            return;
-        }
-
+        $userContext = $this->getUserContext();
         $targetUserId = (int)$id;
-        $userId = Auth::id();
+        $isAjax = $this->request->isAjaxRequest();
 
-        if ($userId === $targetUserId) {
-            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+        // Нельзя игнорировать самого себя
+        if ($userContext['id'] === $targetUserId) {
+            if ($isAjax) {
                 $this->json(['error' => 'Нельзя игнорировать самого себя'], 400);
                 return;
             }
-            $this->session()->flash('error', 'Нельзя игнорировать самого себя');
-            $this->redirectBack();
+            $this->backWithMessage('Нельзя игнорировать самого себя', 'error');
             return;
         }
 
         // Проверяем, что пользователь существует
         $userModel = $this->container->get(User::class);
         $targetUser = $userModel->find($targetUserId);
+
         if (!$targetUser) {
-            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+            if ($isAjax) {
                 $this->json(['error' => 'Пользователь не найден'], 404);
                 return;
             }
@@ -67,11 +78,12 @@ class MuteController extends Controller
             return;
         }
 
+        // Переключаем статус игнорирования
         $muteService = $this->service(MuteService::class);
-        $isMuted = $muteService->toggle($userId, $targetUserId);
+        $isMuted = $muteService->toggle($userContext['id'], $targetUserId);
 
-        // Поддержка AJAX
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+        // Ответ для AJAX-запросов
+        if ($isAjax) {
             $this->json([
                 'success' => true,
                 'is_muted' => $isMuted,
@@ -80,12 +92,11 @@ class MuteController extends Controller
             return;
         }
 
-        $referer = $_SERVER['HTTP_REFERER'] ?? '/muted';
-        $this->redirectBack($referer);
-    }
+        // Ответ для обычных POST-запросов
+        $message = $isMuted
+            ? "Пользователь {$targetUser['username']} добавлен в игнор-лист"
+            : "Пользователь {$targetUser['username']} удалён из игнор-листа";
 
-    private function session(): \App\Core\Session
-    {
-        return $this->container->get(\App\Core\Session::class);
+        $this->redirectWithMessage('/muted', $message, 'success');
     }
 }

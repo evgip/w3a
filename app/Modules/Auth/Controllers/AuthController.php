@@ -175,7 +175,7 @@ class AuthController extends Controller
 
             $errors = $validator->getErrors();
             $errorMessages = array_merge(...array_values($errors));
-            
+
             $session->flash('error', implode('<br>', $errorMessages));
             $session->set('old_input', [
                 'username' => $username,
@@ -186,7 +186,7 @@ class AuthController extends Controller
         }
 
         $userId = $this->service(AuthService::class)->register($username, $email, $password);
-        
+
         if (!$userId) {
             $session->set('old_input', [
                 'username' => $username,

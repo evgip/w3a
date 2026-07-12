@@ -7,6 +7,7 @@ namespace App\Modules\Stories\Services;
 use App\Core\Container;
 use App\Modules\Stories\Models\Story;
 use App\Modules\Stories\Models\ReadRibbon;
+use App\Modules\Stories\Services\RankingService; 
 use App\Modules\Origins\Models\Domain;
 use App\Modules\Tags\Models\TagFilter;
 use App\Modules\Auth\Services\Auth;
@@ -21,6 +22,7 @@ class StoryFilterService
     private Domain $domainModel;
     private Container $container;
 	private MuteService $muteService;
+	private RankingService $rankingService;
 
     /**
      * Конструктор с инъекцией зависимостей.
@@ -29,12 +31,14 @@ class StoryFilterService
      * @param Domain $domainModel Модель доменов
      * @param Container $container DI-контейнер
      */
-    public function __construct(Story $storyModel, Domain $domainModel, Container $container, ?MuteService $muteService = null)
+    public function __construct(Story $storyModel, Domain $domainModel, Container $container, ?MuteService $muteService = null, ?RankingService $rankingService = null)
     {
         $this->storyModel = $storyModel;
         $this->domainModel = $domainModel;
         $this->container = $container;
 		$this->muteService = $muteService;
+		
+		$this->rankingService = $rankingService ?? new RankingService();
     }
 
     /**
@@ -88,7 +92,7 @@ class StoryFilterService
 		// Вычисляем confidence_score только если его нет в БД
 		foreach ($flatComments as &$comment) {
 			if (empty($comment['confidence_score'])) {
-				$comment['confidence_score'] = wilson_score(
+				$comment['confidence_score'] = $this->rankingService->wilsonScore(
 					(int)$comment['score'],
 					(int)$comment['flag_count']
 				);
@@ -183,12 +187,12 @@ class StoryFilterService
     /**
      * Подготовить данные для Open Graph мета-тегов.
      * 
-     * @return array Массив с ключами: title, description, image, author_url
+     * @param array $story Данные истории (уже загруженные)
+     * @return array Массив с ключами: title, description, image, author_name, author_url
      */
-    public function getStoryOpenGraphData(int $storyId): array
+    public function getStoryOpenGraphData(array $story): array
     {
-        $story = $this->getStoryWithAuthor($storyId);
-        if (!$story) {
+        if (empty($story)) {
             return [];
         }
         
@@ -206,7 +210,7 @@ class StoryFilterService
         // Изображение: превью ссылки или дефолтное
         $image = null;
         if (!empty($story['url'])) {
-			$image = rtrim(config('config.app.url'), '/') . '/' . $story['id'] . '.png';
+            $image = rtrim(config('config.app.url'), '/') . '/' . $story['id'] . '.png';
         }
         
         return [

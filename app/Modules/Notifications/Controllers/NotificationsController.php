@@ -1,19 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Notifications\Controllers;
 
 use App\Core\Controller;
-use App\Modules\Auth\Services\Auth;
+use App\Core\Exceptions\JsonResponseException;
 use App\Modules\Notifications\Services\NotificationService;
 
 /**
- * Контроллер модуля Notifications.
+ * Контроллер уведомлений пользователя.
  * 
- * Маршруты:
- * - GET  /notifications                   → index()
- * - GET  /api/notifications/count         → getCount()
- * - POST /notifications/mark-all-read     → markAllAsRead()
- * - POST /notifications/{id}/read         → markAsRead()
+ * Обрабатывает:
+ * - Список уведомлений с фильтрацией по типу и пагинацией
+ * - Отметку одного уведомления как прочитанного (AJAX)
+ * - Отметку всех уведомлений как прочитанных (AJAX)
+ * - API для получения счётчика непрочитанных уведомлений
+ * 
+ * Все маршруты защищены middleware ['web', 'auth'],
+ * поэтому проверки авторизации в контроллере не требуются.
  */
 class NotificationsController extends Controller
 {
@@ -21,16 +26,19 @@ class NotificationsController extends Controller
     // СПИСОК УВЕДОМЛЕНИЙ
     // =========================================================================
 
+    /**
+     * Страница списка уведомлений (GET /notifications).
+     */
     public function index(): void
     {
-        $userId = Auth::id();
+        $userContext = $this->getUserContext();
 
         $type = (string)$this->request->getParams('type', 'all');
         $page = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config('constants.pagination.notifications_per_page', 25, 'int');
 
         $data = $this->service(NotificationService::class)->getNotificationsForIndex(
-            $userId,
+            $userContext['id'],
             $type,
             $page,
             $perPage
@@ -51,87 +59,95 @@ class NotificationsController extends Controller
     // ОТМЕТКА ОДНОГО УВЕДОМЛЕНИЯ КАК ПРОЧИТАННОГО
     // =========================================================================
 
+    /**
+     * Отметка одного уведомления как прочитанного (POST /notifications/{id}/read).
+     * 
+     * AJAX endpoint. Возвращает JSON с результатом операции.
+     * 
+     * ВАЖНО: try-catch НЕ перехватывает JsonResponseException,
+     * чтобы он корректно обрабатывался в Application.
+     */
     public function markAsRead(string $id): void
     {
-        header('Content-Type: application/json; charset=utf-8');
-
+        $userContext = $this->getUserContext();
         $notificationId = (int)$id;
-        $userId = (int)Auth::id();
 
         try {
-            $success = $this->service(NotificationService::class)->markAsRead($notificationId, $userId);
+            $success = $this->service(NotificationService::class)->markAsRead($notificationId, $userContext['id']);
 
-            echo json_encode([
+            $this->json([
                 'success' => $success,
                 'message' => $success ? 'Отмечено как прочитанное' : 'Не удалось отметить'
             ]);
+        } catch (JsonResponseException $e) {
+            // НЕ перехватываем JsonResponseException — пусть Application обработает
+            throw $e;
         } catch (\Throwable $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Ошибка сервера']);
+            // Логируем реальную ошибку
+            $this->logError($e);
+            
+            $this->json([
+                'success' => false, 
+                'message' => 'Ошибка сервера'
+            ], 500);
         }
-
-        exit;
     }
 
     // =========================================================================
     // ОТМЕТКА ВСЕХ УВЕДОМЛЕНИЙ КАК ПРОЧИТАННЫХ
     // =========================================================================
 
+    /**
+     * Отметка всех уведомлений пользователя как прочитанных (POST /notifications/mark-all-read).
+     */
     public function markAllAsRead(): void
     {
-        header('Content-Type: application/json; charset=utf-8');
-
-        $userId = (int)Auth::id();
+        $userContext = $this->getUserContext();
 
         try {
-            $success = $this->service(NotificationService::class)->markAllAsRead($userId);
+            $success = $this->service(NotificationService::class)->markAllAsRead($userContext['id']);
 
-            echo json_encode([
+            $this->json([
                 'success' => $success,
                 'message' => $success ? 'Все уведомления отмечены' : 'Ошибка'
             ]);
+        } catch (JsonResponseException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Ошибка сервера']);
+            $this->logError($e);
+            
+            $this->json([
+                'success' => false, 
+                'message' => 'Ошибка сервера'
+            ], 500);
         }
-
-        exit;
     }
 
     // =========================================================================
     // API: СЧЁТЧИК НЕПРОЧИТАННЫХ
     // =========================================================================
 
+    /**
+     * Получение количества непрочитанных уведомлений (GET /api/notifications/count).
+     * 
+     * AJAX endpoint для обновления счётчика в шапке сайта.
+     */
     public function getCount(): void
     {
-        header('Content-Type: application/json; charset=utf-8');
+        $userContext = $this->getUserContext();
 
         try {
-            $userId = (int)Auth::id();
-            $count = $this->service(NotificationService::class)->getUnreadCount($userId);
-
-            echo json_encode(['count' => $count]);
+            $count = $this->service(NotificationService::class)->getUnreadCount($userContext['id']);
+            $this->json(['count' => $count]);
+        } catch (JsonResponseException $e) {
+            // НЕ перехватываем JsonResponseException
+            throw $e;
         } catch (\Throwable $e) {
-            http_response_code(500);
-            echo json_encode(['count' => 0]);
+            // Логируем реальную ошибку
+            $this->logError($e);
+            
+            $this->json(['count' => 0], 500);
         }
-
-        exit;
     }
 
-    // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    // =========================================================================
-
-    private function validateCsrfFromHeader(): bool
-    {
-        $sessionToken = $_SESSION['csrf_token'] ?? '';
-        $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-
-        if (empty($sessionToken) || empty($headerToken)) {
-            return false;
-        }
-
-        return hash_equals($sessionToken, $headerToken);
-    }
 }

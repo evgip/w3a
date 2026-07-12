@@ -9,25 +9,39 @@ use App\Core\Session;
 use App\Core\Audit;
 use App\Modules\Flags\Models\Flag;
 use App\Modules\Comments\Models\Comment;
-use App\Modules\Auth\Services\Auth;
 use App\Core\Exceptions\BadRequestException;
 use App\Core\Exceptions\NotFoundException;
 use App\Core\Exceptions\JsonResponseException;
 
+/**
+ * Контроллер жалоб (flags) на контент.
+ * 
+ * Обрабатывает:
+ * - Форму подачи жалобы на историю/комментарий
+ * - Отправку жалоб с автоматическим скрытием по порогу
+ * - Админ-панель для модерации жалоб
+ * - AJAX подсчёт количества ожидающих жалоб
+ */
 class FlagsController extends Controller
 {
+    /**
+     * Получить Session из контейнера
+     */
     private function session(): Session
     {
         return $this->container->get(Session::class);
     }
 
+    /**
+     * Получить Audit из контейнера
+     */
     private function audit(): Audit
     {
         return $this->container->get(Audit::class);
     }
 
     /**
-     * Хелпер для получения модели Flag
+     * Получить модель Flag
      */
     private function flagModel(): Flag
     {
@@ -46,11 +60,16 @@ class FlagsController extends Controller
         }
 
         $flagModel = $this->flagModel();
-        $userId = (int) Auth::id();
 
-        if ($flagModel->hasUserFlagged($userId, $type, $targetId)) {
-            $this->session()->flash('error', 'Вы уже подавали жалобу на этот контент.');
-            $this->redirect($this->buildTargetUrl($type, $targetId));
+        $userContext = $this->getUserContext();
+
+        if ($flagModel->hasUserFlagged($userContext['id'], $type, $targetId)) {
+
+            $this->redirectWithMessage(
+                $this->buildTargetUrl($type, $targetId),
+                'Вы уже подавали жалобу на этот контент.',
+                'error'
+            );
             return;
         }
 
@@ -73,33 +92,43 @@ class FlagsController extends Controller
         $targetId = (int) $this->request->getParams('flaggable_id');
         $reason   = $this->request->getParams('reason');
         $comment  = $this->request->getParams('comment');
-        $userId   = (int) Auth::id();
+
+        $userContext = $this->getUserContext();
 
         $flagModel = $this->flagModel();
-        $result = $flagModel->submit($userId, $type, $targetId, $reason, $comment);
+        $result = $flagModel->submit($userContext['id'], $type, $targetId, $reason, $comment);
 
         if (!$result['ok']) {
-            $this->session()->flash('error', $result['error']);
-        } else {
-            $this->session()->flash('success', 'Спасибо! Ваша жалоба принята. Модераторы рассмотрят её в ближайшее время.');
 
-            $this->audit()->log('flag.submitted', 'Пользователь подал жалобу', 'flags', [
-                'type'   => $type,
-                'id'     => $targetId,
-                'reason' => $reason,
-            ]);
-
-            if (!empty($result['hidden'])) {
-
-                $this->audit()->log('flag.auto_hidden', 'Контент автоматически скрыт по порогу флагов', 'flags', [
-                    'type'      => $type,
-                    'id'        => $targetId,
-                    'threshold' => $flagModel->getHideThreshold(),
-                ]);
-            }
+            $this->redirectWithMessage(
+                $this->buildTargetUrl($type, $targetId),
+                $result['error'],
+                'error'
+            );
+            return;
         }
 
-        $this->redirect($this->buildTargetUrl($type, $targetId));
+        // Логируем успешную жалобу
+        $this->audit()->log('flag.submitted', 'Пользователь подал жалобу', 'flags', [
+            'type'   => $type,
+            'id'     => $targetId,
+            'reason' => $reason,
+        ]);
+
+        // Логируем автоматическое скрытие, если сработал порог
+        if (!empty($result['hidden'])) {
+            $this->audit()->log('flag.auto_hidden', 'Контент автоматически скрыт по порогу флагов', 'flags', [
+                'type'      => $type,
+                'id'        => $targetId,
+                'threshold' => $flagModel->getHideThreshold(),
+            ]);
+        }
+
+        $this->redirectWithMessage(
+            $this->buildTargetUrl($type, $targetId),
+            'Спасибо! Ваша жалоба принята. Модераторы рассмотрят её в ближайшее время.',
+            'success'
+        );
     }
 
     /**
@@ -117,7 +146,7 @@ class FlagsController extends Controller
             'recentFlags'  => $recent,
             'reasons'      => $flagModel->getReasons(),
             'pendingCount' => count($pending),
-            'hideThreshold'=> $flagModel->getHideThreshold(),
+            'hideThreshold' => $flagModel->getHideThreshold(),
         ]);
     }
 
@@ -129,7 +158,8 @@ class FlagsController extends Controller
         $this->request->validateCsrf();
 
         $action = $this->request->getParams('action') ?: 'hide';
-        $modId  = (int) Auth::id();
+
+        $userContext = $this->getUserContext();
 
         $flagModel = $this->flagModel();
         $flag = $flagModel->find((int) $id);
@@ -139,16 +169,17 @@ class FlagsController extends Controller
         }
 
         if ($action === 'dismiss') {
-            $flagModel->dismiss((int) $id, $modId);
+            $flagModel->dismiss((int) $id, $userContext['id']);
             $this->audit()->log('flag.dismissed', 'Модератор отклонил жалобу', 'flags', ['flag_id' => (int) $id]);
-            $this->session()->flash('success', 'Жалоба отклонена. Контент восстановлен.');
-        } else {
-            $flagModel->resolve((int) $id, $modId);
-            $this->audit()->log('flag.resolved', 'Модератор подтвердил жалобу', 'flags', ['flag_id' => (int) $id]);
-            $this->session()->flash('success', 'Жалоба подтверждена. Контент скрыт.');
+
+            $this->redirectWithMessage('/admin/flags', 'Жалоба отклонена. Контент восстановлен.', 'success');
+            return;
         }
 
-        $this->redirect('/admin/flags');
+        $flagModel->resolve((int) $id, $userContext['id']);
+        $this->audit()->log('flag.resolved', 'Модератор подтвердил жалобу', 'flags', ['flag_id' => (int) $id]);
+
+        $this->redirectWithMessage('/admin/flags', 'Жалоба подтверждена. Контент скрыт.', 'success');
     }
 
     /**
@@ -160,6 +191,9 @@ class FlagsController extends Controller
         throw new JsonResponseException(['count' => $count]);
     }
 
+    /**
+     * Построить URL к целевому контенту (история или комментарий)
+     */
     private function buildTargetUrl(string $type, int $targetId): string
     {
         if ($type === 'story') {

@@ -7,10 +7,17 @@ namespace App\Modules\Saved\Controllers;
 use App\Core\Controller;
 use App\Modules\Saved\Models\SavedStory;
 use App\Modules\Saved\Services\SavedService;
-use App\Modules\Auth\Services\Auth;
 use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Votes\Models\Vote;
+use App\Modules\Users\Models\User;
 
+/**
+ * Контроллер сохранённых историй (закладок).
+ * 
+ * Обрабатывает:
+ * - Список сохранённых историй с пагинацией
+ * - AJAX toggle закладок
+ */
 class SavedController extends Controller
 {
     /**
@@ -18,42 +25,37 @@ class SavedController extends Controller
      */
     public function index(): void
     {
-        if (!Auth::check()) {
+        $userContext = $this->getUserContext();
+
+        if (!$userContext['isLoggedIn']) {
             $this->redirect('/login');
             return;
         }
 
-        $userId = Auth::id();
         $currentPage = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config('constants.pagination.stories_per_page', 15, 'int');
         $offset = ($currentPage - 1) * $perPage;
 
         $savedModel = $this->container->get(SavedStory::class);
-        $stories = $savedModel->getUserSaved($userId, $perPage, $offset);
-        $totalStories = $savedModel->getUserSavedCount($userId);
+        $stories = $savedModel->getUserSaved($userContext['id'], $perPage, $offset);
+        $totalStories = $savedModel->getUserSavedCount($userContext['id']);
         $totalPages = (int)ceil($totalStories / $perPage);
 
         $storyIds = array_column($stories, 'id');
         $filterService = $this->service(StoryFilterService::class);
         $newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
 
-        // Голоса
         $currentVotes = [];
-        if ($userId > 0) {
+        if (!empty($storyIds)) {
             $voteModel = $this->container->get(Vote::class);
-            foreach ($storyIds as $storyId) {
-                $currentVotes[$storyId] = $voteModel->getUserVote($userId, 'story', (int)$storyId);
-            }
+            $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
         }
 
-        // Контекст голосования
         $canDownvote = false;
-        if ($userId > 0) {
-            $userModel = $this->container->get(\App\Modules\Users\Models\User::class);
-            $karma = $userModel->getUserKarma($userId);
-            $minKarma = (int)config('config.app.min_karma_for_downvote', 10);
-            $canDownvote = $karma >= $minKarma;
-        }
+        $userModel = $this->container->get(User::class);
+        $karma = $userModel->getUserKarma($userContext['id']);
+        $minKarma = (int)config('config.app.min_karma_for_downvote', 10);
+        $canDownvote = $karma >= $minKarma;
 
         $this->render('index', [
             'stories' => $stories,
@@ -62,8 +64,8 @@ class SavedController extends Controller
             'newCommentsMap' => $newCommentsMap,
             'bannedDomainsCache' => $filterService->getBannedDomains(),
             'sort' => 'saved',
-            'currentUserId' => $userId,
-            'isAdmin' => Auth::isAdmin(),
+            'currentUserId' => $userContext['id'],
+            'isAdmin' => $userContext['isAdmin'],
             'canUserDownvote' => $canDownvote,
             'currentVotes' => $currentVotes,
             'title' => 'Мои закладки',
@@ -75,16 +77,17 @@ class SavedController extends Controller
      */
     public function toggle(string $id): void
     {
-        if (!Auth::check()) {
+        $userContext = $this->getUserContext();
+
+        if (!$userContext['isLoggedIn']) {
             $this->json(['error' => 'Необходима авторизация'], 401);
             return;
         }
 
         $storyId = (int)$id;
-        $userId = Auth::id();
 
         $savedService = $this->service(SavedService::class);
-        $isSaved = $savedService->toggle($userId, $storyId);
+        $isSaved = $savedService->toggle($userContext['id'], $storyId);
 
         // Поддержка AJAX и обычных запросов
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {

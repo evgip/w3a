@@ -8,6 +8,7 @@ use App\Core\Events\EventDispatcher;
 use App\Core\Exceptions\HttpException;
 use App\Core\Exceptions\JsonResponseException;
 use App\Core\Exceptions\RedirectException;
+use App\Core\Exceptions\CsrfException;
 
 class Application
 {
@@ -316,6 +317,8 @@ class Application
             $this->handleRedirect($e);
         } catch (JsonResponseException $e) {
             $this->handleJsonResponse($e);
+        } catch (CsrfException $e) {
+            $this->handleCsrfException($e);
         } catch (HttpException $e) {
             $this->handleHttpException($e);
         } catch (\Throwable $e) {
@@ -345,45 +348,66 @@ class Application
     }
 
     /**
+     * Обработка CSRF исключений
+     * 
+     * Для AJAX — JSON ответ
+     * Для обычных запросов — делегируем ErrorsController
+     */
+    private function handleCsrfException(CsrfException $e): void
+    {
+        http_response_code(419);
+        
+        $context = $e->getContext();
+        $isAjax = $context['is_ajax'] ?? false;
+        
+        // Логируем попытку CSRF атаки
+        $this->logError('warning', 'CSRF validation failed', [
+            'url' => $context['url'] ?? $this->request->getUri(),
+            'method' => $context['method'] ?? $this->request->getMethod(),
+            'ip' => $context['ip'] ?? $this->request->getIp(),
+            'is_ajax' => $isAjax,
+        ]);
+        
+        // Для AJAX возвращаем JSON (это API ответ, не страница)
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'error' => 'CSRF token validation failed',
+                'message' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        
+        // Для обычных запросов — ТОЛЬКО контроллер ошибок
+        $this->renderErrorPage('csrf', $e->getMessage());
+    }
+
+    /**
      * Обработка HTTP исключений
      */
     private function handleHttpException(HttpException $e): void
     {
         http_response_code($e->getStatusCode());
 
-        // Логируем ошибки 5xx
-        if ($e->getStatusCode() >= 500) {
-            try {
-                $logger = $this->container->get(Logger::class);
-                $logger->error($e->getMessage(), [
-                    'status' => $e->getStatusCode(),
-                    'url' => $this->request->getUri(),
-                ]);
-            } catch (\Throwable $logError) {
-                // Игнорируем ошибки логирования
-            }
-        }
+        // Логируем ошибки 4xx и 5xx
+        $logLevel = $e->getStatusCode() >= 500 ? 'error' : 'warning';
+        $this->logError($logLevel, $e->getMessage(), [
+            'status' => $e->getStatusCode(),
+            'url' => $this->request->getUri(),
+            'method' => $this->request->getMethod(),
+            'ip' => $this->request->getIp(),
+        ]);
 
-        $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-
-        if (class_exists($errorController)) {
-            try {
-                $controller = $this->container->make($errorController);
-
-                match ($e->getStatusCode()) {
-                    400 => $controller->badRequest($e->getMessage()),
-                    403 => $controller->forbidden($e->getMessage()),
-                    404 => $controller->notFound($e->getMessage()),
-                    419 => $controller->csrf($e->getMessage()),
-                    default => $controller->show($e->getStatusCode(), $e->getMessage()),
-                };
-                return;
-            } catch (\Throwable $controllerError) {
-                // Fallback если контроллер упал
-            }
-        }
-
-        echo "<h1>Error {$e->getStatusCode()}</h1><p>" . htmlspecialchars($e->getMessage()) . "</p>";
+        // ТОЛЬКО контроллер ошибок — никакого дублирующего HTML
+        $method = match ($e->getStatusCode()) {
+            400 => 'badRequest',
+            403 => 'forbidden',
+            404 => 'notFound',
+            419 => 'csrf',
+            default => 'show',
+        };
+        
+        $this->renderErrorPage($method, $e->getMessage(), $e->getStatusCode());
     }
 
     private function setupErrorHandling(): void
@@ -397,20 +421,12 @@ class Application
     {
         $errorMessage = $e->getMessage() . " в файле " . $e->getFile() . " на строке " . $e->getLine();
 
-        try {
-            $logger = $this->container->get(Logger::class);
-            $logger->error($errorMessage, [
-                'trace' => $e->getTraceAsString(),
-                'url' => $_SERVER['REQUEST_URI'] ?? '/'
-            ]);
-        } catch (\Throwable $logError) {
-            $logFile = dirname(__DIR__, 2) . '/storage/logs/app.log';
-            $logger = new Logger($logFile);
-            $logger->error($errorMessage, [
-                'trace' => $e->getTraceAsString(),
-                'url' => $_SERVER['REQUEST_URI'] ?? '/'
-            ]);
-        }
+        $this->logError('error', $errorMessage, [
+            'trace' => $e->getTraceAsString(),
+            'url' => $this->request->getUri(),
+            'method' => $this->request->getMethod(),
+            'ip' => $this->request->getIp(),
+        ]);
 
         $isDevelopment = $this->config->get('config.app.env', 'development') === 'development';
 
@@ -419,7 +435,8 @@ class Application
         if ($isDevelopment) {
             $this->showDevelopmentError($e);
         } else {
-            $this->showProductionError();
+            // ТОЛЬКО контроллер ошибок
+            $this->renderErrorPage('serverError', "Извините, на сервере произошла внутренняя ошибка. Инженеры уже уведомлены.");
         }
     }
 
@@ -433,14 +450,56 @@ class Application
         echo '</div>';
     }
 
-    private function showProductionError(): void
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * Рендер страницы ошибки через ErrorsController
+     * 
+     * Если контроллер недоступен — логируем критическую ошибку
+     */
+    private function renderErrorPage(string $method, string $message, int $code = 500): void
     {
-        $errorController = "App\\Modules\\Errors\\Controllers\\ErrorsController";
-        if (class_exists($errorController)) {
-            $controller = $this->container->make($errorController);
-            $controller->serverError("Извините, на сервере произошла внутренняя ошибка. Инженеры уже уведомлены.");
-            exit;
+        $errorControllerClass = "App\\Modules\\Errors\\Controllers\\ErrorsController";
+        
+        if (!class_exists($errorControllerClass)) {
+            $this->logError('critical', "ErrorsController not found", [
+                'method' => $method,
+                'message' => $message,
+            ]);
+            return;
         }
-        echo "<h1>500 Internal Server Error</h1><p>Извините, на сервере произошла непредвиденная ошибка.</p>";
+        
+        try {
+            $controller = $this->container->make($errorControllerClass);
+            
+            if ($method === 'show') {
+                $controller->show($code, $message);
+            } else {
+                $controller->$method($message);
+            }
+        } catch (\Throwable $controllerError) {
+            // Если контроллер упал — логируем, но не показываем HTML
+            $this->logError('critical', "ErrorsController failed to render", [
+                'original_method' => $method,
+                'original_message' => $message,
+                'controller_error' => $controllerError->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Безопасное логирование ошибок
+     */
+    private function logError(string $level, string $message, array $context = []): void
+    {
+        try {
+            $logger = $this->container->get(Logger::class);
+            $logger->$level($message, $context);
+        } catch (\Throwable $logError) {
+            // Если логгер недоступен — используем error_log как последний шанс
+            error_log("[{$level}] {$message} " . json_encode($context));
+        }
     }
 }

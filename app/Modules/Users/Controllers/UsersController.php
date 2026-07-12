@@ -10,10 +10,15 @@ use App\Core\Exceptions\NotFoundException;
 use App\Modules\Users\Services\UserService;
 use App\Modules\Users\Services\AvatarService;
 use App\Modules\Users\Models\User;
-use App\Modules\Auth\Services\Auth;
 
 /**
  * Контроллер для управления профилями пользователей и настройками аккаунта.
+ * 
+ * Обрабатывает:
+ * - Публичный профиль пользователя
+ * - Настройки профиля (email, bio, avatar)
+ * - Смену пароля
+ * - Управление уведомлениями
  */
 class UsersController extends Controller
 {
@@ -61,12 +66,14 @@ class UsersController extends Controller
         $stats = $this->container->get(User::class)->getProfileStats((int)$user['id']);
         $userKarma = $this->container->get(User::class)->getUserKarma((int)$user['id']);
 
-		// Передаём статус мьюта в шаблон
-		$isMuted = false;
-		if (Auth::check() && (int)$user['id'] !== Auth::id()) {
-			$muteService = $this->service(\App\Modules\Muted\Services\MuteService::class);
-			$isMuted = $muteService->isMuted(Auth::id(), (int)$user['id']);
-		}
+        $userContext = $this->getUserContext();
+
+        // Передаём статус мьюта в шаблон
+        $isMuted = false;
+        if ($userContext['isLoggedIn'] && (int)$user['id'] !== $userContext['id']) {
+            $muteService = $this->service(\App\Modules\Muted\Services\MuteService::class);
+            $isMuted = $muteService->isMuted($userContext['id'], (int)$user['id']);
+        }
 
         $this->render('profile', [
             'title' => 'Профиль пользователя ' . e($user['username']),
@@ -74,7 +81,7 @@ class UsersController extends Controller
             'storiesCount' => $stats['stories_count'] ?? 0,
             'commentsCount' => $stats['comments_count'] ?? 0,
             'userKarma' => $userKarma ?? 0,
-			'isMuted' => $isMuted,
+            'isMuted' => $isMuted,
         ]);
     }
 
@@ -83,14 +90,14 @@ class UsersController extends Controller
      */
     public function settings(): void
     {
-        $userId = Auth::id();
-        $user = $this->getUserWithProfileOrRedirect($userId);
-        
+        $userContext = $this->getUserContext();
+        $user = $this->getUserWithProfileOrRedirect($userContext['id']);
+
         if ($user === null) {
             return;
         }
 
-        $settings = $this->getUserService()->getUserSettings($userId);
+        $settings = $this->getUserService()->getUserSettings($userContext['id']);
 
         $this->render('settings', [
             'title' => 'Настройки профиля',
@@ -105,9 +112,9 @@ class UsersController extends Controller
      */
     public function updateSettings(): void
     {
-        $userId = Auth::id();
-        $user = $this->getUserWithProfileOrRedirect($userId);
-        
+        $userContext = $this->getUserContext();
+        $user = $this->getUserWithProfileOrRedirect($userContext['id']);
+
         if ($user === null) {
             return;
         }
@@ -119,8 +126,8 @@ class UsersController extends Controller
 
         // Обновление email
         if ($email !== $user['email']) {
-            if (!$this->getUserService()->updateEmail($userId, $email)) {
-                $this->redirect(route('account.settings'));
+            if (!$this->getUserService()->updateEmail($userContext['id'], $email)) {
+                $this->redirectWithMessage(route('account.settings'), 'Не удалось обновить email', 'error');
                 return;
             }
         }
@@ -131,20 +138,20 @@ class UsersController extends Controller
                 $avatarFile,
                 $oldAvatarFilename
             );
-            
+
             if ($uploadedAvatar) {
                 $newAvatarFilename = $uploadedAvatar;
             }
         }
 
         // Обновление профиля
-        $this->getUserService()->updateProfile($userId, [
+        $this->getUserService()->updateProfile($userContext['id'], [
             'bio' => $bio,
             'avatar' => $newAvatarFilename
         ]);
 
         // Обновление настроек уведомлений
-        $this->getUserService()->updateSettings($userId, [
+        $this->getUserService()->updateSettings($userContext['id'], [
             'notify_on_reply' => $this->request->getParams('notify_on_reply') ? 1 : 0,
             'notify_on_story_comment' => $this->request->getParams('notify_on_story_comment') ? 1 : 0,
             'notify_on_mention' => $this->request->getParams('notify_on_mention') ? 1 : 0,
@@ -155,9 +162,8 @@ class UsersController extends Controller
         // Обновляем аватар в сессии
         $session = $this->container->get(Session::class);
         $session->set('user_avatar', $newAvatarFilename);
-        $session->flash('success', 'Настройки сохранены.');
 
-        $this->redirect(route('account.settings'));
+        $this->redirectWithMessage(route('account.settings'), 'Настройки сохранены.', 'success');
     }
 
     /**
@@ -165,30 +171,25 @@ class UsersController extends Controller
      */
     public function updatePassword(): void
     {
-        $userId = Auth::id();
-        
+        $userContext = $this->getUserContext();
+
         $currentPassword = $this->request->getParams('current_password', '');
         $newPassword = $this->request->getParams('new_password', '');
 
-        $session = $this->container->get(Session::class);
-
         // Валидация длины пароля
         if (strlen($newPassword) < 6) {
-            $session->flash('error', 'Пароль должен быть не менее 6 символов.');
-            $this->redirect(route('account.settings'));
+            $this->redirectWithMessage(route('account.settings'), 'Пароль должен быть не менее 6 символов.', 'error');
             return;
         }
 
         // Попытка смены пароля
-        $success = $this->getUserService()->changePassword($userId, $currentPassword, $newPassword);
+        $success = $this->getUserService()->changePassword($userContext['id'], $currentPassword, $newPassword);
 
         if ($success) {
-            $session->flash('success', 'Пароль успешно изменён.');
+            $this->redirectWithMessage(route('account.settings'), 'Пароль успешно изменён.', 'success');
         } else {
-            $session->flash('error', 'Не удалось изменить пароль. Проверьте текущий пароль.');
+            $this->redirectWithMessage(route('account.settings'), 'Не удалось изменить пароль. Проверьте текущий пароль.', 'error');
         }
-
-        $this->redirect(route('account.settings'));
     }
 
     // =========================================================================
@@ -196,7 +197,7 @@ class UsersController extends Controller
     // =========================================================================
 
     /**
-     * ✅ Получить пользователя по username или выбросить 404
+     * Получить пользователя по username или выбросить 404
      */
     private function getUserByUsername(string $username): array
     {
@@ -215,12 +216,12 @@ class UsersController extends Controller
     }
 
     /**
-     * ✅ Получить пользователя с профилем или сделать редирект
+     * Получить пользователя с профилем или сделать редирект
      */
     private function getUserWithProfileOrRedirect(int $userId): ?array
     {
         $user = $this->getUserService()->getUserWithProfile($userId);
-        
+
         if (!$user) {
             $this->redirect('/');
             return null;

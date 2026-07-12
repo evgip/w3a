@@ -14,7 +14,6 @@ use App\Modules\Stories\Services\UrlFetcherService;
 use App\Modules\Stories\Models\Story;
 use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Tags\Models\Tag;
-use App\Modules\Auth\Services\Auth;
 use App\Modules\Votes\Models\Vote;
 use App\Modules\Users\Models\User;
 use App\Modules\Content\Core\Markdown;
@@ -47,17 +46,15 @@ class StoriesController extends Controller
         $storyIds = array_column($stories, 'id');
         $newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
 
-        // Получаем данные для голосования через общий метод
-        $currentUserId = Auth::check() ? Auth::id() : 0;
-        $votingContext = $this->getVotingContext($currentUserId);
+        $userContext = $this->getUserContext();
+        $votingContext = $this->getVotingContext($userContext['id']);
 
         $currentVotes = [];
-        if ($currentUserId > 0) {
+        if ($userContext['isLoggedIn']) {
             $voteModel = $this->container->get(Vote::class);
-            $currentVotes = $voteModel->getUserVotesForStories($currentUserId, $storyIds);
+            $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
         }
 
-        // Формируем заголовок и OG-данные
         $pageData = $this->buildIndexPageData($tagslug, $domain);
 
         $rssFeed = [
@@ -65,7 +62,6 @@ class StoriesController extends Controller
             'url' => '/rss',
         ];
 
-        // Если есть фильтр по тегу
         if ($tagslug) {
             $rssFeed = [
                 'title' => 'Тег #' . e($tagInfo['name'] ?? $tagslug),
@@ -81,8 +77,8 @@ class StoriesController extends Controller
             'bannedDomainsCache' => $bannedDomainsCache,
             'sort' => $sort,
             'domain' => $domain,
-            'currentUserId' => $currentUserId,
-            'isAdmin' => Auth::isAdmin(),
+            'currentUserId' => $userContext['id'],
+            'isAdmin' => $userContext['isAdmin'],
             'canUserDownvote' => $votingContext['canDownvote'],
             'currentVotes' => $currentVotes,
             'rssFeed' => $rssFeed,
@@ -105,13 +101,12 @@ class StoriesController extends Controller
 
         $commentsTree = $this->service(StoryFilterService::class)->getCommentsTree($storyId);
 
-        // Получаем ТЕКУЩУЮ отметку прочтения (до обновления)
-        $currentUserId = Auth::check() ? Auth::id() : 0;
+        $userContext = $this->getUserContext();
+
         $readRibbonModel = $this->container->get(\App\Modules\Stories\Models\ReadRibbon::class);
-        $ribbonData = $readRibbonModel->getForStories($currentUserId, [$storyId]);
+        $ribbonData = $readRibbonModel->getForStories($userContext['id'], [$storyId]);
         $lastReadCommentId = $ribbonData[$storyId] ?? 0;
 
-        // Теперь обновляем ленту (сдвигает отметку до последнего комментария)
         $newCount = $this->service(ReadRibbonService::class)->handleStoryView($storyId);
 
         $suggestionService = $this->service(SuggestionService::class);
@@ -124,18 +119,15 @@ class StoriesController extends Controller
         $storyModel = $this->container->get(Story::class);
         $currentTagIds = $storyModel->getStoryTagIds($storyId);
 
-        // Получаем данные для голосования через общий метод
-        $currentUserId = Auth::check() ? Auth::id() : 0;
-        $votingContext = $this->getVotingContext($currentUserId);
+        $votingContext = $this->getVotingContext($userContext['id']);
 
-        // Получаем голос за историю и комментарии
         $currentStoryVote = null;
         $currentCommentVotes = [];
         $userSuggestionsCount = 0;
 
-        if ($currentUserId > 0) {
+        if ($userContext['isLoggedIn']) {
             $voteModel = $this->container->get(Vote::class);
-            $currentStoryVote = $voteModel->getUserVote($currentUserId, 'story', $storyId);
+            $currentStoryVote = $voteModel->getUserVote($userContext['id'], 'story', $storyId);
 
             $allCommentIds = [];
             foreach ($commentsTree as $parentId => $comments) {
@@ -145,20 +137,17 @@ class StoriesController extends Controller
             }
 
             if (!empty($allCommentIds)) {
-                $currentCommentVotes = $voteModel->getUserVotesForComments($currentUserId, $allCommentIds);
-            } else {
-                $currentCommentVotes = [];
+                $currentCommentVotes = $voteModel->getUserVotesForComments($userContext['id'], $allCommentIds);
             }
 
-            $isAdmin = Auth::isAdmin();
-            $isModerator = Auth::isModerator();
-            if (!$isModerator && !$isAdmin) {
-                $userSuggestionsCount = $suggestionService->getUserActiveSuggestionsCount('Story', $storyId, $currentUserId);
+            $isAuthor = $userContext['isAuthor']((int)$story['user_id']);
+
+            if (!$userContext['isModerator'] && !$userContext['isAdmin']) {
+                $userSuggestionsCount = $suggestionService->getUserActiveSuggestionsCount('Story', $storyId, $userContext['id']);
             }
         }
 
-        // OG-данные
-        $ogData = $this->service(StoryFilterService::class)->getStoryOpenGraphData($storyId);
+        $ogData = $this->service(StoryFilterService::class)->getStoryOpenGraphData($story);
         $this->setOpenGraph([
             'type' => 'article',
             'title' => $ogData['title'],
@@ -168,8 +157,7 @@ class StoriesController extends Controller
         ]);
 
         $savedModel = $this->container->get(\App\Modules\Saved\Models\SavedStory::class);
-        $isStorySaved = $currentUserId > 0 ? $savedModel->isSaved($currentUserId, $storyId) : false;
-
+        $isStorySaved = $userContext['isLoggedIn'] ? $savedModel->isSaved($userContext['id'], $storyId) : false;
 
         $this->render('show', [
             'title' => $story['title'],
@@ -181,10 +169,10 @@ class StoriesController extends Controller
             'changeLog' => $changeLog,
             'allTags' => $allTags,
             'currentTagIds' => $currentTagIds,
-            'currentUserId' => $currentUserId,
-            'isAdmin' => Auth::isAdmin(),
-            'isModerator' => Auth::isModerator(),
-            'isAuthor' => $currentUserId > 0 && (int)$story['user_id'] === $currentUserId,
+            'currentUserId' => $userContext['id'],
+            'isAdmin' => $userContext['isAdmin'],
+            'isModerator' => $userContext['isModerator'],
+            'isAuthor' => $isAuthor ?? false,
             'canUserDownvote' => $votingContext['canDownvote'],
             'currentStoryVote' => $currentStoryVote,
             'currentCommentVotes' => $currentCommentVotes,
@@ -221,8 +209,8 @@ class StoriesController extends Controller
             'user_is_following' => $user_is_following ? 1 : 0,
         ];
 
-        $userId = Auth::id();
-        $storyId = $this->service(StoryService::class)->createStory($data, $userId);
+        $userContext = $this->getUserContext();
+        $storyId = $this->service(StoryService::class)->createStory($data, $userContext['id']);
 
         if ($storyId > 0) {
             $this->container->get(Session::class)->flash('success', 'Ваша история успешно опубликована!');
@@ -243,8 +231,9 @@ class StoriesController extends Controller
         $storyModel = $this->container->get(Story::class);
         $story = $storyModel->find($storyId);
 
-        $userId = Auth::id();
-        if (!$story || !$this->service(StoryService::class)->canEditStory($story, $userId)) {
+        $userContext = $this->getUserContext();
+
+        if (!$story || !$this->service(StoryService::class)->canEditStory($story, $userContext['id'])) {
             $this->container->get(Session::class)->flash('error', 'У вас нет прав для изменения этой публикации.');
             $this->redirectBack('/');
             return;
@@ -267,9 +256,10 @@ class StoriesController extends Controller
 
         $storyModel = $this->container->get(Story::class);
         $story = $storyModel->find($storyId);
-        $userId = Auth::id();
 
-        if (!$story || !$this->service(StoryService::class)->canEditStory($story, $userId)) {
+        $userContext = $this->getUserContext();
+
+        if (!$story || !$this->service(StoryService::class)->canEditStory($story, $userContext['id'])) {
             $this->redirectBack('/');
             return;
         }
@@ -295,16 +285,17 @@ class StoriesController extends Controller
 
     public function adminDelete(string $id): void
     {
-        $this->service(StoryService::class)->deleteStory((int)$id, Auth::id());
+        $userContext = $this->getUserContext();
+        $this->service(StoryService::class)->deleteStory((int)$id, $userContext['id']);
         $this->redirectBack();
     }
 
     public function adminRestore(string $id): void
     {
-        $this->service(StoryService::class)->restoreStory((int)$id, Auth::id());
+        $userContext = $this->getUserContext();
+        $this->service(StoryService::class)->restoreStory((int)$id, $userContext['id']);
         $this->redirectBack();
     }
-
 
     // =========================================================================
     // ПОДПИСКА И ПРОЧТЕНИЕ
@@ -313,13 +304,14 @@ class StoriesController extends Controller
     public function toggleFollow(string $id): void
     {
         $storyId = (int)$id;
-        $userId = Auth::id();
+
+        $userContext = $this->getUserContext();
 
         $storyModel = $this->container->get(Story::class);
-        $storyModel->toggleFollow($storyId, $userId);
+        $storyModel->toggleFollow($storyId, $userContext['id']);
 
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-            $isFollowing = $storyModel->isFollowing($storyId, $userId);
+            $isFollowing = $storyModel->isFollowing($storyId, $userContext['id']);
             $this->json([
                 'success' => true,
                 'is_following' => $isFollowing,
@@ -344,9 +336,6 @@ class StoriesController extends Controller
     // AJAX ENDPOINTS
     // =========================================================================
 
-    /**
-     * AJAX endpoint для извлечения заголовка из URL
-     */
     public function fetchUrlTitle(): void
     {
         $url = $this->request->getParams('url');
@@ -362,9 +351,6 @@ class StoriesController extends Controller
         $this->json($attributes);
     }
 
-    /**
-     * AJAX endpoint для предпросмотра Markdown
-     */
     public function preview(): void
     {
         if (!$this->request->isCsrfValid()) {
@@ -383,15 +369,11 @@ class StoriesController extends Controller
             'success' => true
         ]);
     }
-    
+
     // =========================================================================
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
 
-    /**
-     * Общий метод для получения контекста голосования
-     * Устраняет дублирование между index() и show()
-     */
     private function getVotingContext(int $userId): array
     {
         if ($userId === 0) {
@@ -411,10 +393,6 @@ class StoriesController extends Controller
         ];
     }
 
-    /**
-     * Формирование данных для index страницы (заголовок, OG, wiki)
-     * Устраняет перегруженность метода index()
-     */
     private function buildIndexPageData(string $tagslug, string $domain): array
     {
         $data = [
@@ -483,12 +461,8 @@ class StoriesController extends Controller
         return $user ? $username : '';
     }
 
-    /**
-     * Публикации конкретного пользователя
-     */
     public function userStories(string $username): void
     {
-        // Валидация username
         $validator = $this->container->get(\App\Core\Validator::class);
         $validator->validate(
             ['username' => $username],
@@ -499,7 +473,6 @@ class StoriesController extends Controller
             throw new \App\Core\Exceptions\NotFoundException("Пользователь не найден");
         }
 
-        // Проверяем существование пользователя
         $userModel = $this->container->get(\App\Modules\Users\Models\User::class);
         $user = $userModel->findByName($username);
 
@@ -520,13 +493,13 @@ class StoriesController extends Controller
         $storyIds = array_column($stories, 'id');
         $newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
 
-        $currentUserId = Auth::check() ? Auth::id() : 0;
-        $votingContext = $this->getVotingContext($currentUserId);
+        $userContext = $this->getUserContext();
+        $votingContext = $this->getVotingContext($userContext['id']);
 
         $currentVotes = [];
-        if ($currentUserId > 0) {
+        if ($userContext['isLoggedIn']) {
             $voteModel = $this->container->get(Vote::class);
-            $currentVotes = $voteModel->getUserVotesForStories($currentUserId, $storyIds);
+            $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
         }
 
         $this->render('index', [
@@ -538,8 +511,8 @@ class StoriesController extends Controller
             'sort' => 'hot',
             'author' => $username,
             'domain' => '',
-            'currentUserId' => $currentUserId,
-            'isAdmin' => Auth::isAdmin(),
+            'currentUserId' => $userContext['id'],
+            'isAdmin' => $userContext['isAdmin'],
             'canUserDownvote' => $votingContext['canDownvote'],
             'currentVotes' => $currentVotes,
             'title' => 'Публикации пользователя ' . e($username),

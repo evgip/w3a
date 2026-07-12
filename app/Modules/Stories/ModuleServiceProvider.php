@@ -23,6 +23,8 @@ use App\Modules\Stories\Services\StoryService;
 use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Stories\Services\ReadRibbonService;
 use App\Modules\Stories\Services\StoryValidator;
+use App\Modules\Stories\Services\UrlFetcherService; 
+use App\Modules\Stories\Services\RankingService; 
 use App\Modules\Tags\Services\TagValidator;
 use App\Modules\Origins\Models\Domain;
 use App\Modules\Notifications\Services\NotificationService;
@@ -34,11 +36,16 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
     {
         parent::register($container);
 
+        $container->singleton(RankingService::class, function(Container $c) {
+            return new RankingService();
+        });
+
         // === МОДЕЛИ ===
         $container->singleton(Story::class, function(Container $c) {
             return new Story(
                 $c->get(Database::class),
-                $c->get(Logger::class)
+                $c->get(Logger::class),
+                $c->get(RankingService::class)
             );
         });
 
@@ -81,7 +88,8 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
                 $c->get(Story::class),
                 $c->get(Domain::class),
                 $c,
-				$c->get(MuteService::class)
+				$c->get(MuteService::class),
+                $c->get(RankingService::class)
             );
         });
 

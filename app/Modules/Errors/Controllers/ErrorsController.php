@@ -7,74 +7,74 @@ use App\Core\Controller;
 
 class ErrorsController extends Controller
 {
-    /**
-     * Ошибка 404 —  Страница не найдена
-     */
-    public function notFound(string $message = "Страница не найдена"): void
-    {
-		 http_response_code(404);
-		
+	/**
+	 * Ошибка 404 —  Страница не найдена
+	 */
+	public function notFound(string $message = "Страница не найдена"): void
+	{
+		http_response_code(404);
+
 		$this->render('errors/404', [
-            'title' => 'Ошибка 404 — cтраница не найдена',
-            'message' => $message,
+			'title' => 'Ошибка 404 — cтраница не найдена',
+			'message' => $message,
 			'statusCode' => 404,
-        ]);
-    }
+		]);
+	}
 
-    /**
-     * Ошибка 500 —  Ошибка сервера
-     */
-    public function serverError(string $message = "Ошибка сервера"): void
-    {
-		 http_response_code(500);
-		
+	/**
+	 * Ошибка 500 —  Ошибка сервера
+	 */
+	public function serverError(string $message = "Ошибка сервера"): void
+	{
+		http_response_code(500);
+
 		$this->render('errors/500', [
-            'title' => 'Ошибка 400 — cтраница не найдена',
-            'message' => $message,
+			'title' => 'Ошибка 400 — cтраница не найдена',
+			'message' => $message,
 			'statusCode' => 500,
-        ]);
-    }
+		]);
+	}
 
 
-    /**
-     * Ошибка 419 — CSRF-токен недействителен (срок действия формы истёк)
-     */
-    public function csrf(string $message = "Срок действия формы истёк"): void
-    {
-        http_response_code(419);
-        
+	/**
+	 * Ошибка 419 — CSRF-токен недействителен (срок действия формы истёк)
+	 */
+	public function csrf(string $message = "Срок действия формы истёк"): void
+	{
+		http_response_code(419);
+
 		$this->render('errors/419', [
-            'title' => 'Ошибка 419 — срок действия формы истёк',
-            'message' => $message,
+			'title' => 'Ошибка 419 — срок действия формы истёк',
+			'message' => $message,
 			'statusCode' => 419,
-        ]);
-    }
+		]);
+	}
 
-    /**
-     * Ошибка 403 — Доступ запрещён
-     */
-    public function forbidden(string $message = "Доступ запрещён"): void
-    {
-        http_response_code(403);
-        
-        $this->render('errors/403', [
-            'title' => 'Ошибка 403 — доступ запрещён',
-            'message' => $message,
-            'statusCode' => 403,
-        ]);
-    }
-	
-	
+	/**
+	 * Ошибка 403 — Доступ запрещён
+	 */
+	public function forbidden(string $message = "Доступ запрещён"): void
+	{
+		http_response_code(403);
+
+		$this->render('errors/403', [
+			'title' => 'Ошибка 403 — доступ запрещён',
+			'message' => $message,
+			'statusCode' => 403,
+		]);
+	}
+
+
 	/**
 	 * Страница ошибки 429 - Too Many Requests
 	 */
 	public function tooManyRequests(string $message = "Превышен лимит запросов"): void
 	{
 		http_response_code(429);
-		
+
 		$retryAfter = config('rate_limit.retry_after', 60, 'int');
 		header("Retry-After: {$retryAfter}");
-		
+
 		$this->render('errors/429', [
 			'title' => '429 - Слишком много запросов',
 			'message' => $message,
@@ -82,7 +82,7 @@ class ErrorsController extends Controller
 		]);
 		exit;
 	}
-	
+
 	/**
 	 * HTTP 400 Bad Request
 	 */
@@ -107,5 +107,3 @@ class ErrorsController extends Controller
 		]);
 	}
 }
-
- 
