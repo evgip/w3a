@@ -31,7 +31,6 @@ class Message extends Model
                 ) sub 
                 ORDER BY id ASC";
                 
-        // ✅ Используем prepare() для bindValue с LIMIT/OFFSET
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':cid', $conversationId, \PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
@@ -46,7 +45,6 @@ class Message extends Model
      */
     public function getTotalMessageCount(int $conversationId): int
     {
-        // ✅ Используем $this->db->fetchColumn()
         return (int)$this->db->fetchColumn(
             "SELECT COUNT(*) FROM `messages` WHERE `conversation_id` = :cid AND `deleted_at` IS NULL",
             ['cid' => $conversationId]
@@ -58,7 +56,6 @@ class Message extends Model
      */
     public function getChatHistory(int $conversationId): array
     {
-        // ✅ Используем $this->db->fetchAll()
         return $this->db->fetchAll("
             SELECT m.*, u.username as sender_name, up.avatar as sender_avatar 
             FROM `messages` m
@@ -74,7 +71,6 @@ class Message extends Model
      */
     public function markAsRead(int $conversationId, int $readerId): void
     {
-        // ✅ Используем $this->db->execute()
         $this->db->execute(
             "UPDATE `messages` SET `is_read` = 1 WHERE `conversation_id` = :cid AND `sender_id` != :rid AND `is_read` = 0",
             ['cid' => $conversationId, 'rid' => $readerId]

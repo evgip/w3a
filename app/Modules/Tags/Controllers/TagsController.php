@@ -8,7 +8,6 @@ use App\Core\Controller;
 use App\Modules\Tags\Services\CategoryService;
 use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Votes\Models\Vote;
-use App\Modules\Users\Models\User;
 
 /**
  * Контроллер модуля Tags.
@@ -53,18 +52,10 @@ class TagsController extends Controller
         }
 
         $userContext = $this->getUserContext();
+        $canUserDownvote = $this->canUserDownvote($userContext['id']);
 
-        $canUserDownvote = false;
         $currentVotes = [];
-
         if ($userContext['isLoggedIn']) {
-            // Получаем карму пользователя для проверки возможности downvote
-            $userModel = $this->container->get(User::class);
-            $viewerKarma = $userModel->getUserKarma($userContext['id']);
-            $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
-            $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
-
-            // Получаем голоса пользователя за истории
             $storyIds = array_column($data['stories'], 'id');
             $voteModel = $this->container->get(Vote::class);
             $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);

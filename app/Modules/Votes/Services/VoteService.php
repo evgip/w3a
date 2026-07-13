@@ -42,6 +42,25 @@ class VoteService
         $this->rankingService = $rankingService;
     }
 
+	public function canUserDownvote(int $userId): bool
+	{
+		if ($userId <= 0) {
+			return false;
+		}
+		$user = $this->userModel->find($userId);
+		if (empty($user)) {
+			return false;
+		}
+		if ($this->isUserAdmin($user)) {
+			return true;
+		}
+		return $this->userModel->getUserKarma($userId) >= $this->getMinKarmaForDownvote();
+	}
+	public function getMinKarmaForDownvote(): int
+	{
+		return $this->getMinKarmaForDownvoteInternal();
+	}
+
     public function handleVote(int $userId, string $type, int $targetId, int $voteValue): array
     {
         $ownerCheck = $this->checkSelfVote($userId, $type, $targetId);
@@ -49,8 +68,12 @@ class VoteService
             return $ownerCheck;
         }
 
-        if ($voteValue === -1 && !$this->canDownvote($userId)) {
-            $minKarma = $this->getMinKarma();
+       // if ($voteValue === -1 && !$this->canDownvote($userId)) {
+         //   $minKarma = $this->getMinKarma();
+			
+		if ($voteValue === -1 && !$this->canUserDownvote($userId)) {
+			$minKarma = $this->getMinKarmaForDownvote();	
+			
             $userKarma = $this->userModel->getUserKarma($userId);
             return [
                 'success' => false,
@@ -75,6 +98,11 @@ class VoteService
 
         return ['success' => true, 'message' => 'Голос учтён.'];
     }
+
+	private function getMinKarmaForDownvoteInternal(): int
+	{
+		return (int) config('constants.votes.min_karma_for_downvote', self::DEFAULT_MIN_KARMA, 'int');
+	}
 
     public function getNewScore(string $type, int $targetId): int
     {
@@ -129,21 +157,6 @@ class VoteService
         }
         
         return ['allowed' => true, 'success' => true, 'message' => ''];
-    }
-
-    private function canDownvote(int $userId): bool
-    {
-        $user = $this->userModel->find($userId);
-        
-        if (empty($user)) {
-            return false;
-        }
-
-        if ($this->isUserAdmin($user)) {
-            return true;
-        }
-
-        return $this->userModel->getUserKarma($userId) >= $this->getMinKarma();
     }
 
     private function isUserAdmin(array $user): bool

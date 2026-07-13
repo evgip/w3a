@@ -8,6 +8,7 @@ use App\Core\Events\Event;
 use App\Core\Events\EventDispatcher;
 use App\Core\Exceptions\HttpException;
 use App\Core\Exceptions\JsonResponseException;
+use App\Modules\Votes\Services\VoteService;
 
 /**
  * Базовый абстрактный контроллер для всех модулей.
@@ -32,6 +33,9 @@ abstract class Controller
     
     /** @var Container DI-контейнер для получения сервисов */
     protected Container $container;
+	
+	/** @var View Рендерер шаблонов */
+	protected View $view;
 
     /** @var array|null Кеш общих данных для view (вычисляется один раз за запрос) */
     private ?array $commonViewDataCache = null;
@@ -48,15 +52,17 @@ abstract class Controller
      * @param EventDispatcher $eventDispatcher Диспетчер событий
      * @param Container $container DI-контейнер
      */
-    public function __construct(
-        Request $request,
-        EventDispatcher $eventDispatcher,
-        Container $container
-    ) {
-        $this->request = $request;
-        $this->eventDispatcher = $eventDispatcher;
-        $this->container = $container;
-    }
+	public function __construct(
+		Request $request,
+		EventDispatcher $eventDispatcher,
+		Container $container,
+		View $view
+	) {
+		$this->request = $request;
+		$this->eventDispatcher = $eventDispatcher;
+		$this->container = $container;
+		$this->view = $view;
+	}
 
     /**
      * Опубликовать domain event.
@@ -140,87 +146,67 @@ abstract class Controller
         return $this->userContextCache;
     }
 
-    // =========================================================================
-    // РЕНДЕРИНГ ШАБЛОНОВ
-    // =========================================================================
+	/**
+	 * Рендеринг шаблона с layout.
+	 * 
+	 * Автоматически добавляет в данные:
+	 * - csrf_token — токен для защиты форм
+	 * - currentUser — данные текущего пользователя
+	 * - unreadNotificationsCount — количество непрочитанных уведомлений
+	 * - pendingFlagsCount — количество ожидающих флагов (для модераторов)
+	 * - activeSuggestionsCount — количество активных предложений (для модераторов)
+	 * 
+	 * Путь к шаблону определяется автоматически по namespace контроллера:
+	 * App\Modules\Stories\Controllers\StoriesController → Modules/Stories/Views/
+	 * 
+	 * @param string $viewName Имя шаблона (без расширения .php)
+	 * @param array $data Данные для передачи в шаблон
+	 * 
+	 * @throws HttpException Если файл шаблона не найден
+	 */
+	protected function render(string $viewName, array $data = []): void
+	{
+		// Добавляем CSRF токен для всех форм
+		$data['csrf_token'] = $this->request->getCsrfToken();
+		
+		// Добавляем общие данные (пользователь, уведомления и т.д.)
+		$data = array_merge($data, $this->getCommonViewData());
 
-    /**
-     * Рендеринг шаблона с layout.
-     * 
-     * Автоматически добавляет в данные:
-     * - csrf_token — токен для защиты форм
-     * - currentUser — данные текущего пользователя
-     * - unreadNotificationsCount — количество непрочитанных уведомлений
-     * - pendingFlagsCount — количество ожидающих флагов (для модераторов)
-     * - activeSuggestionsCount — количество активных предложений (для модераторов)
-     * 
-     * Путь к шаблону определяется автоматически по namespace контроллера:
-     * App\Modules\Stories\Controllers\StoriesController → Modules/Stories/Views/
-     * 
-     * @param string $viewName Имя шаблона (без расширения .php)
-     * @param array $data Данные для передачи в шаблон
-     * 
-     * @throws HttpException Если файл шаблона не найден
-     */
-    protected function render(string $viewName, array $data = []): void
-    {
-        // Добавляем CSRF токен для всех форм
-        $data['csrf_token'] = $this->request->getCsrfToken();
-        
-        // Добавляем общие данные (пользователь, уведомления и т.д.)
-        $data = array_merge($data, $this->getCommonViewData());
+		// Определяем модуль по namespace контроллера
+		$calledClass = get_called_class();
+		$parts = explode('\\', $calledClass);
+		$moduleName = $parts[2] ?? '';
 
-        // Определяем модуль по namespace контроллера
-        $calledClass = get_called_class();
-        $parts = explode('\\', $calledClass);
-        $moduleName = $parts[2] ?? '';
+		// Загружаем языковые файлы модуля
+		if (!empty($moduleName)) {
+			\App\Core\Lang::loadModuleLang($moduleName);
+		}
 
-        // Загружаем языковые файлы модуля
-        if (!empty($moduleName)) {
-            \App\Core\Lang::loadModuleLang($moduleName);
-        }
+		// Формируем пути к файлам
+		$modulePath = dirname(__DIR__) . "/Modules/{$moduleName}";
+		$viewFile = "{$modulePath}/Views/{$viewName}.php";
+		$layoutFile = "{$modulePath}/Views/layout.php";
 
-        // Формируем пути к файлам
-        $modulePath = dirname(__DIR__) . "/Modules/{$moduleName}";
-        $viewFile = "{$modulePath}/Views/{$viewName}.php";
-        $layoutFile = "{$modulePath}/Views/layout.php";
+		// Рендерим view-файл через View
+		$content = $this->view->render($viewFile, $data);
 
-        // Проверяем существование шаблона
-        if (!file_exists($viewFile)) {
-            throw new HttpException(500, "View file not found: {$viewName}");
-        }
+		// Передаём содержимое view в layout
+		$data['content'] = $content;
 
-        // Рендерим view-файл в отдельной области видимости (изолированные переменные)
-        ob_start();
-        (function () use ($data, $viewFile) {
-            extract($data, EXTR_SKIP);
-            include $viewFile;
-        })();
-        $content = ob_get_clean();
-
-        // Передаём содержимое view в layout
-        $data['content'] = $content;
-
-        // Рендерим layout модуля
-        if (file_exists($layoutFile)) {
-            (function () use ($data, $layoutFile) {
-                extract($data, EXTR_SKIP);
-                include $layoutFile;
-            })();
-        } else {
-            // Fallback: используем layout из модуля Common
-            $fallbackLayout = dirname(__DIR__) . '/Modules/Common/Views/layout.php';
-            if (file_exists($fallbackLayout)) {
-                (function () use ($data, $fallbackLayout) {
-                    extract($data, EXTR_SKIP);
-                    include $fallbackLayout;
-                })();
-            } else {
-                // Если layout вообще нет — выводим только content
-                echo $content;
-            }
-        }
-    }
+		// Рендерим layout модуля
+		if (file_exists($layoutFile)) {
+			echo $this->view->render($layoutFile, $data);
+		} else {
+			// Fallback: используем layout из модуля Common
+			$fallbackLayout = dirname(__DIR__) . '/Modules/Common/Views/layout.php';
+			if (file_exists($fallbackLayout)) {
+				echo $this->view->render($fallbackLayout, $data);
+			} else {
+				// Если layout вообще нет — выводим только content
+				echo $content;
+			}
+		}
+	}
 
     /**
      * Получение общих данных для всех шаблонов.
@@ -585,5 +571,10 @@ abstract class Controller
 			// Если логгер недоступен — используем error_log как последний шанс
 			error_log("[{$prefix}] " . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
 		}
+	}
+	
+	protected function canUserDownvote(int $userId): bool
+	{
+		return $this->service(VoteService::class)->canUserDownvote($userId);
 	}
 }

@@ -11,6 +11,7 @@ use App\Modules\Stories\Services\StoryService;
 use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Stories\Services\ReadRibbonService;
 use App\Modules\Stories\Services\UrlFetcherService;
+use App\Modules\Stories\Services\StoryPageService;
 use App\Modules\Stories\Models\Story;
 use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Tags\Models\Tag;
@@ -47,7 +48,6 @@ class StoriesController extends Controller
         $newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
 
         $userContext = $this->getUserContext();
-        $votingContext = $this->getVotingContext($userContext['id']);
 
         $currentVotes = [];
         if ($userContext['isLoggedIn']) {
@@ -64,7 +64,7 @@ class StoriesController extends Controller
 
         if ($tagslug) {
             $rssFeed = [
-                'title' => 'Тег #' . e($tagInfo['name'] ?? $tagslug),
+                'title' => 'Тег #' . e($pageData['tagInfo']['name'] ?? $tagslug),
                 'url' => '/t/' . e($tagslug) . '/rss',
             ];
         }
@@ -79,7 +79,7 @@ class StoriesController extends Controller
             'domain' => $domain,
             'currentUserId' => $userContext['id'],
             'isAdmin' => $userContext['isAdmin'],
-            'canUserDownvote' => $votingContext['canDownvote'],
+            'canUserDownvote' => $this->canUserDownvote($userContext['id']),
             'currentVotes' => $currentVotes,
             'rssFeed' => $rssFeed,
         ], $pageData));
@@ -88,96 +88,44 @@ class StoriesController extends Controller
     // =========================================================================
     // ПРОСМОТР ОДНОЙ ИСТОРИИ
     // =========================================================================
-
-    public function show(string $id): void
+	public function show(string $id): void
     {
         $storyId = (int)$id;
-
-        $story = $this->service(StoryFilterService::class)->getStoryWithAuthor($storyId);
-
-        if (!$story) {
-            throw new NotFoundException("История не найдена.");
-        }
-
-        $commentsTree = $this->service(StoryFilterService::class)->getCommentsTree($storyId);
-
         $userContext = $this->getUserContext();
 
-        $readRibbonModel = $this->container->get(\App\Modules\Stories\Models\ReadRibbon::class);
-        $ribbonData = $readRibbonModel->getForStories($userContext['id'], [$storyId]);
-        $lastReadCommentId = $ribbonData[$storyId] ?? 0;
+        // ✅ Используем StoryPageService для сборки всех данных страницы
+        $pageService = $this->service(StoryPageService::class);
+        $pageData = $pageService->buildShowPageData($storyId, $userContext);
 
-        $newCount = $this->service(ReadRibbonService::class)->handleStoryView($storyId);
-
-        $suggestionService = $this->service(SuggestionService::class);
-        $activeSuggestions = $suggestionService->getActiveSuggestions('Story', $storyId);
-        $changeLog = $suggestionService->getChangeLog('Story', $storyId, 10);
-
-        $tagModel = $this->container->get(Tag::class);
-        $allTags = $tagModel->getAllTags();
-
-        $storyModel = $this->container->get(Story::class);
-        $currentTagIds = $storyModel->getStoryTagIds($storyId);
-
-        $votingContext = $this->getVotingContext($userContext['id']);
-
-        $currentStoryVote = null;
-        $currentCommentVotes = [];
-        $userSuggestionsCount = 0;
-
-        if ($userContext['isLoggedIn']) {
-            $voteModel = $this->container->get(Vote::class);
-            $currentStoryVote = $voteModel->getUserVote($userContext['id'], 'story', $storyId);
-
-            $allCommentIds = [];
-            foreach ($commentsTree as $parentId => $comments) {
-                foreach ($comments as $comment) {
-                    $allCommentIds[] = (int)$comment['id'];
-                }
-            }
-
-            if (!empty($allCommentIds)) {
-                $currentCommentVotes = $voteModel->getUserVotesForComments($userContext['id'], $allCommentIds);
-            }
-
-            $isAuthor = $userContext['isAuthor']((int)$story['user_id']);
-
-            if (!$userContext['isModerator'] && !$userContext['isAdmin']) {
-                $userSuggestionsCount = $suggestionService->getUserActiveSuggestionsCount('Story', $storyId, $userContext['id']);
-            }
-        }
-
-        $ogData = $this->service(StoryFilterService::class)->getStoryOpenGraphData($story);
+        // Устанавливаем OpenGraph мета-теги
         $this->setOpenGraph([
             'type' => 'article',
-            'title' => $ogData['title'],
-            'description' => $ogData['description'],
-            'image' => $ogData['image'],
-            'article:author' => $ogData['author_url'],
+            'title' => $pageData['ogData']['title'],
+            'description' => $pageData['ogData']['description'],
+            'image' => $pageData['ogData']['image'],
+            'article:author' => $pageData['ogData']['author_url'],
         ]);
 
-        $savedModel = $this->container->get(\App\Modules\Saved\Models\SavedStory::class);
-        $isStorySaved = $userContext['isLoggedIn'] ? $savedModel->isSaved($userContext['id'], $storyId) : false;
-
+        // Рендерим шаблон
         $this->render('show', [
-            'title' => $story['title'],
-            'story' => $story,
-            'commentsTree' => $commentsTree,
-            'newCount' => $newCount,
-            'lastReadCommentId' => $lastReadCommentId,
-            'activeSuggestions' => $activeSuggestions,
-            'changeLog' => $changeLog,
-            'allTags' => $allTags,
-            'currentTagIds' => $currentTagIds,
-            'currentUserId' => $userContext['id'],
-            'isAdmin' => $userContext['isAdmin'],
-            'isModerator' => $userContext['isModerator'],
-            'isAuthor' => $isAuthor ?? false,
-            'canUserDownvote' => $votingContext['canDownvote'],
-            'currentStoryVote' => $currentStoryVote,
-            'currentCommentVotes' => $currentCommentVotes,
-            'userSuggestionsCount' => $userSuggestionsCount,
-            'isStorySaved' => $isStorySaved,
+            'title' => $pageData['story']['title'],
+            'story' => $pageData['story'],
+            'commentsTree' => $pageData['commentsTree'],
+            'newCount' => $pageData['newCount'],
+            'lastReadCommentId' => $pageData['lastReadCommentId'],
+            'activeSuggestions' => $pageData['activeSuggestions'],
+            'changeLog' => $pageData['changeLog'],
+            'allTags' => $pageData['allTags'],
+            'currentTagIds' => $pageData['currentTagIds'],
+            'currentUserId' => $pageData['currentUserId'],
+            'isAdmin' => $pageData['isAdmin'],
+            'isModerator' => $pageData['isModerator'],
+            'isAuthor' => $pageData['isAuthor'],
+            'canUserDownvote' => $this->canUserDownvote($userContext['id']),
+            'currentStoryVote' => $pageData['currentStoryVote'],
+            'currentCommentVotes' => $pageData['currentCommentVotes'],
+            'userSuggestionsCount' => $pageData['userSuggestionsCount'],
+            'isStorySaved' => $pageData['isStorySaved'],
         ]);
     }
 
@@ -374,25 +322,6 @@ class StoriesController extends Controller
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
 
-    private function getVotingContext(int $userId): array
-    {
-        if ($userId === 0) {
-            return [
-                'canDownvote' => false,
-                'karma' => 0,
-            ];
-        }
-
-        $userModel = $this->container->get(User::class);
-        $karma = $userModel->getUserKarma($userId);
-        $minKarma = (int)config('config.app.min_karma_for_downvote', 10);
-
-        return [
-            'canDownvote' => $karma >= $minKarma,
-            'karma' => $karma,
-        ];
-    }
-
     private function buildIndexPageData(string $tagslug, string $domain): array
     {
         $data = [
@@ -494,7 +423,6 @@ class StoriesController extends Controller
         $newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
 
         $userContext = $this->getUserContext();
-        $votingContext = $this->getVotingContext($userContext['id']);
 
         $currentVotes = [];
         if ($userContext['isLoggedIn']) {
@@ -513,7 +441,7 @@ class StoriesController extends Controller
             'domain' => '',
             'currentUserId' => $userContext['id'],
             'isAdmin' => $userContext['isAdmin'],
-            'canUserDownvote' => $votingContext['canDownvote'],
+            'canUserDownvote' => $this->canUserDownvote($userContext['id']),
             'currentVotes' => $currentVotes,
             'title' => 'Публикации пользователя ' . e($username),
             'rssFeed' => [

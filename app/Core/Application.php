@@ -32,11 +32,6 @@ class Application
         return dirname(__DIR__) . '/Modules';
     }
 
-    public function __construct()
-    {
-        $this->setupErrorHandling();
-    }
-
     public function bootstrap(): self
     {
         Benchmark::start();
@@ -48,6 +43,8 @@ class Application
         $configPath = dirname(__DIR__) . '/Config';
         $this->config = new Config($configPath);
         $this->container->instance(Config::class, $this->config);
+
+        $this->setupErrorHandling();
 
         $GLOBALS['app_container'] = $this->container;
 
@@ -410,11 +407,38 @@ class Application
         $this->renderErrorPage($method, $e->getMessage(), $e->getStatusCode());
     }
 
+    /**
+     * Настройка обработки ошибок с учетом окружения
+     * 
+     * В production:
+     *  - display_errors = 0 (не показываем ошибки пользователю)
+     *  - log_errors = 1 (логируем в файл)
+     * 
+     * В development:
+     *  - display_errors = 1 (показываем ошибки для отладки)
+     */
     private function setupErrorHandling(): void
     {
-        ini_set('display_errors', '1');
-        ini_set('display_startup_errors', '1');
+        $env = $this->config->get('config.app.env', 'development');
+        $isProduction = ($env === 'production');
+
+        // Включаем отчет обо всех ошибках
         error_reporting(E_ALL);
+
+        if ($isProduction) {
+            // Production: НЕ показываем ошибки, но логируем
+            ini_set('display_errors', '0');
+            ini_set('display_startup_errors', '0');
+            ini_set('log_errors', '1');
+            
+            // Путь к логам PHP ошибок
+            $logPath = dirname(__DIR__, 2) . '/storage/logs/php_errors.log';
+            ini_set('error_log', $logPath);
+        } else {
+            // Development: показываем ошибки для отладки
+            ini_set('display_errors', '1');
+            ini_set('display_startup_errors', '1');
+        }
     }
 
     private function handleException(\Throwable $e): void

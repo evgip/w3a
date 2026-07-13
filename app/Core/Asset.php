@@ -12,11 +12,37 @@ class Asset
     private static string $distCssFile;
     private static string $distAdminCssFile;
     private static string $distJsFile;
+    
+    /** @var Container|null Контейнер для получения сервисов */
+    private static ?Container $container = null;
+
+    /**
+     * Установить контейнер (вызывается при инициализации приложения)
+     */
+    public static function setContainer(Container $container): void
+    {
+        self::$container = $container;
+    }
+
+    /**
+     * Получить логгер из контейнера
+     */
+    private static function getLogger(): Logger
+    {
+        if (self::$container === null) {
+            if (!isset($GLOBALS['app_container'])) {
+                throw new \RuntimeException('Container not initialized');
+            }
+            self::$container = $GLOBALS['app_container'];
+        }
+        
+        return self::$container->get(Logger::class);
+    }
 
     private static function init(): void
     {
         self::$distCssFile      = dirname(__DIR__, 2) . '/public/css/app.min.css';
-        self::$distAdminCssFile = dirname(__DIR__, 2) . '/public/css/admin.min.css'; // Новый файл
+        self::$distAdminCssFile = dirname(__DIR__, 2) . '/public/css/admin.min.css';
         self::$distJsFile       = dirname(__DIR__, 2) . '/public/js/app.min.js';
     }
 
@@ -35,7 +61,7 @@ class Asset
     }
 
     /**
-     * НОВЫЙ МЕТОД: Админский CSS
+     * Админский CSS
      */
     public static function adminCss(): string
     {
@@ -96,7 +122,6 @@ class Asset
 
         foreach ($cssFiles as $path) {
             if (file_exists($path)) {
-                // Разделяем проверку: файлы админки привязаны к своему дисту, остальные — к общему
                 $isAdminFile = (strpos($path, 'Modules' . DIRECTORY_SEPARATOR . 'Admin') !== false);
                 $targetMtime = $isAdminFile ? $mtimeAdmin : $mtimeApp;
 
@@ -127,7 +152,6 @@ class Asset
                 $short = str_replace(dirname(__DIR__, 2), '', $path);
                 $content = "/* Source: {$short} */" . PHP_EOL . file_get_contents($path) . PHP_EOL;
 
-                // РАЗДЕЛЕНИЕ КОДА: Проверяем, принадлежит ли файл модулю Admin
                 if (strpos($path, 'Modules' . DIRECTORY_SEPARATOR . 'Admin') !== false) {
                     $adminCss .= $content;
                     $adminCount++;
@@ -138,7 +162,6 @@ class Asset
             }
         }
 
-        // Функция минификации регулярками
         $minify = function ($css) {
             $css = preg_replace('!/\*[^*]*\*+([^/*][^*]*\*+)*/!', '', $css);
             $css = str_replace(["\r\n", "\r", "\n", "\t"], '', $css);
@@ -149,11 +172,10 @@ class Asset
         $dir = dirname(self::$distCssFile);
         if (!is_dir($dir)) mkdir($dir, 0755, true);
 
-        // Сохраняем два независимых сжатых файла
         file_put_contents(self::$distCssFile, $minify($appCss));
         file_put_contents(self::$distAdminCssFile, $minify($adminCss));
 
-        $logger = app(Logger::class);
+        $logger = self::getLogger();
         $logger->info("Asset Compiler: Сборка CSS завершена. app.min.css (файлов: {$appCount}), admin.min.css (файлов: {$adminCount})");
     }
 
@@ -174,46 +196,43 @@ class Asset
         }
     }
 
-	private static function buildJs(): void
-	{
-		$compiled = "/* JavaScript Bundle: " . date('Y-m-d H:i:s') . " */" . PHP_EOL;
-		$files = self::discoverFiles('js');
+    private static function buildJs(): void
+    {
+        $compiled = "/* JavaScript Bundle: " . date('Y-m-d H:i:s') . " */" . PHP_EOL;
+        $files = self::discoverFiles('js');
 
-		// Приоритетный файл, который должен быть первым
-		$priorityFile = dirname(__DIR__) . '/Modules/Common/Views/js/core_utils.js';
-		
-		// Разделяем файлы на приоритетные и обычные
-		$orderedFiles = [];
-		$otherFiles = [];
-		
-		foreach ($files as $path) {
-			if (realpath($path) === realpath($priorityFile)) {
-				array_unshift($orderedFiles, $path); // Вставляем в начало
-			} else {
-				$otherFiles[] = $path;
-			}
-		}
-		
-		// Объединяем: сначала приоритетные, потом остальные
-		$files = array_merge($orderedFiles, $otherFiles);
+        $priorityFile = dirname(__DIR__) . '/Modules/Common/Views/js/core_utils.js';
+        
+        $orderedFiles = [];
+        $otherFiles = [];
+        
+        foreach ($files as $path) {
+            if (realpath($path) === realpath($priorityFile)) {
+                array_unshift($orderedFiles, $path);
+            } else {
+                $otherFiles[] = $path;
+            }
+        }
+        
+        $files = array_merge($orderedFiles, $otherFiles);
 
-		foreach ($files as $path) {
-			if (file_exists($path)) {
-				$short = str_replace(dirname(__DIR__, 2), '', $path);
-				$compiled .= ";" . PHP_EOL . "/* Source: {$short} */" . PHP_EOL . file_get_contents($path) . PHP_EOL;
-			}
-		}
+        foreach ($files as $path) {
+            if (file_exists($path)) {
+                $short = str_replace(dirname(__DIR__, 2), '', $path);
+                $compiled .= ";" . PHP_EOL . "/* Source: {$short} */" . PHP_EOL . file_get_contents($path) . PHP_EOL;
+            }
+        }
 
-		$compiled = preg_replace('!/\*[^*]*\*+([^/*][^*]*\*+)*/!', '', $compiled);
-		$compiled = preg_replace('/^[ \t]*\/\/.*$/m', '', $compiled);
-		$compiled = str_replace("\t", " ", $compiled);
-		$compiled = preg_replace('/ +/', ' ', $compiled);
+        $compiled = preg_replace('!/\*[^*]*\*+([^/*][^*]*\*+)*/!', '', $compiled);
+        $compiled = preg_replace('/^[ \t]*\/\/.*$/m', '', $compiled);
+        $compiled = str_replace("\t", " ", $compiled);
+        $compiled = preg_replace('/ +/', ' ', $compiled);
 
-		$dir = dirname(self::$distJsFile);
-		if (!is_dir($dir)) mkdir($dir, 0755, true);
-		file_put_contents(self::$distJsFile, $compiled);
+        $dir = dirname(self::$distJsFile);
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        file_put_contents(self::$distJsFile, $compiled);
 
-		$logger = app(Logger::class);
-		$logger->info("Asset Compiler: JS сборка обновлена. Файлов: " . count($files));
-	}
+        $logger = self::getLogger();
+        $logger->info("Asset Compiler: JS сборка обновлена. Файлов: " . count($files));
+    }
 }

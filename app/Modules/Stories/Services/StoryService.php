@@ -16,7 +16,7 @@ use App\Core\Events\StoryRestore;
 /**
  * Сервис для работы с историями (бизнес-логика).
  * 
- * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
+ * Все зависимости обязательны и внедряются через конструктор.
  */
 class StoryService
 {
@@ -29,7 +29,7 @@ class StoryService
     private ?EventDispatcher $eventDispatcher;
 
     /**
-     * ✅ ИЗМЕНЕНО: 7 зависимостей, все обязательны (кроме EventDispatcher)
+     * 7 зависимостей, все обязательны (кроме EventDispatcher)
      */
     public function __construct(
         Story $storyModel,
@@ -87,7 +87,6 @@ class StoryService
         }
 
         // 5. Логирование
-        // ✅ Используем внедрённый Audit
         $this->audit->log('story.created', 'Пользователь создал новую публикацию с тегами', 'story');
 
         return $storyId;
@@ -151,8 +150,6 @@ class StoryService
 
     /**
      * Валидирует заголовок.
-     * 
-     * ✅ ИЗМЕНЕНО: Используем внедрённый Validator
      */
     private function validateTitle(string $title): bool
     {
@@ -179,13 +176,11 @@ class StoryService
         $banInfo = $this->domainModel->getBanInfo($domain);
         $reason = $banInfo['ban_reason'] ?? 'Домен заблокирован администрацией';
 
-        // ✅ Используем внедрённый Session
         $this->session->flash(
             'error',
             "Публикация отклонена: домен **" . e($domain) . "** заблокирован. Причина: " . e($reason)
         );
 
-        // ✅ Используем внедрённый Audit
         $this->audit->log('story.rejected_banned_domain', "Попытка публикации с забаненного домена", 'story', [
             'domain' => $domain,
             'user_id' => $userId,

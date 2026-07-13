@@ -8,8 +8,6 @@ use App\Core\Session;
 
 /**
  * Сервис для управления диалогами между пользователями.
- * 
- * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
  */
 class ConversationService
 {
@@ -17,9 +15,6 @@ class ConversationService
     private User $userModel;
     private Session $session;
 
-    /**
-     * ✅ ИЗМЕНЕНО: Все зависимости обязательны
-     */
     public function __construct(
         Conversation $conversationModel,
         User $userModel,
@@ -80,7 +75,6 @@ class ConversationService
     public function getOrCreateConversation(int $userOneId, int $userTwoId): ?int
     {
         if ($userOneId === $userTwoId) {
-            // ✅ Используем внедрённый Session
             $this->session->flash('error', 'Нельзя создать диалог с самим собой');
             return null;
         }

@@ -9,7 +9,6 @@ use App\Modules\Saved\Models\SavedStory;
 use App\Modules\Saved\Services\SavedService;
 use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Votes\Models\Vote;
-use App\Modules\Users\Models\User;
 
 /**
  * Контроллер сохранённых историй (закладок).
@@ -51,12 +50,6 @@ class SavedController extends Controller
             $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
         }
 
-        $canDownvote = false;
-        $userModel = $this->container->get(User::class);
-        $karma = $userModel->getUserKarma($userContext['id']);
-        $minKarma = (int)config('config.app.min_karma_for_downvote', 10);
-        $canDownvote = $karma >= $minKarma;
-
         $this->render('index', [
             'stories' => $stories,
             'currentPage' => $currentPage,
@@ -66,7 +59,7 @@ class SavedController extends Controller
             'sort' => 'saved',
             'currentUserId' => $userContext['id'],
             'isAdmin' => $userContext['isAdmin'],
-            'canUserDownvote' => $canDownvote,
+            'canUserDownvote' => $this->canUserDownvote($userContext['id']),
             'currentVotes' => $currentVotes,
             'title' => 'Мои закладки',
         ]);

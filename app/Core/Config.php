@@ -18,7 +18,7 @@ namespace App\Core;
  * Примеры использования:
  *   $config = new Config('/path/to/config');
  *   $config->get('config.app.name')                    // 'w3a'
- *   $config->get('config.app.min_karma_for_downvote')  // 10
+ *   $config->get('constants.votes.min_karma_for_downvote')  // 10
  *   $config->get('captcha.config.enabled')             // true
  */
 class Config

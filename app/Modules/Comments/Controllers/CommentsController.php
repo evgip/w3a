@@ -69,13 +69,7 @@ class CommentsController extends Controller
             );
         }
 
-        $canDownvote = false;
-        if ($userContext['isLoggedIn']) {
-            $userModel = $this->container->get(User::class);
-            $karma = $userModel->getUserKarma($userContext['id']);
-            $minKarma = (int)config('config.app.min_karma_for_downvote', 10);
-            $canDownvote = $karma >= $minKarma;
-        }
+		$canDownvote = $this->canUserDownvote($userContext['id']);
 
         $this->render('index', [
             'comments' => $comments,

@@ -4,6 +4,23 @@
 use App\Core\Router;
 
 
+if (!function_exists('container')) {
+    /**
+     * Получить сервис из контейнера
+     * 
+     * @param string $abstract Имя сервиса
+     * @return mixed
+     */
+    function container(string $abstract): mixed
+    {
+        if (!isset($GLOBALS['app_container'])) {
+            throw new \RuntimeException('Application container not initialized');
+        }
+        
+        return $GLOBALS['app_container']->get($abstract);
+    }
+}
+
 /**
  * Генерация URL по имени маршрута
  * 
@@ -20,7 +37,7 @@ if (!function_exists('route')) {
     {
         try {
             // ✅ Получаем Router из контейнера
-            $router = app(\App\Core\Router::class);
+            $router = container(\App\Core\Router::class);
             return $router->route($name, $params);
         } catch (\Throwable $e) {
             // Fallback: если контейнер не инициализирован
@@ -166,7 +183,7 @@ if (!function_exists('csrf_field')) {
     {
         try {
             // ✅ Получаем Request из контейнера
-            $request = app(\App\Core\Request::class);
+            $request = container(\App\Core\Request::class);
             return $request->csrfField();
         } catch (\Throwable $e) {
             // Fallback: если контейнер не инициализирован
@@ -196,7 +213,7 @@ if (!function_exists('csp_nonce')) {
         
         if ($nonce === null) {
             try {
-                $security = app(\App\Core\Security::class);
+                $security = container(\App\Core\Security::class);
                 $nonce = $security->getNonce();
             } catch (\Throwable $e) {
                 // Fallback: если контейнер не инициализирован
@@ -241,35 +258,6 @@ if (!function_exists('render_flashes')) {
     }
 }
 
-if (!function_exists('app')) {
-    /**
-     * Получить экземпляр из контейнера или сам контейнер
-     * 
-     * @param string|null $abstract Имя сервиса или null для получения контейнера
-     * @return mixed
-     */
-    function app(?string $abstract = null): mixed
-    {
-        static $container = null;
-        
-        // Получаем контейнер из глобальной области
-        if ($container === null) {
-            // Ищем контейнер в глобальной переменной
-            if (isset($GLOBALS['app_container'])) {
-                $container = $GLOBALS['app_container'];
-            } else {
-                throw new \RuntimeException('Application container not initialized');
-            }
-        }
-        
-        if ($abstract === null) {
-            return $container;
-        }
-        
-        return $container->get($abstract);
-    }
-}
-
 if (!function_exists('config')) {
     /**
      * Получить значение из конфигурации
@@ -284,7 +272,7 @@ if (!function_exists('config')) {
         
         if ($config === null) {
             try {
-                $config = app(\App\Core\Config::class);
+                $config = container(\App\Core\Config::class);
             } catch (\Throwable $e) {
                 // Fallback: если контейнер еще не инициализирован
                 return $default;
@@ -494,7 +482,7 @@ if (!function_exists('markdown_instance')) {
         static $instance = null;
         
         if ($instance === null) {
-            $instance = app(\App\Modules\Content\Core\Markdown::class);
+            $instance = container(\App\Modules\Content\Core\Markdown::class);
         }
         
         return $instance;
@@ -581,7 +569,7 @@ if (!function_exists('markdown_clear_cache')) {
 			
 			if ($html === null) {
 				try {
-					$captcha = app(\App\Modules\Captcha\Core\Captcha::class);
+					$captcha = container(\App\Modules\Captcha\Core\Captcha::class);
 					$html = $captcha->getHtml();
 				} catch (\Throwable $e) {
 					error_log("captcha() failed: " . $e->getMessage());
@@ -606,7 +594,7 @@ if (!function_exists('markdown_clear_cache')) {
 		function captcha_validate(?string $token = null): bool
 		{
 			try {
-				$captcha = app(\App\Modules\Captcha\Core\Captcha::class);
+				$captcha = container(\App\Modules\Captcha\Core\Captcha::class);
 				return $captcha->validate($token);
 			} catch (\Throwable $e) {
 				error_log("captcha_validate() failed: " . $e->getMessage());
@@ -624,7 +612,7 @@ if (!function_exists('markdown_clear_cache')) {
 		function captcha_is_required(): bool
 		{
 			try {
-				$captcha = app(\App\Modules\Captcha\Core\Captcha::class);
+				$captcha = container(\App\Modules\Captcha\Core\Captcha::class);
 				return $captcha->isRequired();
 			} catch (\Throwable $e) {
 				return false;

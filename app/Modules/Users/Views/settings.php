@@ -15,7 +15,7 @@
                 <img src="/uploads/avatars/<?= substr($user['avatar'], 0, 2) ?>/<?= e($user['avatar']) ?>" 
                      class="avatar-preview" alt="Avatar">
             <?php else: ?>
-                <div class="avatar-placeholder">
+                <div class="profile-avatar-placeholder-large">
                     <?= e(mb_substr($user['username'], 0, 1)) ?>
                 </div>
             <?php endif; ?>

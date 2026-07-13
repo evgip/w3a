@@ -109,6 +109,11 @@ class ModuleServiceProvider
             });
         }
 
+		// 13. View (singleton — рендерер шаблонов)
+		$container->singleton(View::class, function(Container $c) {
+			return new View();
+		});
+
         $container->singleton(\App\Modules\Stories\Services\UrlFetcherService::class, function ($container) {
             return new \App\Modules\Stories\Services\UrlFetcherService();
         });
@@ -132,6 +137,7 @@ class ModuleServiceProvider
                 $ttl
             );
         });
+		
     }
 
     /**

@@ -41,30 +41,20 @@ class Story extends Model
     }
 
     /**
-     * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
-     * Получить ленту историй с пагинацией и учетом фильтров
+     * Построить общие WHERE условия и биндинги для выборки историй (лента, счетчики).
+     * 
+     * @param array<int, int|string> $excludeTagIds
+     * @param array<int, int|string> $mutedUserIds
+     * @return array{sql: string, bindings: array<string, mixed>}
      */
-    public function getFeed(
-        int $limit, 
-        int $offset, 
+    private function buildFeedConditions(
         string $tagslug = '', 
-        bool $showDeleted = false, 
         ?string $domain = '', 
-        array $excludeTagIds = [], 
-        string $sort = 'hot',
+        array $excludeTagIds = [],
         string $author = '',
-        array $mutedUserIds = []
-    ): array
-    {
-        $sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar, 
-                GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
-                GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
-                FROM `stories` s
-                JOIN `users` u ON s.user_id = u.id
-                LEFT JOIN `user_profiles` up ON u.id = up.user_id
-                LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                LEFT JOIN `tags` t ON tg.tag_id = t.id";
-
+        array $mutedUserIds = [],
+        bool $showDeleted = false
+    ): array {
         $where = [];
         $bindings = [];
 
@@ -72,17 +62,17 @@ class Story extends Model
             $where[] = "s.deleted_at IS NULL";
         }
 
-        if ($tagslug) {
+        if ($tagslug !== '') {
             $where[] = "t.slug = :slug";
             $bindings[':slug'] = $tagslug;
         }
 
-        if ($domain) {
+        if ($domain !== null && $domain !== '') {
             $where[] = "s.domain = :domain";
             $bindings[':domain'] = $domain;
         }
 
-        if ($author) {
+        if ($author !== '') {
             $where[] = "u.username = :author";
             $bindings[':author'] = $author;
         }
@@ -114,9 +104,42 @@ class Story extends Model
             )";
         }
 
-        if (!empty($where)) {
-            $sql .= " WHERE " . implode(" AND ", $where);
-        }
+        $sql = !empty($where) ? " WHERE " . implode(" AND ", $where) : "";
+
+        return [
+            'sql' => $sql,
+            'bindings' => $bindings,
+        ];
+    }
+
+    /**
+     * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
+     * Получить ленту историй с пагинацией и учетом фильтров
+     */
+    public function getFeed(
+        int $limit, 
+        int $offset, 
+        string $tagslug = '', 
+        bool $showDeleted = false, 
+        ?string $domain = '', 
+        array $excludeTagIds = [], 
+        string $sort = 'hot',
+        string $author = '',
+        array $mutedUserIds = []
+    ): array
+    {
+        $sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar, 
+                GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
+                GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
+                FROM `stories` s
+                JOIN `users` u ON s.user_id = u.id
+                LEFT JOIN `user_profiles` up ON u.id = up.user_id
+                LEFT JOIN `taggings` tg ON s.id = tg.story_id
+                LEFT JOIN `tags` t ON tg.tag_id = t.id";
+
+        $conditions = $this->buildFeedConditions($tagslug, $domain, $excludeTagIds, $author, $mutedUserIds, $showDeleted);
+        $sql .= $conditions['sql'];
+        $bindings = $conditions['bindings'];
 
         $orderBy = match ($sort) {
             'new' => 's.created_at DESC',
@@ -148,7 +171,7 @@ class Story extends Model
 
         $tagMods = $this->getTagHotnessMods($storyId);
 
-        // ✅ Используем сервис вместо глобальной функции
+        // Используем сервис вместо глобальной функции
         $hotness = $this->rankingService->calculateHotness(
             (int)$story['score'], 
             $story['created_at'], 
@@ -204,54 +227,11 @@ class Story extends Model
                 LEFT JOIN `taggings` tg ON s.id = tg.story_id
                 LEFT JOIN `tags` t ON tg.tag_id = t.id";
 
-        $where = ["s.deleted_at IS NULL"];
-        $bindings = [];
-
-        if ($tagslug) {
-            $where[] = "t.slug = :slug";
-            $bindings[':slug'] = $tagslug;
-        }
-
-        if ($domain) {
-            $where[] = "s.domain = :domain";
-            $bindings[':domain'] = $domain;
-        }
-
-        if ($author) {
-            $where[] = "u.username = :author";
-            $bindings[':author'] = $author;
-        }
-
-        if (!empty($mutedUserIds)) {
-            $mutedPlaceholders = [];
-            foreach ($mutedUserIds as $index => $mutedId) {
-                $paramName = ":muted_user_{$index}";
-                $mutedPlaceholders[] = $paramName;
-                $bindings[$paramName] = (int)$mutedId;
-            }
-
-            $mutedPlaceholdersStr = implode(',', $mutedPlaceholders);
-            $where[] = "s.user_id NOT IN ($mutedPlaceholdersStr)";
-        }
-
-        if (!empty($excludeTagIds)) {
-            $namedPlaceholders = [];
-            foreach ($excludeTagIds as $index => $tagId) {
-                $paramName = ":exclude_tag_{$index}";
-                $namedPlaceholders[] = $paramName;
-                $bindings[$paramName] = (int)$tagId;
-            }
-
-            $placeholdersStr = implode(',', $namedPlaceholders);
-            $where[] = "s.id NOT IN (
-                SELECT DISTINCT story_id FROM taggings 
-                WHERE tag_id IN ($placeholdersStr)
-            )";
-        }
-
-        $sql .= " WHERE " . implode(" AND ", $where);
-
-        return (int)$this->db->fetchColumn($sql, $bindings);
+        // showDeleted по умолчанию false, что совпадает с изначальной логикой getTotalCount
+        $conditions = $this->buildFeedConditions($tagslug, $domain, $excludeTagIds, $author, $mutedUserIds);
+        $sql .= $conditions['sql'];
+        
+        return (int)$this->db->fetchColumn($sql, $conditions['bindings']);
     }
 
     /**

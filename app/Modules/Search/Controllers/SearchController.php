@@ -8,7 +8,6 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Modules\Search\Models\SearchResult;
 use App\Modules\Votes\Models\Vote;
-use App\Modules\Users\Models\User;
 
 /**
  * Контроллер поиска.
@@ -41,23 +40,13 @@ class SearchController extends Controller
         }
 
         $userContext = $this->getUserContext();
+        $canUserDownvote = $this->canUserDownvote($userContext['id']);
 
-        $canUserDownvote = false;
         $currentVotes = [];
-
-        if ($userContext['isLoggedIn']) {
-            // Получаем карму пользователя для проверки возможности downvote
-            $userModel = $this->container->get(User::class);
-            $viewerKarma = $userModel->getUserKarma($userContext['id']);
-            $minKarmaForDownvote = config('config.app.min_karma_for_downvote', 10, 'int');
-            $canUserDownvote = ($viewerKarma >= $minKarmaForDownvote);
-
-            // Получаем голоса пользователя за истории (если ищем истории)
-            if ($what === 'stories' && !empty($results)) {
-                $voteModel = $this->container->get(Vote::class);
-                $storyIds = array_column($results, 'id');
-                $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
-            }
+        if ($userContext['isLoggedIn'] && $what === 'stories' && !empty($results)) {
+            $voteModel = $this->container->get(Vote::class);
+            $storyIds = array_column($results, 'id');
+            $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
         }
 
         $this->render('index', [
