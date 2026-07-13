@@ -192,4 +192,27 @@ class Database implements DatabaseInterface
             'log_enabled' => self::$enableQueryLog,
         ];
     }
+	
+    /**
+     * Генерирует плейсхолдеры и биндинги для конструкции IN (...)
+     * Избавляет от необходимости писать циклы foreach в моделях.
+     * 
+     * @param array $values Массив значений
+     * @param string $prefix Префикс для именованных плейсхолдеров
+     * @return array{clause: string, bindings: array}
+     */
+    public function buildInClause(array $values, string $prefix = 'param'): array
+    {
+        $placeholders = [];
+        $bindings = [];
+        foreach ($values as $index => $value) {
+            $key = ':' . $prefix . '_' . $index;
+            $placeholders[] = $key;
+            $bindings[$key] = $value;
+        }
+        return [
+            'clause' => implode(',', $placeholders),
+            'bindings' => $bindings,
+        ];
+    }
 }

@@ -216,65 +216,63 @@ abstract class Controller
      * 
      * @return array Общие данные для view
      */
-    protected function getCommonViewData(): array
-    {
-        // Возвращаем кеш, если уже вычисляли
-        if ($this->commonViewDataCache !== null) {
-            return $this->commonViewDataCache;
-        }
+	protected function getCommonViewData(): array
+	{
+		if ($this->commonViewDataCache !== null) {
+			return $this->commonViewDataCache;
+		}
 
-        // Базовая структура данных (для неавторизованных пользователей)
-        $data = [
-            'currentUser' => [
-                'id' => null,
-                'name' => null,
-                'role' => null,
-                'avatar' => null,
-                'isLoggedIn' => false,
-                'isAdmin' => false,
-                'isModerator' => false,
-            ],
-            'unreadNotificationsCount' => 0,
-            'pendingFlagsCount' => 0,
-            'activeSuggestionsCount' => 0,
-        ];
+		$data = [
+			'currentUser' => [
+				'id' => null,
+				'name' => null,
+				'role' => null,
+				'avatar' => null,
+				'isLoggedIn' => false,
+				'isAdmin' => false,
+				'isModerator' => false,
+			],
+			'unreadNotificationsCount' => 0,
+			'pendingFlagsCount' => 0,
+			'activeSuggestionsCount' => 0,
+		];
 
-        try {
-            // Получаем данные пользователя из сессии
-            $session = $this->container->get(Session::class);
-            $userId = $session->get('user_id');
+		try {
+			$session = $this->container->get(Session::class);
+			$userId = $session->get('user_id');
 
-            // Заполняем данные пользователя
-            $data['currentUser'] = [
-                'id' => $userId,
-                'name' => $session->get('user_name'),
-                'role' => $session->get('user_role'),
-                'avatar' => $session->get('user_avatar'),
-                'isLoggedIn' => (bool)$userId,
-                'isAdmin' => ($session->get('user_role') === 'admin'),
-                'isModerator' => in_array($session->get('user_role'), ['admin', 'moderator']),
-            ];
+			// Если пользователь не авторизован — сразу возвращаем пустые данные
+			if (!$userId) {
+				$this->commonViewDataCache = $data;
+				return $data;
+			}
 
-            // Для авторизованных пользователей загружаем счётчики
-            if ($data['currentUser']['isLoggedIn']) {
-                // Количество непрочитанных уведомлений
-                $data['unreadNotificationsCount'] = $this->getUnreadNotificationsCount($userId);
+			$data['currentUser'] = [
+				'id' => $userId,
+				'name' => $session->get('user_name'),
+				'role' => $session->get('user_role'),
+				'avatar' => $session->get('user_avatar'),
+				'isLoggedIn' => true,
+				'isAdmin' => ($session->get('user_role') === 'admin'),
+				'isModerator' => in_array($session->get('user_role'), ['admin', 'moderator']),
+			];
 
-                // Для модераторов и админов — дополнительные счётчики
-                if ($data['currentUser']['isModerator']) {
-                    $data['pendingFlagsCount'] = $this->getPendingFlagsCount();
-                    $data['activeSuggestionsCount'] = $this->getActiveSuggestionsCount();
-                }
-            }
-        } catch (\Throwable $e) {
-            // Fallback: возвращаем пустые данные (уже установлены выше)
-            // Это гарантирует, что шаблон не упадёт из-за ошибок в сервисах
-        }
+			// Загружаем счетчики ТОЛЬКО для авторизованных пользователей
+			$data['unreadNotificationsCount'] = $this->getUnreadNotificationsCount((int)$userId);
 
-        // Кешируем результат для повторных вызовов
-        $this->commonViewDataCache = $data;
-        return $data;
-    }
+			// Для модераторов — дополнительные счетчики
+			if ($data['currentUser']['isModerator']) {
+				$data['pendingFlagsCount'] = $this->getPendingFlagsCount();
+				$data['activeSuggestionsCount'] = $this->getActiveSuggestionsCount();
+			}
+		} catch (\Throwable $e) {
+			// Fallback: логируем, но не прерываем выполнение
+			error_log("getCommonViewData error: " . $e->getMessage());
+		}
+
+		$this->commonViewDataCache = $data;
+		return $data;
+	}
 
     /**
      * Получить количество непрочитанных уведомлений.

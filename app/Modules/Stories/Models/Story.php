@@ -40,106 +40,54 @@ class Story extends Model
         $this->rankingService = $rankingService ?? new RankingService();
     }
 
-    /**
-     * Построить общие WHERE условия и биндинги для выборки историй (лента, счетчики).
-     * 
-     * @param array<int, int|string> $excludeTagIds
-     * @param array<int, int|string> $mutedUserIds
-     * @return array{sql: string, bindings: array<string, mixed>}
-     */
     private function buildFeedConditions(
-        string $tagslug = '', 
-        ?string $domain = '', 
-        array $excludeTagIds = [],
-        string $author = '',
-        array $mutedUserIds = [],
-        bool $showDeleted = false
+        string $tagslug = '', ?string $domain = '', array $excludeTagIds = [],
+        string $author = '', array $mutedUserIds = [], bool $showDeleted = false
     ): array {
         $where = [];
         $bindings = [];
 
-        if (!$showDeleted) {
-            $where[] = "s.deleted_at IS NULL";
-        }
-
+        if (!$showDeleted) $where[] = "s.deleted_at IS NULL";
         if ($tagslug !== '') {
             $where[] = "t.slug = :slug";
             $bindings[':slug'] = $tagslug;
         }
-
         if ($domain !== null && $domain !== '') {
             $where[] = "s.domain = :domain";
             $bindings[':domain'] = $domain;
         }
-
         if ($author !== '') {
             $where[] = "u.username = :author";
             $bindings[':author'] = $author;
         }
 
+        // Используем новый метод Database для генерации IN (...)
         if (!empty($mutedUserIds)) {
-            $mutedPlaceholders = [];
-            foreach ($mutedUserIds as $index => $mutedId) {
-                $paramName = ":muted_user_{$index}";
-                $mutedPlaceholders[] = $paramName;
-                $bindings[$paramName] = (int)$mutedId;
-            }
-
-            $mutedPlaceholdersStr = implode(',', $mutedPlaceholders);
-            $where[] = "s.user_id NOT IN ($mutedPlaceholdersStr)";
+            $inData = $this->db->buildInClause($mutedUserIds, 'muted_user');
+            $where[] = "s.user_id NOT IN ({$inData['clause']})";
+            $bindings = array_merge($bindings, $inData['bindings']);
         }
 
         if (!empty($excludeTagIds)) {
-            $namedPlaceholders = [];
-            foreach ($excludeTagIds as $index => $tagId) {
-                $paramName = ":exclude_tag_{$index}";
-                $namedPlaceholders[] = $paramName;
-                $bindings[$paramName] = (int)$tagId;
-            }
-
-            $placeholdersStr = implode(',', $namedPlaceholders);
+            $inData = $this->db->buildInClause($excludeTagIds, 'exclude_tag');
             $where[] = "s.id NOT IN (
                 SELECT DISTINCT story_id FROM taggings 
-                WHERE tag_id IN ($placeholdersStr)
+                WHERE tag_id IN ({$inData['clause']})
             )";
+            $bindings = array_merge($bindings, $inData['bindings']);
         }
 
-        $sql = !empty($where) ? " WHERE " . implode(" AND ", $where) : "";
-
-        return [
-            'sql' => $sql,
-            'bindings' => $bindings,
-        ];
+        return ['conditions' => $where, 'bindings' => $bindings];
     }
 
-    /**
-     * Fetch active stories joined with authors, tags, and avatars (Admin reads thrashed rows)
-     * Получить ленту историй с пагинацией и учетом фильтров
-     */
     public function getFeed(
-        int $limit, 
-        int $offset, 
-        string $tagslug = '', 
-        bool $showDeleted = false, 
-        ?string $domain = '', 
-        array $excludeTagIds = [], 
-        string $sort = 'hot',
-        string $author = '',
-        array $mutedUserIds = []
-    ): array
-    {
-        $sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar, 
-                GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
-                GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
-                FROM `stories` s
-                JOIN `users` u ON s.user_id = u.id
-                LEFT JOIN `user_profiles` up ON u.id = up.user_id
-                LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                LEFT JOIN `tags` t ON tg.tag_id = t.id";
-
+        int $limit, int $offset, string $tagslug = '', bool $showDeleted = false, 
+        ?string $domain = '', array $excludeTagIds = [], string $sort = 'hot',
+        string $author = '', array $mutedUserIds = []
+    ): array {
+        $repo = new \App\Modules\Stories\Repositories\StoryRepository($this->db);
+        
         $conditions = $this->buildFeedConditions($tagslug, $domain, $excludeTagIds, $author, $mutedUserIds, $showDeleted);
-        $sql .= $conditions['sql'];
-        $bindings = $conditions['bindings'];
 
         $orderBy = match ($sort) {
             'new' => 's.created_at DESC',
@@ -147,18 +95,42 @@ class Story extends Model
             default => 's.hotness DESC',
         };
 
-        $sql .= " GROUP BY s.id ORDER BY {$orderBy} LIMIT :limit OFFSET :offset";
+        return $repo->withAuthor()->withAvatar()->withTags()
+                    ->addWheres($conditions['conditions'], $conditions['bindings'])
+                    ->setOrderBy($orderBy)
+                    ->paginate($limit, $offset)
+                    ->get();
+    }
 
-        $bindings[':limit'] = $limit;
-        $bindings[':offset'] = $offset;
-
-        $stories = $this->db->fetchAll($sql, $bindings);
-
-        foreach ($stories as &$story) {
-            parseTagsCombined($story);
+    public function getTotalCount(
+        string $tagslug = '', ?string $domain = '', array $excludeTagIds = [],
+        string $author = '', array $mutedUserIds = []
+    ): int {
+        $repo = new \App\Modules\Stories\Repositories\StoryRepository($this->db);
+        
+        // Подключаем теги только если они используются в фильтрах (экономим ресурсы БД)
+        if ($tagslug !== '' || !empty($excludeTagIds)) {
+            $repo->withTags(); 
         }
+        
+        $conditions = $this->buildFeedConditions($tagslug, $domain, $excludeTagIds, $author, $mutedUserIds);
 
-        return $stories;
+        return $repo->withAuthor()
+                    ->addWheres($conditions['conditions'], $conditions['bindings'])
+                    ->count();
+    }
+
+    public function getSingleWithAuthor(int $id, bool $showDeleted = false): ?array {
+        $repo = new \App\Modules\Stories\Repositories\StoryRepository($this->db);
+        
+        $repo->withAuthor()->withAvatar()->withTags()
+             ->addWhere('s.id = :id', ['id' => $id]);
+             
+        if (!$showDeleted) {
+            $repo->addWhere('s.deleted_at IS NULL');
+        }
+        
+        return $repo->first();
     }
 
     /**
@@ -209,59 +181,6 @@ class Story extends Model
     public function getAllTags(): array
     {
         return $this->db->fetchAll("SELECT * FROM `tags` ORDER BY `slug` ASC");
-    }
-
-    /**
-     * Получить общее количество историй с учетом фильтров
-     */
-    public function getTotalCount(
-            string $tagslug = '', 
-            ?string $domain = '', 
-            array $excludeTagIds = [],
-            string $author = '',
-            array $mutedUserIds = []
-        ): int
-    {
-        $sql = "SELECT COUNT(DISTINCT s.id) FROM `stories` s
-                JOIN `users` u ON s.user_id = u.id 
-                LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                LEFT JOIN `tags` t ON tg.tag_id = t.id";
-
-        // showDeleted по умолчанию false, что совпадает с изначальной логикой getTotalCount
-        $conditions = $this->buildFeedConditions($tagslug, $domain, $excludeTagIds, $author, $mutedUserIds);
-        $sql .= $conditions['sql'];
-        
-        return (int)$this->db->fetchColumn($sql, $conditions['bindings']);
-    }
-
-    /**
-     * Получить одну конкретную историю с именем автора и списком тегов
-     */
-    public function getSingleWithAuthor(int $id, bool $showDeleted = false): ?array
-    {
-        $sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
-                       GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
-                       GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
-                FROM `stories` s
-                    JOIN `users` u ON s.user_id = u.id
-                    LEFT JOIN `user_profiles` up ON u.id = up.user_id
-                    LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                    LEFT JOIN `tags` t ON tg.tag_id = t.id
-                    WHERE s.id = :id";
-
-        if (!$showDeleted) {
-            $sql .= " AND s.deleted_at IS NULL";
-        }
-
-        $sql .= " GROUP BY s.id LIMIT 1";
-
-        $story = $this->db->fetchOne($sql, ['id' => $id]);
-
-        if ($story) {
-            parseTagsCombined($story);
-            return $story;
-        }
-        return null;
     }
 
     /**

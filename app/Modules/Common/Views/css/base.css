@@ -454,8 +454,8 @@ input, button, select, textarea {
     transition: border-color var(--transition-fast), outline var(--transition-fast);
 }
 
-input:focus, button:focus, select:focus, textarea:focus {
-    outline: var(--input-outline-width) solid var(--color-box-border-focus);
+input:focus, /* button:focus, */ select:focus, textarea:focus {
+   outline: var(--input-outline-width) solid var(--color-box-border-focus); 
     border-color: transparent;
 }
 

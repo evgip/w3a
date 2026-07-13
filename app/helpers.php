@@ -429,30 +429,6 @@ if (!function_exists('safeLink')) {
 }
 
 /**
- * Распарсить объединённые теги в структурированный массив
- */
-if (!function_exists('rparseTagsCombined')) {
-    function parseTagsCombined(array &$story): void
-    {
-        $story['tags'] = !empty($story['tag_list']) ? explode(',', $story['tag_list']) : [];
-
-        $tagsWithNames = [];
-        if (!empty($story['tags_combined'])) {
-            foreach (explode(',', $story['tags_combined']) as $pair) {
-                list($slug, $name) = explode('||', $pair);
-                $tagsWithNames[] = [
-                    'slug' => $slug,
-                    'name' => $name
-                ];
-            }
-        }
-        $story['tags_with_names'] = $tagsWithNames;
-        unset($story['tags_combined']);
-    }
-}
-
-
-/**
  * Получить значение из переменных окружения (.env)
  *
  * @param string $key Ключ

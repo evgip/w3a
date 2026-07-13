@@ -62,36 +62,17 @@ class SavedStory extends Model
     /**
      * Получить список сохранённых историй пользователя с пагинацией
      */
-    public function getUserSaved(int $userId, int $limit, int $offset): array
-    {
-        $sql = "SELECT s.*, 
-                       u.username as author_name, 
-                       up.avatar as author_avatar,
-                       GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
-                       GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined,
-                       ss.created_at as saved_at
-                FROM `saved_stories` ss
-                JOIN `stories` s ON ss.story_id = s.id
-                JOIN `users` u ON s.user_id = u.id
-                LEFT JOIN `user_profiles` up ON u.id = up.user_id
-                LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                LEFT JOIN `tags` t ON tg.tag_id = t.id
-                WHERE ss.user_id = :user_id AND s.deleted_at IS NULL
-                GROUP BY s.id
-                ORDER BY ss.created_at DESC
-                LIMIT :limit OFFSET :offset";
+    public function getUserSaved(int $userId, int $limit, int $offset): array {
+        $repo = new \App\Modules\Stories\Repositories\StoryRepository($this->db);
         
-        $stories = $this->db->fetchAll($sql, [
-            'user_id' => $userId,
-            'limit' => $limit,
-            'offset' => $offset,
-        ]);
-        
-        foreach ($stories as &$story) {
-            parseTagsCombined($story);
-        }
-        
-        return $stories;
+        return $repo->fromSaved($userId)
+                    ->withAuthor()
+                    ->withAvatar()
+                    ->withTags()
+                    ->addWhere('s.deleted_at IS NULL')
+                    ->setOrderBy('ss.created_at DESC')
+                    ->paginate($limit, $offset)
+                    ->get();
     }
 
     /**

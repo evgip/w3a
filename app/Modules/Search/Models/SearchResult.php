@@ -11,35 +11,22 @@ class SearchResult extends Model
     /**
      * High-performance full-text search across story articles
      */
-    public function searchStories(string $keywords, string $sortBy = 'relevance'): array
-    {
-        $sql = "SELECT s.*, u.username as author_name, up.avatar as author_avatar,
-                       GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
-                       GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined,
-                       MATCH(s.title, s.description) AGAINST(:query1 IN NATURAL LANGUAGE MODE) as relevance
-                FROM `stories` s
-                JOIN `users` u ON s.user_id = u.id
-                LEFT JOIN `user_profiles` up ON u.id = up.user_id
-                LEFT JOIN `taggings` tg ON s.id = tg.story_id
-                LEFT JOIN `tags` t ON tg.tag_id = t.id
-                WHERE s.deleted_at IS NULL 
-                  AND MATCH(s.title, s.description) AGAINST(:query2 IN NATURAL LANGUAGE MODE)";
-
-        $sql .= " GROUP BY s.id";
-        $sql .= ($sortBy === 'date') ? " ORDER BY s.id DESC" : " ORDER BY relevance DESC, s.score DESC";
-        $sql .= " LIMIT 50";
-
-        // ✅ Используем prepare() для работы с bindValue (одинаковые значения, разные имена параметров)
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':query1', $keywords, \PDO::PARAM_STR);
-        $stmt->bindValue(':query2', $keywords, \PDO::PARAM_STR);
-        $stmt->execute();
-
-        $stories = $stmt->fetchAll();
-        foreach ($stories as &$story) {
-            parseTagsCombined($story);
-        }
-        return $stories;
+    public function searchStories(string $keywords, string $sortBy = 'relevance'): array {
+        $repo = new \App\Modules\Stories\Repositories\StoryRepository($this->db);
+        
+        $orderBy = ($sortBy === 'date') ? 's.id DESC' : 'relevance DESC, s.score DESC';
+        
+        return $repo->withAuthor()
+                    ->withAvatar()
+                    ->withTags()
+                    ->addSelect("MATCH(s.title, s.description) AGAINST(:query_ft IN NATURAL LANGUAGE MODE) as relevance")
+                    ->addWhere("s.deleted_at IS NULL")
+                    ->addWhere("MATCH(s.title, s.description) AGAINST(:query_ft IN NATURAL LANGUAGE MODE)", [
+                        ':query_ft' => $keywords
+                    ])
+                    ->setOrderBy($orderBy)
+                    ->paginate(50, 0)
+                    ->get();
     }
 
     /**
@@ -65,7 +52,6 @@ class SearchResult extends Model
 
         $sql .= " LIMIT 50";
 
-        // ✅ Используем prepare() для работы с bindValue
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':query1', $keywords, \PDO::PARAM_STR);
         $stmt->bindValue(':query2', $keywords, \PDO::PARAM_STR);

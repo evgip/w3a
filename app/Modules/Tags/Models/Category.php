@@ -5,6 +5,7 @@ namespace App\Modules\Tags\Models;
 use App\Core\Model;
 use App\Core\Database;
 use App\Core\Logger;
+use App\Modules\Stories\Repositories\StoryRepository;
 
 class Category extends Model
 {
@@ -37,7 +38,6 @@ class Category extends Model
      */
     public function getStoriesBySlug(string $slug, int $limit, int $offset, array $excludeTagIds = []): ?array
     {
-        // Получаем категорию
         $category = $this->db->fetchOne(
             "SELECT * FROM {$this->table} WHERE slug = :slug LIMIT 1",
             ['slug' => $slug]
@@ -47,61 +47,28 @@ class Category extends Model
             return null;
         }
 
-        // Получаем истории с тегами из этой категории
-        $sql = "SELECT DISTINCT s.*, u.username as author_name, up.avatar as author_avatar,
-                       GROUP_CONCAT(t.slug ORDER BY t.slug ASC) as tag_list,
-                       GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined
-                FROM stories s
-                JOIN users u ON s.user_id = u.id
-                LEFT JOIN `user_profiles` up ON u.id = up.user_id
-                JOIN taggings tg ON s.id = tg.story_id
-                JOIN tags t ON tg.tag_id = t.id
-                WHERE t.category_id = :category_id 
-                  AND s.deleted_at IS NULL
-                  AND t.deleted_at IS NULL";
-
-        $bindings = [':category_id' => $category['id']];
+        // Используем StoryRepository для получения историй
+        $repo = new StoryRepository($this->db);
+        
+        $repo->withAuthor()
+             ->withAvatar()
+             ->withTags()
+             ->addWhere('t.category_id = :category_id', ['category_id' => $category['id']])
+             ->addWhere('t.deleted_at IS NULL')
+             ->setOrderBy('s.created_at DESC')
+             ->paginate($limit, $offset);
 
         // Исключаем истории с тегами из черного списка пользователя
+        // Это исправляет баг с невалидным SQL из оригинального кода
         if (!empty($excludeTagIds)) {
-            $namedPlaceholders = [];
-            foreach ($excludeTagIds as $index => $tagId) {
-                $paramName = ":exclude_tag_{$index}";
-                $namedPlaceholders[] = $paramName;
-                $bindings[$paramName] = (int)$tagId;
-            }
-            
-            $placeholdersStr = implode(',', $namedPlaceholders);
-
-            $sql .= " LEFT JOIN taggings tg_exclude ON s.id = tg_exclude.story_id 
-                  AND tg_exclude.tag_id IN ($placeholdersStr)
-                  WHERE tg_exclude.story_id IS NULL";
+            $inData = $this->db->buildInClause($excludeTagIds, 'exclude_tag');
+            $repo->addWhere(
+                "s.id NOT IN (SELECT DISTINCT story_id FROM taggings WHERE tag_id IN ({$inData['clause']}))",
+                $inData['bindings']
+            );
         }
 
-        $sql .= " GROUP BY s.id ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
-
-        $bindings[':limit'] = $limit;
-        $bindings[':offset'] = $offset;
-
-        // Используем prepare() для работы с LIMIT/OFFSET через bindValue
-        $stmt = $this->db->prepare($sql);
-        foreach ($bindings as $key => $value) {
-            $paramKey = is_string($key) && !str_starts_with($key, ':') ? ":{$key}" : $key;
-            if ($paramKey === ':limit' || $paramKey === ':offset') {
-                $stmt->bindValue($paramKey, $value, \PDO::PARAM_INT);
-            } else {
-                $stmt->bindValue($paramKey, $value);
-            }
-        }
-        $stmt->execute();
-        $stories = $stmt->fetchAll();
-
-        // Парсим теги
-        foreach ($stories as &$story) {
-            parseTagsCombined($story);
-        }
-
-        $category['stories'] = $stories;
+        $category['stories'] = $repo->get();
         return $category;
     }
 
@@ -110,7 +77,6 @@ class Category extends Model
      */
     public function getStoriesCountBySlug(string $slug, array $excludeTagIds = []): int
     {
-        // Получаем категорию
         $category = $this->db->fetchOne(
             "SELECT id FROM {$this->table} WHERE slug = :slug LIMIT 1",
             ['slug' => $slug]
@@ -120,32 +86,23 @@ class Category extends Model
             return 0;
         }
 
-        $sql = "SELECT COUNT(DISTINCT s.id) 
-                FROM stories s
-                JOIN taggings tg ON s.id = tg.story_id
-                JOIN tags t ON tg.tag_id = t.id
-                WHERE t.category_id = :category_id 
-                  AND s.deleted_at IS NULL
-                  AND t.deleted_at IS NULL";
-
-        $bindings = [':category_id' => $category['id']];
+        $repo = new StoryRepository($this->db);
+        
+        // Подключаем tags, чтобы можно было фильтровать по category_id.
+        // Для count() GROUP BY будет проигнорирован, но LEFT JOIN останется.
+        $repo->withTags() 
+             ->addWhere('t.category_id = :category_id', ['category_id' => $category['id']])
+             ->addWhere('t.deleted_at IS NULL');
 
         if (!empty($excludeTagIds)) {
-            $namedPlaceholders = [];
-            foreach ($excludeTagIds as $index => $tagId) {
-                $paramName = ":exclude_tag_{$index}";
-                $namedPlaceholders[] = $paramName;
-                $bindings[$paramName] = (int)$tagId;
-            }
-            
-            $placeholdersStr = implode(',', $namedPlaceholders);
-            $sql .= " AND s.id NOT IN (
-                SELECT DISTINCT story_id FROM taggings 
-                WHERE tag_id IN ($placeholdersStr)
-            )";
+            $inData = $this->db->buildInClause($excludeTagIds, 'exclude_tag');
+            $repo->addWhere(
+                "s.id NOT IN (SELECT DISTINCT story_id FROM taggings WHERE tag_id IN ({$inData['clause']}))",
+                $inData['bindings']
+            );
         }
 
-        return (int)$this->db->fetchColumn($sql, $bindings);
+        return $repo->count();
     }
 
     /**
@@ -168,10 +125,9 @@ class Category extends Model
      */
     public function getAllOrdered(): array
     {
-        $sql = "SELECT id, name, slug FROM {$this->table} 
-                ORDER BY sort_order ASC, name ASC";
-
-        return $this->db->fetchAll($sql);
+        return $this->db->fetchAll(
+            "SELECT id, name, slug FROM {$this->table} ORDER BY sort_order ASC, name ASC"
+        );
     }
 
     /**
@@ -191,50 +147,33 @@ class Category extends Model
     }
 
     /**
-     * Создать новую категорию
+     * Создать новую категорию.
+     * Используем стандартный метод create() из базовой модели Model.
+     * Он автоматически отфильтрует поля по $fillable и защитит от Mass Assignment.
      */
     public function createCategory(array $data): int
     {
-        $sql = "INSERT INTO {$this->table} (name, slug, description, sort_order) 
-                VALUES (:name, :slug, :description, :sort_order)";
-
-        $this->db->execute($sql, [
-            'name' => $data['name'],
-            'slug' => $data['slug'],
-            'description' => $data['description'] ?? null,
-            'sort_order' => $data['sort_order'] ?? 0,
-        ]);
-
-        return (int)$this->db->lastInsertId();
+        return $this->create($data);
     }
 
     /**
-     * Обновить категорию
+     * Обновить категорию.
+     * Используем стандартный метод update() из базовой модели Model.
      */
     public function updateCategory(int $id, array $data): bool
     {
-        $sql = "UPDATE {$this->table} 
-                SET name = :name, slug = :slug, description = :description, sort_order = :sort_order
-                WHERE id = :id";
-
-        return $this->db->execute($sql, [
-            'id' => $id,
-            'name' => $data['name'],
-            'slug' => $data['slug'],
-            'description' => $data['description'] ?? null,
-            'sort_order' => $data['sort_order'] ?? 0,
-        ]) > 0;
+        return $this->update($id, $data);
     }
 
     /**
-     * Удалить категорию
+     * Удалить категорию.
+     * Если в таблице categories есть колонка deleted_at, используйте $this->delete($id)
+     * Если нужно физическое удаление, используйте $this->forceDelete($id).
      */
     public function deleteCategory(int $id): bool
     {
-        return $this->db->execute(
-            "DELETE FROM {$this->table} WHERE id = :id",
-            ['id' => $id]
-        ) > 0;
+        // Замените на $this->delete($id), если поддерживаете мягкое удаление категорий
+        return $this->forceDelete($id);
     }
 
     /**
