@@ -6,6 +6,7 @@ return [
         'env' => env('APP_ENV', 'development'),
         'url' => env('APP_URL', 'http://localhost'),
         'lang' => env('APP_LANG', 'ru'),
+		'theme' => 'default',
 		
 		// Доверенные proxy (если используете свой proxy, добавьте его IP/CIDR)
 		// Если используете Cloudflare, оставьте пустым массивом — будут использоваться встроенные диапазоны

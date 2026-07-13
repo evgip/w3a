@@ -37,6 +37,9 @@ abstract class Controller
 	/** @var View Рендерер шаблонов */
 	protected View $view;
 
+	/** @var ViewFinder */
+	protected ViewFinder $viewFinder;
+
     /** @var array|null Кеш общих данных для view (вычисляется один раз за запрос) */
     private ?array $commonViewDataCache = null;
     
@@ -56,12 +59,14 @@ abstract class Controller
 		Request $request,
 		EventDispatcher $eventDispatcher,
 		Container $container,
-		View $view
+		View $view,
+		ViewFinder $viewFinder
 	) {
 		$this->request = $request;
 		$this->eventDispatcher = $eventDispatcher;
 		$this->container = $container;
 		$this->view = $view;
+		$this->viewFinder = $viewFinder;
 	}
 
     /**
@@ -146,67 +151,93 @@ abstract class Controller
         return $this->userContextCache;
     }
 
-	/**
-	 * Рендеринг шаблона с layout.
-	 * 
-	 * Автоматически добавляет в данные:
-	 * - csrf_token — токен для защиты форм
-	 * - currentUser — данные текущего пользователя
-	 * - unreadNotificationsCount — количество непрочитанных уведомлений
-	 * - pendingFlagsCount — количество ожидающих флагов (для модераторов)
-	 * - activeSuggestionsCount — количество активных предложений (для модераторов)
-	 * 
-	 * Путь к шаблону определяется автоматически по namespace контроллера:
-	 * App\Modules\Stories\Controllers\StoriesController → Modules/Stories/Views/
-	 * 
-	 * @param string $viewName Имя шаблона (без расширения .php)
-	 * @param array $data Данные для передачи в шаблон
-	 * 
-	 * @throws HttpException Если файл шаблона не найден
-	 */
-	protected function render(string $viewName, array $data = []): void
-	{
-		// Добавляем CSRF токен для всех форм
-		$data['csrf_token'] = $this->request->getCsrfToken();
-		
-		// Добавляем общие данные (пользователь, уведомления и т.д.)
-		$data = array_merge($data, $this->getCommonViewData());
+    /**
+     * Рендеринг HTTP-ответа с использованием системы шаблонов и поддержкой тем (Themes).
+     * 
+     * Реализует паттерн "Fallback Chain" (цепочка отката) для поиска файлов:
+     * 1. Ищет шаблон в папке активной темы: /themes/{theme}/Modules/{Module}/Views/{view}.php
+     * 2. Если не найден, откатывается к оригиналу модуля: /app/Modules/{Module}/Views/{view}.php
+     * 3. Если и там не найден, ищет в общем модуле: /app/Modules/Common/Views/{view}.php
+     * 
+     * Этот метод гарантирует, что контроллеры остаются "тонкими" и не содержат 
+     * логики работы с файловой системой, делегируя поиск классу ViewFinder.
+     *
+     * @param string $viewName Имя файла шаблона без расширения .php (например, 'index', 'show', 'create').
+     * @param array  $data     Ассоциативный массив переменных, которые будут извлечены (extract) в шаблоне.
+     * 
+     * @throws \RuntimeException Если ViewFinder не может найти ни view-файл, ни layout-файл.
+     */
+    protected function render(string $viewName, array $data = []): void
+    {
+        // =========================================================================
+        // ШАГ 1: Подготовка базовых и общих данных для всех шаблонов
+        // =========================================================================
+        
+        // 1.1. Внедряем CSRF-токен для защиты всех форм от CSRF-атак.
+         $data['csrf_token'] = $this->request->getCsrfToken();
+        
+        // 1.2. Объединяем переданные данные с общими данными приложения.
+        // getCommonViewData() возвращает кэшированный массив: currentUser, unreadNotificationsCount и т.д.
+        // Это гарантирует, что шапка сайта (header) всегда имеет актуальные данные без дублирования кода в каждом контроллере.
+        $data = array_merge($data, $this->getCommonViewData());
 
-		// Определяем модуль по namespace контроллера
-		$calledClass = get_called_class();
-		$parts = explode('\\', $calledClass);
-		$moduleName = $parts[2] ?? '';
+        // =========================================================================
+        // ШАГ 2: Автоматическое определение текущего модуля
+        // =========================================================================
+        
+        // 2.1. Получаем полное имя класса вызвавшего этот метод контроллера.
+        // Пример: "App\Modules\Stories\Controllers\StoriesController"
+        $calledClass = get_called_class();
+        
+        // 2.2. Разбиваем namespace по обратным слешам.
+        // $parts[0] = 'App', $parts[1] = 'Modules', $parts[2] = 'Stories', $parts[3] = 'Controllers'...
+        $parts = explode('\\', $calledClass);
+        
+        // 2.3. Извлекаем имя модуля (3-й элемент массива). 
+        // Если по какой-то причине структура namespace нарушена, используем 'Common' как безопасный fallback.
+        $moduleName = $parts[2] ?? 'Common';
 
-		// Загружаем языковые файлы модуля
-		if (!empty($moduleName)) {
-			\App\Core\Lang::loadModuleLang($moduleName);
-		}
+        // =========================================================================
+        // ШАГ 3: Локализация (i18n)
+        // =========================================================================
+        
+        // 3.1. Динамически загружаем языковые файлы для текущего модуля.
+        // Это позволяет использовать функции перевода (например, __('key')) внутри шаблонов этого модуля.
+        // Пропускаем загрузку для 'Common', так как его языковые файлы загружаются глобально при старте приложения.
+        if (!empty($moduleName) && $moduleName !== 'Common') {
+            \App\Core\Lang::loadModuleLang($moduleName);
+        }
 
-		// Формируем пути к файлам
-		$modulePath = dirname(__DIR__) . "/Modules/{$moduleName}";
-		$viewFile = "{$modulePath}/Views/{$viewName}.php";
-		$layoutFile = "{$modulePath}/Views/layout.php";
+        // =========================================================================
+        // ШАГ 4: Разрешение путей и рендеринг контента (Fallback Chain)
+        // =========================================================================
+        
+        // 4.1. ViewFinder автоматически находит правильный путь к файлу шаблона.
+        // Он проверяет сначала папку активной темы, а затем оригинальную папку модуля.
+        // Пример возвращаемого пути: "/var/www/themes/dark/Modules/Stories/Views/show.php"
+        $viewFile = $this->viewFinder->find($viewName, $moduleName);
+        
+        // 4.2. Рендерим внутренний контент страницы (без layout-обёртки).
+        // Класс View выполняет include файла в изолированной области видимости (через замыкание), 
+        // предотвращая "загрязнение" глобальных переменных переменными из шаблона.
+        $content = $this->view->render($viewFile, $data);
 
-		// Рендерим view-файл через View
-		$content = $this->view->render($viewFile, $data);
-
-		// Передаём содержимое view в layout
-		$data['content'] = $content;
-
-		// Рендерим layout модуля
-		if (file_exists($layoutFile)) {
-			echo $this->view->render($layoutFile, $data);
-		} else {
-			// Fallback: используем layout из модуля Common
-			$fallbackLayout = dirname(__DIR__) . '/Modules/Common/Views/layout.php';
-			if (file_exists($fallbackLayout)) {
-				echo $this->view->render($fallbackLayout, $data);
-			} else {
-				// Если layout вообще нет — выводим только content
-				echo $content;
-			}
-		}
-	}
+        // =========================================================================
+        // ШАГ 5: Обёртывание контента в Layout и финальный вывод
+        // =========================================================================
+        
+        // 5.1. Находим файл layout-обёртки (каркас страницы: DOCTYPE, <head>, <body>, футер). 
+        // ViewFinder также проверяет наличие кастомного layout.php в активной теме.
+        // Если его нет, используется стандартный /app/Modules/Common/Views/layout.php
+        $layoutFile = $this->viewFinder->findLayout();
+        
+        // 5.2. Передаем отрендеренный внутренний контент в переменную $content для layout-шаблона.
+        $data['content'] = $content;
+        
+        // 5.3. Финальный рендеринг layout-шаблона и немедленный вывод (echo) в HTTP-ответ.
+        // На этом этапе выполняется сборка полной HTML-страницы и отправка её пользователю.
+        echo $this->view->render($layoutFile, $data);
+    }
 
     /**
      * Получение общих данных для всех шаблонов.

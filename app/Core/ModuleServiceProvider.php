@@ -114,6 +114,10 @@ class ModuleServiceProvider
 			return new View();
 		});
 
+		$this->container->singleton(ViewFinder::class, function ($container) {
+			return new ViewFinder($container->get(Config::class));
+		});
+
         $container->singleton(\App\Modules\Stories\Services\UrlFetcherService::class, function ($container) {
             return new \App\Modules\Stories\Services\UrlFetcherService();
         });

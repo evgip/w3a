@@ -79,32 +79,72 @@ if (!function_exists('__')) {
     }
 }
 
+
 /**
- * Include a partial template from a module
- * Подключение partial-шаблона из модуля
+ * Подключение partial-шаблона с поддержкой тем (Fallback Chain).
  *
- * @param string $path   - Path in format 'Votes::_voters' or 'Users::_avatar'
- *                       - Путь в формате 'Votes::_voters' или 'Users::_avatar'
- * @param array  $vars   - Variables to pass to the template
- *                       - Переменные для передачи в шаблон
+ * @param string $path Путь в формате 'Votes::_voters' или 'Users::_avatar'
+ * @param array  $vars Переменные для передачи в шаблон
+ * @throws \RuntimeException Если шаблон не найден ни в теме, ни в модуле
+ * @throws \InvalidArgumentException Если формат пути неверный
  */
 if (!function_exists('partial')) {
-    function partial(string $path, array $vars = []): void
-    {
-        // Parse path: "Votes::_voters" → module Votes, file _voters.php
-        // Разбор пути: "Votes::_voters" → модуль Votes, файл _voters.php
-        [$module, $file] = explode('::', $path);
-        $filePath = dirname(__DIR__) . "/app/Modules/{$module}/Views/{$file}.php";
+	function partial(string $path, array $vars = []): void
+	{
+		// 1. Разбор пути: "Votes::_voters" → $module = 'Votes', $file = '_voters'
+		$parts = explode('::', $path);
+		if (count($parts) !== 2) {
+			throw new \InvalidArgumentException("Неверный формат пути partial. Используйте 'Модуль::файл', например: 'Votes::_voters'");
+		}
+		[$module, $file] = $parts;
 
-        if (!file_exists($filePath)) {
-            throw new \RuntimeException("Partial not found: {$filePath}");
-        }
+		// 2. Получаем имя активной темы через глобальный контейнер
+		// (Мы используем $GLOBALS, так как находимся в глобальной функции)
+		$theme = 'default';
+		if (isset($GLOBALS['app_container']) && $GLOBALS['app_container']->has(\App\Core\Config::class)) {
+			$theme = $GLOBALS['app_container']->get(\App\Core\Config::class)->get('config.app.theme', 'default');
+		}
 
-        // Extract variables into local scope
-        // Извлечение переменных в локальную область видимости
-        extract($vars);
-        include $filePath;
-    }
+		// 3. Цепочка поиска (Fallback Chain)
+		// ВНИМАНИЕ: Проверьте, что путь dirname(__DIR__) . '/app/Modules' соответствует вашей реальной структуре!
+		$appModulesPath = dirname(__DIR__) . '/app/Modules'; 
+		$themesPath = dirname(__DIR__, 2) . '/themes';
+
+		$candidates = [
+			// Приоритет 1: Переопределение в активной теме для конкретного модуля
+			"{$themesPath}/{$theme}/Modules/{$module}/Views/{$file}.php",
+			
+			// Приоритет 2: Глобальное переопределение в теме (например, для общих элементов)
+			"{$themesPath}/{$theme}/Views/{$file}.php",
+			
+			// Приоритет 3: Оригинальный файл модуля (ваш исходный путь)
+			"{$appModulesPath}/{$module}/Views/{$file}.php",
+		];
+
+		$filePath = null;
+		foreach ($candidates as $candidate) {
+			if (file_exists($candidate)) {
+				$filePath = $candidate;
+				break; // Нашли первый существующий файл, прекращаем поиск
+			}
+		}
+
+		if ($filePath === null) {
+			throw new \RuntimeException(
+				"Partial не найден: '{$path}'. " .
+				"Проверьте пути в теме '{$theme}' или в модуле '{$module}'."
+			);
+		}
+
+		// 4. Безопасное извлечение переменных и включение файла
+		// Используем замыкание (IIFE), чтобы переменные из $vars не "загрязняли" 
+		// глобальную область видимости или область видимости вызывающего шаблона.
+		// EXTR_SKIP гарантирует, что мы не перезапишем критичные системные переменные.
+		(function () use ($filePath, $vars) {
+			extract($vars, EXTR_SKIP);
+			include $filePath;
+		})();
+	}
 }
 
 /**
