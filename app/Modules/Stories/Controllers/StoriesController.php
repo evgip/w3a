@@ -10,6 +10,8 @@ use App\Modules\Stories\Services\StoryService;
 use App\Modules\Stories\Services\ReadRibbonService;
 use App\Modules\Stories\Services\UrlFetcherService;
 use App\Modules\Stories\Services\StoryPageService;
+use App\Modules\Stories\Services\StoryFeedBuilder;
+use App\Modules\Stories\Repositories\StoryRepository;
 use App\Modules\Stories\Models\Story;
 use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Tags\Models\Tag;
@@ -30,7 +32,7 @@ class StoriesController extends Controller
         $pageData = $this->buildIndexPageData($tagslug, $domain);
 
         // Делегируем сборку ленты сервису
-        $feed = $this->service(\App\Modules\Stories\Services\StoryFeedBuilder::class)->build(
+        $feed = $this->service(StoryFeedBuilder::class)->build(
             tagslug: $tagslug,
             domain: $domain,
             author: '',
@@ -223,18 +225,21 @@ class StoriesController extends Controller
     // =========================================================================
     // ПОДПИСКА И ПРОЧТЕНИЕ
     // =========================================================================
-
     public function toggleFollow(string $id): void
     {
         $storyId = (int)$id;
-
         $userContext = $this->getUserContext();
 
-        $storyModel = $this->container->get(Story::class);
-        $storyModel->toggleFollow($storyId, $userContext['id']);
+        // Используем репозиторий для операций с данными
+        $storyRepo = $this->container->get(StoryRepository::class);
+        
+        // Выполняем переключение (внутри репозитория уже есть защита по user_id)
+        $storyRepo->toggleFollow($storyId, $userContext['id']);
 
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-            $isFollowing = $storyModel->isFollowing($storyId, $userContext['id']);
+            // Получаем актуальный статус через тот же репозиторий
+            $isFollowing = $storyRepo->isFollowing($storyId, $userContext['id']);
+            
             $this->json([
                 'success' => true,
                 'is_following' => $isFollowing,

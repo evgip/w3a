@@ -360,4 +360,36 @@ class StoryRepository
         $sql = $this->buildSql(true);
         return (int)$this->db->fetchColumn($sql, $this->bindings);
     }
+	
+    /**
+     * Переключает статус подписки автора на свою историю.
+     * Безопасно: обновляет запись только если user_id совпадает с автором истории.
+     */
+    public function toggleFollow(int $storyId, int $userId): bool
+    {
+        return $this->db->execute(
+            "UPDATE `stories` 
+             SET `user_is_following` = NOT `user_is_following` 
+             WHERE `id` = :id AND `user_id` = :user_id",
+            [
+                'id' => $storyId,
+                'user_id' => $userId
+            ]
+        ) > 0;
+    }
+
+    /**
+     * Проверяет, подписан ли автор на свою историю.
+     */
+    public function isFollowing(int $storyId, int $userId): bool
+    {
+        return (bool)$this->db->fetchColumn(
+            "SELECT `user_is_following` FROM `stories` 
+             WHERE `id` = :id AND `user_id` = :user_id",
+            [
+                'id' => $storyId,
+                'user_id' => $userId
+            ]
+        );
+    }
 }

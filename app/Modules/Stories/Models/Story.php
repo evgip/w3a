@@ -274,63 +274,6 @@ class Story extends Model
     }
 
     /**
-     * Подписаться на историю (получать уведомления о комментариях)
-     */
-    public function follow(int $storyId, int $userId): bool
-    {
-        return $this->db->execute(
-            "UPDATE stories SET user_is_following = 1 WHERE id = :id AND user_id = :user_id",
-            [
-                'id' => $storyId,
-                'user_id' => $userId
-            ]
-        ) > 0;
-    }
-
-    /**
-     * Отписаться от истории
-     */
-    public function unfollow(int $storyId, int $userId): bool
-    {
-        return $this->db->execute(
-            "UPDATE stories SET user_is_following = 0 WHERE id = :id AND user_id = :user_id",
-            [
-                'id' => $storyId,
-                'user_id' => $userId
-            ]
-        ) > 0;
-    }
-
-    /**
-     * Переключить подписку
-     */
-    public function toggleFollow(int $storyId, int $userId): bool
-    {
-        return $this->db->execute(
-            "UPDATE stories SET user_is_following = NOT user_is_following 
-             WHERE id = :id AND user_id = :user_id",
-            [
-                'id' => $storyId,
-                'user_id' => $userId
-            ]
-        ) > 0;
-    }
-
-    /**
-     * Проверить, подписан ли пользователь на историю
-     */
-    public function isFollowing(int $storyId, int $userId): bool
-    {
-        return (bool)$this->db->fetchColumn(
-            "SELECT user_is_following FROM stories WHERE id = :id AND user_id = :user_id",
-            [
-                'id' => $storyId,
-                'user_id' => $userId
-            ]
-        );
-    }
-
-    /**
      * Атомарно изменяет счётчик комментариев.
      */
     public function incrementCommentsCount(int $storyId, int $delta): void
