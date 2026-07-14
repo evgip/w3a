@@ -3,61 +3,67 @@
 namespace App\Modules\Users\Models;
 
 use App\Core\Model;
-use App\Core\Database;
-use App\Core\Logger;
 
 class RateLimit extends Model
 {
     protected string $table = 'rate_limits';
 
+    // request_count и window_start будут заполняться автоматически через SQL
     protected array $fillable = [
         'identifier',
         'endpoint_action',
-        'request_count',
-        'window_start'
     ];
 
     /**
-     * Delete stale rows older than the specified sliding time window
+     * Атомарно увеличивает счетчик запросов для данного окна.
+     * Если записи нет — создает её со счетчиком 1.
+     * Если запись есть — увеличивает счетчик на 1.
+     * 
+     * @return int Новое значение счетчика после обновления
      */
-    public function clearStaleLogs(int $windowSeconds): void
+    public function incrementRequestCount(string $identifier, string $action, int $windowSeconds): int
     {
-        // ✅ Используем prepare() для bindValue с типом PDO::PARAM_INT
-        $stmt = $this->db->prepare(
-            "DELETE FROM `rate_limits` WHERE `created_at` < NOW() - INTERVAL :win SECOND"
-        );
-        $stmt->bindValue(':win', $windowSeconds, \PDO::PARAM_INT);
-        $stmt->execute();
-    }
+        // Вычисляем начало временного окна прямо в PHP (округление вниз)
+        // Например, для $windowSeconds = 60, все запросы с 10:01:00 по 10:01:59 получат одно и то же время
+        $windowStart = date('Y-m-d H:i:s', floor(time() / $windowSeconds) * $windowSeconds);
 
-    /**
-     * Compute total requests logged by an identifier footprint within a sliding window frame
-     */
-    public function getRequestCount(string $identifier, string $action, int $windowSeconds): int
-    {
-        $sql = "SELECT COUNT(*) FROM `rate_limits` 
-                WHERE `identifier` = :identifier 
-                  AND `endpoint_action` = :action 
-                  AND `created_at` >= NOW() - INTERVAL :win SECOND";
-                  
-        // ✅ Используем prepare() для bindValue с разными типами
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':identifier', $identifier, \PDO::PARAM_STR);
-        $stmt->bindValue(':action', $action, \PDO::PARAM_STR);
-        $stmt->bindValue(':win', $windowSeconds, \PDO::PARAM_INT);
-        $stmt->execute();
-        
-        return (int)$stmt->fetchColumn();
-    }
+        $sql = "INSERT INTO `{$this->table}` 
+                    (`identifier`, `endpoint_action`, `window_start`, `request_count`)
+                VALUES 
+                    (:identifier, :action, :window_start, 1)
+                ON DUPLICATE KEY UPDATE 
+                    `request_count` = `request_count` + 1";
 
-    /**
-     * Log a fresh request atom fingerprint tracking stamp
-     */
-    public function logRequest(string $identifier, string $action): void
-    {
-        $this->create([
-            'identifier' => $identifier,
-            'endpoint_action' => $action
+        // Теперь все плейсхолдеры уникальны, и ошибки не будет
+        $this->db->execute($sql, [
+            'identifier'   => $identifier,
+            'action'       => $action,
+            'window_start' => $windowStart,
         ]);
+
+        // Возвращаем актуальное значение счетчика одним быстрым запросом
+        return (int)$this->db->fetchColumn(
+            "SELECT `request_count` FROM `{$this->table}` 
+             WHERE `identifier` = :identifier 
+               AND `endpoint_action` = :action 
+               AND `window_start` = :window_start",
+            [
+                'identifier'   => $identifier,
+                'action'       => $action,
+                'window_start' => $windowStart,
+            ]
+        );
+    }
+
+    /**
+     * Фоновая очистка устаревших окон (вызывать по крону или редко, а не случайно!)
+     */
+    public function clearStaleWindows(int $retentionSeconds): void
+    {
+        $this->db->execute(
+            "DELETE FROM `{$this->table}` 
+             WHERE `window_start` < NOW() - INTERVAL :retention SECOND",
+            ['retention' => $retentionSeconds]
+        );
     }
 }

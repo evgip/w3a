@@ -57,7 +57,6 @@ class ReadRibbon extends Model
                 'last_comment_id' => $lastCommentId,
             ]);
         } catch (\Exception $e) {
-            // ✅ Используем $this->logger вместо error_log()
             if ($this->logger) {
                 $this->logger->error("ReadRibbon::markAsRead failed: " . $e->getMessage());
             }

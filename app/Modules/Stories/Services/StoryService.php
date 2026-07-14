@@ -63,6 +63,11 @@ class StoryService
 
         // 2. Создание истории
         $domain = !empty($data['url']) ? parse_url($data['url'], PHP_URL_HOST) : null;
+		
+		if (!$this->checkBannedDomain($domain, $userId, $data['url'] ?? '')) {
+            return 0; // Прерываем создание, ошибка уже записана в flash и audit
+        }
+
         $storyData = [
             'user_id' => $userId,
             'title' => $data['title'],
@@ -111,6 +116,11 @@ class StoryService
 
         // 2. Обновление данных
         $domain = !empty($data['url']) ? parse_url($data['url'], PHP_URL_HOST) : null;
+		
+		if (!$this->checkBannedDomain($domain, $userId, $data['url'] ?? '')) {
+            return 0; // Прерываем создание, ошибка уже записана в flash и audit
+        }
+		
         $updateData = [
             'title' => $data['title'] ?? $story['title'],
             'url' => $data['url'] ?? $story['url'],

@@ -314,36 +314,13 @@ CREATE TABLE `password_resets` (
 --
 
 CREATE TABLE `rate_limits` (
-  `id` int UNSIGNED NOT NULL,
   `identifier` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `endpoint_action` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+  `window_start` timestamp NOT NULL COMMENT 'Начало временного окна (например, округленное до минуты)',
+  `request_count` int UNSIGNED NOT NULL DEFAULT 1,
+  PRIMARY KEY (`identifier`, `endpoint_action`, `window_start`),
+  KEY `idx_cleanup` (`window_start`) -- Индекс только для редкой фоновой очистки
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Дамп данных таблицы `rate_limits`
---
-
-INSERT INTO `rate_limits` (`id`, `identifier`, `endpoint_action`, `created_at`) VALUES
-(747, '127.0.0.1', 'global.get', '2026-07-07 10:50:13'),
-(748, '127.0.0.1', 'global.get', '2026-07-07 10:50:24'),
-(749, '127.0.0.1', 'global.get', '2026-07-07 10:50:34'),
-(750, '127.0.0.1', 'global.get', '2026-07-07 10:50:45'),
-(751, '127.0.0.1', 'global.get', '2026-07-07 10:50:55'),
-(752, '127.0.0.1', 'global.get', '2026-07-07 10:51:00'),
-(753, '127.0.0.1', 'global.get', '2026-07-07 10:51:06'),
-(754, '127.0.0.1', 'global.get', '2026-07-07 10:51:10'),
-(755, '127.0.0.1', 'global.get', '2026-07-07 10:51:16'),
-(756, '127.0.0.1', 'global.get', '2026-07-07 10:51:27'),
-(757, '127.0.0.1', 'global.get', '2026-07-08 08:07:42'),
-(758, '127.0.0.1', 'global.get', '2026-07-08 08:08:49'),
-(759, '127.0.0.1', 'global.get', '2026-07-08 08:09:56'),
-(760, '127.0.0.1', 'global.get', '2026-07-08 08:11:03'),
-(761, '127.0.0.1', 'global.get', '2026-07-08 08:12:10'),
-(762, 'user:1', 'global.get', '2026-07-08 13:30:49'),
-(763, 'user:1', 'global.get', '2026-07-08 13:30:59');
-
--- --------------------------------------------------------
 
 --
 -- Структура таблицы `read_ribbons`
@@ -712,8 +689,7 @@ ALTER TABLE `comments`
   ADD KEY `fk_comments_user_id` (`user_id`),
   ADD KEY `idx_comments_deleted_at` (`deleted_at`),
   ADD KEY `idx_comments_parent` (`parent_id`,`created_at`),
-  ADD KEY `idx_comments_story_score` (`story_id`,`score`,`created_at`),
-  ADD KEY `idx_comments_story_deleted_parent` (`story_id`,`deleted_at`,`parent_id`,`confidence_score`,`created_at`);
+  ADD KEY `idx_comments_story_score` (`story_id`,`score`,`created_at`);
 ALTER TABLE `comments` ADD FULLTEXT KEY `idx_comments_search` (`comment`);
 
 --
@@ -834,13 +810,6 @@ ALTER TABLE `password_resets`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `token` (`token`),
   ADD KEY `idx_reset_email_token` (`email`,`token`);
-
---
--- Индексы таблицы `rate_limits`
---
-ALTER TABLE `rate_limits`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_ip_action_time` (`identifier`,`endpoint_action`,`created_at`);
 
 --
 -- Индексы таблицы `read_ribbons`
@@ -1078,12 +1047,6 @@ ALTER TABLE `muted_users`
 --
 ALTER TABLE `password_resets`
   MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT для таблицы `rate_limits`
---
-ALTER TABLE `rate_limits`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=764;
 
 --
 -- AUTO_INCREMENT для таблицы `read_ribbons`
@@ -1340,6 +1303,13 @@ DELIMITER $$
 --
 CREATE DEFINER=`root`@`%` EVENT `cleanup_audit_logs` ON SCHEDULE EVERY 1 DAY STARTS '2026-07-08 14:00:40' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM audit_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)$$
 
-CREATE DEFINER=`root`@`%` EVENT `cleanup_rate_limits` ON SCHEDULE EVERY 1 HOUR STARTS '2026-07-08 14:00:40' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM rate_limits WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)$$
+CREATE EVENT `cleanup_rate_limits` 
+ON SCHEDULE EVERY 1 HOUR 
+ON COMPLETION NOT PRESERVE 
+ENABLE 
+DO 
+  -- Удаляем окна старше 24 часов (с запасом, чтобы не задеть текущие)
+  DELETE FROM `rate_limits` 
+  WHERE `window_start` < NOW() - INTERVAL 24 HOUR$$
 
 DELIMITER ;

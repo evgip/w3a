@@ -105,17 +105,6 @@ class StoryFilterService
             $commentsTree[$parentId][] = $comment;
         }
 
-        foreach ($commentsTree as $parentId => &$children) {
-            usort($children, function ($a, $b) {
-                $scoreDiff = $b['confidence_score'] <=> $a['confidence_score'];
-                if ($scoreDiff !== 0) {
-                    return $scoreDiff;
-                }
-                return strtotime($b['created_at']) <=> strtotime($a['created_at']);
-            });
-        }
-        unset($children);
-
         return $commentsTree;
     }
 
