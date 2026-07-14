@@ -59,7 +59,7 @@ class StoryPageService
         $readRibbonModel = $this->container->get(ReadRibbon::class);
         $ribbonData = $readRibbonModel->getForStories($userContext['id'], [$storyId]);
         $lastReadCommentId = $ribbonData[$storyId] ?? 0;
-        
+
         // Обновляем счетчик новых комментариев
         $newCount = $this->readRibbonService->handleStoryView($storyId);
 

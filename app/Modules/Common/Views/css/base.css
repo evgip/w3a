@@ -850,15 +850,12 @@ ol.notification-list {
 .new-comments:hover { opacity: 0.8; }
 
 /* ---------- Пагинация ---------- */
-.page_link_buttons {
-    font-weight: bold;
+.pagination {
     margin-top: 1.5em;
 }
 
-.page_link_buttons a,
-.page_link_buttons span {
-    border: 1px solid var(--color-box-border);
-    background-color: var(--color-button-bg);
+.pagination a,
+.pagination span {
     color: var(--opacity-fg-75);
     padding: 0.25em 0.5em;
     font-weight: bold;
@@ -867,26 +864,15 @@ ol.notification-list {
     display: inline-block;
 }
 
-.page_link_buttons a:hover {
+.pagination a:hover {
     background-color: var(--color-button-bg-shaded);
 }
 
-.page_link_buttons a.cur,
-.page_link_buttons span.current {
-    background-color: transparent;
+.pagination span.current {
+    background-color: var(--color-fg-accent);
     border-color: transparent;
-    color: var(--color-fg);
+    color: var(--color-bg);
 }
-
-nav.morelink { margin-top: 1.5em; }
-
-nav.morelink a {
-    color: var(--opacity-fg-75);
-    font-weight: bold;
-    text-decoration: none;
-}
-
-nav.morelink a:hover { color: var(--color-fg); }
 
 /* ---------- Таблицы ---------- */
 table {
@@ -1422,7 +1408,7 @@ a.dropdown-item-admin:hover {
 .delete:hover { opacity: 0.8; }
 .green { color: var(--color-fg-affirmative); }
 .bold { font-weight: bold; }
-.mb-1 { margin-bottom: 1em; }
+.mb1 { margin-bottom: 1em; }
 .inline-form { display: inline; }
 .hidden { display: none; }
 .w-60 { width: 60%; }

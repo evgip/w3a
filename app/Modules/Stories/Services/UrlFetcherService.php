@@ -27,20 +27,19 @@ class UrlFetcherService
         try {
             // Загружаем содержимое URL
             $content = $this->fetchUrl($url);
-            
+
             if ($content === false) {
                 return $result;
             }
 
             // Определяем тип контента
             $contentType = $this->getContentType($url);
-            
+
             if (stripos($contentType, 'text/html') !== false) {
                 $result = $this->parseHtml($content, $result);
             } elseif (stripos($contentType, 'application/pdf') !== false) {
                 $result = $this->parsePdf($content, $result);
             }
-
         } catch (\Exception $e) {
             // Логируем ошибку, но не прерываем выполнение
             error_log("UrlFetcherService error: " . $e->getMessage());
@@ -68,7 +67,7 @@ class UrlFetcherService
         ]);
 
         $content = @file_get_contents($url, false, $context);
-        
+
         if ($content === false) {
             return false;
         }
@@ -82,7 +81,7 @@ class UrlFetcherService
     private function getContentType(string $url): string
     {
         $headers = @get_headers($url, true);
-        
+
         if (isset($headers['Content-Type'])) {
             if (is_array($headers['Content-Type'])) {
                 return end($headers['Content-Type']);
@@ -92,11 +91,11 @@ class UrlFetcherService
 
         // Определяем по расширению
         $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
-        
+
         if ($extension === 'pdf') {
             return 'application/pdf';
         }
-        
+
         return 'text/html';
     }
 
@@ -107,10 +106,10 @@ class UrlFetcherService
     {
         // Подавляем ошибки парсинга
         libxml_use_internal_errors(true);
-        
+
         $doc = new \DOMDocument();
         $doc->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_NOERROR);
-        
+
         libxml_clear_errors();
 
         $xpath = new \DOMXPath($doc);
@@ -177,7 +176,7 @@ class UrlFetcherService
     {
         // Простое извлечение заголовка из PDF метаданных
         // Для полноценной работы нужна библиотека типа smalot/pdfparser
-        
+
         // Ищем /Title в PDF
         if (preg_match('/\/Title\s*\(([^)]+)\)/i', $content, $matches)) {
             $result['title'] = trim($matches[1]);

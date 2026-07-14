@@ -20,41 +20,41 @@ use App\Core\Database;
 class StoryRepository
 {
     private Database $db;
-    
+
     /** @var array Список выбираемых полей (SELECT) */
     private array $selects = ['s.*'];
-    
+
     /** @var array Список условий присоединения таблиц (JOIN) */
     private array $joins = [];
-    
+
     /** 
      * @var array Реестр уже добавленных таблиц. 
      * Используется как HashSet (O(1) поиск) для предотвращения дублирования JOIN-ов 
      * при цепочечных вызовах (например, withAuthor()->withAvatar()).
      */
-    private array $joinedTables = []; 
-    
+    private array $joinedTables = [];
+
     /** @var array Условия фильтрации (WHERE) */
     private array $where = [];
-    
+
     /** @var array Параметры для подготовленных выражений (PDO bindings) */
     private array $bindings = [];
-    
+
     /** @var string Условие группировки (GROUP BY) */
     private string $groupBy = '';
-    
+
     /** @var string Условие сортировки (ORDER BY) */
     private string $orderBy = '';
-    
+
     /** @var int|null Лимит записей (LIMIT) */
     private ?int $limit = null;
-    
+
     /** @var int|null Смещение записей (OFFSET) */
     private ?int $offset = null;
-    
+
     /** @var string Основная таблица или подзапрос в FROM */
     private string $from = '`stories` s';
-    
+
     /** 
      * @var bool Флаг, указывающий, что в запросе использовался GROUP_CONCAT для тегов,
      * и результат требует пост-обработки (гидратации) в PHP.
@@ -98,13 +98,13 @@ class StoryRepository
     {
         if (!isset($this->joinedTables['user_profiles'])) {
             $this->selects[] = 'up.avatar as author_avatar';
-            
+
             // Гарантируем, что таблица users уже присоединена
             if (!isset($this->joinedTables['users'])) {
                 $this->joins[] = 'JOIN `users` u ON s.user_id = u.id';
                 $this->joinedTables['users'] = true;
             }
-            
+
             $this->joins[] = 'LEFT JOIN `user_profiles` up ON u.id = up.user_id';
             $this->joinedTables['user_profiles'] = true;
         }
@@ -124,10 +124,10 @@ class StoryRepository
             $this->selects[] = "GROUP_CONCAT(CONCAT(t.slug, '||', t.name) ORDER BY t.slug ASC) as tags_combined";
             $this->joins[] = 'LEFT JOIN `taggings` tg ON s.id = tg.story_id';
             $this->joins[] = 'LEFT JOIN `tags` t ON tg.tag_id = t.id';
-            
+
             $this->joinedTables['taggings'] = true;
             $this->joinedTables['tags'] = true;
-            
+
             // GROUP BY обязателен при использовании агрегатных функций (GROUP_CONCAT)
             $this->groupBy = 's.id';
             $this->needsTagParsing = true;
@@ -233,31 +233,31 @@ class StoryRepository
         // Для COUNT используем COUNT(DISTINCT s.id), чтобы LEFT JOIN с тегами 
         // не приводил к завышенному подсчету из-за умножения строк.
         $selects = $isCount ? ['COUNT(DISTINCT s.id) as count'] : $this->selects;
-        
+
         $sql = "SELECT " . implode(', ', $selects) . " FROM " . $this->from;
-        
+
         if (!empty($this->joins)) {
             $sql .= " " . implode(" ", $this->joins);
         }
-        
+
         if (!empty($this->where)) {
             $sql .= " WHERE " . implode(" AND ", $this->where);
         }
-        
+
         // GROUP BY нужен только для выборки данных с агрегатными функциями. 
         // Для COUNT он не нужен и даже вреден (замедляет запрос).
         if (!$isCount && !empty($this->groupBy)) {
             $sql .= " GROUP BY " . $this->groupBy;
         }
-        
+
         if (!$isCount && !empty($this->orderBy)) {
             $sql .= " ORDER BY " . $this->orderBy;
         }
-        
+
         if (!$isCount && $this->limit !== null) {
             $sql .= " LIMIT :limit OFFSET :offset";
         }
-        
+
         return $sql;
     }
 
@@ -297,9 +297,9 @@ class StoryRepository
                 }
             }
         }
-        
+
         $story['tags_with_names'] = $tagsWithNames;
-        
+
         // Очищаем сырые строковые поля, чтобы не засорять итоговый массив
         unset($story['tags_combined'], $story['tag_list']);
     }
@@ -314,12 +314,12 @@ class StoryRepository
     {
         $sql = $this->buildSql();
         $bindings = $this->bindings;
-        
+
         if ($this->limit !== null) {
             $bindings[':limit'] = $this->limit;
             $bindings[':offset'] = $this->offset;
         }
-        
+
         return $this->hydrateTags($this->db->fetchAll($sql, $bindings));
     }
 
@@ -334,18 +334,18 @@ class StoryRepository
         // Для first() всегда принудительно ставим LIMIT 1
         $this->limit = 1;
         $this->offset = 0;
-        
+
         $sql = $this->buildSql();
         $bindings = $this->bindings;
         $bindings[':limit'] = 1;
         $bindings[':offset'] = 0;
-        
+
         $result = $this->db->fetchOne($sql, $bindings);
-        
+
         if ($result && $this->needsTagParsing) {
             $this->parseTagsCombined($result);
         }
-        
+
         return $result ?: null;
     }
 

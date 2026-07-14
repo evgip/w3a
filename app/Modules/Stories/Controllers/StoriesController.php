@@ -6,94 +6,69 @@ namespace App\Modules\Stories\Controllers;
 
 use App\Core\Controller;
 use App\Core\Session;
-use App\Core\Exceptions\NotFoundException;
 use App\Modules\Stories\Services\StoryService;
-use App\Modules\Stories\Services\StoryFilterService;
 use App\Modules\Stories\Services\ReadRibbonService;
 use App\Modules\Stories\Services\UrlFetcherService;
 use App\Modules\Stories\Services\StoryPageService;
 use App\Modules\Stories\Models\Story;
 use App\Modules\Tags\Services\TagFilterService;
 use App\Modules\Tags\Models\Tag;
-use App\Modules\Votes\Models\Vote;
 use App\Modules\Users\Models\User;
 use App\Modules\Content\Core\Markdown;
 use App\Modules\Wiki\Services\WikiService;
-use App\Modules\Suggestions\Services\SuggestionService;
 
 class StoriesController extends Controller
 {
     // =========================================================================
     // ЛЕНТА ИСТОРИЙ
     // =========================================================================
-
     public function index(string $tagslug = '', string $domain = ''): void
     {
-        $currentPage = max(1, (int)$this->request->getParams('page', 1));
-        $perPage = config('constants.pagination.stories_per_page', 15, 'int');
-        $offset = ($currentPage - 1) * $perPage;
-
-        $sort = $this->request->getParams('sort', 'hot');
-        if (!in_array($sort, ['hot', 'new', 'top'], true)) {
-            $sort = 'hot';
-        }
-
-        $filterService = $this->service(StoryFilterService::class);
-        $stories = $filterService->getFilteredStories($perPage, $offset, $tagslug, $domain, $sort);
-        $totalStories = $filterService->getTotalCount($tagslug, $domain);
-        $totalPages = (int)ceil($totalStories / $perPage);
-
-        $bannedDomainsCache = $filterService->getBannedDomains();
-        $storyIds = array_column($stories, 'id');
-        $newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
-
         $userContext = $this->getUserContext();
 
-        $currentVotes = [];
-        if ($userContext['isLoggedIn']) {
-            $voteModel = $this->container->get(Vote::class);
-            $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
-        }
-
+        // Получаем специфичные для страницы данные (wiki, tagInfo) и устанавливаем OG-теги
         $pageData = $this->buildIndexPageData($tagslug, $domain);
 
-        $rssFeed = [
-            'title' => 'Новые истории',
-            'url' => '/rss',
-        ];
+        // Делегируем сборку ленты сервису
+        $feed = $this->service(\App\Modules\Stories\Services\StoryFeedBuilder::class)->build(
+            tagslug: $tagslug,
+            domain: $domain,
+            author: '',
+            userContext: $userContext,
+            canUserDownvote: $this->canUserDownvote($userContext['id']),
+            pageData: $pageData
+        );
 
-        if ($tagslug) {
-            $rssFeed = [
-                'title' => 'Тег #' . e($pageData['tagInfo']['name'] ?? $tagslug),
-                'url' => '/t/' . e($tagslug) . '/rss',
-            ];
-        }
-
-        $this->render('index', array_merge([
-            'stories' => $stories,
-            'currentPage' => $currentPage,
-            'totalPages' => $totalPages,
-            'newCommentsMap' => $newCommentsMap,
-            'bannedDomainsCache' => $bannedDomainsCache,
-            'sort' => $sort,
-            'domain' => $domain,
-            'currentUserId' => $userContext['id'],
-            'isAdmin' => $userContext['isAdmin'],
-            'canUserDownvote' => $this->canUserDownvote($userContext['id']),
-            'currentVotes' => $currentVotes,
-            'rssFeed' => $rssFeed,
-        ], $pageData));
+        $this->render('index', [
+            'stories' => $feed->stories,
+            'currentPage' => $feed->currentPage,
+            'totalPages' => $feed->totalPages,
+            'newCommentsMap' => $feed->newCommentsMap,
+            'bannedDomainsCache' => $feed->bannedDomainsCache,
+            'sort' => $feed->sort,
+            'domain' => $feed->domain,
+            'currentUserId' => $feed->currentUserId,
+            'isAdmin' => $feed->isAdmin,
+            'canUserDownvote' => $feed->canUserDownvote,
+            'currentVotes' => $feed->currentVotes,
+            'rssFeed' => $feed->rssFeed,
+            'title' => $feed->pageTitle,
+            'tagInfo' => $feed->extraData['tagInfo'] ?? '',
+            'wikiPages' => $feed->extraData['wikiPages'] ?? false,
+            'primaryWikiPage' => $feed->extraData['primaryWikiPage'] ?? false,
+            'wikiPagesCount' => $feed->extraData['wikiPagesCount'] ?? false,
+        ]);
     }
 
     // =========================================================================
     // ПРОСМОТР ОДНОЙ ИСТОРИИ
     // =========================================================================
-	public function show(string $id): void
+    public function show(string $id): void
     {
         $storyId = (int)$id;
         $userContext = $this->getUserContext();
 
-        // ✅ Используем StoryPageService для сборки всех данных страницы
+        // Используем StoryPageService для сборки всех данных страницы
         $pageService = $this->service(StoryPageService::class);
         $pageData = $pageService->buildShowPageData($storyId, $userContext);
 
@@ -321,7 +296,6 @@ class StoriesController extends Controller
     // =========================================================================
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
-
     private function buildIndexPageData(string $tagslug, string $domain): array
     {
         $data = [
@@ -390,9 +364,12 @@ class StoriesController extends Controller
         return $user ? $username : '';
     }
 
+    // =========================================================================
+    // ЛЕНТА ПОЛЬЗОВАТЕЛЯ
+    // =========================================================================
     public function userStories(string $username): void
     {
-        $validator = $this->container->get(\App\Core\Validator::class);
+        $validator = $this->container->get(\App\Core\Validator::class); // Уточните неймспейс, если отличается (в оригинале AppCoreValidator::class)
         $validator->validate(
             ['username' => $username],
             ['username' => 'required|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/']
@@ -409,45 +386,41 @@ class StoriesController extends Controller
             throw new \App\Core\Exceptions\NotFoundException("Пользователь не найден");
         }
 
-        $currentPage = max(1, (int)$this->request->getParams('page', 1));
-        $perPage = config('constants.pagination.stories_per_page', 15, 'int');
-        $offset = ($currentPage - 1) * $perPage;
-
-        $filterService = $this->service(StoryFilterService::class);
-        $stories = $filterService->getFilteredStories($perPage, $offset, '', '', 'hot', $username);
-        $totalStories = $filterService->getTotalCount('', '', $username);
-        $totalPages = (int)ceil($totalStories / $perPage);
-
-        $bannedDomainsCache = $filterService->getBannedDomains();
-        $storyIds = array_column($stories, 'id');
-        $newCommentsMap = $filterService->getNewCommentsCounts($storyIds);
-
         $userContext = $this->getUserContext();
+        $pageTitle = 'Публикации пользователя ' . e($username);
 
-        $currentVotes = [];
-        if ($userContext['isLoggedIn']) {
-            $voteModel = $this->container->get(Vote::class);
-            $currentVotes = $voteModel->getUserVotesForStories($userContext['id'], $storyIds);
-        }
+        $this->setOpenGraph([
+            'type' => 'article',
+            'title' => $pageTitle,
+            'description' => null,
+            'image' => config('config.app.url') . '/',
+        ]);
+
+        // Делегируем сборку ленты сервису (автоматически применит sort='hot')
+        $feed = $this->service(\App\Modules\Stories\Services\StoryFeedBuilder::class)->build(
+            tagslug: '',
+            domain: '',
+            author: $username,
+            userContext: $userContext,
+            canUserDownvote: $this->canUserDownvote($userContext['id']),
+            pageData: ['title' => $pageTitle]
+        );
 
         $this->render('index', [
-            'stories' => $stories,
-            'currentPage' => $currentPage,
-            'totalPages' => $totalPages,
-            'newCommentsMap' => $newCommentsMap,
-            'bannedDomainsCache' => $bannedDomainsCache,
-            'sort' => 'hot',
-            'author' => $username,
-            'domain' => '',
-            'currentUserId' => $userContext['id'],
-            'isAdmin' => $userContext['isAdmin'],
-            'canUserDownvote' => $this->canUserDownvote($userContext['id']),
-            'currentVotes' => $currentVotes,
-            'title' => 'Публикации пользователя ' . e($username),
-            'rssFeed' => [
-                'title' => 'Публикации ' . e($username),
-                'url' => '/u/' . e($username) . '/rss',
-            ],
+            'stories' => $feed->stories,
+            'currentPage' => $feed->currentPage,
+            'totalPages' => $feed->totalPages,
+            'newCommentsMap' => $feed->newCommentsMap,
+            'bannedDomainsCache' => $feed->bannedDomainsCache,
+            'sort' => $feed->sort,
+            'domain' => $feed->domain,
+            'author' => $feed->author,
+            'currentUserId' => $feed->currentUserId,
+            'isAdmin' => $feed->isAdmin,
+            'canUserDownvote' => $feed->canUserDownvote,
+            'currentVotes' => $feed->currentVotes,
+            'rssFeed' => $feed->rssFeed,
+            'title' => $feed->pageTitle,
         ]);
     }
 }

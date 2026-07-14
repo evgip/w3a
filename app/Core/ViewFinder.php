@@ -143,18 +143,86 @@ class ViewFinder
     /**
      * Найти путь к layout-шаблону (каркас страницы).
      * 
-     * Layout ищется в следующем порядке:
-     * 1. themes/{theme}/layout.php
-     * 2. app/Modules/Common/Views/layout.php
+     * Позволяет конкретным модулям (например, Admin) иметь свой собственный layout.
+     * Цепочка поиска (приоритет сверху вниз):
+     * 1. themes/{theme}/layout.php                      (Глобальное переопределение темы)
+     * 2. themes/{theme}/Modules/{module}/Views/layout.php (Переопределение темы для модуля)
+     * 3. app/Modules/{module}/Views/layout.php          (Собственный layout модуля, например Admin)
+     * 4. app/Modules/Common/Views/layout.php            (Стандартный fallback для всего приложения)
      * 
+     * @param string|null $moduleName Имя модуля, запрашивающего layout (например, 'Admin'). 
+     *                                Если null или 'Common', используется стандартный поиск.
      * @return string Абсолютный путь к файлу layout
      * 
-     * @throws \RuntimeException Если layout не найден
+     * @throws \RuntimeException Если layout не найден нигде
      */
-    public function findLayout(): string
+    public function findLayout(?string $moduleName = null): string
     {
-        // Layout ищем как обычный шаблон модуля Common
-        return $this->find('layout', 'Common');
+        $module = $moduleName ?: 'Common';
+        $cacheKey = "layout:{$module}";
+
+        // 1. Проверяем in-memory кэш
+        if (isset($this->cache[$cacheKey])) {
+            return $this->cache[$cacheKey];
+        }
+
+        // 2. Загружаем file-based кэш при необходимости
+        if (!$this->cacheLoaded) {
+            $this->loadCache();
+        }
+
+        // 3. Проверяем file-based кэш
+        if (isset($this->cache[$cacheKey])) {
+            return $this->cache[$cacheKey];
+        }
+
+        // 4. Реальный поиск
+        $path = $this->resolveLayoutPath($module);
+
+        // 5. Сохраняем в кэш
+        $this->cache[$cacheKey] = $path;
+        $this->saveCache();
+
+        return $path;
+    }
+
+    /**
+     * Основная логика поиска пути к layout (без кэша).
+     * 
+     * @param string $moduleName Имя модуля
+     * @return string Абсолютный путь к файлу layout
+     * 
+     * @throws \RuntimeException Если ни один кандидат не существует
+     */
+    private function resolveLayoutPath(string $moduleName): string
+    {
+        $theme = $this->getActiveTheme();
+
+        // Специальная цепочка для layout, где глобальный layout темы имеет наивысший приоритет
+        $candidates = [
+            // Приоритет 1: Глобальный layout активной темы (переопределяет вообще всё)
+            "{$this->themesPath}/{$theme}/layout.php",
+            
+            // Приоритет 2: Специфичный layout темы для этого модуля
+            "{$this->themesPath}/{$theme}/Modules/{$moduleName}/Views/layout.php",
+            
+            // Приоритет 3: Собственный layout модуля (например, app/Modules/Admin/Views/layout.php)
+            "{$this->appPath}/Modules/{$moduleName}/Views/layout.php",
+            
+            // Приоритет 4: Стандартный layout приложения (безопасный fallback)
+            "{$this->appPath}/Modules/Common/Views/layout.php",
+        ];
+
+        foreach ($candidates as $path) {
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+
+        throw new \RuntimeException(
+            "Layout not found for module '{$moduleName}' (theme: '{$theme}'). " .
+            "Searched in: " . implode(', ', $candidates)
+        );
     }
 
     /**

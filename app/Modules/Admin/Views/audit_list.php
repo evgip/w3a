@@ -143,27 +143,21 @@
 <?php if (isset($totalPages) && $totalPages > 1): ?>
     <hr>
     <div class="form-actions">
-        <?php
-        // Собираем массив текущих фильтров для ссылок пагинации
-        $urlParams = array_filter([
-            'filter_user_id' => $currentFilters['user_id'] ?? '',
-            'filter_action'  => $currentFilters['action'] ?? '',
-            'search'         => $currentFilters['search'] ?? ''
-        ]);
-        ?>
-
-        <?php if ($currentPage > 1): ?>
-            <?php $urlParams['page'] = $currentPage - 1; ?>
-            <a href="<?= route('admin.audit') ?>?<?= http_build_query($urlParams) ?>" class="button">« Назад</a>
-        <?php endif; ?>
-
-        <span class="hint">
+        <?= pagination(
+            $currentPage,
+            $totalPages,
+            array_filter([
+                'filter_user_id' => $currentFilters['user_id'] ?? null,
+                'filter_action'  => $currentFilters['action'] ?? null,
+                'search'         => $currentFilters['search'] ?? null
+            ]),
+            2, // диапазон страниц
+            route('admin.audit') // базовый URL для ссылок
+        ) ?>
+        
+        <!-- Если вам всё ещё нужен текстовый hint, его можно оставить здесь -->
+        <span class="hint" style="margin-left: 15px; color: #666;">
             Страница <?= $currentPage ?> из <?= $totalPages ?>
         </span>
-
-        <?php if ($currentPage < $totalPages): ?>
-            <?php $urlParams['page'] = $currentPage + 1; ?>
-            <a href="<?= route('admin.audit') ?>?<?= http_build_query($urlParams) ?>" class="button">Вперёд »</a>
-        <?php endif; ?>
     </div>
 <?php endif; ?>

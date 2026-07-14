@@ -11,6 +11,7 @@ return [
 	'search' => 'Search',
 	'tags' => 'Tags',
 	'home' => 'Home',
+	'profile' => 'Profile',
 	'forum' => 'forum',
 	'login' => 'Sign in',
 	'logout' => 'Sign out',

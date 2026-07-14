@@ -7,7 +7,7 @@ namespace App\Modules\Stories\Services;
 use App\Core\Container;
 use App\Modules\Stories\Models\Story;
 use App\Modules\Stories\Models\ReadRibbon;
-use App\Modules\Stories\Services\RankingService; 
+use App\Modules\Stories\Services\RankingService;
 use App\Modules\Origins\Models\Domain;
 use App\Modules\Tags\Models\TagFilter;
 use App\Modules\Auth\Services\Auth;
@@ -21,8 +21,8 @@ class StoryFilterService
     private Story $storyModel;
     private Domain $domainModel;
     private Container $container;
-	private MuteService $muteService;
-	private RankingService $rankingService;
+    private MuteService $muteService;
+    private RankingService $rankingService;
 
     /**
      * Конструктор с инъекцией зависимостей.
@@ -36,9 +36,9 @@ class StoryFilterService
         $this->storyModel = $storyModel;
         $this->domainModel = $domainModel;
         $this->container = $container;
-		$this->muteService = $muteService;
-		
-		$this->rankingService = $rankingService ?? new RankingService();
+        $this->muteService = $muteService;
+
+        $this->rankingService = $rankingService ?? new RankingService();
     }
 
     /**
@@ -51,17 +51,16 @@ class StoryFilterService
      * @return array Массив историй
      */
     public function getFilteredStories(
-        int $perPage, 
-        int $offset, 
-        string $tagslug = '', 
-        string $domain = '', 
+        int $perPage,
+        int $offset,
+        string $tagslug = '',
+        string $domain = '',
         string $sort = 'hot',
         string $author = ''
-    ): array
-    {
+    ): array {
         $showDeleted = Auth::isAdmin();
         $excludeTagIds = $this->getUserExcludedTags();
-		$mutedUserIds = $this->getMutedUserIds();  
+        $mutedUserIds = $this->getMutedUserIds();
 
         return $this->storyModel->getFeed($perPage, $offset, $tagslug, $showDeleted, $domain, $excludeTagIds, $sort, $author, $mutedUserIds);
     }
@@ -70,56 +69,55 @@ class StoryFilterService
      * Получает общее количество историй с учётом фильтров.
      */
     public function getTotalCount(
-        string $tagname = '', 
+        string $tagname = '',
         string $domain = '',
         string $author = ''
-    ): int
-    {
+    ): int {
         $excludeTagIds = $this->getUserExcludedTags();
-		$mutedUserIds = $this->getMutedUserIds(); 
+        $mutedUserIds = $this->getMutedUserIds();
         return $this->storyModel->getTotalCount($tagname, $domain, $excludeTagIds, $author, $mutedUserIds);
     }
 
-	/**
-	 * Получает комментарии для истории в виде дерева с сортировкой по Вильсону
-	 */
-	public function getCommentsTree(int $storyId): array
-	{
-		$mutedUserIds = $this->getMutedUserIds();
+    /**
+     * Получает комментарии для истории в виде дерева с сортировкой по Вильсону
+     */
+    public function getCommentsTree(int $storyId): array
+    {
+        $mutedUserIds = $this->getMutedUserIds();
 
-		$flatComments = $this->storyModel->getCommentsForStory($storyId, $mutedUserIds);
+        $flatComments = $this->storyModel->getCommentsForStory($storyId, $mutedUserIds);
 
-		// Вычисляем confidence_score только если его нет в БД
-		foreach ($flatComments as &$comment) {
-			if (empty($comment['confidence_score'])) {
-				$comment['confidence_score'] = $this->rankingService->wilsonScore(
-					(int)$comment['score'],
-					(int)$comment['flag_count']
-				);
-			}
-		}
-		unset($comment);
+        // Вычисляем confidence_score только если его нет в БД
+        foreach ($flatComments as &$comment) {
+            if (empty($comment['confidence_score'])) {
+                $comment['confidence_score'] = $this->rankingService->wilsonScore(
+                    (int)$comment['score'],
+                    (int)$comment['flag_count']
+                );
+            }
+        }
+        unset($comment);
 
-		// Строим дерево (уже отсортировано благодаря SQL ORDER BY)
-		$commentsTree = [];
-		foreach ($flatComments as $comment) {
-			$parentId = $comment['parent_id'] ?? 0;
-			$commentsTree[$parentId][] = $comment;
-		}
+        // Строим дерево (уже отсортировано благодаря SQL ORDER BY)
+        $commentsTree = [];
+        foreach ($flatComments as $comment) {
+            $parentId = $comment['parent_id'] ?? 0;
+            $commentsTree[$parentId][] = $comment;
+        }
 
-		foreach ($commentsTree as $parentId => &$children) {
-			usort($children, function ($a, $b) {
-				$scoreDiff = $b['confidence_score'] <=> $a['confidence_score'];
-				if ($scoreDiff !== 0) {
-					return $scoreDiff;
-				}
-				return strtotime($b['created_at']) <=> strtotime($a['created_at']);
-			});
-		}
-		unset($children);
+        foreach ($commentsTree as $parentId => &$children) {
+            usort($children, function ($a, $b) {
+                $scoreDiff = $b['confidence_score'] <=> $a['confidence_score'];
+                if ($scoreDiff !== 0) {
+                    return $scoreDiff;
+                }
+                return strtotime($b['created_at']) <=> strtotime($a['created_at']);
+            });
+        }
+        unset($children);
 
-		return $commentsTree;
-	}
+        return $commentsTree;
+    }
 
     /**
      * Получает список забаненных доменов (в нижнем регистре).
@@ -155,23 +153,23 @@ class StoryFilterService
      * @param array $storyIds Массив ID историй
      * @return array Массив [story_id => count]
      */
-	public function getNewCommentsCounts(array $storyIds): array
-	{
-		if (!Auth::check() || empty($storyIds)) {
-			return [];
-		}
+    public function getNewCommentsCounts(array $storyIds): array
+    {
+        if (!Auth::check() || empty($storyIds)) {
+            return [];
+        }
 
-		$readRibbon = $this->container->get(ReadRibbon::class);
-		
-		// Получаем замьюченных
-		$mutedUserIds = $this->getMutedUserIds();
-		
-		return $readRibbon->getNewCommentsCounts(
-			Auth::id(), 
-			array_map('intval', $storyIds),
-			$mutedUserIds // Передаём в модель
-		);
-	}
+        $readRibbon = $this->container->get(ReadRibbon::class);
+
+        // Получаем замьюченных
+        $mutedUserIds = $this->getMutedUserIds();
+
+        return $readRibbon->getNewCommentsCounts(
+            Auth::id(),
+            array_map('intval', $storyIds),
+            $mutedUserIds // Передаём в модель
+        );
+    }
 
 
 
@@ -183,7 +181,7 @@ class StoryFilterService
         $showDeleted = Auth::isAdmin();
         return $this->storyModel->getSingleWithAuthor($storyId, $showDeleted);
     }
-    
+
     /**
      * Подготовить данные для Open Graph мета-тегов.
      * 
@@ -195,7 +193,7 @@ class StoryFilterService
         if (empty($story)) {
             return [];
         }
-        
+
         // Описание: либо из текста, либо кол-во комментариев
         $description = '';
         if (!empty($story['description'])) {
@@ -206,13 +204,13 @@ class StoryFilterService
         } else {
             $description = (int)$story['comments_count'] . ' комментариев';
         }
-        
+
         // Изображение: превью ссылки или дефолтное
         $image = null;
         if (!empty($story['url'])) {
             $image = rtrim(config('config.app.url'), '/') . '/' . $story['id'] . '.png';
         }
-        
+
         return [
             'title' => $story['title'],
             'description' => $description,
@@ -221,15 +219,15 @@ class StoryFilterService
             'author_url' => route('user.profile', ['username' => $story['author_name']]),
         ];
     }
-	
-	/**
-	 * Получить ID замьюченных пользователей
-	 */
-	private function getMutedUserIds(): array
-	{
-		if (!Auth::check() || $this->muteService === null) {
-			return [];
-		}
-		return $this->muteService->getMutedUserIds(Auth::id());
-	}
+
+    /**
+     * Получить ID замьюченных пользователей
+     */
+    private function getMutedUserIds(): array
+    {
+        if (!Auth::check() || $this->muteService === null) {
+            return [];
+        }
+        return $this->muteService->getMutedUserIds(Auth::id());
+    }
 }

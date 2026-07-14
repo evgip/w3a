@@ -24,7 +24,7 @@ $sortLinks = [
 </nav>
 
 <?php if (!empty($tagInfo['slug'])): ?>
-	<div class="hint mb-1">
+	<div class="hint mb1">
 		Статьи, <a href="/tags#<?= e($tagInfo['slug']); ?>">помеченные</a> как <a href="<?= route('tags.filter', ['tagslug' => $tagInfo['slug']]) ?>" class="tag tag-<?= e($tagInfo['slug']); ?>"><?= e($tagInfo['name']); ?></a>. 
 		<br>
 		<?php if (!empty($primaryWikiPage['title'])): ?>
@@ -36,7 +36,7 @@ $sortLinks = [
 <?php endif; ?>
 
 <?php if (!empty($author)): ?>
-<div class="hint mb-1">
+<div class="hint mb1">
     Публикации пользователя: <?= e($author) ?>
 	<br>
     <a href="/">× Сбросить фильтр</a>
@@ -44,7 +44,7 @@ $sortLinks = [
 <?php endif; ?>
 
 <?php if (!empty($domain)): ?>
-<div class="hint mb-1">
+<div class="hint mb1">
     Публикации по домену: <?= e($domain) ?>
 	<br>
     <a href="/">× Сбросить фильтр</a>
@@ -146,21 +146,7 @@ $sortLinks = [
     </ol>
 
     <?php if (isset($totalPages) && $totalPages > 1): ?>
-        <div class="page_link_buttons">
-            <?php if ($currentPage > 1): ?>
-                <a href="?sort=<?= $currentSort ?>&?page=<?= $currentPage - 1 ?>">← назад</a>
-            <?php endif; ?>
-            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                <?php if ($i === $currentPage): ?>
-                    <span class="current"><?= $i ?></span>
-                <?php else: ?>
-                    <a href="?page=<?= $i ?>"><?= $i ?></a>
-                <?php endif; ?>
-            <?php endfor; ?>
-            <?php if ($currentPage < $totalPages): ?>
-                <a href="?page=<?= $currentPage + 1 ?>">вперёд →</a>
-            <?php endif; ?>
-        </div>
+        <?= pagination($currentPage, $totalPages) ?>
     <?php endif; ?>
 
 <?php else: ?>

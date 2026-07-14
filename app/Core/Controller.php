@@ -226,10 +226,10 @@ abstract class Controller
         // ШАГ 5: Обёртывание контента в Layout и финальный вывод
         // =========================================================================
         
-        // 5.1. Находим файл layout-обёртки (каркас страницы: DOCTYPE, <head>, <body>, футер). 
-        // ViewFinder также проверяет наличие кастомного layout.php в активной теме.
-        // Если его нет, используется стандартный /app/Modules/Common/Views/layout.php
-        $layoutFile = $this->viewFinder->findLayout();
+		// 5.1. Находим layout. ПЕРЕДАЕМ $moduleName!
+        // Если это Admin, он найдет app/Modules/Admin/Views/layout.php
+        // Если это Stories, он не найдет его у Stories и откатится к app/Modules/Common/Views/lay
+         $layoutFile = $this->viewFinder->findLayout($moduleName);
         
         // 5.2. Передаем отрендеренный внутренний контент в переменную $content для layout-шаблона.
         $data['content'] = $content;

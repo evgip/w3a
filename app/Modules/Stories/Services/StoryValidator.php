@@ -12,8 +12,6 @@ use App\Modules\Origins\Models\Domain;
  * 
  * Используется в StoryService (create/update) и SuggestionService.
  * Отвечает только за проверку данных, не работает с БД напрямую.
- * 
- * ✅ ИЗМЕНЕНО: Все зависимости теперь обязательны и внедряются через DI-контейнер.
  */
 class StoryValidator
 {

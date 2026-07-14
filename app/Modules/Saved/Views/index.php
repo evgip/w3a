@@ -76,21 +76,7 @@ $stories = $stories ?? [];
         </ol>
         
         <?php if (isset($totalPages) && $totalPages > 1): ?>
-            <div class="page_link_buttons">
-                <?php if ($currentPage > 1): ?>
-                    <a href="?page=<?= $currentPage - 1 ?>">← назад</a>
-                <?php endif; ?>
-                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                    <?php if ($i === $currentPage): ?>
-                        <span class="current"><?= $i ?></span>
-                    <?php else: ?>
-                        <a href="?page=<?= $i ?>"><?= $i ?></a>
-                    <?php endif; ?>
-                <?php endfor; ?>
-                <?php if ($currentPage < $totalPages): ?>
-                    <a href="?page=<?= $currentPage + 1 ?>">вперёд →</a>
-                <?php endif; ?>
-            </div>
+            <?= pagination($currentPage, $totalPages) ?>
         <?php endif; ?>
     <?php endif; ?>
 </div>

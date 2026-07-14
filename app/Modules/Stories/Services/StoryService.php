@@ -155,7 +155,7 @@ class StoryService
     {
         $minLength = config('validation.title_min_length', 5, 'int');
         return $this->validator->validate(
-            ['title' => $title], 
+            ['title' => $title],
             ['title' => "required|min:{$minLength}"]
         );
     }

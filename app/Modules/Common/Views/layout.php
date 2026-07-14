@@ -100,6 +100,8 @@
 						</button>
 
 						<div class="navbar-dropdown-menu" id="user-dropdown-menu">
+							<a href="<?= route('user.profile', ['username' => $currentUser['name']]) ?>" class="dropdown-menu-item">🙍 <?= __('profile') ?></a>
+						    <div class="dropdown-divider"></div>
 							<a href="<?= route('story.create') ?>" class="dropdown-menu-item">➕ <?= __('share') ?></a>
 
 							<a href="<?= route('messages.index') ?>" class="dropdown-menu-item">
