@@ -101,14 +101,16 @@
 
 						<div class="navbar-dropdown-menu" id="user-dropdown-menu">
 							<a href="<?= route('user.profile', ['username' => $currentUser['name']]) ?>" class="dropdown-menu-item">🙍 <?= __('profile') ?></a>
+							
+							<a href="<?= route('account.settings') ?>" class="dropdown-menu-item">⚙️ <?= __('settings') ?></a>
+							
 						    <div class="dropdown-divider"></div>
+							
 							<a href="<?= route('story.create') ?>" class="dropdown-menu-item">➕ <?= __('share') ?></a>
 
 							<a href="<?= route('messages.index') ?>" class="dropdown-menu-item">
 								<span>✉️ <?= __('messages') ?></span>
 							</a>
-
-							<a href="<?= route('account.settings') ?>" class="dropdown-menu-item">⚙️ <?= __('settings') ?></a>
 
 							<a href="<?= route('saved.index') ?>" class="dropdown-menu-item">🔖 <?= __('bookmarks') ?></a>
 

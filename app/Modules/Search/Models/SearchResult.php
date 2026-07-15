@@ -19,10 +19,13 @@ class SearchResult extends Model
         return $repo->withAuthor()
                     ->withAvatar()
                     ->withTags()
-                    ->addSelect("MATCH(s.title, s.description) AGAINST(:query_ft IN NATURAL LANGUAGE MODE) as relevance")
+                    // 1. Используем уникальное имя :query_ft_select
+                    ->addSelect("MATCH(s.title, s.description) AGAINST(:query_ft_select IN NATURAL LANGUAGE MODE) as relevance")
                     ->addWhere("s.deleted_at IS NULL")
-                    ->addWhere("MATCH(s.title, s.description) AGAINST(:query_ft IN NATURAL LANGUAGE MODE)", [
-                        ':query_ft' => $keywords
+                    // 2. Используем уникальное имя :query_ft_where
+                    ->addWhere("MATCH(s.title, s.description) AGAINST(:query_ft_where IN NATURAL LANGUAGE MODE)", [
+                        ':query_ft_select' => $keywords, // Передаем значение для SELECT
+                        ':query_ft_where'  => $keywords  // Передаем значение для WHERE
                     ])
                     ->setOrderBy($orderBy)
                     ->paginate(50, 0)

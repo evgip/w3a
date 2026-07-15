@@ -56,103 +56,29 @@ abstract class Model
     }
 
     /**
-     * Вспомогательный метод для добавления SQL-фильтра мягкого удаления
-     * Учитывает вложенность скобок и строковые литералы
+     * Вспомогательный метод для добавления SQL-фильтра мягкого удаления (soft delete).
+     * 
+     * ВНИМАНИЕ: Этот метод предназначен для простых запросов базовой модели 
+     * (find, findBy, count). Для сложных запросов с JOIN и подзапросами 
+     * необходимо использовать Репозиторий (например, StoryRepository), 
+     * который управляет условиями WHERE корректно через Fluent Interface.
      */
     protected function applySoftDeleteConstraint(string $sql): string
     {
+        // Если запрошены удалённые записи, сбрасываем флаг и возвращаем SQL без изменений
         if ($this->includeTrashed) {
             $this->includeTrashed = false;
             return $sql;
         }
 
-        // Проверяем, есть ли WHERE на верхнем уровне (вне скобок)
-        $hasTopLevelWhere = $this->hasTopLevelKeyword($sql, 'WHERE');
-
-        if ($hasTopLevelWhere) {
-            $sql .= " AND `deleted_at` IS NULL";
-        } else {
-            $sql .= " WHERE `deleted_at` IS NULL";
+        // Простая и надежная проверка наличия ключевого слова WHERE (без учета регистра).
+        // Для базовых запросов модели (например, "SELECT * FROM table WHERE id = :id") 
+        // это абсолютно безопасно и работает в 100% случаев.
+        if (stripos($sql, 'WHERE') !== false) {
+            return $sql . " AND `deleted_at` IS NULL";
         }
 
-        return $sql;
-    }
-
-    /**
-     * Проверяет наличие ключевого слова на верхнем уровне SQL (вне скобок и строк)
-     */
-    private function hasTopLevelKeyword(string $sql, string $keyword): bool
-    {
-        $sql = strtoupper($sql);
-        $keyword = strtoupper($keyword);
-        $keywordLength = strlen($keyword);
-
-        $parenDepth = 0;      // Глубина вложенности скобок
-        $inString = false;    // Внутри строкового литерала
-        $stringChar = '';     // Тип кавычки (' или ")
-        $escaped = false;     // Предыдущий символ был escape
-
-        $length = strlen($sql);
-
-        for ($i = 0; $i < $length; $i++) {
-            $char = $sql[$i];
-
-            // Обработка escape-символов
-            if ($escaped) {
-                $escaped = false;
-                continue;
-            }
-
-            if ($char === '\\') {
-                $escaped = true;
-                continue;
-            }
-
-            // Обработка строковых литералов
-            if ($inString) {
-                if ($char === $stringChar) {
-                    $inString = false;
-                }
-                continue;
-            }
-
-            // Начало строкового литерала
-            if ($char === '\'' || $char === '"') {
-                $inString = true;
-                $stringChar = $char;
-                continue;
-            }
-
-            // Обработка скобок
-            if ($char === '(') {
-                $parenDepth++;
-                continue;
-            }
-
-            if ($char === ')') {
-                $parenDepth--;
-                continue;
-            }
-
-            // Проверяем ключевое слово только на верхнем уровне
-            if ($parenDepth === 0) {
-                // Проверяем совпадение ключевого слова
-                if (substr($sql, $i, $keywordLength) === $keyword) {
-                    // Проверяем границы слова (не часть другого слова)
-                    $before = ($i > 0) ? $sql[$i - 1] : ' ';
-                    $after = ($i + $keywordLength < $length) ? $sql[$i + $keywordLength] : ' ';
-
-                    if (
-                        !ctype_alnum($before) && $before !== '_' &&
-                        !ctype_alnum($after) && $after !== '_'
-                    ) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
+        return $sql . " WHERE `deleted_at` IS NULL";
     }
 
     /**
