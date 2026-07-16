@@ -1313,3 +1313,8 @@ DO
   WHERE `window_start` < NOW() - INTERVAL 24 HOUR$$
 
 DELIMITER ;
+
+
+ALTER TABLE `rate_limits` MODIFY `identifier` varchar(255) NOT NULL;
+ALTER TABLE `rate_limits` DROP PRIMARY KEY, ADD `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST;
+ALTER TABLE `rate_limits` ADD UNIQUE KEY `unique_rate_limit` (`identifier`, `endpoint_action`, `window_start`);

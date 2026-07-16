@@ -23,8 +23,6 @@ class RateLimit extends Model
      */
     public function incrementRequestCount(string $identifier, string $action, int $windowSeconds): int
     {
-        // Вычисляем начало временного окна прямо в PHP (округление вниз)
-        // Например, для $windowSeconds = 60, все запросы с 10:01:00 по 10:01:59 получат одно и то же время
         $windowStart = date('Y-m-d H:i:s', floor(time() / $windowSeconds) * $windowSeconds);
 
         $sql = "INSERT INTO `{$this->table}` 
@@ -34,15 +32,24 @@ class RateLimit extends Model
                 ON DUPLICATE KEY UPDATE 
                     `request_count` = `request_count` + 1";
 
-        // Теперь все плейсхолдеры уникальны, и ошибки не будет
-        $this->db->execute($sql, [
-            'identifier'   => $identifier,
-            'action'       => $action,
-            'window_start' => $windowStart,
-        ]);
+        try {
+            $this->db->execute($sql, [
+                'identifier'   => $identifier,
+                'action'       => $action,
+                'window_start' => $windowStart,
+            ]);
+        } catch (\PDOException $e) {
+            // Если это ошибка дубликата (23000), мы безопасно игнорируем её.
+            // Это означает, что параллельный запрос уже создал запись, 
+            // и мы просто прочитаем актуальное значение ниже.
+            if ($e->getCode() !== '23000') {
+                // Любые другие ошибки БД (например, синтаксические) должны быть проброшены
+                throw $e; 
+            }
+        }
 
-        // Возвращаем актуальное значение счетчика одним быстрым запросом
-        return (int)$this->db->fetchColumn(
+        // Возвращаем актуальное значение счетчика
+        $count = $this->db->fetchColumn(
             "SELECT `request_count` FROM `{$this->table}` 
              WHERE `identifier` = :identifier 
                AND `endpoint_action` = :action 
@@ -53,6 +60,9 @@ class RateLimit extends Model
                 'window_start' => $windowStart,
             ]
         );
+
+        // Гарантированно возвращаем число (0, если запись вдруг не найдена)
+        return (int)($count ?: 0);
     }
 
     /**
