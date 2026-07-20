@@ -86,6 +86,15 @@ class OpenGraph
             self::$data['site_name'] = config('app.name', 'W3a', 'string');
         }
 
+        // 1. Сначала добавляем стандартный meta description, если он задан
+        if (!empty(self::$data['description'])) {
+            $tags[] = sprintf(
+                '<meta name="description" content="%s">',
+                e((string) self::$data['description'])
+            );
+        }
+
+        // 2. Затем добавляем все Open Graph теги (включая og:description)
         foreach (self::$data as $key => $value) {
             if ($value !== null && $value !== '') {
                 $tags[] = sprintf(
@@ -96,6 +105,7 @@ class OpenGraph
             }
         }
 
+        // 3. Дополнительные кастомные теги
         foreach (self::$extra as $key => $value) {
             if ($value !== null && $value !== '') {
                 $tags[] = sprintf(
