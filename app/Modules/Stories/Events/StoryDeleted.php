@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Stories\Events;
 
+use App\Core\Events\Event;
+
 class StoryDeleted extends Event
 {
     public function __construct(

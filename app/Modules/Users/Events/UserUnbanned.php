@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Users\Events;
 
+use App\Core\Events\Event;
+
 class UserUnbanned extends Event
 {
     public function __construct(

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Wiki\Events;
 
+use App\Core\Events\Event;
+
 /**
  * Событие обновления wiki страницы.
  *

@@ -10,10 +10,10 @@ use App\Modules\Auth\Services\Auth;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Core\Events\EventDispatcher;
-use App\Core\Events\CommentCreated;
-use App\Core\Events\CommentDeleted;
-use App\Core\Events\CommentRestored;
-use App\Core\Events\CommentUpdated;
+use App\Modules\Comments\Events\CommentCreated;
+use App\Modules\Comments\Events\CommentDeleted;
+use App\Modules\Comments\Events\CommentRestored;
+use App\Modules\Comments\Events\CommentUpdated;
 
 /**
  * Сервис для работы с комментариями.

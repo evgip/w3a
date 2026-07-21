@@ -32,9 +32,6 @@ class UpdateStoryCommentsCountListener
     /**
      * Конструктор слушателя с инъекцией зависимостей.
      *
-     * ✅ ИЗМЕНЕНО: Теперь принимает модель Story через DI-контейнер
-     * вместо создания через new Story()
-     *
      * @param Story $storyModel Модель историй для выполнения операций обновления счётчика
      */
     public function __construct(Story $storyModel)

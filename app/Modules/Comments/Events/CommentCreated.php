@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Comments\Events;
 
+use App\Core\Events\Event;
+
 /**
  * Событие создания нового комментария.
  *

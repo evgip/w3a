@@ -10,8 +10,8 @@ use App\Core\Session;
 use App\Core\Audit;
 use App\Core\Validator;
 use App\Core\Events\EventDispatcher;
-use App\Core\Events\StoryDeleted;
-use App\Core\Events\StoryRestore;
+use App\Modules\Stories\Events\StoryDeleted;
+use App\Modules\Stories\Events\StoryRestore;
 
 /**
  * Сервис для работы с историями (бизнес-логика).
@@ -116,11 +116,11 @@ class StoryService
 
         // 2. Обновление данных
         $domain = !empty($data['url']) ? parse_url($data['url'], PHP_URL_HOST) : null;
-		
-		if (!$this->checkBannedDomain($domain, $userId, $data['url'] ?? '')) {
-            return 0; // Прерываем создание, ошибка уже записана в flash и audit
+        
+        if (!$this->checkBannedDomain($domain, (int)$story['user_id'], $data['url'] ?? '')) {
+            return false; 
         }
-		
+        
         $updateData = [
             'title' => $data['title'] ?? $story['title'],
             'url' => $data['url'] ?? $story['url'],
