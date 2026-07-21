@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace App\Core\Events;
+namespace App\Modules\Stories\Events;
 
-class StoryDeleted extends Event
+class StoryRestore extends Event
 {
     public function __construct(
         private int $storyId,
-        private int $deletedByUserId,
-        private string $reason = 'История скрыта модератором'
+        private int $restoredByUserId,
+        private string $reason = 'История восстановлена из архива'
     ) {}
 
     public function getName(): string
     {
-        return 'moderation.story_deleted';
+        return 'moderation.story_restored';
     }
 
     public function getCategory(): string
@@ -26,11 +26,11 @@ class StoryDeleted extends Event
     {
         return [
             'story_id' => $this->storyId,
-            'deleted_by' => $this->deletedByUserId,
+            'restored_by' => $this->restoredByUserId,
             'reason' => $this->reason,
             'description' => sprintf(
-                'Модератор (ID: %d) скрыл историю ID: %d. Причина: %s',
-                $this->deletedByUserId,
+                'Модератор (ID: %d) восстановил историю ID: %d. Причина: %s',
+                $this->restoredByUserId,
                 $this->storyId,
                 $this->reason
             ),

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Core\Events;
+namespace App\Modules\Comments\Events;
 
 /**
  * Событие создания нового комментария.

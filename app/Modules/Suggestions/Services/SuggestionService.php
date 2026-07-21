@@ -17,7 +17,7 @@ use App\Core\Container;
 use App\Core\Logger;
 use App\Core\IpResolver;
 use App\Core\Events\EventDispatcher;
-use App\Core\Events\ContentUpdated;
+use App\Modules\Suggestions\Events\ContentUpdated;
 use App\Modules\Auth\Services\Auth;
 use Exception;
 
@@ -542,10 +542,6 @@ class SuggestionService
      */
     private function dispatchContentEvent(\App\Core\Events\Event $event): void
     {
-        if ($this->eventDispatcher === null) {
-            return;
-        }
-
         $this->eventDispatcher->dispatch($event);
     }
 }

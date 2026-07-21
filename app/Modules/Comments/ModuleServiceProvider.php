@@ -10,12 +10,15 @@ use App\Core\Logger;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Core\Events\Listeners\AuditListener;
-use App\Core\Events\Listeners\UpdateStoryCommentsCountListener;
+
+use App\Modules\Stories\Listeners\UpdateStoryCommentsCountListener;
 use App\Core\Events\EventDispatcher;
-use App\Core\Events\CommentCreated;
-use App\Core\Events\CommentUpdated;
-use App\Core\Events\CommentDeleted;
-use App\Core\Events\CommentRestored;
+
+use App\Modules\Comments\Events\CommentCreated;
+use App\Modules\Comments\Events\CommentUpdated;
+use App\Modules\Comments\Events\CommentDeleted;
+use App\Modules\Comments\Events\CommentRestored;
+
 use App\Modules\Comments\Models\Comment;
 use App\Modules\Comments\Services\CommentService;
 use App\Modules\Notifications\Services\NotificationService;

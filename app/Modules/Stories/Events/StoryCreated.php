@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Core\Events;
+namespace App\Modules\Stories\Events;
 
 /**
  * Событие создания новой истории.

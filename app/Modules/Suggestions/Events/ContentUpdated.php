@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Core\Events;
+namespace App\Modules\Suggestions\Events;
 
 /**
  * Событие обновления контента через систему предложений.

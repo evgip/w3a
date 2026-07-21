@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Core\Events\Listeners;
+namespace App\Modules\Stories\Listeners;
 
-use App\Core\Events\CommentCreated;
-use App\Core\Events\CommentDeleted;
-use App\Core\Events\CommentRestored;
+use App\Modules\Comments\Events\CommentCreated;
+use App\Modules\Comments\Events\CommentDeleted;
+use App\Modules\Comments\Events\CommentRestored;
+
 use App\Modules\Stories\Models\Story;
 
 /**

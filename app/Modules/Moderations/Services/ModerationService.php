@@ -9,14 +9,13 @@ use App\Modules\Moderations\Models\Moderation;
 use App\Modules\Users\Models\User;
 use App\Core\Session;
 use App\Core\Events\EventDispatcher;
-use App\Core\Events\UserBanned;
-use App\Core\Events\UserUnbanned;
-use App\Core\Events\ModNoteAdded;
+use App\Modules\Users\Events\UserBanned;
+use App\Modules\Users\Events\UserUnbanned;
+use App\Modules\Moderations\Events\ModNoteAdded;
+
 
 /**
  * Сервис для работы с модерацией.
- * 
- * ✅ ИЗМЕНЕНО: Session внедряется через конструктор.
  */
 class ModerationService
 {
@@ -26,9 +25,6 @@ class ModerationService
     private Session $session;
     private ?EventDispatcher $eventDispatcher;
 
-    /**
-     * ✅ ИЗМЕНЕНО: Добавлен Session в конструктор
-     */
     public function __construct(
         Moderation $moderationModel,
         ModNote $modNoteModel,
