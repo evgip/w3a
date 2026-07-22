@@ -6,10 +6,12 @@ namespace App\Modules\Comments\Services;
 
 use App\Modules\Comments\Models\Comment;
 use App\Modules\Notifications\Services\NotificationService;
-use App\Modules\Auth\Services\Auth;
-use App\Core\Session;
 use App\Core\Validator;
 use App\Core\Events\EventDispatcher;
+use App\Core\Security\UserContext;
+use App\Core\Exceptions\CommentValidationException;
+use App\Core\Exceptions\CommentPermissionException;
+
 use App\Modules\Comments\Events\CommentCreated;
 use App\Modules\Comments\Events\CommentDeleted;
 use App\Modules\Comments\Events\CommentRestored;
@@ -17,213 +19,224 @@ use App\Modules\Comments\Events\CommentUpdated;
 
 /**
  * Сервис для работы с комментариями.
- * 
- * ✅ ИЗМЕНЕНО: Session и Validator внедряются через конструктор.
  */
 class CommentService
 {
     private Comment $commentModel;
-    private ?NotificationService $notificationService;
-    private ?EventDispatcher $eventDispatcher;
-    private Session $session;
+    private NotificationService $notificationService;
+    private EventDispatcher $eventDispatcher;
     private Validator $validator;
+    private UserContext $currentUser;
 
     /**
-     * ✅ ИЗМЕНЕНО: Добавлены Session и Validator в конструктор
+     * Все 5 зависимостей строго обязательны.
      */
     public function __construct(
         Comment $commentModel,
-        Session $session,
         Validator $validator,
-        ?NotificationService $notificationService = null,
-        ?EventDispatcher $eventDispatcher = null
+        NotificationService $notificationService,
+        EventDispatcher $eventDispatcher,
+        UserContext $currentUser
     ) {
         $this->commentModel = $commentModel;
-        $this->session = $session;
         $this->validator = $validator;
         $this->notificationService = $notificationService;
         $this->eventDispatcher = $eventDispatcher;
+        $this->currentUser = $currentUser;
     }
 
     /**
      * Создаёт новый комментарий.
+     * 
+     * @throws CommentValidationException Если текст не прошёл валидацию
+     * @throws \RuntimeException Если не удалось сохранить в БД
+     * @return int ID созданного комментария
      */
-    public function createComment(int $storyId, string $text, ?int $parentId, int $userId): array
+    public function createComment(int $storyId, string $text, ?int $parentId): int
     {
         // 1. Валидация текста
         if (!$this->validateCommentText($text)) {
             $minLength = config('constants.validation.comment_min_length', 2, 'int');
-            // ✅ Используем внедрённый Session
-            $this->session->flash('error', "Текст комментария должен содержать не менее {$minLength} символов.");
-            return [];
+            throw new CommentValidationException(
+                "Текст комментария должен содержать не менее {$minLength} символов."
+            );
         }
 
         // 2. Создание комментария
         $commentData = [
             'story_id' => $storyId,
-            'user_id' => $userId,
+            'user_id' => $this->currentUser->id,
             'parent_id' => $parentId,
             'comment' => trim($text),
         ];
 
         $commentId = $this->commentModel->saveComment($commentData);
 
-        if ($commentId > 0) {
-            // 3. Уведомления
-            if ($this->notificationService !== null && method_exists($this->notificationService, 'notifyCommentCreated')) {
-                $this->notificationService->notifyCommentCreated($commentId);
-            }
-
-            // 4. Диспатч события
-            $this->dispatchCommentEvent(new CommentCreated(
-                $commentId,
-                $storyId,
-                $userId,
-                $parentId
-            ));
-
-            // 5. Flash-сообщение
-            // ✅ Используем внедрённый Session
-            $this->session->flash('success', 'Ваш комментарий успешно опубликован!');
-
-            // 6. Возвращаем данные для редиректа
-            return [
-                'comment_id' => $commentId,
-                'story_id' => $storyId,
-            ];
+        if ($commentId <= 0) {
+            throw new \RuntimeException("Не удалось сохранить комментарий в базу данных.");
         }
 
-        return [];
+        // 3. Уведомления
+        $this->notificationService->notifyCommentCreated($commentId);
+
+        // 4. Диспатч события
+        $this->eventDispatcher->dispatch(new CommentCreated(
+            $commentId,
+            $storyId,
+            $this->currentUser->id,
+            $parentId
+        ));
+
+        return $commentId;
     }
 
     /**
      * Обновляет текст комментария.
+     * 
+     * @throws \InvalidArgumentException Если комментарий не найден
+     * @throws CommentPermissionException Если нет прав
+     * @throws CommentValidationException Если текст не прошёл валидацию
      */
-	public function updateComment(int $commentId, string $newText, int $userId): ?array
-	{
-		$comment = $this->commentModel->withTrashed()->find($commentId);
-		if (!$comment) {
-			return null;
-		}
+    public function updateComment(int $commentId, string $newText): array
+    {
+        $comment = $this->commentModel->withTrashed()->find($commentId);
+        if (!$comment) {
+            throw new \InvalidArgumentException("Комментарий не найден.");
+        }
 
-		if (!$this->canEditComment($comment, $userId)) {
-			$this->session->flash('error', 'У вас нет прав для изменения этого комментария.');
-			return null;
-		}
+        if (!$this->canEditComment($comment)) {
+            throw new CommentPermissionException('У вас нет прав для изменения этого комментария.');
+        }
 
-		if (!$this->validateCommentText($newText)) {
-			$this->session->flash('error', 'Текст комментария должен содержать не менее 2 символов.');
-			return null;
-		}
+        if (!$this->validateCommentText($newText)) {
+            throw new CommentValidationException('Текст комментария должен содержать не менее 2 символов.');
+        }
 
-		// Обновление
-		$this->commentModel->update($commentId, ['comment' => trim($newText)]);
+        // Обновление
+        $this->commentModel->update($commentId, ['comment' => trim($newText)]);
+        $updatedComment = $this->commentModel->find($commentId);
 
-		$updatedComment = $this->commentModel->find($commentId);
+        $this->eventDispatcher->dispatch(new CommentUpdated(
+            $commentId,
+            $this->currentUser->id,
+            $this->checkIsAuthor($comment)
+        ));
 
-		$this->dispatchCommentEvent(new CommentUpdated(
-			$commentId,
-			$userId,
-			(bool) $this->checkIsAuthor($comment, $userId)
-		));
-
-		return [
-			'comment' => $updatedComment, // ← Свежие данные
-			'is_author' => $this->checkIsAuthor($comment, $userId),
-		];
-	}
+        return [
+            'comment' => $updatedComment,
+            'is_author' => $this->checkIsAuthor($comment),
+        ];
+    }
 
     /**
      * Мягко удаляет комментарий.
+     * 
+     * @throws \InvalidArgumentException Если комментарий не найден
+     * @throws CommentPermissionException Если нет прав
      */
-    public function deleteComment(int $commentId, int $userId): ?array
+    public function deleteComment(int $commentId): array
     {
         $comment = $this->commentModel->find($commentId);
         if (!$comment) {
-            return null;
+            throw new \InvalidArgumentException("Комментарий не найден.");
         }
 
-        // Проверка прав
-        if (!$this->canDeleteComment($comment, $userId)) {
-            $this->session->flash('error', 'Недостаточно прав для удаления.');
-            return null;
+        if (!$this->canDeleteComment($comment)) {
+            throw new CommentPermissionException('Недостаточно прав для удаления.');
         }
 
         // Мягкое удаление
         $this->commentModel->softDeleteComment($commentId);
-        $this->session->flash('success', 'Комментарий успешно удален.');
 
         // Диспатч события
-        $this->dispatchCommentEvent(new CommentDeleted(
+        $this->eventDispatcher->dispatch(new CommentDeleted(
             $commentId,
             (int) $comment['story_id'],
-            $userId,
-            (bool) $this->checkIsAuthor($comment, $userId)
+            $this->currentUser->id,
+            $this->checkIsAuthor($comment)
         ));
 
         return [
             'comment' => $comment,
             'story_id' => (int) $comment['story_id'],
-            'is_author' => (bool) $this->checkIsAuthor($comment, $userId),
+            'is_author' => $this->checkIsAuthor($comment),
         ];
     }
 
     /**
      * Восстанавливает удалённый комментарий.
+     * 
+     * @throws \InvalidArgumentException Если комментарий не найден
+     * @throws CommentValidationException Если комментарий не был удалён
+     * @throws CommentPermissionException Если нет прав
      */
-	public function restoreComment(int $commentId, int $userId): ?array
-	{
-		$comment = $this->commentModel->withTrashed()->find($commentId);
-
-		if (!$comment) {
-			return null;
-		}
-
-		if (empty($comment['deleted_at'])) {
-			$this->session->flash('error', 'Комментарий не удалён.');
-			return null;
-		}
-
-		if (!$this->canDeleteComment($comment, $userId)) {
-			$this->session->flash('error', 'Недостаточно прав для восстановления.');
-			return null;
-		}
-
-		$this->commentModel->restoreComment($commentId);
-		$this->session->flash('success', 'Комментарий успешно восстановлен.');
-
-		$this->dispatchCommentEvent(new CommentRestored(
-			$commentId,
-			(int) $comment['story_id'],
-			$userId,
-			(bool) $this->checkIsAuthor($comment, $userId)
-		));
-
-		return [
-			'comment' => $comment,
-			'story_id' => (int) $comment['story_id'],
-			'is_author' => (bool) $this->checkIsAuthor($comment, $userId),
-		];
-	}
-
-    /**
-     * Проверяет, может ли пользователь редактировать комментарий.
-     */
-    public function canEditComment(array $comment, int $userId): bool
+    public function restoreComment(int $commentId): array
     {
-        $isAuthor = (int) $comment['user_id'] === $userId;
-        $isAdmin = Auth::isAdmin();
-        $isModerator = Auth::isModerator();
+        $comment = $this->commentModel->withTrashed()->find($commentId);
 
-        return $isAuthor || $isAdmin || $isModerator;
+        if (!$comment) {
+            throw new \InvalidArgumentException("Комментарий не найден.");
+        }
+
+        if (empty($comment['deleted_at'])) {
+            throw new CommentValidationException('Комментарий не был удалён.');
+        }
+
+        if (!$this->canDeleteComment($comment)) {
+            throw new CommentPermissionException('Недостаточно прав для восстановления.');
+        }
+
+        $this->commentModel->restoreComment($commentId);
+
+        $this->eventDispatcher->dispatch(new CommentRestored(
+            $commentId,
+            (int) $comment['story_id'],
+            $this->currentUser->id,
+            $this->checkIsAuthor($comment)
+        ));
+
+        return [
+            'comment' => $comment,
+            'story_id' => (int) $comment['story_id'],
+            'is_author' => $this->checkIsAuthor($comment),
+        ];
     }
 
     /**
-     * Проверяет, может ли пользователь удалять/восстанавливать комментарий.
+     * Получает последние комментарии для глобальной ленты.
      */
-    public function canDeleteComment(array $comment, int $userId): bool
+    public function getLatestComments(int $limit = 50): array
     {
-        return $this->canEditComment($comment, $userId);
+        return $this->commentModel->getLatestComments($limit);
+    }
+
+    /**
+     * Получает комментарии конкретного пользователя.
+     */
+    public function getUserComments(int $userId, int $limit = 50): array
+    {
+        return $this->commentModel->getUserComments($userId, $limit);
+    }
+
+    // =========================================================================
+    // ПРИВАТНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * Проверяет, может ли текущий пользователь редактировать комментарий.
+     */
+    private function canEditComment(array $comment): bool
+    {
+        $isAuthor = (int) $comment['user_id'] === $this->currentUser->id;
+        return $isAuthor || $this->currentUser->canModerate();
+    }
+
+    /**
+     * Проверяет, может ли текущий пользователь удалять/восстанавливать комментарий.
+     */
+    private function canDeleteComment(array $comment): bool
+    {
+        return $this->canEditComment($comment);
     }
 
     /**
@@ -239,35 +252,10 @@ class CommentService
     }
 
     /**
-     * Определяет, является ли пользователь автором комментария.
+     * Определяет, является ли текущий пользователь автором комментария.
      */
-    private function checkIsAuthor(array $comment, int $userId): int
+    private function checkIsAuthor(array $comment): bool
     {
-        return ((int) $comment['user_id'] === $userId) ? 1 : 0;
+        return (int) $comment['user_id'] === $this->currentUser->id;
     }
-
-    /**
-     * Безопасно диспатчит событие через EventDispatcher.
-     */
-    private function dispatchCommentEvent(\App\Core\Events\Event $event): void
-    {
-        if ($this->eventDispatcher === null) {
-            return;
-        }
-
-        $this->eventDispatcher->dispatch($event);
-    }
-	
-	/**
-	 * Получает последние комментарии для глобальной ленты
-	 */
-	public function getLatestComments(int $limit = 50): array
-	{
-		return $this->commentModel->getLatestComments($limit);
-	}
-	
-	public function getUserComments(int $userId, int $limit = 50): array
-	{
-		return $this->commentModel->getUserComments($userId, $limit);
-	}
 }

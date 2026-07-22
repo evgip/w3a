@@ -5,34 +5,27 @@ declare(strict_types=1);
 namespace App\Modules\Users\Services;
 
 use App\Modules\Users\Models\User;
-use App\Core\Session;
+use App\Modules\Users\Exceptions\UserValidationException;
+use App\Modules\Users\Exceptions\UserNotFoundException;
 
 /**
- * Сервис для работы с пользователями.
- * 
- * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
+ * Сервис для работы с данными пользователей.
  */
 class UserService
 {
     private User $userModel;
-    private Session $session;
 
-    /**
-     * ✅ ИЗМЕНЕНО: Все зависимости обязательны
-     */
-    public function __construct(User $userModel, Session $session)
+    public function __construct(User $userModel)
     {
         $this->userModel = $userModel;
-        $this->session = $session;
     }
 
-    /**
-     * Получить пользователя с профилем и настройками
-     */
     public function getUserWithProfile(int $userId): ?array
     {
         $user = $this->userModel->find($userId);
-        if (!$user) return null;
+        if (!$user) {
+            return null;
+        }
 
         $profile = $this->userModel->getProfile($userId);
         $user['bio'] = $profile['bio'] ?? null;
@@ -49,32 +42,25 @@ class UserService
     }
 
     /**
-     * Обновить email пользователя
+     * Обновляет email пользователя.
+     *
+     * @throws UserValidationException Если email уже занят
      */
     public function updateEmail(int $userId, string $newEmail): bool
     {
-        // Проверка уникальности
         $existingUser = $this->userModel->findBy('email', $newEmail);
         if ($existingUser && (int)$existingUser['id'] !== $userId) {
-            // ✅ Используем внедрённый Session
-            $this->session->flash('error', 'Этот Email уже занят.');
-            return false;
+            throw new UserValidationException('Этот Email уже занят.');
         }
 
         return $this->userModel->update($userId, ['email' => $newEmail]);
     }
 
-    /**
-     * Обновить профиль (bio, avatar)
-     */
     public function updateProfile(int $userId, array $data): bool
     {
         return $this->userModel->updateProfile($userId, $data);
     }
 
-    /**
-     * Обновить настройки уведомлений
-     */
     public function updateSettings(int $userId, array $data): bool
     {
         return $this->userModel->updateSettings($userId, [
@@ -87,34 +73,26 @@ class UserService
     }
 
     /**
-     * Сменить пароль
+     * Меняет пароль пользователя.
+     *
+     * @throws UserNotFoundException Если пользователь не найден
+     * @throws UserValidationException Если текущий пароль неверен
      */
     public function changePassword(int $userId, string $currentPassword, string $newPassword): bool
     {
         $user = $this->userModel->find($userId);
         if (!$user) {
-            $this->session->flash('error', 'Пользователь не найден.');
-            return false;
+            throw new UserNotFoundException('Пользователь не найден.');
         }
 
         if (!password_verify($currentPassword, $user['password'])) {
-            $this->session->flash('error', 'Текущий пароль введён неверно.');
-            return false;
+            throw new UserValidationException('Текущий пароль введён неверно.');
         }
 
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-        $success = $this->userModel->update($userId, ['password' => $hashedPassword]);
-        
-        if ($success) {
-            $this->session->flash('success', 'Пароль успешно изменён.');
-        }
-        
-        return $success;
+        return $this->userModel->update($userId, ['password' => $hashedPassword]);
     }
 
-    /**
-     * Получить настройки уведомлений пользователя
-     */
     public function getUserSettings(int $userId): array
     {
         $settings = $this->userModel->getSettings($userId);
@@ -132,21 +110,17 @@ class UserService
         return $settings;
     }
 
-    /**
-     * Получить список всех пользователей с информацией о бане
-     */
     public function getAllUsers(): array
     {
         return $this->userModel->getAllUsersWithBanStatus(withTrashed: true);
     }
     
-    /**
-     * Получить Open Graph данные пользователя
-     */
     public function getUserOpenGraphData(string $username): array
     {
         $user = $this->userModel->findBy('username', $username);
-        if (!$user) return [];
+        if (!$user) {
+            return [];
+        }
         
         return [
             'title' => $user['username'],

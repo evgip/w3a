@@ -5,27 +5,20 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Services;
 
 use App\Modules\Tags\Models\Category;
-use App\Core\Session;
 use App\Core\Audit;
+use App\Modules\Admin\Exceptions\AdminValidationException;
 
 /**
  * Сервис для административного управления категориями тегов.
- * 
- * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
  */
 class AdminCategoryService
 {
     private Category $categoryModel;
-    private Session $session;
     private Audit $audit;
 
-    public function __construct(
-        Category $categoryModel,
-        Session $session,
-        Audit $audit
-    ) {
+    public function __construct(Category $categoryModel, Audit $audit)
+    {
         $this->categoryModel = $categoryModel;
-        $this->session = $session;
         $this->audit = $audit;
     }
 
@@ -39,7 +32,10 @@ class AdminCategoryService
         return $this->categoryModel->find($categoryId, withTrashed: true);
     }
 
-    public function createCategory(array $data)
+    /**
+     * @throws AdminValidationException
+     */
+    public function createCategory(array $data): int
     {
         $name = trim($data['name'] ?? '');
         $slug = strtolower(trim($data['slug'] ?? ''));
@@ -47,18 +43,15 @@ class AdminCategoryService
         $sortOrder = (int)($data['sort_order'] ?? 0);
 
         if (strlen($name) < 2) {
-            $this->session->flash('error', 'Название категории должно содержать не менее 2 символов.');
-            return false;
+            throw new AdminValidationException('Название категории должно содержать не менее 2 символов.');
         }
 
         if (!preg_match('/^[a-z0-9-]+$/', $slug)) {
-            $this->session->flash('error', 'Slug должен содержать только латиницу в нижнем регистре, цифры и дефис.');
-            return false;
+            throw new AdminValidationException('Slug должен содержать только латиницу в нижнем регистре, цифры и дефис.');
         }
 
         if ($this->categoryModel->slugExists($slug)) {
-            $this->session->flash('error', "Категория с slug '{$slug}' уже существует.");
-            return false;
+            throw new AdminValidationException("Категория с slug '{$slug}' уже существует.");
         }
 
         $categoryId = $this->categoryModel->createCategory([
@@ -73,12 +66,14 @@ class AdminCategoryService
         return $categoryId;
     }
 
+    /**
+     * @throws AdminValidationException
+     */
     public function updateCategory(int $categoryId, array $data): bool
     {
         $category = $this->categoryModel->find($categoryId);
         if (!$category) {
-            $this->session->flash('error', 'Категория не найдена.');
-            return false;
+            throw new AdminValidationException('Категория не найдена.');
         }
 
         $name = trim($data['name'] ?? '');
@@ -87,18 +82,15 @@ class AdminCategoryService
         $sortOrder = (int)($data['sort_order'] ?? 0);
 
         if (strlen($name) < 2) {
-            $this->session->flash('error', 'Название категории должно содержать не менее 2 символов.');
-            return false;
+            throw new AdminValidationException('Название категории должно содержать не менее 2 символов.');
         }
 
         if (!preg_match('/^[a-z0-9-]+$/', $slug)) {
-            $this->session->flash('error', 'Slug должен содержать только латиницу в нижнем регистре, цифры и дефис.');
-            return false;
+            throw new AdminValidationException('Slug должен содержать только латиницу в нижнем регистре, цифры и дефис.');
         }
 
         if ($this->categoryModel->slugExists($slug, $categoryId)) {
-            $this->session->flash('error', "Slug '{$slug}' уже используется другой категорией.");
-            return false;
+            throw new AdminValidationException("Slug '{$slug}' уже используется другой категорией.");
         }
 
         $this->categoryModel->updateCategory($categoryId, [
@@ -113,28 +105,24 @@ class AdminCategoryService
         return true;
     }
 
+    /**
+     * @throws AdminValidationException
+     */
     public function deleteCategory(int $categoryId): bool
     {
         $category = $this->categoryModel->find($categoryId);
         if (!$category) {
-            $this->session->flash('error', 'Категория не найдена.');
-            return false;
+            throw new AdminValidationException('Категория не найдена.');
         }
 
         if ($this->categoryModel->hasTags($categoryId)) {
-            $this->session->flash('error', 'Нельзя удалить категорию, содержащую теги. Сначала перенесите теги в другую категорию.');
-            return false;
+            throw new AdminValidationException('Нельзя удалить категорию, содержащую теги. Сначала перенесите теги в другую категорию.');
         }
 
-        if ($this->categoryModel->deleteCategory($categoryId)) {
-            $this->audit->log(
-                'admin.category_deleted',
-                "Администратор удалил категорию '{$category['name']}' (ID: {$categoryId})",
-                'admin'
-            );
-            return true;
-        }
+        $this->categoryModel->deleteCategory($categoryId);
 
-        return false;
+        $this->audit->log('admin.category_deleted', "Администратор удалил категорию '{$category['name']}' (ID: {$categoryId})", 'admin');
+
+        return true;
     }
 }

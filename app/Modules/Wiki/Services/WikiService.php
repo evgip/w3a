@@ -6,12 +6,12 @@ namespace App\Modules\Wiki\Services;
 
 use App\Modules\Wiki\Models\WikiPage;
 use App\Modules\Wiki\Models\WikiRevision;
-use App\Core\Session;
 use App\Core\Audit;
 use App\Core\Events\EventDispatcher;
-use App\Core\Events\WikiPageCreated;
-use App\Core\Events\WikiPageUpdated;
-use App\Core\Events\WikiPageDeleted;
+use App\Modules\Wiki\Events\WikiPageCreated;
+use App\Modules\Wiki\Events\WikiPageUpdated;
+use App\Modules\Wiki\Events\WikiPageDeleted;
+use App\Modules\Wiki\Exceptions\WikiValidationException;
 
 /**
  * Сервис для работы с wiki страницами (бизнес-логика).
@@ -20,53 +20,42 @@ class WikiService
 {
     private WikiPage $wikiPage;
     private WikiRevision $wikiRevision;
-    private Session $session;
     private Audit $audit;
-    private ?EventDispatcher $eventDispatcher;
+    private EventDispatcher $eventDispatcher;
 
     public function __construct(
         WikiPage $wikiPage,
         WikiRevision $wikiRevision,
-        Session $session,
         Audit $audit,
-        ?EventDispatcher $eventDispatcher = null
+        EventDispatcher $eventDispatcher
     ) {
         $this->wikiPage = $wikiPage;
         $this->wikiRevision = $wikiRevision;
-        $this->session = $session;
         $this->audit = $audit;
         $this->eventDispatcher = $eventDispatcher;
     }
 
     /**
-     * Создаёт новую wiki страницу с валидацией.
+     * Создаёт новую wiki страницу.
+     *
+     * @throws WikiValidationException Если данные не прошли валидацию
      */
     public function createPage(array $data, int $userId): int
     {
         if (empty($data['title'])) {
-            $this->session->flash('error', 'Заголовок не может быть пустым');
-            return 0;
+            throw new WikiValidationException('Заголовок не может быть пустым');
         }
-
         if (empty($data['content'])) {
-            $this->session->flash('error', 'Содержимое не может быть пустым');
-            return 0;
+            throw new WikiValidationException('Содержимое не может быть пустым');
         }
-
         if (mb_strlen($data['title']) < 3) {
-            $this->session->flash('error', 'Заголовок слишком короткий (минимум 3 символа)');
-            return 0;
+            throw new WikiValidationException('Заголовок слишком короткий (минимум 3 символа)');
         }
 
         $slug = $this->prepareSlug($data['slug'] ?? '', $data['title']);
 
-        if (!$slug) {
-            return 0;
-        }
-
-        if ($this->wikiPage->slugExists($slug, (int)$data['tag_id'])) {
-            $this->session->flash('error', 'Страница с таким URL уже существует. Попробуйте другой slug.');
-            return 0;
+        if ($this->wikiPage->slugExists($slug, (int)($data['tag_id'] ?? 0))) {
+            throw new WikiValidationException('Страница с таким URL уже существует. Попробуйте другой slug.');
         }
 
         $renderedContent = markdown($data['content']);
@@ -95,21 +84,18 @@ class WikiService
                 'user_id' => $userId
             ]);
 
-            // Используем внедрённый Audit
             $this->audit->log('wiki.created', 'Пользователь создал wiki страницу', 'wiki', [
                 'page_id' => $pageId,
                 'tag_id' => $data['tag_id'] ?? null,
                 'user_id' => $userId
             ]);
 
-            if ($this->eventDispatcher) {
-                $this->eventDispatcher->dispatch(new WikiPageCreated(
-                    $pageId,
-                    $userId,
-                    $data['tag_id'] ?? null,
-                    $data['title']
-                ));
-            }
+            $this->eventDispatcher->dispatch(new WikiPageCreated(
+                $pageId,
+                $userId,
+                $data['tag_id'] ?? null,
+                $data['title']
+            ));
         }
 
         return $pageId;
@@ -117,52 +103,38 @@ class WikiService
 
     /**
      * Обновляет существующую wiki страницу.
+     *
+     * @throws WikiValidationException Если данные не прошли валидацию или страница не найдена
      */
     public function updatePage(int $pageId, array $data, int $userId): bool
     {
-        $page = $this->wikiPage->find($pageId);
-        if (!$page) {
-            $this->session->flash('error', 'Wiki страница не найдена');
-            return false;
+        $currentPage = $this->wikiPage->find($pageId);
+        if (!$currentPage) {
+            throw new WikiValidationException('Wiki страница не найдена');
         }
 
         if (empty($data['title'])) {
-            $this->session->flash('error', 'Заголовок не может быть пустым');
-            return false;
+            throw new WikiValidationException('Заголовок не может быть пустым');
         }
-
         if (empty($data['content'])) {
-            $this->session->flash('error', 'Содержимое не может быть пустым');
-            return false;
+            throw new WikiValidationException('Содержимое не может быть пустым');
         }
-
         if (mb_strlen($data['title']) < 3) {
-            $this->session->flash('error', 'Заголовок слишком короткий (минимум 3 символа)');
-            return false;
+            throw new WikiValidationException('Заголовок слишком короткий (минимум 3 символа)');
         }
 
         $slug = $this->prepareSlug($data['slug'] ?? '', $data['title']);
-
-        if (!$slug) {
-            return false;
-        }
-
-        $currentPage = $this->wikiPage->find($pageId);
-        if (!$currentPage) {
-            return false;
-        }
         
         if (isset($data['slug']) && $data['slug'] !== $currentPage['slug']) {
             if ($this->wikiPage->slugExists($data['slug'], (int)$currentPage['tag_id'], $pageId)) {
-                $this->session->flash('error', 'Страница с таким URL уже существует в этом теге.');
-                return false;
+                throw new WikiValidationException('Страница с таким URL уже существует в этом теге.');
             }
         }
 
         $renderedContent = markdown($data['content']);
 
-        if (!empty($data['is_primary']) && $page['tag_id']) {
-            $this->wikiPage->resetPrimaryFlag($page['tag_id']);
+        if (!empty($data['is_primary']) && $currentPage['tag_id']) {
+            $this->wikiPage->resetPrimaryFlag($currentPage['tag_id']);
         }
 
         $this->wikiPage->update($pageId, [
@@ -189,36 +161,117 @@ class WikiService
             'revision' => $revisionNumber
         ]);
 
-        if ($this->eventDispatcher) {
-            $this->eventDispatcher->dispatch(new WikiPageUpdated(
-                $pageId,
-                $userId,
-                $revisionNumber,
-                $data['edit_summary'] ?? null
-            ));
-        }
+        $this->eventDispatcher->dispatch(new WikiPageUpdated(
+            $pageId,
+            $userId,
+            $revisionNumber,
+            $data['edit_summary'] ?? null
+        ));
 
         return true;
     }
 
-    private function prepareSlug(string $userSlug, string $title): ?string
+    /**
+     * Удаляет wiki страницу.
+     *
+     * @throws \InvalidArgumentException Если страница не найдена
+     */
+    public function deletePage(int $pageId, int $userId): bool
+    {
+        $page = $this->wikiPage->find($pageId);
+        if (!$page) {
+            throw new \InvalidArgumentException('Wiki страница не найдена');
+        }
+
+        $this->wikiPage->delete($pageId);
+
+        $this->audit->log('wiki.deleted', 'Пользователь удалил wiki страницу', 'wiki', [
+            'page_id' => $pageId,
+            'user_id' => $userId
+        ]);
+
+        $this->eventDispatcher->dispatch(new WikiPageDeleted($pageId, $userId));
+
+        return true;
+    }
+    
+    /**
+     * Восстанавливает удаленную wiki страницу.
+     *
+     * @throws \InvalidArgumentException Если страница не найдена или не была удалена
+     */
+    public function restorePage(int $pageId, int $userId): bool
+    {
+        $page = $this->wikiPage->findWithDeleted($pageId);
+        
+        if (!$page) {
+            throw new \InvalidArgumentException('Wiki страница не найдена');
+        }
+        
+        if (empty($page['deleted_at'])) {
+            throw new \InvalidArgumentException('Страница не была удалена');
+        }
+        
+        $this->wikiPage->restore($pageId);
+        
+        $this->audit->log('wiki.restored', 'Восстановлена wiki страница', 'wiki', [
+            'page_id' => $pageId,
+            'user_id' => $userId,
+            'title' => $page['title'],
+        ]);
+        
+        return true;
+    }
+
+    public function getPageBySlug(string $slug, ?int $tagId = null): ?array
+    {
+        $page = $this->wikiPage->getBySlug($slug, $tagId);
+
+        if ($page) {
+            $this->wikiPage->incrementViewCount($page['id']);
+        }
+
+        return $page;
+    }
+
+    public function getPagesForTag(int $tagId): array
+    {
+        return $this->wikiPage->getForTag($tagId);
+    }
+
+    public function getPrimaryPageForTag(int $tagId): ?array
+    {
+        return $this->wikiPage->getPrimaryForTag($tagId);
+    }
+
+    public function searchInTag(int $tagId, string $query): array
+    {
+        return $this->wikiPage->searchInTag($tagId, $query);
+    }
+
+    public function getById(int $pageId): ?array
+    {
+        return $this->wikiPage->find($pageId);
+    }
+
+    public function getRevisions(int $pageId): array
+    {
+        return $this->wikiRevision->getForPage($pageId);
+    }
+
+    private function prepareSlug(string $userSlug, string $title): string
     {
         if (!empty($userSlug)) {
             $slug = $this->sanitizeSlug($userSlug);
 
             if (empty($slug)) {
-                $this->session->flash('error', 'URL может содержать только латинские буквы, цифры и дефисы');
-                return null;
+                throw new WikiValidationException('URL может содержать только латинские буквы, цифры и дефисы');
             }
-
             if (strlen($slug) < 3) {
-                $this->session->flash('error', 'URL слишком короткий (минимум 3 символа)');
-                return null;
+                throw new WikiValidationException('URL слишком короткий (минимум 3 символа)');
             }
-
             if (strlen($slug) > 200) {
-                $this->session->flash('error', 'URL слишком длинный (максимум 200 символов)');
-                return null;
+                throw new WikiValidationException('URL слишком длинный (максимум 200 символов)');
             }
 
             return $slug;
@@ -271,103 +324,5 @@ class WikiService
         }
 
         return $text;
-    }
-
-    public function getPageBySlug(string $slug, ?int $tagId = null): ?array
-    {
-        $page = $this->wikiPage->getBySlug($slug, $tagId);
-
-        if ($page) {
-            $this->wikiPage->incrementViewCount($page['id']);
-        }
-
-        return $page;
-    }
-
-    public function getPagesForTag(int $tagId): array
-    {
-        return $this->wikiPage->getForTag($tagId);
-    }
-
-    public function getPrimaryPageForTag(int $tagId): ?array
-    {
-        return $this->wikiPage->getPrimaryForTag($tagId);
-    }
-
-    public function searchInTag(int $tagId, string $query): array
-    {
-        return $this->wikiPage->searchInTag($tagId, $query);
-    }
-
-    public function getById(int $pageId): ?array
-    {
-        return $this->wikiPage->find($pageId);
-    }
-
-    public function getRevisions(int $pageId): array
-    {
-        return $this->wikiRevision->getForPage($pageId);
-    }
-
-    public function deletePage(int $pageId, int $userId): bool
-    {
-        $page = $this->wikiPage->find($pageId);
-        if (!$page) {
-            $this->session->flash('error', 'Wiki страница не найдена');
-            return false;
-        }
-
-        $this->wikiPage->delete($pageId);
-        $this->session->flash('success', 'Wiki страница успешно удалена');
-
-        $this->audit->log('wiki.deleted', 'Пользователь удалил wiki страницу', 'wiki', [
-            'page_id' => $pageId,
-            'user_id' => $userId
-        ]);
-
-        if ($this->eventDispatcher) {
-            $this->eventDispatcher->dispatch(new WikiPageDeleted($pageId, $userId));
-        }
-
-        return true;
-    }
-    
-    public function restorePage(int $pageId, int $userId): bool
-    {
-        if ($pageId <= 0 || $userId <= 0) {
-            return false;
-        }
-        
-        try {
-            $page = $this->wikiPage->findWithDeleted($pageId);
-            
-            if (!$page) {
-                return false;
-            }
-            
-            if (empty($page['deleted_at'])) {
-                return false;
-            }
-            
-            $result = $this->wikiPage->restore($pageId);
-            
-            if ($result) {
-                // ✅ Используем внедрённый Audit
-                $this->audit->log('wiki.restored', 'Восстановлена wiki страница', 'wiki', [
-                    'page_id' => $pageId,
-                    'user_id' => $userId,
-                    'title' => $page['title'],
-                ]);
-                
-                return true;
-            }
-            
-            return false;
-            
-        } catch (\Throwable $e) {
-            // ✅ Используем error_log вместо статического Logger
-            error_log("[WIKI] Error restoring page {$pageId}: " . $e->getMessage());
-            return false;
-        }
     }
 }

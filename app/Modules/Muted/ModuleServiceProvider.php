@@ -7,11 +7,12 @@ namespace App\Modules\Muted;
 use App\Core\Container;
 use App\Core\Database;
 use App\Core\Logger;
-use App\Core\Session;
+use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
+
 use App\Modules\Muted\Models\MutedUser;
 use App\Modules\Muted\Services\MuteService;
 
-class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
+class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     public function register(Container $container): void
     {
@@ -26,8 +27,7 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
 
         $container->singleton(MuteService::class, function (Container $c) {
             return new MuteService(
-                $c->get(MutedUser::class),
-                $c->get(Session::class)
+                $c->get(MutedUser::class)
             );
         });
     }

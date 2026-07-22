@@ -5,41 +5,35 @@ declare(strict_types=1);
 namespace App\Modules\Stories\Services;
 
 use App\Modules\Stories\Models\ReadRibbon;
-use App\Modules\Auth\Services\Auth;
-use App\Core\Session;
+use App\Core\Security\UserContext;
 
 /**
- * Сервис для работы с отметками прочитанного.
+ * Сервис для управления статусом прочтения историй и комментариев.
  */
 class ReadRibbonService
 {
     private ReadRibbon $readRibbon;
-    private Session $session;
+    private UserContext $currentUser;
 
-    public function __construct(ReadRibbon $readRibbon, Session $session)
+    public function __construct(ReadRibbon $readRibbon, UserContext $currentUser)
     {
         $this->readRibbon = $readRibbon;
-        $this->session = $session;
+        $this->currentUser = $currentUser;
     }
 
     /**
-     * Обрабатывает отметку прочитанного при просмотре истории.
-     *
-     * @param int $storyId ID истории
-     * @return int Количество новых комментариев
+     * Обрабатывает факт просмотра истории и возвращает количество новых комментариев.
+     * Синхронизирует ленту прочтения, если обнаружен рассинхрон.
      */
     public function handleStoryView(int $storyId): int
     {
-        if (!Auth::check()) {
+        if ($this->currentUser->isGuest()) {
             return 0;
         }
 
-        $userId = Auth::id();
-
-        // 1. Получаем количество новых
+        $userId = $this->currentUser->id;
         $newCount = $this->readRibbon->getNewCommentsCount($userId, $storyId);
 
-        // 2. Синхронизация (если счётчик показывает новые, но их нет)
         if ($newCount > 0) {
             $realNewCount = $this->readRibbon->countRealNewComments($storyId, $userId);
 
@@ -49,77 +43,34 @@ class ReadRibbonService
             }
         }
 
-        // 3. Показываем flash-сообщение
         if ($newCount > 0) {
-            $word = $this->pluralizeComment($newCount);
-            // ✅ Используем внедрённый Session
-            $this->session->flash('info', "Вы пропустили {$newCount} {$word}.");
+            $this->readRibbon->syncForUserAndStory($userId, $storyId);
         }
-
-        // 4. Отмечаем как прочитанное
-        $this->readRibbon->syncForUserAndStory($userId, $storyId);
 
         return $newCount;
     }
 
     /**
-     * Отмечает историю как прочитанную.
+     * Принудительно отмечает историю как прочитанную.
      */
     public function markAsRead(int $storyId): void
     {
-        if (!Auth::check()) {
+        if ($this->currentUser->isGuest()) {
             return;
         }
 
-        $this->readRibbon->syncForUserAndStory(Auth::id(), $storyId);
-        // ✅ Используем внедрённый Session
-        $this->session->flash('success', 'История отмечена как прочитанная.');
+        $this->readRibbon->syncForUserAndStory($this->currentUser->id, $storyId);
     }
 
     /**
-     * Склонение слова "комментарий".
+     * Массовая отметка историй как прочитанных.
      */
-    private function pluralizeComment(int $count): string
+    public function markStoriesAsRead(array $storyIds): void
     {
-        $abs = abs($count) % 100;
-        $lastDigit = $abs % 10;
+        if (empty($storyIds) || $this->currentUser->isGuest()) {
+            return;
+        }
 
-        if ($abs > 10 && $abs < 20) {
-            return 'комментариев';
-        }
-        if ($lastDigit > 1 && $lastDigit < 5) {
-            return 'комментария';
-        }
-        if ($lastDigit === 1) {
-            return 'комментарий';
-        }
-        return 'комментариев';
+        $this->readRibbon->syncForStories($this->currentUser->id, $storyIds);
     }
-	
-	/**
-	 * Отмечает историю как прочитанную (обновляет read_ribbon до последнего комментария)
-	 */
-	public function markStoryAsRead(int $storyId): void
-	{
-		if (!Auth::check()) {
-			return;
-		}
-
-		$this->readRibbon->syncForUserAndStory(Auth::id(), $storyId);
-	}
-	
-	/**
-	 * Массовая отметка историй как прочитанных (batch-операция)
-	 * 
-	 * @param array $storyIds Массив ID историй
-	 * @return void
-	 */
-	public function markStoriesAsRead(array $storyIds): void
-	{
-		if (empty($storyIds) || !Auth::check()) {
-			return;
-		}
-
-		$this->readRibbon->syncForStories(Auth::id(), $storyIds);
-	}
 }

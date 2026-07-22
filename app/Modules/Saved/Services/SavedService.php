@@ -5,32 +5,39 @@ declare(strict_types=1);
 namespace App\Modules\Saved\Services;
 
 use App\Modules\Saved\Models\SavedStory;
-use App\Core\Session;
 
+/**
+ * Сервис для управления закладками (сохранёнными историями).
+ * Не зависит от HTTP или сессий.
+ */
 class SavedService
 {
     private SavedStory $savedStory;
-    private Session $session;
 
-    public function __construct(SavedStory $savedStory, Session $session)
+    public function __construct(SavedStory $savedStory)
     {
         $this->savedStory = $savedStory;
-        $this->session = $session;
     }
 
+    /**
+     * Переключает состояние закладки и возвращает новый статус.
+     *
+     * @return bool true, если история добавлена в закладки; false, если удалена
+     */
     public function toggle(int $userId, int $storyId): bool
     {
         if ($this->savedStory->isSaved($userId, $storyId)) {
             $this->savedStory->unsave($userId, $storyId);
-            $this->session->flash('success', 'История удалена из закладок');
-            return false;
+            return false; // Теперь не в закладках
         }
         
         $this->savedStory->save($userId, $storyId);
-        $this->session->flash('success', 'История добавлена в закладки');
-        return true;
+        return true; // Теперь в закладках
     }
 
+    /**
+     * Проверяет, сохранена ли история пользователем.
+     */
     public function isSaved(int $userId, int $storyId): bool
     {
         return $this->savedStory->isSaved($userId, $storyId);

@@ -6,7 +6,7 @@ namespace App\Modules\Stories\Events;
 
 use App\Core\Events\Event;
 
-class StoryRestore extends Event
+class StoryRestored extends Event
 {
     public function __construct(
         private int $storyId,

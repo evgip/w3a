@@ -7,30 +7,23 @@ namespace App\Modules\Comments\Controllers;
 use App\Core\Controller;
 use App\Core\Session;
 use App\Core\Exceptions\NotFoundException;
+use App\Modules\Comments\Exceptions\CommentValidationException;
+use App\Modules\Comments\Exceptions\CommentPermissionException;
+
 use App\Modules\Comments\Services\CommentService;
 use App\Modules\Votes\Models\Vote;
 use App\Modules\Users\Models\User;
 use App\Modules\Stories\Services\ReadRibbonService;
 
-/**
- * Контроллер комментариев.
- * 
- * Обрабатывает:
- * - Глобальную ленту комментариев
- * - Создание/редактирование/удаление комментариев
- * - AJAX-обновления комментариев
- * - Просмотр комментариев пользователя
- */
 class CommentsController extends Controller
 {
     /**
-     * Глобальная лента всех комментариев (как в Lobsters /comments)
+     * Глобальная лента всех комментариев
      */
     public function index(): void
     {
-        $userContext = $this->getUserContext();
+        $userContext = $this->getUserContext(); // Предполагаем, что это массив из базового контроллера
 
-        // Получаем last_read_comments_at
         $lastReadAt = null;
         if ($userContext['isLoggedIn']) {
             $userModel = $this->container->get(User::class);
@@ -38,38 +31,26 @@ class CommentsController extends Controller
             if ($user) {
                 $lastReadAt = $user['last_read_comments_at'] ?? null;
             }
-
-            // Автоматическая отметка прочтения при просмотре (логика Lobsters)
             $userModel->updateLastReadComments($userContext['id']);
         }
 
-        // Получаем последние комментарии
         $commentService = $this->service(CommentService::class);
         $comments = $commentService->getLatestComments(50);
 
-        // Обновляем read_ribbons для всех историй, комментарии которых показаны
         if ($userContext['isLoggedIn'] && !empty($comments)) {
             $readRibbonService = $this->service(ReadRibbonService::class);
-
-            // Получаем уникальные story_id из комментариев
             $storyIds = array_unique(array_column($comments, 'story_id'));
-
             $readRibbonService->markStoriesAsRead($storyIds);
         }
 
-        // Получаем голоса для комментариев
         $currentCommentVotes = [];
         if ($userContext['isLoggedIn'] && !empty($comments)) {
             $voteModel = $this->container->get(Vote::class);
             $commentIds = array_map('intval', array_column($comments, 'id'));
-
-            $currentCommentVotes = $voteModel->getUserVotesForComments(
-                $userContext['id'],
-                $commentIds
-            );
+            $currentCommentVotes = $voteModel->getUserVotesForComments($userContext['id'], $commentIds);
         }
 
-		$canDownvote = $this->canUserDownvote($userContext['id']);
+        $canDownvote = $this->canUserDownvote($userContext['id']);
 
         $this->render('index', [
             'comments' => $comments,
@@ -93,78 +74,82 @@ class CommentsController extends Controller
     public function create(): void
     {
         $storyId = (int)$this->request->getParams('story_id');
-
-        // Корректная обработка null, пустой строки и "0"
         $parentIdRaw = $this->request->getParams('parent_id');
+        $commentText = (string)$this->request->getParams('comment_text');
 
-        if ($parentIdRaw === null || $parentIdRaw === '' || $parentIdRaw === '0' || $parentIdRaw === 0) {
+        if ($parentIdRaw === null || $parentIdRaw === '' || $parentIdRaw === '0' || (int)$parentIdRaw <= 0) {
             $parentId = null;
         } else {
             $parentId = (int)$parentIdRaw;
-            // Дополнительная защита: ID должен быть положительным
-            if ($parentId <= 0) {
-                $parentId = null;
-            }
         }
 
-        $commentText = $this->request->getParams('comment_text');
+        $commentId = null;
 
-        $userContext = $this->getUserContext();
-
-        $result = $this->service(CommentService::class)->createComment($storyId, $commentText, $parentId, $userContext['id']);
-
-        if (!empty($result)) {
-            $this->redirect(comment_url($result['story_id'], $result['comment_id']));
-        } else {
-            $this->redirect('/story/' . $storyId);
+        try {
+            $commentId = $this->service(CommentService::class)->createComment($storyId, $commentText, $parentId);
+        } catch (CommentValidationException $e) {
+            $this->session()->flash('error', $e->getMessage());
+            $this->redirect("/story/{$storyId}");
+            return;
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Comments.create');
+            $this->session()->flash('error', 'Произошла ошибка при создании комментария.');
+            $this->redirect("/story/{$storyId}");
+            return;
         }
+
+        $this->session()->flash('success', 'Ваш комментарий успешно опубликован!');
+        $this->redirect(comment_url($storyId, $commentId));
     }
 
     /**
-     * Редактирование комментария
-     * 
-     * Поддерживает два режима:
-     * - AJAX: возвращает JSON с обновлённым HTML
-     * - Обычный POST: redirect на страницу комментария
+     * Редактирование комментария (поддерживает AJAX и обычный POST)
      */
     public function edit(string $id): void
     {
         $commentId = (int)$id;
-        $newText = $this->request->getParams('comment_text');
+        $newText = (string)$this->request->getParams('comment_text');
+        $isAjax = $this->request->isAjaxRequest();
 
-        $userContext = $this->getUserContext();
+        $result = null;
 
-        $session = $this->container->get(Session::class);
-        $result = $this->service(CommentService::class)->updateComment($commentId, $newText, $userContext['id']);
-
-        // AJAX-ответ
-        if ($this->request->isAjaxRequest()) {
-            if ($result === null) {
-                // Ошибка — читаем flash-сообщение из сессии
-                $error = $session->getFlash('error') ?? 'Не удалось обновить комментарий';
-
-                $this->json([
-                    'success' => false,
-                    'error' => $error
-                ], 400);
+        // 1. Пытаемся выполнить бизнес-логику
+        try {
+            $result = $this->service(CommentService::class)->updateComment($commentId, $newText);
+        } 
+        // 2. Ловим ожидаемые бизнес-ошибки
+        catch (CommentValidationException | CommentPermissionException | \InvalidArgumentException $e) {
+            if ($isAjax) {
+                $this->json(['success' => false, 'error' => $e->getMessage()], 400);
+                return;
             }
+            $this->session()->flash('error', $e->getMessage());
+            $this->redirectBack();
+            return;
+        } 
+        // 3. Ловим непредвиденные ошибки и логируем их
+        catch (\Throwable $e) {
+            $this->logError($e, 'Comments.edit');
+            if ($isAjax) {
+                $this->json(['success' => false, 'error' => 'Внутренняя ошибка сервера'], 500);
+                return;
+            }
+            $this->session()->flash('error', 'Произошла непредвиденная ошибка.');
+            $this->redirectBack();
+            return;
+        }
 
-            // Успех — рендерим Markdown в HTML
+        if ($isAjax) {
             $html = markdown_comment($result['comment']['comment']);
-
             $this->json([
                 'success' => true,
                 'html' => $html,
                 'raw' => $result['comment']['comment']
             ]);
-        }
-
-        // Обычный POST — redirect (fallback) если JS отключён
-        if ($result === null) {
-            $this->redirectBack();
             return;
         }
 
+        $this->session()->flash('success', 'Комментарий успешно обновлён.');
         $this->redirect(comment_url((int)$result['comment']['story_id'], $commentId));
     }
 
@@ -174,16 +159,23 @@ class CommentsController extends Controller
     public function delete(string $id): void
     {
         $commentId = (int)$id;
+        $result = null;
 
-        $userContext = $this->getUserContext();
-
-        $result = $this->service(CommentService::class)->deleteComment($commentId, $userContext['id']);
-
-        if ($result === null) {
+        try {
+            $result = $this->service(CommentService::class)->deleteComment($commentId);
+        } catch (CommentPermissionException | \InvalidArgumentException $e) {
+            $this->session()->flash('error', $e->getMessage());
+            $this->redirectBack();
+            return;
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Comments.delete');
+            $this->session()->flash('error', 'Произошла ошибка при удалении.');
             $this->redirectBack();
             return;
         }
 
+        // Исключение уйдет сразу в Application::handleRedirect без логирования.
+        $this->session()->flash('success', 'Комментарий успешно удален.');
         $this->redirect(comment_url($result['story_id'], $commentId));
     }
 
@@ -193,16 +185,22 @@ class CommentsController extends Controller
     public function restore(string $id): void
     {
         $commentId = (int)$id;
+        $result = null;
 
-        $userContext = $this->getUserContext();
-
-        $result = $this->service(CommentService::class)->restoreComment($commentId, $userContext['id']);
-
-        if ($result === null) {
+        try {
+            $result = $this->service(CommentService::class)->restoreComment($commentId);
+        } catch (CommentValidationException | CommentPermissionException | \InvalidArgumentException $e) {
+            $this->session()->flash('error', $e->getMessage());
+            $this->redirectBack();
+            return;
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Comments.restore');
+            $this->session()->flash('error', 'Произошла ошибка при восстановлении.');
             $this->redirectBack();
             return;
         }
 
+        $this->session()->flash('success', 'Комментарий успешно восстановлен.');
         $this->redirect(comment_url($result['story_id'], $commentId));
     }
 
@@ -219,7 +217,6 @@ class CommentsController extends Controller
         }
 
         $comments = $this->service(CommentService::class)->getUserComments((int)$user['id'], 50);
-
         $userContext = $this->getUserContext();
 
         $this->render('user_comments', [
@@ -230,5 +227,13 @@ class CommentsController extends Controller
             'isModerator' => $userContext['isModerator'],
             'title' => 'Комментарии пользователя ' . e($username),
         ]);
+    }
+
+    /**
+     * Хелпер для получения сессии (если его нет в базовом Controller)
+     */
+    private function session(): Session
+    {
+        return $this->container->get(Session::class);
     }
 }

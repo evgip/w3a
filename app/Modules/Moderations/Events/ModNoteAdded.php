@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Moderations\Events;
 
+use App\Core\Events\Event;
+
 class ModNoteAdded extends Event
 {
     public function __construct(

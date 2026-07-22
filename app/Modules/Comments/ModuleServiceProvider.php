@@ -7,12 +7,14 @@ namespace App\Modules\Comments;
 use App\Core\Container;
 use App\Core\Database;
 use App\Core\Logger;
-use App\Core\Session;
 use App\Core\Validator;
+use App\Core\Events\EventDispatcher;
+use App\Core\Security\UserContext;
 use App\Core\Events\Listeners\AuditListener;
+use App\Core\Audit;
 
 use App\Modules\Stories\Listeners\UpdateStoryCommentsCountListener;
-use App\Core\Events\EventDispatcher;
+use App\Modules\Stories\Models\Story;
 
 use App\Modules\Comments\Events\CommentCreated;
 use App\Modules\Comments\Events\CommentUpdated;
@@ -29,7 +31,7 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
     {
         parent::register($container);
 
-        // Модель
+        // === МОДЕЛЬ ===
         $container->singleton(Comment::class, function(Container $c) {
             return new Comment(
                 $c->get(Database::class),
@@ -37,25 +39,39 @@ class ModuleServiceProvider extends \App\Core\ModuleServiceProvider
             );
         });
 
-        // Сервис
+        // === СЕРВИС ===
+        // ✅ ИСПРАВЛЕНО: убрана Session, добавлен UserContext, порядок совпадает с новым конструктором
         $container->singleton(CommentService::class, function (Container $c) {
             return new CommentService(
                 $c->get(Comment::class),
-                $c->get(Session::class),
                 $c->get(Validator::class),
                 $c->get(NotificationService::class),
-                $c->get(EventDispatcher::class)
+                $c->get(EventDispatcher::class),
+                $c->get(UserContext::class)
+            );
+        });
+
+        // === СЛУШАТЕЛИ ===
+        $container->singleton(AuditListener::class, function(Container $c) {
+            return new AuditListener(
+                $c->get(Audit::class)
+            );
+        });
+
+        $container->singleton(UpdateStoryCommentsCountListener::class, function(Container $c) {
+            return new UpdateStoryCommentsCountListener(
+                $c->get(Story::class)
             );
         });
     }
 
     public function boot(): void
     {
-		$dispatcher = $this->container->get(EventDispatcher::class);
-		
-		$auditListener = $this->container->get(AuditListener::class);
+        $dispatcher = $this->container->get(EventDispatcher::class);
+        
+        $auditListener = $this->container->get(AuditListener::class);
         $commentsCountListener = $this->container->get(UpdateStoryCommentsCountListener::class);
-		
+        
         // Аудит событий комментариев
         $dispatcher->listen(CommentCreated::class, [$auditListener, 'handle']);
         $dispatcher->listen(CommentUpdated::class, [$auditListener, 'handle']); 

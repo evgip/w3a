@@ -160,14 +160,15 @@ class AdminController extends Controller
     public function archiveUser(string $id): void
     {
         $userContext = $this->getUserContext();
-        $success = $this->service(AdminUserService::class)->archiveUser((int)$id, $userContext['id']);
-
-        if ($success) {
+        try {
+            $this->service(AdminUserService::class)->archiveUser((int)$id, $userContext['id']);
             $this->redirectWithMessage('/admin/users', 'Пользователь успешно отправлен в архив.', 'success');
-            return;
+        } catch (AdminUserException $e) {
+            $this->redirectWithMessage('/admin/users', $e->getMessage(), 'error');
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Admin.archiveUser');
+            $this->redirectWithMessage('/admin/users', 'Произошла ошибка при архивации.', 'error');
         }
-
-        $this->redirectBack('/admin/users');
     }
 
     /**
@@ -191,22 +192,20 @@ class AdminController extends Controller
     public function toggleUserStatus(string $id): void
     {
         $userContext = $this->getUserContext();
-        $result = $this->service(AdminUserService::class)->toggleUserStatus((int)$id, $userContext['id']);
-
-        if ($result === -2) {
-            // Ошибка уже установлена в сервисе
-        } elseif ($result === -1) {
-            $this->backWithMessage('Пользователь не найден.', 'error', '/admin/users');
-            return;
-        } elseif ($result === 0) {
-            $this->redirectWithMessage('/admin/users', 'Пользователь успешно заблокирован.', 'success');
-            return;
-        } else {
-            $this->redirectWithMessage('/admin/users', 'Доступ для пользователя успешно восстановлен.', 'success');
-            return;
+        try {
+            $result = $this->service(AdminUserService::class)->toggleUserStatus((int)$id, $userContext['id']);
+            
+            if ($result === 0) {
+                $this->redirectWithMessage('/admin/users', 'Пользователь успешно заблокирован.', 'success');
+            } else {
+                $this->redirectWithMessage('/admin/users', 'Доступ для пользователя успешно восстановлен.', 'success');
+            }
+        } catch (AdminUserException | AdminValidationException $e) {
+            $this->redirectWithMessage('/admin/users', $e->getMessage(), 'error');
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Admin.toggleUserStatus');
+            $this->redirectWithMessage('/admin/users', 'Произошла ошибка.', 'error');
         }
-
-        $this->redirectBack('/admin/users');
     }
 
     /**
@@ -259,20 +258,22 @@ class AdminController extends Controller
      */
     public function createTag(): void
     {
-        $result = $this->service(AdminTagService::class)->createTag([
-            'name' => $this->request->getParams('name'),
-            'slug' => $this->request->getParams('slug'),
-            'description' => $this->request->getParams('description'),
-            'is_media' => $this->request->post('is_media') !== null ? 1 : 0,
-            'category_id' => $this->request->getParams('category_id'),
-        ]);
+        try {
+            $this->service(AdminTagService::class)->createTag([
+                'name' => $this->request->getParams('name'),
+                'slug' => $this->request->getParams('slug'),
+                'description' => $this->request->getParams('description'),
+                'is_media' => $this->request->post('is_media') !== null ? 1 : 0,
+                'category_id' => $this->request->getParams('category_id'),
+            ]);
 
-        if ($result) {
             $this->redirectWithMessage('/admin/tags', 'Тег успешно добавлен.', 'success');
-            return;
+        } catch (AdminValidationException $e) {
+            $this->redirectWithMessage('/admin/tags/create', $e->getMessage(), 'error');
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Admin.createTag');
+            $this->redirectWithMessage('/admin/tags/create', 'Произошла ошибка при создании тега.', 'error');
         }
-
-        $this->redirectBack('/admin/tags/create');
     }
 
     /**
@@ -305,21 +306,23 @@ class AdminController extends Controller
     public function updateTag(string $id): void
     {
         $tagId = (int)$id;
-        $success = $this->service(AdminTagService::class)->updateTag($tagId, [
-            'name' => $this->request->getParams('name'),
-            'slug' => $this->request->getParams('slug'),
-            'description' => $this->request->getParams('description'),
-            'is_media' => $this->request->post('is_media') !== null ? 1 : 0,
-            'category_id' => $this->request->getParams('category_id'),
-            'hotness_mod' => $this->request->getParams('hotness_mod'),
-        ]);
+        try {
+            $this->service(AdminTagService::class)->updateTag($tagId, [
+                'name' => $this->request->getParams('name'),
+                'slug' => $this->request->getParams('slug'),
+                'description' => $this->request->getParams('description'),
+                'is_media' => $this->request->post('is_media') !== null ? 1 : 0,
+                'category_id' => $this->request->getParams('category_id'),
+                'hotness_mod' => $this->request->getParams('hotness_mod'),
+            ]);
 
-        if ($success) {
             $this->redirectWithMessage('/admin/tags', 'Параметры тега сохранены.', 'success');
-            return;
+        } catch (AdminValidationException $e) {
+            $this->redirectWithMessage("/admin/tags/{$tagId}/edit", $e->getMessage(), 'error');
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Admin.updateTag');
+            $this->redirectWithMessage("/admin/tags/{$tagId}/edit", 'Произошла ошибка при обновлении.', 'error');
         }
-
-        $this->backWithMessage('Не удалось сохранить параметры тега.', 'error', "/admin/tags/{$tagId}/edit");
     }
 
     /**
@@ -390,19 +393,21 @@ class AdminController extends Controller
      */
     public function createCategory(): void
     {
-        $result = $this->service(AdminCategoryService::class)->createCategory([
-            'name' => $this->request->getParams('name'),
-            'slug' => $this->request->getParams('slug'),
-            'description' => $this->request->getParams('description'),
-            'sort_order' => $this->request->getParams('sort_order'),
-        ]);
+        try {
+            $this->service(AdminCategoryService::class)->createCategory([
+                'name' => $this->request->getParams('name'),
+                'slug' => $this->request->getParams('slug'),
+                'description' => $this->request->getParams('description'),
+                'sort_order' => $this->request->getParams('sort_order'),
+            ]);
 
-        if ($result) {
             $this->redirectWithMessage('/admin/categories', 'Категория успешно создана.', 'success');
-            return;
+        } catch (AdminValidationException $e) {
+            $this->redirectWithMessage('/admin/categories/create', $e->getMessage(), 'error');
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Admin.createCategory');
+            $this->redirectWithMessage('/admin/categories/create', 'Произошла ошибка.', 'error');
         }
-
-        $this->redirectBack('/admin/categories/create');
     }
 
     /**
@@ -435,19 +440,21 @@ class AdminController extends Controller
     public function updateCategory(string $id): void
     {
         $categoryId = (int)$id;
-        $success = $this->service(AdminCategoryService::class)->updateCategory($categoryId, [
-            'name' => $this->request->getParams('name'),
-            'slug' => $this->request->getParams('slug'),
-            'description' => $this->request->getParams('description'),
-            'sort_order' => $this->request->getParams('sort_order'),
-        ]);
+        try {
+            $this->service(AdminCategoryService::class)->updateCategory($categoryId, [
+                'name' => $this->request->getParams('name'),
+                'slug' => $this->request->getParams('slug'),
+                'description' => $this->request->getParams('description'),
+                'sort_order' => $this->request->getParams('sort_order'),
+            ]);
 
-        if ($success) {
             $this->redirectWithMessage('/admin/categories', 'Категория успешно обновлена.', 'success');
-            return;
+        } catch (AdminValidationException $e) {
+            $this->redirectWithMessage("/admin/categories/{$categoryId}/edit", $e->getMessage(), 'error');
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Admin.updateCategory');
+            $this->redirectWithMessage("/admin/categories/{$categoryId}/edit", 'Произошла ошибка.', 'error');
         }
-
-        $this->backWithMessage('Не удалось обновить категорию.', 'error', "/admin/categories/{$categoryId}/edit");
     }
 
     /**
@@ -455,12 +462,15 @@ class AdminController extends Controller
      */
     public function deleteCategory(string $id): void
     {
-        if ($this->service(AdminCategoryService::class)->deleteCategory((int)$id)) {
+        try {
+            $this->service(AdminCategoryService::class)->deleteCategory((int)$id);
             $this->redirectWithMessage('/admin/categories', 'Категория успешно удалена.', 'success');
-            return;
+        } catch (AdminValidationException $e) {
+            $this->redirectWithMessage('/admin/categories', $e->getMessage(), 'error');
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Admin.deleteCategory');
+            $this->redirectWithMessage('/admin/categories', 'Произошла ошибка при удалении.', 'error');
         }
-
-        $this->redirectBack('/admin/categories');
     }
 
     // =========================================================================

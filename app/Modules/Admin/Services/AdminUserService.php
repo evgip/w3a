@@ -7,33 +7,29 @@ namespace App\Modules\Admin\Services;
 use App\Modules\Users\Models\User;
 use App\Modules\Users\Models\Notification;
 use App\Modules\Admin\Models\AdminUser;
-use App\Core\Session;
 use App\Core\Audit;
+use App\Modules\Admin\Exceptions\AdminUserException;
+use App\Modules\Admin\Exceptions\AdminValidationException;
 
 /**
  * Сервис для административного управления пользователями.
- * 
- * ✅ ИЗМЕНЕНО: Все зависимости обязательны и внедряются через конструктор.
  */
 class AdminUserService
 {
     private User $userModel;
     private AdminUser $adminUserModel;
     private Notification $notificationModel;
-    private Session $session;
     private Audit $audit;
 
     public function __construct(
         User $userModel,
         AdminUser $adminUserModel,
         Notification $notificationModel,
-        Session $session,
         Audit $audit
     ) {
         $this->userModel = $userModel;
         $this->adminUserModel = $adminUserModel;
         $this->notificationModel = $notificationModel;
-        $this->session = $session;
         $this->audit = $audit;
     }
 
@@ -47,11 +43,13 @@ class AdminUserService
         return $this->adminUserModel->getAdminUsersList($limit);
     }
 
+    /**
+     * @throws AdminUserException
+     */
     public function archiveUser(int $userId, int $currentAdminId): bool
     {
         if ($userId === $currentAdminId) {
-            $this->session->flash('error', 'Вы не можете отправить в архив собственный аккаунт!');
-            return false;
+            throw new AdminUserException('Вы не можете отправить в архив собственный аккаунт!');
         }
 
         $this->userModel->delete($userId);
@@ -75,33 +73,28 @@ class AdminUserService
         ]);
     }
 
+    /**
+     * @throws AdminUserException
+     * @throws AdminValidationException
+     */
     public function toggleUserStatus(int $targetUserId, int $currentAdminId): int
     {
         if ($targetUserId === $currentAdminId) {
-            $this->session->flash('error', 'Вы не можете заблокировать собственный административный аккаунт.');
-            return -2;
+            throw new AdminUserException('Вы не можете заблокировать собственный административный аккаунт.');
         }
 
         $newStatus = $this->adminUserModel->toggleActivationStatus($targetUserId);
 
         if ($newStatus === -1) {
-            return -1;
+            throw new AdminValidationException('Пользователь не найден.');
         }
 
         $user = $this->adminUserModel->find($targetUserId);
 
         if ($newStatus === 0) {
-            $this->audit->log(
-                'admin.user_suspended',
-                "Администратор принудительно ЗАБЛОКИРОВАЛ аккаунт: {$user['username']} (ID: {$targetUserId})",
-                'admin'
-            );
+            $this->audit->log('admin.user_suspended', "Администратор принудительно ЗАБЛОКИРОВАЛ аккаунт: {$user['username']} (ID: {$targetUserId})", 'admin');
         } else {
-            $this->audit->log(
-                'admin.user_unsuspended',
-                "Администратор СНЯЛ блокировку с аккаунта: {$user['username']} (ID: {$targetUserId})",
-                'admin'
-            );
+            $this->audit->log('admin.user_unsuspended', "Администратор СНЯЛ блокировку с аккаунта: {$user['username']} (ID: {$targetUserId})", 'admin');
         }
 
         return $newStatus;
@@ -133,11 +126,7 @@ class AdminUserService
 
         $this->userModel->update($userId, ['avatar' => null]);
 
-        $this->audit->log(
-            'admin.avatar_deleted',
-            "Администратор принудительно удалил аватар пользователя ID: {$userId}",
-            'admin'
-        );
+        $this->audit->log('admin.avatar_deleted', "Администратор принудительно удалил аватар пользователя ID: {$userId}", 'admin');
 
         $this->notificationModel->create([
             'user_id' => $userId,

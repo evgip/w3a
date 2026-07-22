@@ -6,67 +6,62 @@ namespace App\Modules\Stories\Services;
 
 use App\Modules\Stories\Models\Story;
 use App\Modules\Origins\Models\Domain;
-use App\Core\Session;
-use App\Core\Audit;
 use App\Core\Validator;
+use App\Core\Audit;
 use App\Core\Events\EventDispatcher;
+use App\Core\Security\UserContext;
 use App\Modules\Stories\Events\StoryDeleted;
-use App\Modules\Stories\Events\StoryRestore;
+use App\Modules\Stories\Events\StoryRestored;
+use App\Modules\Stories\Exceptions\StoryValidationException;
+use App\Modules\Stories\Exceptions\BannedDomainException;
 
 /**
- * Сервис для работы с историями (бизнес-логика).
- * 
- * Все зависимости обязательны и внедряются через конструктор.
+ * Сервис для управления бизнес-логикой историй.
+ * Отвечает за валидацию, создание, обновление и удаление публикаций.
  */
 class StoryService
 {
     private Story $storyModel;
     private Domain $domainModel;
     private StoryValidator $storyValidator;
-    private Session $session;
-    private Audit $audit;
     private Validator $validator;
-    private ?EventDispatcher $eventDispatcher;
+    private Audit $audit;
+    private EventDispatcher $eventDispatcher;
+    private UserContext $currentUser;
 
-    /**
-     * 7 зависимостей, все обязательны (кроме EventDispatcher)
-     */
     public function __construct(
         Story $storyModel,
         Domain $domainModel,
         StoryValidator $storyValidator,
-        Session $session,
-        Audit $audit,
         Validator $validator,
-        ?EventDispatcher $eventDispatcher = null
+        Audit $audit,
+        EventDispatcher $eventDispatcher,
+        UserContext $currentUser
     ) {
         $this->storyModel = $storyModel;
         $this->domainModel = $domainModel;
         $this->storyValidator = $storyValidator;
-        $this->session = $session;
-        $this->audit = $audit;
         $this->validator = $validator;
+        $this->audit = $audit;
         $this->eventDispatcher = $eventDispatcher;
+        $this->currentUser = $currentUser;
     }
 
     /**
-     * Создаёт новую историю с полной валидацией.
+     * Создаёт новую историю.
+     *
+     * @throws StoryValidationException Если данные не прошли валидацию
+     * @throws BannedDomainException Если домен заблокирован
      */
     public function createStory(array $data, int $userId): int
     {
-        // 1. Централизованная валидация через StoryValidator
         $validation = $this->storyValidator->validate($data, false);
         if (!$validation['valid']) {
-            $this->session->flash('error', implode(' ', $validation['errors']));
-            return 0;
+            throw new StoryValidationException(implode(' ', $validation['errors']));
         }
 
-        // 2. Создание истории
         $domain = !empty($data['url']) ? parse_url($data['url'], PHP_URL_HOST) : null;
-		
-		if (!$this->checkBannedDomain($domain, $userId, $data['url'] ?? '')) {
-            return 0; // Прерываем создание, ошибка уже записана в flash и audit
-        }
+        $this->checkBannedDomain($domain, $userId, $data['url'] ?? '');
 
         $storyData = [
             'user_id' => $userId,
@@ -81,45 +76,40 @@ class StoryService
 
         $storyId = $this->storyModel->create($storyData);
 
-        // 3. Привязка тегов
         if ($storyId > 0 && !empty($data['tags'])) {
             $this->storyModel->syncTags($storyId, $data['tags']);
-        }
-
-        // 4. Пересчет hotness после создания и привязки тегов
-        if ($storyId > 0) {
             $this->storyModel->recalculateHotness($storyId);
         }
 
-        // 5. Логирование
-        $this->audit->log('story.created', 'Пользователь создал новую публикацию с тегами', 'story');
+        $this->audit->log('story.created', 'Пользователь создал новую публикацию', 'story', [
+            'story_id' => $storyId,
+            'user_id' => $userId
+        ]);
 
         return $storyId;
     }
 
     /**
      * Обновляет существующую историю.
+     *
+     * @throws \InvalidArgumentException Если история не найдена
+     * @throws StoryValidationException Если данные не прошли валидацию
+     * @throws BannedDomainException Если новый домен заблокирован
      */
     public function updateStory(int $storyId, array $data): bool
     {
         $story = $this->storyModel->find($storyId);
         if (!$story) {
-            return false;
+            throw new \InvalidArgumentException("Публикация не найдена.");
         }
 
-        // 1. Централизованная валидация через StoryValidator
         $validation = $this->storyValidator->validate($data, true);
         if (!$validation['valid']) {
-            $this->session->flash('error', implode(' ', $validation['errors']));
-            return false;
+            throw new StoryValidationException(implode(' ', $validation['errors']));
         }
 
-        // 2. Обновление данных
         $domain = !empty($data['url']) ? parse_url($data['url'], PHP_URL_HOST) : null;
-        
-        if (!$this->checkBannedDomain($domain, (int)$story['user_id'], $data['url'] ?? '')) {
-            return false; 
-        }
+        $this->checkBannedDomain($domain, (int)$story['user_id'], $data['url'] ?? '');
         
         $updateData = [
             'title' => $data['title'] ?? $story['title'],
@@ -131,7 +121,6 @@ class StoryService
 
         $this->storyModel->update($storyId, $updateData);
 
-        // Синхронизация тегов
         if (isset($data['tags'])) {
             $this->storyModel->syncTags($storyId, $data['tags']);
         }
@@ -140,56 +129,31 @@ class StoryService
     }
 
     /**
-     * Проверяет права на редактирование истории.
+     * Проверяет наличие прав на редактирование истории.
      */
-    public function canEditStory(array $story, int $userId): bool
+    public function canEditStory(array $story): bool
     {
-        $isAuthor = (int)$story['user_id'] === $userId;
-        $isAdmin = \App\Modules\Auth\Services\Auth::isAdmin();
-
-        return $isAuthor || $isAdmin;
+        $isAuthor = (int)$story['user_id'] === $this->currentUser->id;
+        return $isAuthor || $this->currentUser->canModerate();
     }
 
     /**
-     * Валидирует URL.
+     * Проверяет статус домена и логирует попытки публикации с заблокированных доменов.
+     *
+     * @throws BannedDomainException
      */
-    private function validateUrl(string $url): bool
-    {
-        return isValidUrl($url);
-    }
-
-    /**
-     * Валидирует заголовок.
-     */
-    private function validateTitle(string $title): bool
-    {
-        $minLength = config('validation.title_min_length', 5, 'int');
-        return $this->validator->validate(
-            ['title' => $title],
-            ['title' => "required|min:{$minLength}"]
-        );
-    }
-
-    /**
-     * Проверяет, не забанен ли домен.
-     */
-    private function checkBannedDomain(?string $domain, int $userId, string $url): bool
+    private function checkBannedDomain(?string $domain, int $userId, string $url): void
     {
         if (empty($domain)) {
-            return true;
+            return;
         }
 
         if (!$this->domainModel->isBanned($domain)) {
-            return true;
+            return;
         }
 
         $banInfo = $this->domainModel->getBanInfo($domain);
         $reason = $banInfo['ban_reason'] ?? 'Домен заблокирован администрацией';
-
-        $this->session->flash(
-            'error',
-            "Публикация отклонена: домен **" . e($domain) . "** заблокирован. Причина: " . e($reason)
-        );
 
         $this->audit->log('story.rejected_banned_domain', "Попытка публикации с забаненного домена", 'story', [
             'domain' => $domain,
@@ -198,48 +162,44 @@ class StoryService
             'reason' => $reason,
         ]);
 
-        return false;
+        throw new BannedDomainException(
+            "Публикация отклонена: домен **" . e($domain) . "** заблокирован. Причина: " . e($reason)
+        );
     }
 
     /**
-     * Удаляет (скрывает) историю.
+     * Скрывает историю.
+     *
+     * @throws \InvalidArgumentException Если история не найдена
      */
     public function deleteStory(int $storyId, int $adminId, string $reason = 'История скрыта модератором'): bool
     {
         $story = $this->storyModel->find($storyId);
         if (!$story) {
-            $this->session->flash('error', 'Публикация не найдена.');
-            return false;
+            throw new \InvalidArgumentException("Публикация не найдена.");
         }
 
         $this->storyModel->delete($storyId);
-        $this->session->flash('success', 'Публикация успешно скрыта из общей ленты.');
-
-        if ($this->eventDispatcher !== null) {
-            $this->eventDispatcher->dispatch(new StoryDeleted($storyId, $adminId, $reason));
-        }
-
+        $this->eventDispatcher->dispatch(new StoryDeleted($storyId, $adminId, $reason));
+        
         return true;
     }
 
     /**
-     * Восстанавливает историю.
+     * Восстанавливает скрытую историю.
+     *
+     * @throws \InvalidArgumentException Если история не найдена
      */
     public function restoreStory(int $storyId, int $adminId): bool
     {
         $story = $this->storyModel->find($storyId, withTrashed: true);
         if (!$story) {
-            $this->session->flash('error', 'Публикация не найдена.');
-            return false;
+            throw new \InvalidArgumentException("Публикация не найдена.");
         }
 
         $this->storyModel->restore($storyId);
-        $this->session->flash('success', 'Публикация успешно восстановлена в общей ленте.');
-
-        if ($this->eventDispatcher !== null) {
-            $this->eventDispatcher->dispatch(new StoryRestore($storyId, $adminId));
-        }
-
+        $this->eventDispatcher->dispatch(new StoryRestored($storyId, $adminId));
+        
         return true;
     }
 }

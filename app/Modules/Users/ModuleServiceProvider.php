@@ -9,6 +9,7 @@ use App\Core\Database;
 use App\Core\Logger;
 use App\Core\Session;
 use App\Core\Audit;
+use App\Core\Security\UserContext;
 use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 use App\Core\Events\EventDispatcher;
 use App\Core\Events\Listeners\AuditListener;
@@ -30,28 +31,18 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
 
         // === МОДЕЛИ ===
         $container->singleton(User::class, function (Container $c) {
-            return new User(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
+            return new User($c->get(Database::class), $c->get(Logger::class));
         });
         
         $container->singleton(Notification::class, function (Container $c) {
-            return new Notification(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
+            return new Notification($c->get(Database::class), $c->get(Logger::class));
         });
         
         $container->singleton(RateLimit::class, function (Container $c) {
-            return new RateLimit(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
+            return new RateLimit($c->get(Database::class), $c->get(Logger::class));
         });
         
         // === СЕРВИСЫ ===
-        // Строго соответствует вашему реальному коду UserService
         $container->singleton(UserService::class, function (Container $c) {
             return new UserService(
                 $c->get(User::class),
@@ -60,15 +51,46 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
         });
         
         $container->singleton(AvatarService::class, function (Container $c) {
-            return new AvatarService(
-                $c->get(Session::class)
-            );
+            return new AvatarService($c->get(Session::class));
         });
 
         // === СЛУШАТЕЛИ ===
         $container->singleton(AuditListener::class, function (Container $c) {
-            return new AuditListener(
-                $c->get(Audit::class)
+            return new AuditListener($c->get(Audit::class));
+        });
+
+        // ✅ 2. НОВОЕ: Factory для UserContext. 
+        // Контейнер сам выполнит этот код при первом запросе UserContext и запомнит результат.
+        $container->singleton(UserContext::class, function (Container $c) {
+            // Читаем ID из сессии (используем $_SESSION, как в вашем AuthMiddleware)
+            $userId = (int)($_SESSION['user_id'] ?? 0);
+            
+            if ($userId > 0) {
+                $userModel = $c->get(User::class);
+                $user = $userModel->find($userId);
+                
+                // ⚠️ ОСТАВЬТЕ ТОЛЬКО ОДИН ВАРИАНТ, который подходит вашей БД:
+                
+                // ВАРИАНТ А: Если есть поле `role`
+                $role = $user['role'] ?? 'user';
+                $isAdmin = ($role === 'admin');
+                $isModerator = ($role === 'moderator' || $role === 'admin');
+                
+                /* 
+                // ВАРИАНТ Б: Если есть поля `is_admin` и `is_moderator`
+                $isAdmin = (bool)($user['is_admin'] ?? false);
+                $isModerator = (bool)($user['is_moderator'] ?? false) || $isAdmin;
+                */
+            } else {
+                // Гостевой пользователь
+                $isAdmin = false;
+                $isModerator = false;
+            }
+
+            return new UserContext(
+                id: $userId,
+                isAdmin: $isAdmin,
+                isModerator: $isModerator
             );
         });
     }
@@ -78,7 +100,6 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
         $dispatcher = $this->container->get(EventDispatcher::class);
         $auditListener = $this->container->get(AuditListener::class);
 
-        // Аудит действий с аккаунтами (бан/разбан), где бы эти события ни генерировались
         $dispatcher->listen(UserBanned::class, [$auditListener, 'handle']);
         $dispatcher->listen(UserUnbanned::class, [$auditListener, 'handle']);
     }

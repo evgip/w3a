@@ -7,7 +7,8 @@ namespace App\Modules\Messages;
 use App\Core\Container;
 use App\Core\Database;
 use App\Core\Logger;
-use App\Core\Session;
+use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
+
 use App\Modules\Messages\Models\Conversation;
 use App\Modules\Messages\Models\Message;
 use App\Modules\Messages\Services\ConversationService;
@@ -15,12 +16,13 @@ use App\Modules\Messages\Services\MessageService;
 use App\Modules\Users\Models\User;
 use App\Modules\Notifications\Services\NotificationService;
 
-class ModuleServiceProvider
+class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     public function register(Container $container): void
     {
+        parent::register($container);
+
         // === МОДЕЛИ ===
-        
         $container->singleton(Conversation::class, function(Container $c) {
             return new Conversation(
                 $c->get(Database::class),
@@ -36,12 +38,11 @@ class ModuleServiceProvider
         });
         
         // === СЕРВИСЫ ===
-
         $container->singleton(ConversationService::class, function (Container $c) {
             return new ConversationService(
                 $c->get(Conversation::class),
-                $c->get(User::class),
-                $c->get(Session::class)
+                $c->get(User::class)
+                // Session удалён из зависимостей
             );
         });
 

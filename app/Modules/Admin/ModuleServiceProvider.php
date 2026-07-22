@@ -7,10 +7,10 @@ namespace App\Modules\Admin;
 use App\Core\Container;
 use App\Core\Database;
 use App\Core\Logger;
-use App\Core\Session;
 use App\Core\Audit;
 use App\Core\Validator;
 use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
+
 use App\Modules\Admin\Models\AdminUser;
 use App\Modules\Admin\Models\AuditLog;
 use App\Modules\Admin\Models\Audit as AdminAuditModel;
@@ -21,6 +21,7 @@ use App\Modules\Admin\Services\AdminAuditService;
 use App\Modules\Admin\Services\AdminToolsService;
 use App\Modules\Admin\Services\AdminFirewallService;
 use App\Modules\Admin\Services\AdminInvitationService;
+
 use App\Modules\Users\Models\User;
 use App\Modules\Users\Models\Notification;
 use App\Modules\Tags\Models\Tag;
@@ -31,7 +32,6 @@ use App\Modules\Comments\Models\Comment;
 use App\Modules\Invitations\Models\InvitationRequest;
 use App\Modules\Mail\Core\Mailer;
 
-
 class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     public function register(Container $container): void
@@ -40,41 +40,28 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
 
         // === МОДЕЛИ ===
         $container->singleton(AdminUser::class, function (Container $c) {
-            return new AdminUser(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
+            return new AdminUser($c->get(Database::class), $c->get(Logger::class));
         });
 
         $container->singleton(AuditLog::class, function (Container $c) {
-            return new AuditLog(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
+            return new AuditLog($c->get(Database::class), $c->get(Logger::class));
         });
 
         $container->singleton(AdminAuditModel::class, function (Container $c) {
-            return new AdminAuditModel(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
+            return new AdminAuditModel($c->get(Database::class), $c->get(Logger::class));
         });
 
         $container->singleton(InvitationRequest::class, function (Container $c) {
-            return new InvitationRequest(
-                $c->get(Database::class),
-                $c->get(Logger::class)
-            );
+            return new InvitationRequest($c->get(Database::class), $c->get(Logger::class));
         });
 
         // === СЕРВИСЫ ===
-        
+
         $container->singleton(AdminUserService::class, function (Container $c) {
             return new AdminUserService(
                 $c->get(User::class),
                 $c->get(AdminUser::class),
                 $c->get(Notification::class),
-                $c->get(Session::class),
                 $c->get(Audit::class)
             );
         });
@@ -84,7 +71,6 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
                 $c->get(Tag::class),
                 $c->get(Category::class),
                 $c->get(Story::class),
-                $c->get(Session::class),
                 $c->get(Audit::class),
                 $c->get(Validator::class),
                 $c->get(Database::class)
@@ -94,7 +80,6 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
         $container->singleton(AdminCategoryService::class, function (Container $c) {
             return new AdminCategoryService(
                 $c->get(Category::class),
-                $c->get(Session::class),
                 $c->get(Audit::class)
             );
         });
@@ -129,10 +114,5 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
                 $c->get(InvitationRequest::class)
             );
         });
-    }
-
-    public function boot(): void
-    {
-        // Регистрация слушателей событий, если есть
     }
 }

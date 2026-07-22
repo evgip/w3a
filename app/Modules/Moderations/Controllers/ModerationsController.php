@@ -103,23 +103,33 @@ class ModerationsController extends Controller
     }
 
     /**
-     * Добавление новой заметки о пользователе (POST /mod/notes/store).
-     * 
-     * Создаёт приватную заметку модератора о конкретном пользователе.
-     * Заметка может быть публичной (видна другим модераторам) или приватной
-     * (видна только автору).
+     * Добавление новой заметки о пользователе.
      */
     public function storeNote(): void
     {
         $userContext = $this->getUserContext();
 
-        $this->service(ModerationService::class)->addNote(
-            (int)$this->request->post('user_id'),
-            $userContext['id'],
-            (string)($this->request->post('note') ?? ''),
-            (int)($this->request->post('is_private') ?? 1)
-        );
+        try {
+            $this->service(ModerationService::class)->addNote(
+                (int)$this->request->post('user_id'),
+                $userContext['id'],
+                (string)($this->request->post('note') ?? ''),
+                (int)($this->request->post('is_private') ?? 1)
+            );
+            
+        } catch (\App\Modules\Moderations\Exceptions\ModerationValidationException $e) {
+            $this->session()->flash('error', $e->getMessage());
+            $this->redirect('/mod/notes');
+            return; // Обязательно прерываем выполнение!
+            
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Moderations.storeNote');
+            $this->session()->flash('error', 'Произошла ошибка при добавлении заметки');
+            $this->redirect('/mod/notes');
+            return; // Обязательно прерываем выполнение!
+        }
 
+        $this->session()->flash('success', 'Заметка добавлена');
         $this->redirect('/mod/notes');
     }
 
@@ -128,7 +138,20 @@ class ModerationsController extends Controller
      */
     public function deleteNote(string $id): void
     {
-        $this->service(ModerationService::class)->deleteNote((int)$id);
+        try {
+            $this->service(ModerationService::class)->deleteNote((int)$id);
+        } catch (\App\Modules\Moderations\Exceptions\ModerationValidationException $e) {
+            $this->session()->flash('error', $e->getMessage());
+            $this->redirect('/mod/notes');
+            return;
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Moderations.deleteNote');
+            $this->session()->flash('error', 'Произошла ошибка при удалении заметки');
+            $this->redirect('/mod/notes');
+            return;
+        }
+
+        $this->session()->flash('success', 'Заметка удалена');
         $this->redirect('/mod/notes');
     }
 
@@ -175,23 +198,36 @@ class ModerationsController extends Controller
         $reason = trim($this->request->post('reason') ?? '');
 
         $service = $this->service(ModerationService::class);
+        $result = null;
+        $message = '';
 
-        if ($action === 'ban') {
-            $result = $service->banUser($targetUserId, $userContext['id'], $reason);
-        } elseif ($action === 'unban') {
-            $result = $service->unbanUser($targetUserId, $userContext['id']);
-        } else {
-            $this->backWithMessage('Неизвестное действие.', 'error');
+        try {
+            if ($action === 'ban') {
+                $result = $service->banUser($targetUserId, $userContext['id'], $reason);
+                $message = "Пользователь «{$result['username']}» забанен";
+            } elseif ($action === 'unban') {
+                $result = $service->unbanUser($targetUserId, $userContext['id']);
+                $message = "Пользователь «{$result['username']}» разбанен";
+            } else {
+                $this->session()->flash('error', 'Неизвестное действие');
+                $this->redirectBack();
+                return;
+            }
+        } catch (\App\Modules\Moderations\Exceptions\ModerationPermissionException | \InvalidArgumentException $e) {
+            $this->session()->flash('error', $e->getMessage());
+            $this->redirectBack();
             return;
-        }
-
-        if ($result === null) {
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Moderations.banUser');
+            $this->session()->flash('error', 'Произошла ошибка при выполнении действия');
             $this->redirectBack();
             return;
         }
 
+        $this->session()->flash('success', $message);
         $this->redirect('/user/' . $result['username']);
     }
+	
 
     // =========================================================================
     // РАССМОТРЕНИЕ ПРЕДЛОЖЕНИЙ

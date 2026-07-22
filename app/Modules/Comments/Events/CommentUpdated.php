@@ -59,4 +59,28 @@ class CommentUpdated extends Event
             ),
         ];
     }
+	
+    /**
+     * Получить идентификатор обновлённого комментария.
+     */
+    public function getCommentId(): int
+    {
+        return $this->commentId;
+    }
+
+    /**
+     * Получить идентификатор пользователя, отредактировавшего комментарий.
+     */
+    public function getUserId(): int
+    {
+        return $this->userId;
+    }
+
+    /**
+     * Является ли редактирующий пользователь автором комментария.
+     */
+    public function isAuthor(): bool
+    {
+        return $this->isAuthor;
+    }
 }

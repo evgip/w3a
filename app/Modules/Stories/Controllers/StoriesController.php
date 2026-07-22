@@ -122,26 +122,35 @@ class StoriesController extends Controller
         ]);
     }
 
+    /**
+     * Обработка создания новой истории.
+     */
     public function create(): void
     {
-        $user_is_following = is_numeric($this->request->getParams('user_is_following'));
-
         $data = [
             'title' => $this->request->getParams('title'),
             'url' => $this->request->getParams('url') ?: null,
             'description' => $this->request->getParams('description') ?: null,
             'tags' => $this->request->getParams('tags') ?? [],
-            'user_is_following' => $user_is_following ? 1 : 0,
+            'user_is_following' => is_numeric($this->request->getParams('user_is_following')) ? 1 : 0,
         ];
 
         $userContext = $this->getUserContext();
-        $storyId = $this->service(StoryService::class)->createStory($data, $userContext['id']);
 
-        if ($storyId > 0) {
-            $this->container->get(Session::class)->flash('success', 'Ваша история успешно опубликована!');
-            $this->redirectBack('/');
+        try {
+            $storyId = $this->service(StoryService::class)->createStory($data, $userContext['id']);
+        } catch (\App\Modules\Stories\Exceptions\StoryValidationException | \App\Modules\Stories\Exceptions\BannedDomainException $e) {
+            $this->session()->flash('error', $e->getMessage());
+            $this->redirectBack();
+            return;
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Stories.create');
+            $this->session()->flash('error', 'Произошла ошибка при создании публикации.');
+            $this->redirectBack();
+            return;
         }
 
+        $this->session()->flash('success', 'Ваша история успешно опубликована!');
         $this->redirect('/story/' . $storyId);
     }
 
@@ -175,17 +184,19 @@ class StoriesController extends Controller
         ]);
     }
 
+	/**
+     * Обработка обновления существующей истории.
+     */
     public function update(string $id): void
     {
         $storyId = (int)$id;
-
         $storyModel = $this->container->get(Story::class);
         $story = $storyModel->find($storyId);
-
         $userContext = $this->getUserContext();
 
-        if (!$story || !$this->service(StoryService::class)->canEditStory($story, $userContext['id'])) {
-            $this->redirectBack('/');
+        if (!$story || !$this->service(StoryService::class)->canEditStory($story)) {
+            $this->session()->flash('error', 'У вас нет прав для изменения этой публикации.');
+            $this->redirectBack();
             return;
         }
 
@@ -197,10 +208,20 @@ class StoriesController extends Controller
             'user_is_following' => $this->request->post('user_is_following') !== null ? 1 : 0,
         ];
 
-        $this->service(StoryService::class)->updateStory($storyId, $data);
+        try {
+            $this->service(StoryService::class)->updateStory($storyId, $data);
+        } catch (\App\Modules\Stories\Exceptions\StoryValidationException | \App\Modules\Stories\Exceptions\BannedDomainException $e) {
+            $this->session()->flash('error', $e->getMessage());
+            $this->redirectBack();
+            return;
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Stories.update');
+            $this->session()->flash('error', 'Произошла ошибка при редактировании.');
+            $this->redirectBack();
+            return;
+        }
 
-        $this->container->get(Session::class)->flash('success', 'Публикация успешно отредактирована.');
-
+        $this->session()->flash('success', 'Публикация успешно отредактирована.');
         $this->redirect('/story/' . $storyId);
     }
 
@@ -427,5 +448,17 @@ class StoriesController extends Controller
             'rssFeed' => $feed->rssFeed,
             'title' => $feed->pageTitle,
         ]);
+    }
+	
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * Получить экземпляр Session из DI-контейнера.
+     */
+    private function session(): Session
+    {
+        return $this->container->get(Session::class);
     }
 }

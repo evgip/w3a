@@ -10,15 +10,12 @@ use App\Core\Exceptions\NotFoundException;
 use App\Modules\Users\Services\UserService;
 use App\Modules\Users\Services\AvatarService;
 use App\Modules\Users\Models\User;
+use App\Modules\Users\Exceptions\UserValidationException;
+use App\Modules\Users\Exceptions\UserNotFoundException;
+use App\Modules\Users\Exceptions\AvatarUploadException;
 
 /**
  * Контроллер для управления профилями пользователей и настройками аккаунта.
- * 
- * Обрабатывает:
- * - Публичный профиль пользователя
- * - Настройки профиля (email, bio, avatar)
- * - Смену пароля
- * - Управление уведомлениями
  */
 class UsersController extends Controller
 {
@@ -32,43 +29,33 @@ class UsersController extends Controller
         return $this->service(AvatarService::class);
     }
 
-    /**
-     * Отображение всех участников (GET /users).
-     */
     public function index(): void
     {
-        // TODO: Реализовать список пользователей
         $this->render('index', [
             'title' => 'Участники',
         ]);
     }
 
-    /**
-     * Отображение публичного профиля пользователя (GET /user/{username}).
-     */
     public function profile(string $username): void
     {
         $user = $this->getUserByUsername(trim($username));
 
-        // Загружаем дополнительные данные профиля
         $profile = $user['profile'] ?? [];
         $user['bio'] = $profile['bio'] ?? null;
         $user['avatar'] = $profile['avatar'] ?? null;
 
-        // Загружаем информацию о бане
-        $banInfo = $this->container->get(User::class)->getBanInfo((int)$user['id']);
+        $userModel = $this->container->get(User::class);
+        $banInfo = $userModel->getBanInfo((int)$user['id']);
         $user['is_banned'] = $banInfo !== null;
         $user['ban_reason'] = $banInfo['reason'] ?? null;
         $user['banned_at'] = $banInfo['created_at'] ?? null;
         $user['expires_at'] = $banInfo['expires_at'] ?? null;
 
-        // Загружаем статистику
-        $stats = $this->container->get(User::class)->getProfileStats((int)$user['id']);
-        $userKarma = $this->container->get(User::class)->getUserKarma((int)$user['id']);
+        $stats = $userModel->getProfileStats((int)$user['id']);
+        $userKarma = $userModel->getUserKarma((int)$user['id']);
 
         $userContext = $this->getUserContext();
 
-        // Передаём статус мьюта в шаблон
         $isMuted = false;
         if ($userContext['isLoggedIn'] && (int)$user['id'] !== $userContext['id']) {
             $muteService = $this->service(\App\Modules\Muted\Services\MuteService::class);
@@ -85,9 +72,6 @@ class UsersController extends Controller
         ]);
     }
 
-    /**
-     * Отображение страницы настроек профиля (GET /account/settings).
-     */
     public function settings(): void
     {
         $userContext = $this->getUserContext();
@@ -108,7 +92,7 @@ class UsersController extends Controller
     }
 
     /**
-     * Обработка обновления настроек профиля (POST /account/settings).
+     * Обработка обновления настроек профиля.
      */
     public function updateSettings(): void
     {
@@ -124,71 +108,70 @@ class UsersController extends Controller
         $oldAvatarFilename = $user['avatar'] ?? '';
         $newAvatarFilename = $oldAvatarFilename;
 
-        // Обновление email
-        if ($email !== $user['email']) {
-            if (!$this->getUserService()->updateEmail($userContext['id'], $email)) {
-                $this->redirectWithMessage(route('account.settings'), 'Не удалось обновить email', 'error');
-                return;
+        try {
+            // 1. Обновление email
+            if ($email !== $user['email']) {
+                $this->getUserService()->updateEmail($userContext['id'], $email);
             }
-        }
 
-        $avatarFile = $this->request->file('avatar_file');
-        if ($avatarFile && $avatarFile['error'] === UPLOAD_ERR_OK) {
-            $uploadedAvatar = $this->getAvatarService()->handleUpload(
-                $avatarFile,
-                $oldAvatarFilename
-            );
-
-            if ($uploadedAvatar) {
-                $newAvatarFilename = $uploadedAvatar;
+            // 2. Обработка аватара
+            $avatarFile = $this->request->file('avatar_file');
+            if ($avatarFile && $avatarFile['error'] === UPLOAD_ERR_OK) {
+                $newAvatarFilename = $this->getAvatarService()->handleUpload($avatarFile, $oldAvatarFilename);
             }
+
+            // 3. Обновление профиля и настроек
+            $this->getUserService()->updateProfile($userContext['id'], [
+                'bio' => $bio,
+                'avatar' => $newAvatarFilename
+            ]);
+
+            $this->getUserService()->updateSettings($userContext['id'], [
+                'notify_on_reply' => $this->request->getParams('notify_on_reply') ? 1 : 0,
+                'notify_on_story_comment' => $this->request->getParams('notify_on_story_comment') ? 1 : 0,
+                'notify_on_mention' => $this->request->getParams('notify_on_mention') ? 1 : 0,
+                'notify_on_message' => $this->request->getParams('notify_on_message') ? 1 : 0,
+                'email_notifications' => $this->request->getParams('email_notifications') ? 1 : 0,
+            ]);
+
+            // 4. Обновление сессии (это ответственность контроллера)
+            $this->container->get(Session::class)->set('user_avatar', $newAvatarFilename);
+
+            $this->redirectWithMessage(route('account.settings'), 'Настройки успешно сохранены.', 'success');
+
+        } catch (UserValidationException | AvatarUploadException $e) {
+            $this->redirectWithMessage(route('account.settings'), $e->getMessage(), 'error');
+            
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Users.updateSettings');
+            $this->redirectWithMessage(route('account.settings'), 'Произошла непредвиденная ошибка при сохранении.', 'error');
         }
-
-        // Обновление профиля
-        $this->getUserService()->updateProfile($userContext['id'], [
-            'bio' => $bio,
-            'avatar' => $newAvatarFilename
-        ]);
-
-        // Обновление настроек уведомлений
-        $this->getUserService()->updateSettings($userContext['id'], [
-            'notify_on_reply' => $this->request->getParams('notify_on_reply') ? 1 : 0,
-            'notify_on_story_comment' => $this->request->getParams('notify_on_story_comment') ? 1 : 0,
-            'notify_on_mention' => $this->request->getParams('notify_on_mention') ? 1 : 0,
-            'notify_on_message' => $this->request->getParams('notify_on_message') ? 1 : 0,
-            'email_notifications' => $this->request->getParams('email_notifications') ? 1 : 0,
-        ]);
-
-        // Обновляем аватар в сессии
-        $session = $this->container->get(Session::class);
-        $session->set('user_avatar', $newAvatarFilename);
-
-        $this->redirectWithMessage(route('account.settings'), 'Настройки сохранены.', 'success');
     }
 
     /**
-     * Обработка смены пароля (POST /account/password).
+     * Обработка смены пароля.
      */
     public function updatePassword(): void
     {
         $userContext = $this->getUserContext();
-
         $currentPassword = $this->request->getParams('current_password', '');
         $newPassword = $this->request->getParams('new_password', '');
 
-        // Валидация длины пароля
         if (strlen($newPassword) < 6) {
             $this->redirectWithMessage(route('account.settings'), 'Пароль должен быть не менее 6 символов.', 'error');
             return;
         }
 
-        // Попытка смены пароля
-        $success = $this->getUserService()->changePassword($userContext['id'], $currentPassword, $newPassword);
-
-        if ($success) {
+        try {
+            $this->getUserService()->changePassword($userContext['id'], $currentPassword, $newPassword);
             $this->redirectWithMessage(route('account.settings'), 'Пароль успешно изменён.', 'success');
-        } else {
-            $this->redirectWithMessage(route('account.settings'), 'Не удалось изменить пароль. Проверьте текущий пароль.', 'error');
+            
+        } catch (UserValidationException | UserNotFoundException $e) {
+            $this->redirectWithMessage(route('account.settings'), $e->getMessage(), 'error');
+            
+        } catch (\Throwable $e) {
+            $this->logError($e, 'Users.updatePassword');
+            $this->redirectWithMessage(route('account.settings'), 'Произошла непредвиденная ошибка.', 'error');
         }
     }
 
@@ -196,9 +179,6 @@ class UsersController extends Controller
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
 
-    /**
-     * Получить пользователя по username или выбросить 404
-     */
     private function getUserByUsername(string $username): array
     {
         $userModel = $this->container->get(User::class);
@@ -208,16 +188,11 @@ class UsersController extends Controller
             throw new NotFoundException("Пользователь <i>{$username}</i> не найден.");
         }
 
-        // Загружаем профиль
-        $profile = $userModel->getProfile((int)$user['id']);
-        $user['profile'] = $profile;
+        $user['profile'] = $userModel->getProfile((int)$user['id']);
 
         return $user;
     }
 
-    /**
-     * Получить пользователя с профилем или сделать редирект
-     */
     private function getUserWithProfileOrRedirect(int $userId): ?array
     {
         $user = $this->getUserService()->getUserWithProfile($userId);

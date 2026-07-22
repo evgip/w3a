@@ -5,38 +5,40 @@ declare(strict_types=1);
 namespace App\Modules\Muted\Services;
 
 use App\Modules\Muted\Models\MutedUser;
-use App\Core\Session;
+use App\Modules\Muted\Exceptions\MuteValidationException;
 
+/**
+ * Сервис для управления игнорируемыми пользователями (mute).
+ * Не зависит от HTTP или сессий, выполняет только бизнес-логику.
+ */
 class MuteService
 {
     private MutedUser $mutedUser;
-    private Session $session;
 
-    public function __construct(MutedUser $mutedUser, Session $session)
+    public function __construct(MutedUser $mutedUser)
     {
         $this->mutedUser = $mutedUser;
-        $this->session = $session;
     }
 
     /**
-     * Переключить мьют
+     * Переключает статус игнорирования пользователя.
+     *
+     * @throws MuteValidationException Если пользователь пытается игнорировать самого себя
+     * @return bool true, если пользователь добавлен в игнор; false, если удалён из игнора
      */
     public function toggle(int $userId, int $targetUserId): bool
     {
         if ($userId === $targetUserId) {
-            $this->session->flash('error', 'Нельзя игнорировать самого себя');
-            return false;
+            throw new MuteValidationException('Нельзя игнорировать самого себя');
         }
 
         if ($this->mutedUser->isMuted($userId, $targetUserId)) {
             $this->mutedUser->unmute($userId, $targetUserId);
-            $this->session->flash('success', 'Пользователь разблокирован');
-            return false;
+            return false; // Теперь не в игноре
         }
 
         $this->mutedUser->mute($userId, $targetUserId);
-        $this->session->flash('success', 'Пользователь игнорирован. Его истории и комментарии больше не будут вам показываться.');
-        return true;
+        return true; // Теперь в игноре
     }
 
     public function isMuted(int $userId, int $targetUserId): bool

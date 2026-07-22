@@ -7,13 +7,12 @@ namespace App\Modules\Wiki;
 use App\Core\Container;
 use App\Core\Database;
 use App\Core\Logger;
-use App\Core\Session;
 use App\Core\Audit;
-use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 use App\Core\Events\EventDispatcher;
-use App\Core\Events\Listeners\AuditListener; // <-- Добавлено
+use App\Core\Events\Listeners\AuditListener;
+use App\Core\Security\UserContext;
+use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
 
-// <-- Добавлены импорты событий модуля Wiki
 use App\Modules\Wiki\Events\WikiPageCreated;
 use App\Modules\Wiki\Events\WikiPageUpdated;
 use App\Modules\Wiki\Events\WikiPageDeleted;
@@ -32,7 +31,6 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
     {
         parent::register($container);
 
-        // === МОДЕЛИ ===
         $container->singleton(WikiPage::class, function (Container $c) {
             return new WikiPage($c->get(Database::class), $c->get(Logger::class));
         });
@@ -45,14 +43,13 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
             return new WikiPermission($c->get(Database::class), $c->get(Logger::class));
         });
 
-        // === СЕРВИСЫ ===
         $container->singleton(WikiPermissionService::class, function (Container $c) {
             return new WikiPermissionService(
                 $c->get(WikiPermission::class),
                 $c->get(Tag::class),
                 $c->get(User::class),
-                $c->get(Session::class),
-                $c->get(Audit::class)
+                $c->get(Audit::class),
+                $c->get(UserContext::class)
             );
         });
 
@@ -60,13 +57,11 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
             return new WikiService(
                 $c->get(WikiPage::class),
                 $c->get(WikiRevision::class),
-                $c->get(Session::class),
                 $c->get(Audit::class),
                 $c->get(EventDispatcher::class)
             );
         });
 
-        // === СЛУШАТЕЛИ ===
         $container->singleton(AuditListener::class, function (Container $c) {
             return new AuditListener($c->get(Audit::class));
         });
@@ -77,7 +72,6 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
         $dispatcher = $this->container->get(EventDispatcher::class);
         $auditListener = $this->container->get(AuditListener::class);
 
-        // Аудит всех изменений в Wiki
         $dispatcher->listen(WikiPageCreated::class, [$auditListener, 'handle']);
         $dispatcher->listen(WikiPageUpdated::class, [$auditListener, 'handle']);
         $dispatcher->listen(WikiPageDeleted::class, [$auditListener, 'handle']);

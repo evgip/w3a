@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Saved\Controllers;
 
 use App\Core\Controller;
+use App\Core\Session;
 use App\Modules\Saved\Models\SavedStory;
 use App\Modules\Saved\Services\SavedService;
 use App\Modules\Stories\Services\StoryFilterService;
@@ -12,13 +13,17 @@ use App\Modules\Votes\Models\Vote;
 
 /**
  * Контроллер сохранённых историй (закладок).
- * 
- * Обрабатывает:
- * - Список сохранённых историй с пагинацией
- * - AJAX toggle закладок
  */
 class SavedController extends Controller
 {
+    /**
+     * Получить экземпляр Session из DI-контейнера.
+     */
+    private function session(): Session
+    {
+        return $this->container->get(Session::class);
+    }
+
     /**
      * Список сохранённых историй
      */
@@ -66,31 +71,40 @@ class SavedController extends Controller
     }
 
     /**
-     * AJAX toggle закладки
+     * AJAX / POST toggle закладки
      */
     public function toggle(string $id): void
     {
         $userContext = $this->getUserContext();
 
         if (!$userContext['isLoggedIn']) {
-            $this->json(['error' => 'Необходима авторизация'], 401);
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+                $this->json(['error' => 'Необходима авторизация'], 401);
+                return;
+            }
+            $this->redirect('/login');
             return;
         }
 
         $storyId = (int)$id;
-
         $savedService = $this->service(SavedService::class);
+        
+        // ✅ Сервис возвращает чистый бизнес-факт: добавлено (true) или удалено (false)
         $isSaved = $savedService->toggle($userContext['id'], $storyId);
 
-        // Поддержка AJAX и обычных запросов
+        // ✅ Контроллер принимает решение о UI на основе этого факта
+        $message = $isSaved ? 'История добавлена в закладки' : 'История удалена из закладок';
+
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
             $this->json([
                 'success' => true,
                 'is_saved' => $isSaved,
+                'message' => $message // Фронтенд может использовать это для toast-уведомления
             ]);
             return;
         }
 
+        $this->session()->flash('success', $message);
         $referer = $_SERVER['HTTP_REFERER'] ?? '/saved';
         $this->redirectBack($referer);
     }

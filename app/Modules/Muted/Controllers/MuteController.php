@@ -6,21 +6,18 @@ namespace App\Modules\Muted\Controllers;
 
 use App\Core\Controller;
 use App\Modules\Muted\Services\MuteService;
+use App\Modules\Muted\Exceptions\MuteValidationException;
 use App\Modules\Users\Models\User;
 
 /**
  * Контроллер управления игнорируемыми пользователями (mute).
  * 
- * Все маршруты защищены middleware ['web', 'auth'],
- * поэтому проверки авторизации в контроллере не требуются.
+ * Все маршруты защищены middleware ['web', 'auth'].
  */
 class MuteController extends Controller
 {
     /**
-     * Список игнорируемых пользователей (GET /muted).
-     * 
-     * Показывает всех пользователей, которых текущий пользователь
-     * добавил в список игнорируемых.
+     * Список игнорируемых пользователей.
      */
     public function list(): void
     {
@@ -36,18 +33,7 @@ class MuteController extends Controller
     }
 
     /**
-     * Переключение статуса игнорирования пользователя (POST /mute/toggle/{id}).
-     * 
-     * Если пользователь уже в списке игнорируемых — удаляет его.
-     * Если не в списке — добавляет.
-     * 
-     * Валидация:
-     * - Нельзя игнорировать самого себя
-     * - Нельзя игнорировать несуществующего пользователя
-     * 
-     * Поддерживает два режима ответа:
-     * - AJAX: возвращает JSON с новым статусом is_muted
-     * - Обычный POST: редирект с flash-сообщением
+     * Переключение статуса игнорирования пользователя.
      */
     public function toggle(string $id): void
     {
@@ -55,17 +41,7 @@ class MuteController extends Controller
         $targetUserId = (int)$id;
         $isAjax = $this->request->isAjaxRequest();
 
-        // Нельзя игнорировать самого себя
-        if ($userContext['id'] === $targetUserId) {
-            if ($isAjax) {
-                $this->json(['error' => 'Нельзя игнорировать самого себя'], 400);
-                return;
-            }
-            $this->backWithMessage('Нельзя игнорировать самого себя', 'error');
-            return;
-        }
-
-        // Проверяем, что пользователь существует
+        // Проверяем, что целевой пользователь существует
         $userModel = $this->container->get(User::class);
         $targetUser = $userModel->find($targetUserId);
 
@@ -78,24 +54,48 @@ class MuteController extends Controller
             return;
         }
 
-        // Переключаем статус игнорирования
-        $muteService = $this->service(MuteService::class);
-        $isMuted = $muteService->toggle($userContext['id'], $targetUserId);
+        $isMuted = null;
+        $message = '';
 
-        // Ответ для AJAX-запросов
+        try {
+            // Переключаем статус игнорирования
+            $muteService = $this->service(MuteService::class);
+            $isMuted = $muteService->toggle($userContext['id'], $targetUserId);
+
+            // Формируем сообщение на основе результата
+            $message = $isMuted
+                ? "Пользователь {$targetUser['username']} добавлен в игнор-лист"
+                : "Пользователь {$targetUser['username']} удалён из игнор-листа";
+
+        } catch (MuteValidationException $e) {
+            // Ловим бизнес-ошибки (например, "Нельзя игнорировать самого себя")
+            if ($isAjax) {
+                $this->json(['error' => $e->getMessage()], 400);
+                return;
+            }
+            $this->backWithMessage($e->getMessage(), 'error');
+            return;
+            
+        } catch (\Throwable $e) {
+            // Ловим реальные непредвиденные ошибки
+            $this->logError($e, 'Mute.toggle');
+            if ($isAjax) {
+                $this->json(['error' => 'Произошла ошибка сервера'], 500);
+                return;
+            }
+            $this->backWithMessage('Произошла непредвиденная ошибка', 'error');
+            return;
+        }
+
         if ($isAjax) {
             $this->json([
                 'success' => true,
                 'is_muted' => $isMuted,
                 'username' => $targetUser['username'],
+                'message' => $message,
             ]);
             return;
         }
-
-        // Ответ для обычных POST-запросов
-        $message = $isMuted
-            ? "Пользователь {$targetUser['username']} добавлен в игнор-лист"
-            : "Пользователь {$targetUser['username']} удалён из игнор-листа";
 
         $this->redirectWithMessage('/muted', $message, 'success');
     }

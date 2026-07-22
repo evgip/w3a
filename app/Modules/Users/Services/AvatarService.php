@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Users\Services;
 
-use App\Core\Session;
+use App\Modules\Users\Exceptions\AvatarUploadException;
 
 /**
  * Сервис для загрузки и обработки аватаров.
- * 
- * ✅ ИЗМЕНЕНО: Session внедряется через конструктор.
+ * Не зависит от HTTP или сессий, выполняет только работу с файлами.
  */
 class AvatarService
 {
@@ -17,33 +16,23 @@ class AvatarService
     private const JPEG_QUALITY = 85;
     private const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
 
-    private Session $session;
-
     /**
-     * ✅ ИЗМЕНЕНО: Добавлен Session в конструктор
+     * Обрабатывает загрузку аватара: валидация, ресайз, сохранение.
+     *
+     * @throws AvatarUploadException Если файл невалиден или не удалось его обработать
      */
-    public function __construct(Session $session)
-    {
-        $this->session = $session;
-    }
-
-    /**
-     * Обработать загрузку аватара: валидация, ресайз, сохранение.
-     */
-    public function handleUpload(array $file, ?string $oldAvatarFilename = null): ?string
+    public function handleUpload(array $file, ?string $oldAvatarFilename = null): string
     {
         $fileTmpPath = $file['tmp_name'] ?? '';
         if (empty($fileTmpPath) || !file_exists($fileTmpPath)) {
-            $this->session->flash('error', 'Временный файл загрузки недоступен.');
-            return null;
+            throw new AvatarUploadException('Временный файл загрузки недоступен.');
         }
 
         $maxSize = config('uploads.avatar_max_size', 5242880, 'int');
         $maxSizeMb = config('uploads.avatar_max_size_mb', 5, 'int');
         
         if ($file['size'] > $maxSize) {
-            $this->session->flash('error', "Размер файла не должен превышать {$maxSizeMb} МБ.");
-            return null;
+            throw new AvatarUploadException("Размер файла не должен превышать {$maxSizeMb} МБ.");
         }
 
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -51,8 +40,7 @@ class AvatarService
         finfo_close($finfo);
 
         if (!in_array($mimeType, self::ALLOWED_MIME_TYPES)) {
-            $this->session->flash('error', 'Разрешены только JPG, PNG, GIF.');
-            return null;
+            throw new AvatarUploadException('Разрешены только форматы JPG, PNG, GIF.');
         }
 
         $newFilename = bin2hex(random_bytes(16)) . '.jpg';
@@ -62,13 +50,16 @@ class AvatarService
         $baseUploadDir = $projectRoot . '/public/uploads/avatars';
         $uploadTargetDir = $baseUploadDir . '/' . $subFolder;
 
-        if (!is_dir($baseUploadDir)) mkdir($baseUploadDir, 0777, true);
-        if (!is_dir($uploadTargetDir)) mkdir($uploadTargetDir, 0777, true);
+        if (!is_dir($baseUploadDir)) {
+            mkdir($baseUploadDir, 0777, true);
+        }
+        if (!is_dir($uploadTargetDir)) {
+            mkdir($uploadTargetDir, 0777, true);
+        }
 
         $finalPath = $uploadTargetDir . '/' . $newFilename;
         if (!$this->resizeAndSave($fileTmpPath, $mimeType, $finalPath)) {
-            $this->session->flash('error', 'Не удалось обработать изображение.');
-            return null;
+            throw new AvatarUploadException('Не удалось обработать и сохранить изображение.');
         }
 
         if (!empty($oldAvatarFilename) && $oldAvatarFilename !== $newFilename) {
@@ -80,7 +71,12 @@ class AvatarService
 
     private function resizeAndSave(string $srcPath, string $mimeType, string $dstPath): bool
     {
-        list($srcWidth, $srcHeight) = getimagesize($srcPath);
+        $imageInfo = getimagesize($srcPath);
+        if (!$imageInfo) {
+            return false;
+        }
+        
+        list($srcWidth, $srcHeight) = $imageInfo;
 
         $srcImage = match ($mimeType) {
             'image/png' => imagecreatefrompng($srcPath),
@@ -88,7 +84,9 @@ class AvatarService
             default => imagecreatefromjpeg($srcPath),
         };
 
-        if (!$srcImage) return false;
+        if (!$srcImage) {
+            return false;
+        }
 
         $dstImage = imagecreatetruecolor(self::TARGET_SIZE, self::TARGET_SIZE);
         $whiteBackground = imagecolorallocate($dstImage, 255, 255, 255);

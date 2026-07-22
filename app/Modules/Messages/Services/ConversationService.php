@@ -1,28 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Messages\Services;
 
 use App\Modules\Messages\Models\Conversation;
 use App\Modules\Users\Models\User;
-use App\Core\Session;
+use App\Modules\Messages\Exceptions\ConversationException;
 
 /**
  * Сервис для управления диалогами между пользователями.
+ * Не зависит от HTTP или сессий, выполняет только бизнес-логику.
  */
 class ConversationService
 {
     private Conversation $conversationModel;
     private User $userModel;
-    private Session $session;
 
     public function __construct(
         Conversation $conversationModel,
-        User $userModel,
-        Session $session
+        User $userModel
     ) {
         $this->conversationModel = $conversationModel;
         $this->userModel = $userModel;
-        $this->session = $session;
     }
 
     /**
@@ -71,19 +71,19 @@ class ConversationService
 
     /**
      * Создать новый диалог или получить существующий между двумя пользователями.
+     *
+     * @throws ConversationException Если пользователи совпадают или произошла ошибка БД
      */
-    public function getOrCreateConversation(int $userOneId, int $userTwoId): ?int
+    public function getOrCreateConversation(int $userOneId, int $userTwoId): int
     {
         if ($userOneId === $userTwoId) {
-            $this->session->flash('error', 'Нельзя создать диалог с самим собой');
-            return null;
+            throw new ConversationException('Нельзя создать диалог с самим собой');
         }
 
         try {
             return $this->conversationModel->firstOrCreate($userOneId, $userTwoId);
         } catch (\Throwable $e) {
-            $this->session->flash('error', 'Ошибка при создании диалога');
-            return null;
+            throw new ConversationException('Ошибка при создании диалога');
         }
     }
 

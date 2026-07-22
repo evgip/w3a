@@ -12,15 +12,28 @@ use App\Core\Audit;
 use App\Core\Config;
 use App\Core\Request;
 use App\Core\ModuleServiceProvider as BaseModuleServiceProvider;
+
 use App\Modules\Auth\Services\AuthService;
 use App\Modules\Auth\Services\PasswordResetService;
+
 use App\Modules\Auth\Models\RememberToken;
 use App\Modules\Auth\Models\EmailActivation;
 use App\Modules\Auth\Models\PasswordResetToken;
-use App\Modules\Users\Models\User;
-use App\Modules\Mail\Core\Mailer; 
+use App\Modules\Auth\Models\AuthAttempt;
 
- 
+use App\Modules\Users\Models\User;
+use App\Modules\Mail\Core\Mailer;
+
+/**
+ * Провайдер сервисов модуля Auth.
+ * 
+ * Регистрирует модели и сервисы, необходимые для:
+ * - Аутентификации пользователей (вход/выход)
+ * - Регистрации новых аккаунтов с активацией по email
+ * - Восстановления пароля через email
+ * - Защиты от брутфорс-атак (блокировка по IP и email)
+ * - Функции "Запомнить меня" через безопасные токены
+ */
 class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     public function register(Container $container): void
@@ -28,6 +41,8 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
         parent::register($container);
 
         // === МОДЕЛИ ===
+        
+        // Модель для работы с токенами "Запомнить меня"
         $container->singleton(RememberToken::class, function (Container $c) {
             return new RememberToken(
                 $c->get(Database::class),
@@ -35,6 +50,7 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
             );
         });
 
+        // Модель для работы с токенами активации аккаунта
         $container->singleton(EmailActivation::class, function (Container $c) {
             return new EmailActivation(
                 $c->get(Database::class),
@@ -42,6 +58,7 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
             );
         });
 
+        // Модель для работы с токенами восстановления пароля
         $container->singleton(PasswordResetToken::class, function (Container $c) {
             return new PasswordResetToken(
                 $c->get(Database::class),
@@ -49,22 +66,33 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
             );
         });
 
-        // === СЕРВИСЫ ===
-		$container->singleton(AuthService::class, function($container) {
-			return new AuthService(
-				$container->get(User::class),
-				$container->get(RememberToken::class),
-				$container->get(EmailActivation::class),
-				$container->get(Database::class),
-				$container->get(Logger::class),
-				$container->get(Session::class),
-				$container->get(Audit::class),
-				$container->get(Mailer::class),
-				$container->get(Config::class),
-				$container->get(Request::class)
-			);
-		});
+        // Модель для работы с попытками аутентификации (защита от брутфорса)
+        $container->singleton(AuthAttempt::class, function (Container $c) {
+            return new AuthAttempt(
+                $c->get(Database::class),
+                $c->get(Logger::class)
+            );
+        });
 
+        // === СЕРВИСЫ ===
+        
+        // Основной сервис аутентификации
+        $container->singleton(AuthService::class, function (Container $c) {
+            return new AuthService(
+                $c->get(User::class),
+                $c->get(RememberToken::class),
+                $c->get(EmailActivation::class),
+                $c->get(AuthAttempt::class),
+                $c->get(Logger::class),
+                $c->get(Session::class),
+                $c->get(Audit::class),
+                $c->get(Mailer::class),
+                $c->get(Config::class),
+                $c->get(Request::class)
+            );
+        });
+
+        // Сервис восстановления пароля
         $container->singleton(PasswordResetService::class, function (Container $c) {
             return new PasswordResetService(
                 $c->get(User::class),
@@ -76,6 +104,7 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
 
     public function boot(): void
     {
-        // Регистрация слушателей событий, если есть
+        // Модуль Auth не генерирует событий, которые нужно слушать,
+        // поэтому метод boot остаётся пустым.
     }
 }
