@@ -112,21 +112,22 @@ class AuthController extends Controller
 
         try {
             $this->service(AuthService::class)->register($username, $email, $password);
-            
-            $this->session()->flash('success', 'Регистрация успешна! Проверьте почту для активации.');
-            $this->redirect('/login');
-            
         } catch (RegistrationFailedException $e) {
             $this->session()->set('old_input', ['username' => $username, 'email' => $email]);
             $this->session()->flash('error', $e->getMessage());
             $this->redirectBack('/register');
+			return;
             
         } catch (\Throwable $e) {
             $this->logError($e, 'Auth.register');
             $this->session()->set('old_input', ['username' => $username, 'email' => $email]);
             $this->session()->flash('error', 'Произошла ошибка при регистрации.');
             $this->redirectBack('/register');
+			return;
         }
+		
+        $this->session()->flash('success', 'Регистрация успешна! Проверьте почту для активации.');
+        $this->redirect('/login');
     }
 
     public function logout(): void
@@ -139,18 +140,21 @@ class AuthController extends Controller
     {
         try {
             $this->service(AuthService::class)->activateAccount($token);
-            $this->session()->flash('success', 'Аккаунт успешно активирован! Теперь вы можете войти.');
-            $this->redirect('/login');
             
         } catch (InvalidTokenException $e) {
             $this->session()->flash('error', $e->getMessage());
             $this->redirect('/register');
+			return;
             
         } catch (\Throwable $e) {
             $this->logError($e, 'Auth.activate');
             $this->session()->flash('error', 'Произошла ошибка при активации аккаунта.');
             $this->redirect('/register');
+			return;
         }
+		
+		$this->session()->flash('success', 'Аккаунт успешно активирован! Теперь вы можете войти.');
+		$this->redirect('/login');
     }
 
     public function showRequestResetForm(): void
