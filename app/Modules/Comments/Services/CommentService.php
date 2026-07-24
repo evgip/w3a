@@ -72,10 +72,6 @@ class CommentService
 
         $commentId = $this->commentModel->saveComment($commentData);
 
-        if ($commentId <= 0) {
-            throw new \RuntimeException("Не удалось сохранить комментарий в базу данных.");
-        }
-
         // 3. Уведомления
         $this->notificationService->notifyCommentCreated($commentId);
 
@@ -247,7 +243,7 @@ class CommentService
         $minLength = config('constants.validation.comment_min_length', 2, 'int');
         return $this->validator->validate(
             ['comment_text' => $text], 
-            ['comment_text' => "required|min:{$minLength}"]
+            ['comment_text' => "required|min:{$minLength}|max:2000"]
         );
     }
 

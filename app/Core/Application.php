@@ -9,6 +9,7 @@ use App\Core\Exceptions\HttpException;
 use App\Core\Exceptions\JsonResponseException;
 use App\Core\Exceptions\RedirectException;
 use App\Core\Exceptions\CsrfException;
+use App\Core\Logger; 
 
 class Application
 {
@@ -51,7 +52,13 @@ class Application
         $this->request = new Request();
         $this->container->singleton(Request::class, fn() => $this->request);
 
-        $eventDispatcher = new EventDispatcher();
+        // 1. Создаем экземпляр логгера и регистрируем его в контейнере
+        // (Это также исправляет работу метода logError() внизу файла)
+        $logger = new Logger();
+        $this->container->singleton(Logger::class, fn() => $logger);
+
+        // 2. Передаем логгер в диспетчер событий
+        $eventDispatcher = new EventDispatcher($logger);
         $this->container->singleton(EventDispatcher::class, fn() => $eventDispatcher);
 
         $this->registerProviders();

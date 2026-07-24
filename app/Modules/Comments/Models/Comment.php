@@ -24,33 +24,32 @@ class Comment extends Model
     ];
 
     /**
-     * Сохранить комментарий с транзакцией
+     * Сохранить новый комментарий в базу данных.
+     * 
+     * @param array{story_id: int, user_id: int, parent_id: int|null, comment: string} $data
+     * @return int ID созданного комментария
+     * @throws \RuntimeException Если не удалось сохранить комментарий
      */
     public function saveComment(array $data): int
     {
-        try {
-            $this->db->beginTransaction();
+        // Одиночный INSERT атомарен сам по себе. 
+        // База данных гарантирует целостность без явной транзакции.
+        $commentId = $this->create([
+            'story_id' => $data['story_id'],
+            'user_id' => $data['user_id'],
+            'parent_id' => $data['parent_id'] ?? null, // Защита от отсутствия ключа
+            'comment' => $data['comment'],
+            'score' => 1
+        ]);
 
-            // Создаем комментарий и получаем его ID
-            $commentId = $this->create([
-                'story_id' => $data['story_id'],
-                'user_id' => $data['user_id'],
-                'parent_id' => $data['parent_id'],
-                'comment' => $data['comment'],
-                'score' => 1
-            ]);
+        // PDO::lastInsertId возвращает строку, приводим к int для строгой типизации
+        $commentId = (int) $commentId;
 
-            $this->db->commit();
-
-            // Возвращаем ID созданного комментария (0 при ошибке)
-            return $commentId;
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            if ($this->logger) {
-                $this->logger->error("Comment::saveComment failed: " . $e->getMessage());
-            }
-            return 0;
+        if ($commentId <= 0) {
+            throw new \RuntimeException('Не удалось получить ID созданного комментария.');
         }
+
+        return $commentId;
     }
 
     /**
