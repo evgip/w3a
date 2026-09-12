@@ -1626,6 +1626,11 @@ ALTER TABLE `password_resets`
 
 
 
+ALTER TABLE `users`
+    ADD COLUMN `password_set_at` timestamp NULL DEFAULT NULL
+    COMMENT 'Когда пользователь задал пароль (NULL — OAuth, ещё не задан)'
+    AFTER `password`;
+
 
 DELIMITER $$
 --
