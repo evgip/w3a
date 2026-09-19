@@ -455,7 +455,9 @@ $isStoryDeleted = !empty($viewModel->story['deleted_at']);
 </script>
 
 <div class="comment_form_container" id="comment-form-container">
-    <?php if ($viewModel->currentUserId > 0 && !$isStoryDeleted): ?>
+    <?php if ($viewModel->areCommentsDisabled()): ?>
+        <p class="hint">Комментарии к этой статье отключены автором.</p>
+    <?php elseif ($viewModel->currentUserId > 0 && !$isStoryDeleted): ?>
         <h3>Оставить комментарий</h3>
         <form action="/comments/create" method="POST" id="main-comment-form">
             <?= csrf_field() ?>
@@ -546,6 +548,12 @@ $isStoryDeleted = !empty($viewModel->story['deleted_at']);
 
 
 <!-- КОММЕНТАРИИ -->
+<?php if ($viewModel->areCommentsDisabled()): ?>
+    <div class="comment-head">
+        <h3 id="comments">Комментарии (<?= (int)$viewModel->story['comments_count'] ?>)</h3>
+    </div>
+    <p class="hint">Комментарии к этой статье отключены автором.</p>
+<?php else: ?>
 <div class="comment-head">
     <h3 id="comments">Комментарии (<?= (int)$viewModel->story['comments_count'] ?>)</h3>
     <?php if (!empty($viewModel->commentsTree)): ?>
@@ -602,6 +610,7 @@ $isStoryDeleted = !empty($viewModel->story['deleted_at']);
 		// Запускаем рекурсию с глубины 1
 		$renderTree(0, 1);
 	?>
+<?php endif; ?>
 <?php endif; ?>
 
 

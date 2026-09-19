@@ -19,6 +19,7 @@ use App\Modules\Comments\Events\CommentRestored;
 use App\Modules\Comments\Events\CommentUpdated;
 
 use App\Modules\Comments\Models\CommentHighlight;
+use App\Modules\Stories\Models\Story;
 
 /**
  * Сервис для работы с комментариями.
@@ -31,6 +32,7 @@ class CommentService
     private Validator $validator;
     private UserContext $currentUser;
 	private CommentHighlight $highlightModel;
+	private Story $storyModel;
 
     /**
      * Все 5 зависимостей строго обязательны.
@@ -41,7 +43,8 @@ class CommentService
 		Validator $validator,
 		NotificationService $notificationService,
 		EventDispatcher $eventDispatcher,
-		UserContext $currentUser
+		UserContext $currentUser,
+		Story $storyModel
 	) {
 		$this->commentModel = $commentModel;
 		$this->highlightModel = $highlightModel;  // ← НОВОЕ
@@ -49,6 +52,7 @@ class CommentService
 		$this->notificationService = $notificationService;
 		$this->eventDispatcher = $eventDispatcher;
 		$this->currentUser = $currentUser;
+		$this->storyModel = $storyModel;
 	}
 
     /**
@@ -60,6 +64,15 @@ class CommentService
      */
     public function createComment(int $storyId, string $text, ?int $parentId): int
     {
+        // 0. Проверяем, не отключил ли автор комментарии к статье
+        $story = $this->storyModel->find($storyId);
+        if (!$story) {
+            throw new CommentValidationException('Статья не найдена.');
+        }
+        if (!empty($story['comments_disabled'])) {
+            throw new CommentValidationException('Комментарии к этой статье отключены автором.');
+        }
+
         // 1. Валидация текста
         if (!$this->validateCommentText($text)) {
             $minLength = config('constants.validation.comment_min_length', 2, 'int');

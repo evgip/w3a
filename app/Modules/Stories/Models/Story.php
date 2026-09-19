@@ -33,6 +33,7 @@ class Story extends Model
         'picked_at',          // Staff Picks
         'has_paywall',        // Paywall: есть ли закрытая часть
         'paywall_type',    // Paywall: none / members / subscribers
+        'comments_disabled',  // Комментарии отключены автором
 		'status', 		 
         'deleted_at'
     ];

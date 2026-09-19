@@ -14,6 +14,7 @@ class CreateStoryRequest extends FormRequest
             'description'       => 'required',
             'tags'              => '',
             'user_is_following' => '',
+            'comments_disabled' => '',
             'paywall_type'      => 'in:none,members,subscribers',
             'action'            => '',
         ];
@@ -25,6 +26,7 @@ class CreateStoryRequest extends FormRequest
             'description',
             'tags',
             'user_is_following',
+            'comments_disabled',
             'paywall_type',
             'action',
         ];

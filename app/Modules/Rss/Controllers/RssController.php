@@ -22,7 +22,7 @@ class RssController extends BaseController
     public function index(): void
     {
         $filterService = $this->service(StoryFilterService::class);
-        $stories = $filterService->getFilteredStories(self::ITEM_LIMIT, 0, '', '', 'new');
+        $stories = $filterService->getFilteredStories(self::ITEM_LIMIT, 0, '', 'new', '');
 
         $items = [];
         foreach ($stories as $story) {
@@ -52,7 +52,7 @@ class RssController extends BaseController
         }
 
         $filterService = $this->service(StoryFilterService::class);
-        $stories = $filterService->getFilteredStories(self::ITEM_LIMIT, 0, $tagslug, '', 'new');
+        $stories = $filterService->getFilteredStories(self::ITEM_LIMIT, 0, $tagslug, 'new', '');
 
         $items = [];
         foreach ($stories as $story) {
@@ -82,7 +82,7 @@ class RssController extends BaseController
         }
 
         $filterService = $this->service(StoryFilterService::class);
-        $stories = $filterService->getFilteredStories(self::ITEM_LIMIT, 0, '', '', 'new', $username);
+        $stories = $filterService->getFilteredStories(self::ITEM_LIMIT, 0, '', 'new', $username);
 
         $items = [];
         foreach ($stories as $story) {

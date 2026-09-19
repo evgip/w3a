@@ -109,6 +109,7 @@ class StoryService
 			'score'              => 1,
 			'comments_count'     => 0,
 			'user_is_following'  => isset($data['user_is_following']) ? 1 : 0,
+			'comments_disabled'  => isset($data['comments_disabled']) ? 1 : 0,
 			'paywall_type'       => $paywallType,
 			'status'             => $status,
 		];
@@ -202,6 +203,7 @@ class StoryService
 			'word_count'         => $wordCount,
 			'reading_time'       => $readingTime,
 			'user_is_following'  => isset($data['user_is_following']) ? 1 : 0,
+			'comments_disabled'  => isset($data['comments_disabled']) ? 1 : 0,
 			'paywall_type'       => $paywallType,
 			'status'             => $status,
 		];

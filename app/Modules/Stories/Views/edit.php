@@ -47,6 +47,17 @@
         </small>
     </div>
 
+    <div class="form-group">
+        <label>
+            <input type="checkbox" name="comments_disabled" value="1"
+                <?= !empty($story['comments_disabled']) ? 'checked' : '' ?>>
+            Отключить комментарии к этой истории.
+        </label><br>
+        <small class="form-text text-muted hint">
+            Читатели не смогут оставлять комментарии под этой публикацией.
+        </small>
+    </div>
+
 <?php if ($story['has_paywall'] && $story['user_id'] === $userContext['id']): ?>
 <div class="card mt-4">
     <div class="card-header">

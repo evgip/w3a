@@ -81,4 +81,12 @@ readonly class StoryShowViewModel
     {
         return $this->currentUserId > 0 && $this->newCommentsCount > 0;
     }
+
+    /**
+     * Отключил ли автор комментарии к этой статье?
+     */
+    public function areCommentsDisabled(): bool
+    {
+        return !empty($this->story['comments_disabled']);
+    }
 }

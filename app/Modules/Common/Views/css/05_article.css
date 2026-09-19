@@ -734,7 +734,7 @@ pre:hover .copy-button {
   }
 
   .editorjs-image--stretched {
-    width: 100vw;
+    width: 99vw;
     position: relative;
     left: 50%;
     margin-left: -50vw;

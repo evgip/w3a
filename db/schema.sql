@@ -457,6 +457,7 @@ CREATE TABLE `stories` (
   `status` enum('draft','published','scheduled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'published' COMMENT 'Статус статьи: draft=черновик, published=опубликована, scheduled=запланирована',
   `published_at` timestamp NULL DEFAULT NULL COMMENT 'Дата публикации (для published/scheduled)',
   `user_is_following` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Подписан ли автор на уведомления о новых комментариях',
+  `comments_disabled` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Комментарии отключены автором',
   `has_paywall` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Есть ли в статье закрытая часть',
   `paywall_type` enum('none','members','subscribers') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'none' COMMENT 'none=все видят, members=только залогиненные, subscribers=только подписчики автора',
   `is_staff_pick` tinyint(1) NOT NULL DEFAULT '0',

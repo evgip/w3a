@@ -56,7 +56,8 @@ class ModuleServiceProvider extends \W3a\Core\Foundation\ModuleServiceProvider
                 $c->get(Validator::class),
                 $c->get(NotificationService::class),
                 $c->get(EventDispatcher::class),
-                $c->get(UserContext::class)
+                $c->get(UserContext::class),
+                $c->get(Story::class)
             );
         });
 

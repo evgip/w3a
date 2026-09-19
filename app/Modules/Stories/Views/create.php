@@ -43,6 +43,16 @@
         </small>
     </div>
 
+    <div class="form-group">
+        <label>
+            <input type="checkbox" name="comments_disabled" value="1">
+            Отключить комментарии к этой истории.
+        </label><br>
+        <small class="form-text text-muted hint">
+            Читатели не смогут оставлять комментарии под этой публикацией.
+        </small>
+    </div>
+
     <div class="form-actions v-center">
         <button type="submit" name="action" value="publish">Опубликовать</button>
         <button type="submit" name="action" value="draft" class="btn btn--secondary">Сохранить черновик</button>
