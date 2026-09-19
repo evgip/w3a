@@ -661,7 +661,7 @@ if (!function_exists('render_editorjs_content')) {
                     $html .= "<pre{$dataAttrs}><code class=\"language-{$lang}\">{$code}</code></pre>\n";
                     break;
                     
-				case 'image':
+case 'image':
 					$url = filter_var(config('app.url') . ($d['file']['url'] ?? ''), FILTER_VALIDATE_URL);
 					$caption = e($d['caption'] ?? '');
 
@@ -736,6 +736,30 @@ if (!function_exists('render_editorjs_content')) {
 						$html .= "</figure>\n";
 					}
 					break;
+
+				case 'embed': {
+					$embedUrl = $d['embed'] ?? '';
+					$source = $d['source'] ?? '';
+					$caption = e($d['caption'] ?? '');
+
+					if ($embedUrl !== '' && filter_var($embedUrl, FILTER_VALIDATE_URL)) {
+						// ок
+					} elseif ($source !== '' && filter_var($source, FILTER_VALIDATE_URL)) {
+						$embedUrl = $source;
+					} else {
+						$embedUrl = '';
+					}
+
+					if ($embedUrl !== '') {
+						$html .= "<div class=\"editorjs-embed\">\n";
+						$html .= "<iframe src=\"" . e($embedUrl) . "\" frameborder=\"0\" allowfullscreen allow=\"autoplay; encrypted-media; fullscreen; picture-in-picture\" loading=\"lazy\"></iframe>\n";
+						if ($caption !== '') {
+							$html .= "<p class=\"editorjs-embed__caption\">{$caption}</p>\n";
+						}
+						$html .= "</div>\n";
+					}
+					break;
+				}
 
             }
         }
@@ -1031,5 +1055,138 @@ if (!function_exists('typography')) {
     function typography(): \App\Modules\Content\Services\TypographyService
     {
         return get_cached_container(\App\Modules\Content\Services\TypographyService::class);
+    }
+}
+
+/**
+ * Конвертирует inline-HTML (из Editor.js) в Markdown-разметку.
+ */
+if (!function_exists('editorjs_inline_to_markdown')) {
+    function editorjs_inline_to_markdown(string $text): string
+    {
+        // Ссылки: <a href="...">text</a> → [text](url)
+        $text = preg_replace_callback(
+            '/<a\s+href="([^"]+)"[^>]*>(.*?)<\/a>/is',
+            fn($m) => '[' . strip_tags($m[2]) . '](' . $m[1] . ')',
+            $text
+        );
+
+        // Жирный, курсив, зачёркнутый, код
+        $text = preg_replace('/<(strong|b)>(.*?)<\/\1>/is', '**$2**', $text);
+        $text = preg_replace('/<(em|i)>(.*?)<\/\1>/is', '*$2*', $text);
+        $text = preg_replace('/<(s|del)>(.*?)<\/\1>/is', '~~$2~~', $text);
+        $text = preg_replace('/<code>(.*?)<\/code>/is', '`$1`', $text);
+
+        return trim(strip_tags($text));
+    }
+}
+
+/**
+ * Конвертирует JSON от Editor.js в Markdown.
+ *
+ * @param string $json JSON от Editor.js
+ * @return string Markdown-представление статьи
+ */
+if (!function_exists('editorjs_to_markdown')) {
+    function editorjs_to_markdown(string $json): string
+    {
+        $data = json_decode($json, true);
+        if (!$data || !isset($data['blocks']) || !is_array($data['blocks'])) {
+            return '';
+        }
+
+        $lines = [];
+
+        foreach ($data['blocks'] as $block) {
+            $type = $block['type'] ?? '';
+            $d = $block['data'] ?? [];
+
+            switch ($type) {
+                case 'header':
+                    $level = min(max((int)($d['level'] ?? 2), 1), 6);
+                    $lines[] = str_repeat('#', $level) . ' ' . editorjs_inline_to_markdown((string)($d['text'] ?? ''));
+                    $lines[] = '';
+                    break;
+
+                case 'paragraph':
+                    $text = editorjs_inline_to_markdown((string)($d['text'] ?? ''));
+                    if ($text !== '') {
+                        $lines[] = $text;
+                        $lines[] = '';
+                    }
+                    break;
+
+                case 'quote':
+                    $text = editorjs_inline_to_markdown((string)($d['text'] ?? ''));
+                    if ($text !== '') {
+                        $lines[] = '> ' . $text;
+                        if (!empty($d['caption'])) {
+                            $lines[] = '>';
+                            $lines[] = '> — ' . editorjs_inline_to_markdown((string)$d['caption']);
+                        }
+                        $lines[] = '';
+                    }
+                    break;
+
+                case 'list':
+                    $style = $d['style'] ?? 'unordered';
+                    $items = $d['items'] ?? [];
+                    foreach ($items as $i => $item) {
+                        $itemText = editorjs_inline_to_markdown((string)($item['content'] ?? ''));
+                        if ($itemText === '') {
+                            continue;
+                        }
+                        if ($style === 'ordered') {
+                            $lines[] = ($i + 1) . '. ' . $itemText;
+                        } else {
+                            $lines[] = '- ' . $itemText;
+                        }
+                    }
+                    $lines[] = '';
+                    break;
+
+                case 'code':
+                    $code = (string)($d['code'] ?? '');
+                    $lang = (string)($d['language'] ?? '');
+                    if ($code !== '') {
+                        $lines[] = '```' . $lang;
+                        $lines[] = $code;
+                        $lines[] = '```';
+                        $lines[] = '';
+                    }
+                    break;
+
+                case 'image':
+                    $url = filter_var(
+                        config('app.url') . ($d['file']['url'] ?? ''),
+                        FILTER_VALIDATE_URL
+                    );
+                    if ($url) {
+                        $caption = trim((string)($d['caption'] ?? ''));
+                        $lines[] = '![' . $caption . '](' . $url . ')';
+                        $lines[] = '';
+                    }
+                    break;
+
+                case 'embed':
+                    $embedUrl = $d['embed'] ?? $d['source'] ?? '';
+                    if ($embedUrl !== '') {
+                        $lines[] = $embedUrl;
+                        $lines[] = '';
+                    }
+                    break;
+
+                case 'delimiter':
+                    $lines[] = '---';
+                    $lines[] = '';
+                    break;
+
+                // paywall и прочие служебные блоки пропускаем
+                default:
+                    break;
+            }
+        }
+
+        return trim(implode("\n", $lines));
     }
 }

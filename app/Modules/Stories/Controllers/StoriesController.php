@@ -903,11 +903,73 @@ $feed = $this->service(StoryFeedBuilder::class)->build(
 		]);
 	}
 	
-	/**
-	 * Создание новой friend link для статьи
-	 */
-	public function createFriendLink(string $id): JsonResponse
-	{
+/**
+     * Экспорт статьи в Markdown (только для автора).
+     */
+    public function exportMarkdown(string $id): \W3a\Core\Http\Response
+    {
+        $userContext = $this->getUserContext();
+        $storyId = (int)$id;
+
+        $storyModel = $this->container->get(Story::class);
+        $story = $storyModel->find($storyId);
+
+        // Доступ только автору (или модератору/админу)
+        if (!$story || !$this->service(StoryService::class)->canEditStory($story, $userContext['id'])) {
+            MessageBag::flashMessage('error', 'У вас нет прав для экспорта этой публикации.');
+            return $this->redirectBack('/');
+        }
+
+        $markdown = editorjs_to_markdown((string)($story['description_json'] ?? ''));
+
+        // Шапка-фронтматтер с метаданными
+        $frontmatter = "---\n"
+            . "title: \"" . str_replace('"', '\\"', (string)($story['title'] ?? '')) . "\"\n"
+            . "date: " . date('Y-m-d H:i', strtotime((string)($story['created_at'] ?? 'now'))) . "\n"
+            . "---\n\n";
+
+        $filename = $this->slugifyFilename((string)($story['title'] ?? 'story-' . $storyId)) . '.md';
+
+        return new \W3a\Core\Http\Response(
+            $frontmatter . $markdown,
+            200,
+            [
+                'Content-Type' => 'text/markdown; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Cache-Control' => 'no-store',
+            ]
+        );
+    }
+
+    /**
+     * Преобразует заголовок в имя файла (латиница, без спецсимволов).
+     */
+    private function slugifyFilename(string $title): string
+    {
+        $translit = [
+            'а' => 'a', 'б' => 'b', 'в' => 'v', 'г' => 'g', 'д' => 'd',
+            'е' => 'e', 'ё' => 'yo', 'ж' => 'zh', 'з' => 'z', 'и' => 'i',
+            'й' => 'y', 'к' => 'k', 'л' => 'l', 'м' => 'm', 'н' => 'n',
+            'о' => 'o', 'п' => 'p', 'р' => 'r', 'с' => 's', 'т' => 't',
+            'у' => 'u', 'ф' => 'f', 'х' => 'h', 'ц' => 'ts', 'ч' => 'ch',
+            'ш' => 'sh', 'щ' => 'sch', 'ъ' => '', 'ы' => 'y', 'ь' => '',
+            'э' => 'e', 'ю' => 'yu', 'я' => 'ya',
+            ' ' => '-', '.' => '', ',' => '', '!' => '', '?' => '', ':' => '', ';' => '', '"' => '', "'" => '',
+        ];
+
+        $name = mb_strtolower($title);
+        $name = strtr($name, $translit);
+        $name = preg_replace('/[^a-z0-9\-_]/', '', $name);
+        $name = trim($name, '-');
+
+        return $name !== '' ? $name : 'story';
+    }
+	
+    /**
+     * Создание новой friend link для статьи
+     */
+    public function createFriendLink(string $id): JsonResponse
+    {
 		$userContext = $this->getUserContext();
 		if (!$userContext['isLoggedIn']) {
 			return $this->json(['error' => 'Требуется авторизация'], 401);

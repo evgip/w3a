@@ -44,6 +44,7 @@ $initialDataJson = json_encode($initialData, JSON_UNESCAPED_UNICODE | JSON_HEX_T
 <script src="/assets/editor/inline-code.umd.js" nonce="<?= $nonce ?>"></script>
 <script src="/assets/editor/image.umd.js" nonce="<?= $nonce ?>"></script>
 <script src="/assets/editor/code.umd.js" nonce="<?= $nonce ?>"></script>
+<script src="/assets/editor/embed.umd.js" nonce="<?= $nonce ?>"></script>
 
 <div class="form-field-group">
     <label><strong><?= e($editor['label']) ?></strong></label>
@@ -137,6 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const ImageTool = window.ImageTool;
     const CodeTool = window.CodeTool;
     const PaywallTool = window.PaywallTool;
+    const EmbedTool = window.Embed;
 
     if (!window.EditorJS || !ListTool || !InlineCodeTool) {
         console.error('❌ Не удалось загрузить плагины Editor.js. Проверьте пути и CSP.');
@@ -155,6 +157,10 @@ document.addEventListener('DOMContentLoaded', function() {
         console.warn('⚠️ Плагин Code не загружен.');
     }
 
+    if (!EmbedTool) {
+        console.warn('⚠️ Плагин Embed не загружен.');
+    }
+
     const editorI18n = {
         messages: {
             ui: {
@@ -171,7 +177,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 "Image": "Изображение",
 				"Ordered List": "Нумерованный",    
 				"Unordered List": "Маркированный",  
-				"Checklist": "Чеклист",  
+				"Checklist": "Чеклист",
+                "Embed": "Видео",
             },
             tools: {
                 heading: { "Heading": "Заголовок" },
@@ -240,6 +247,51 @@ document.addEventListener('DOMContentLoaded', function() {
                 endpoints: { byFile: '/stories/upload-image' },
                 field: 'image',
                 types: 'image/jpeg, image/png, image/gif, image/webp'
+            }
+        };
+    }
+
+    // Embed: YouTube (встроен) + свои сервисы VK и Rutube
+    if (EmbedTool) {
+        // В оригинальном Embed-классе НЕТ статического toolbox,
+        // поэтому он не появляется в меню «+» — только по вставке ссылки.
+        // Оборачиваем в подкласс, чтобы добавить пункт «Видео» в палитру.
+        class EmbedWithToolbox extends EmbedTool {
+            static get toolbox() {
+                return {
+                    title: 'Видео',
+                    icon: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+                };
+            }
+        }
+
+        tools.embed = {
+            class: EmbedWithToolbox,
+            config: {
+                services: {
+                    // Встроенные сервисы (кроме YouTube отключаем, чтобы не раздувать палитру)
+                    youtube: true,
+                    vimeo: true,
+                    // ВКонтакте / VK Видео (vk.com и vkvideo.ru)
+                    vk: {
+                        regex: /^https?:\/\/(?:m\.|www\.)?(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/,
+                        // Плагин подставляет один плейсхолдер <%= remote_id %>,
+                        // поэтому весь query (oid, id, hd) собираем в id()
+                        embedUrl: 'https://vk.com/video_ext.php?<%= remote_id %>',
+                        html: '<iframe width="560" height="315" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>',
+                        height: 315,
+                        width: 560,
+                        id: (groups) => 'oid=' + groups[0] + '&id=' + groups[1] + '&hd=2',
+                    },
+                    // Rutube
+                    rutube: {
+                        regex: /^https?:\/\/(?:www\.)?rutube\.ru\/video\/([a-zA-Z0-9]+)/,
+                        embedUrl: 'https://rutube.ru/play/embed/<%= remote_id %>',
+                        html: '<iframe width="720" height="405" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>',
+                        height: 405,
+                        width: 720,
+                    },
+                }
             }
         };
     }

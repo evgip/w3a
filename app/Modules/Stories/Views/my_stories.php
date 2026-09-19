@@ -84,9 +84,11 @@ $tabs = [
                         <a href="/stories/<?= $storyId ?>/edit" class="btn btn--small">Продолжить</a>
                     <?php elseif ($isScheduled): ?>
                         <a href="/stories/<?= $storyId ?>/edit" class="btn btn--small">Редактировать</a>
+                        <a href="/stories/<?= $storyId ?>/export.md" class="btn btn--small btn--secondary" title="Скачать в Markdown">⬇ .md</a>
                     <?php else: ?>
                         <a href="<?= route('story.show', ['id' => $storyId]) ?>" class="btn btn--small">Открыть</a>
                         <a href="/stories/<?= $storyId ?>/edit" class="btn btn--small btn--secondary">Редактировать</a>
+                        <a href="/stories/<?= $storyId ?>/export.md" class="btn btn--small btn--secondary" title="Скачать в Markdown">⬇ .md</a>
                     <?php endif; ?>
                 </div>
             </li>

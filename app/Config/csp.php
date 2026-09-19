@@ -46,7 +46,11 @@ return [
         'https://oauth.yandex.ru',
         'https://passport.yandex.ru',
         'https://yandex.ru', 
-		'https://yoomoney.ru',		
+		'https://yoomoney.ru',
+        // Видео-встраивания
+        'https://www.youtube.com',
+        'https://vk.com',
+        'https://rutube.ru',
     ],
     
     // 🔑 РАСШИРЕННЫЙ connect-src с поддержкой WebSocket
@@ -61,6 +65,7 @@ return [
         'https://yandex.ru',
         'https://autofill.yandex.ru',
         'https://avatars.yandex.net',
+		'https://stats.vk-portal.net',
         
         // 🆕 WebSocket домены (КРИТИЧНО для OAuth Яндекса!)
         'wss://mc.yandex.ru',             

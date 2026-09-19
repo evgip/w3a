@@ -69,11 +69,14 @@ $router->group(['middleware' => ['web', 'auth']], function ($router) {
 
 	$router->add('GET', '/subscribed', StoriesController::class . '@subscribed', 'stories.subscribed');
 	
-    // --- Черновики ---
+// --- Черновики ---
 	$router->add('GET', '/drafts', StoriesController::class . '@drafts', 'drafts.index');
 
     // --- Мои истории (Medium-стиль: Черновики / Опубликовано / Запланировано) ---
     $router->add('GET', '/me/stories', StoriesController::class . '@myStories', 'me.stories');
+
+    // --- Экспорт статьи в Markdown (только автор) ---
+    $router->add('GET', '/stories/{id}/export.md', StoriesController::class . '@exportMarkdown', 'story.export.markdown');
  
 });
 
