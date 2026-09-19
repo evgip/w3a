@@ -59,3 +59,5 @@
 <p>
     Нет аккаунта? <a href="/register">Зарегистрироваться</a>
 </p>
+
+<?php partial('SocialAuth::_buttons'); ?>

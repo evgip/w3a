@@ -1121,6 +1121,7 @@ $isStoryDeleted = !empty($viewModel->story['deleted_at']);
             this.lastActivityTime = Date.now();
             this.intervalId = null;
             this.activityTimeoutId = null;
+            this._referrerSent = false;
         }
 
         /**
@@ -1197,6 +1198,15 @@ $isStoryDeleted = !empty($viewModel->story['deleted_at']);
             const formData = new FormData();
             formData.append('story_id', this.storyId);
             formData.append('seconds', seconds);
+
+            // Источник перехода передаём только один раз (при первом беконе)
+            if (!this._referrerSent) {
+                const referrer = (document.referrer || '').slice(0, 500);
+                if (referrer) {
+                    formData.append('referrer', referrer);
+                }
+                this._referrerSent = true;
+            }
 
             // Получаем CSRF токен из meta-тега
             const csrfMeta = document.querySelector('meta[name="csrf-token"]');

@@ -58,6 +58,21 @@ class AppAuthService extends BaseAuthService
     // ═══════════════════════════════════════════════════════════
 
     /**
+     * Регистрация пользователя с паролем: фиксируем момент задания пароля.
+     * Позволяет отличать пользователей с паролем от OAuth-пользователей (password_set_at IS NULL).
+     */
+    public function register(string $username, string $email, string $password): int
+    {
+        $userId = parent::register($username, $email, $password);
+
+        $this->userModel->update((int)$userId, [
+            'password_set_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $userId;
+    }
+
+    /**
      * Проверка бана через таблицу user_bans (специфика приложения).
      */
     protected function isUserBanned(int $userId): bool

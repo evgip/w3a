@@ -483,6 +483,8 @@ CREATE TABLE `story_views` (
   `user_id` int UNSIGNED NOT NULL,
   `story_id` int UNSIGNED NOT NULL,
   `read_seconds` int UNSIGNED DEFAULT '0' COMMENT 'Время чтения в секундах',
+  `referrer` varchar(500) DEFAULT NULL COMMENT 'Источник перехода',
+  `referrer_type` enum('internal','external','search','social','direct') NOT NULL DEFAULT 'direct' COMMENT 'Тип источника',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

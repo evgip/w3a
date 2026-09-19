@@ -57,7 +57,9 @@ class SocialAuthController extends BaseController
 
         $socialAuth = $this->service(SocialAuthService::class);
         $result = $socialAuth->authenticate('yandex', [
-            'id' => $userInfo['id'] ?? '',
+            // Яндексовский /info: поле id приходит только при включённых правах login:info.
+            // Запасной вариант — psuid (постоянный ID пользователя Яндекса).
+            'id' => $userInfo['id'] ?? $userInfo['psuid'] ?? '',
             'email' => $userInfo['default_email'] ?? $userInfo['emails'][0] ?? null,
             'name' => $userInfo['real_name'] ?? $userInfo['display_name'] ?? '',
             'username' => $userInfo['login'] ?? null,
@@ -146,16 +148,16 @@ class SocialAuthController extends BaseController
             return $this->redirect('/login');
         }
 
-        // Проверка активности
-        $user = $userModel->getUser($userId);
-        if ($user && empty($user['is_active'])) {
+        // Получаем полные данные пользователя и проверяем активность
+        $user = $userModel->find($userId);
+        if (!$user || empty($user['is_active'])) {
             MessageBag::flashMessage('error', 'Ваш аккаунт деактивирован.');
             return $this->redirect('/login');
         }
 
-        // Устанавливаем сессию (используем вашу логику из Auth модуля)
-        $_SESSION['user_id'] = $userId;
-        $_SESSION['logged_in'] = true;
+        // Стандартная сессия (как при обычном входе): user_id, user_name, user_role, аватар
+        $authService = $this->service(\App\Modules\Auth\Services\AppAuthService::class);
+        $authService->createSession($user, false);
 
         if ($isNew) {
             MessageBag::flashMessage('success', 'Добро пожаловать! Аккаунт успешно создан.');

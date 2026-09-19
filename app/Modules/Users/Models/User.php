@@ -15,6 +15,7 @@ class User extends Model
         'username',
         'email',
         'password',
+        'password_set_at',
         'role',
         'bio',
         'is_active'
@@ -73,12 +74,12 @@ class User extends Model
     }
 
     /**
-     * Находит username, role по id.
+     * Находит username, role, is_active, deleted_at по id.
      */
     public function getUser(int $userId): ?array
     {
         return $this->db->fetchOne(
-            "SELECT username, role FROM `users` WHERE `id` = :id LIMIT 1",
+            "SELECT username, role, is_active, deleted_at FROM `users` WHERE `id` = :id LIMIT 1",
             ['id' => $userId]
         );
     }
@@ -340,8 +341,8 @@ class User extends Model
 
 		$this->db->execute(
 			"INSERT INTO `{$this->table}` 
-				(`username`, `email`, `password`, `role`, `is_active`, `created_at`)
-			 VALUES (?, ?, ?, 'user', 1, NOW())",
+				(`username`, `email`, `password`, `password_set_at`, `role`, `is_active`, `created_at`)
+			 VALUES (?, ?, ?, NULL, 'user', 1, NOW())",
 			[$username, $email, $password]
 		);
 

@@ -563,8 +563,18 @@ ol.notification-list {
   color: white;
 }
 
+.btn-yandex:hover {
+  background: #e0381b;
+  color: #fff;
+}
+
 .btn-vk {
   background: #0077FF;
   color: white;
+}
+
+.btn-vk:hover {
+  background: #0066d9;
+  color: #fff;
 }
 

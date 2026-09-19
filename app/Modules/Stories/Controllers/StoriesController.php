@@ -32,6 +32,7 @@ use App\Modules\Common\Support\Layout;
 
 use App\Modules\Stories\Requests\CreateStoryRequest;
 use App\Modules\Stories\Requests\UpdateStoryRequest;
+use App\Modules\Stories\Models\StoryView;
 
 class StoriesController extends BaseController
 {
@@ -679,8 +680,10 @@ $feed = $this->service(StoryFeedBuilder::class)->build(
 
 		// 5. Трекаем время
 		try {
+			$referrer = (string)$this->request->post('referrer', '');
 			$storyView = $this->container->get(\App\Modules\Stories\Models\StoryView::class);
-			$storyView->trackReadTime($userContext['id'], $storyId, $seconds);
+			$referrerType = $storyView->classifyReferrer($referrer !== '' ? $referrer : null, parse_url(config('app.url'), PHP_URL_HOST));
+			$storyView->trackReadTime($userContext['id'], $storyId, $seconds, $referrer !== '' ? $referrer : null, $referrerType);
 			
 			return $this->json(['success' => true]);
 		} catch (\Throwable $e) {

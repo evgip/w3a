@@ -35,6 +35,8 @@ class YandexOAuthService
             'client_id' => $this->clientId,
             'redirect_uri' => $this->redirectUri,
             'state' => $state,
+            // Без явных прав (scopes) Яндекс возвращает /info без id и email.
+            'scope' => 'login:info login:email',
         ]);
 
         return self::AUTH_URL . '?' . $params;
@@ -62,19 +64,42 @@ class YandexOAuthService
 
     /**
      * Получить информацию о пользователе.
+     *
+     * Рабочий вариант как на rss.local: прямой GET на login.yandex.ru/info
+     * с заголовком Authorization, без ?format=json.
      */
     public function getUserInfo(string $accessToken): ?array
     {
-        $response = $this->httpGet(self::USER_INFO_URL . '?format=json', [
-            'Authorization' => 'OAuth ' . $accessToken,
+        $ch = curl_init(self::USER_INFO_URL);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: OAuth ' . $accessToken,
+            ],
         ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
-        if (isset($response['error'])) {
-            $this->logger->error('Yandex OAuth user info error: ' . ($response['error_description'] ?? 'Unknown'));
+        if ($httpCode !== 200 || $response === false) {
+            $this->logger->error('Yandex profile error', [
+                'http_code' => $httpCode,
+            ]);
             return null;
         }
 
-        return $response;
+        $profile = json_decode($response, true);
+        if (!is_array($profile)) {
+            $this->logger->error('Yandex /info returned non-JSON', [
+                'body' => substr((string)$response, 0, 500),
+            ]);
+            return null;
+        }
+
+        $this->logger->info('Yandex /info keys', ['keys' => array_keys($profile)]);
+
+        return $profile;
     }
 
     private function httpPost(string $url, array $data): array

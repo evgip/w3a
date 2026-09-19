@@ -76,6 +76,9 @@ class UserService
     /**
      * Меняет пароль пользователя.
      *
+     * Для пользователей, у которых нет заданного пароля (OAuth, password_set_at IS NULL),
+     * проверка текущего пароля пропускается — пользователь просто задаёт новый.
+     *
      * @throws UserNotFoundException Если пользователь не найден
      * @throws UserValidationException Если текущий пароль неверен
      */
@@ -86,12 +89,18 @@ class UserService
             throw new UserNotFoundException('Пользователь не найден.');
         }
 
-        if (!password_verify($currentPassword, $user['password'])) {
+        // OAuth-пользователь: пароль ещё не задан (password_set_at IS NULL), проверять текущий нечего
+        $hasPassword = !empty($user['password_set_at']);
+
+        if ($hasPassword && !password_verify($currentPassword, $user['password'])) {
             throw new UserValidationException('Текущий пароль введён неверно.');
         }
 
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-        return $this->userModel->update($userId, ['password' => $hashedPassword]);
+        return $this->userModel->update($userId, [
+            'password'       => $hashedPassword,
+            'password_set_at' => date('Y-m-d H:i:s'),
+        ]);
     }
 
     public function getUserSettings(int $userId): array

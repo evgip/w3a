@@ -88,10 +88,11 @@ class SocialAuthService
     private function createUser(string $provider, array $data): int
     {
         $email = $data['email'] ?? null;
-        $name = $data['name'] ?? $data['username'] ?? '';
         $providerUserId = (string)$data['id'];
 
-        $username = $this->generateUsername($name, $provider);
+        // Для ника берём ЛОГИН провайдера (латиница), а не имя (может быть кириллицей)
+        $usernameBase = $data['username'] ?? $data['name'] ?? '';
+        $username = $this->generateUsername($usernameBase, $provider);
 
         $userId = $this->userModel->createOAuthUser(
             $username,

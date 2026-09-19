@@ -156,12 +156,17 @@
 <p class="hint">
     Для повышения безопасности вашего профиля рекомендуется использовать сложный пароль из букв, цифр и спецсимволов.
     <br>
-    <a href="/password/recovery" class="form-field-hint-inline">Не помните текущий пароль?</a>
+    <?php if (empty($user['password_set_at'])): ?>
+        Вы вошли через внешний сервис, поэтому у вас ещё нет пароля. Просто задайте его ниже.
+    <?php else: ?>
+        <a href="/password/recovery" class="form-field-hint-inline">Не помните текущий пароль?</a>
+    <?php endif; ?>
 </p>
 
 <form action="<?= route('account.password.submit') ?>" method="POST">
     <?= csrf_field() ?>
 
+    <?php if (!empty($user['password_set_at'])): ?>
     <div class="form-field-group">
         <label for="current_password"><strong>Текущий пароль</strong></label>
         <input type="password" id="current_password" name="current_password" 
@@ -171,6 +176,9 @@
             <small class="form-error-text"><?= $errors->firstError('current_password') ?></small>
         <?php endif; ?>
     </div>
+    <?php else: ?>
+    <p class="hint">Так как вы входили через Яндекс, поле «Текущий пароль» не требуется — просто придумайте новый пароль ниже.</p>
+    <?php endif; ?>
 
     <div class="form-field-group">
         <label for="new_password"><strong>Новый пароль</strong></label>

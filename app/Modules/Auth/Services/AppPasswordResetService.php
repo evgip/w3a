@@ -58,4 +58,28 @@ class AppPasswordResetService extends BasePasswordResetService
 
         $this->mailer->send($email, $subject, $body);
     }
+
+    /**
+     * Сброс пароля по токену: фиксируем момент задания нового пароля.
+     */
+    public function resetPassword(string $token, string $newPassword): bool
+    {
+        $user = $this->validateToken($token);
+
+        if (!$user) {
+            return false;
+        }
+
+        $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+        $success = $this->userModel->update((int)$user['id'], [
+            'password'        => $passwordHash,
+            'password_set_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        if ($success) {
+            $this->tokenModel->deleteByToken($token);
+        }
+
+        return $success;
+    }
 }

@@ -45,6 +45,33 @@ class AuthorStatsModel
         );
     }
 
+    /**
+     * Медиана времени чтения (в секундах).
+     * Медиана устойчива к выбросам, в отличие от среднего.
+     */
+    public function getMedianReadTime(int $userId): float
+    {
+        $sql = "SELECT sv.read_seconds FROM `story_views` sv
+                JOIN `stories` s ON s.id = sv.story_id
+                WHERE s.user_id = :uid AND s.deleted_at IS NULL AND sv.read_seconds > 0
+                ORDER BY sv.read_seconds ASC";
+
+        $values = $this->db->fetchAll($sql, ['uid' => $userId]) ?: [];
+        $values = array_column($values, 'read_seconds');
+        $count = count($values);
+
+        if ($count === 0) {
+            return 0.0;
+        }
+
+        $middle = intdiv($count, 2);
+        if ($count % 2 === 1) {
+            return (float)$values[$middle];
+        }
+
+        return ((float)$values[$middle - 1] + (float)$values[$middle]) / 2;
+    }
+
     public function getTotalClapsReceived(int $userId): int
     {
         return (int)$this->db->fetchColumn(
@@ -102,5 +129,70 @@ class AuthorStatsModel
         ";
 
         return $this->db->fetchAll($sql, ['uid' => $userId, 'lim' => $limit]) ?: [];
+    }
+
+    /**
+     * Количество новых читателей (уникальных пар user+story) по дням за N дней.
+     * В story_views одна строка на пару (user, story), поэтому created_at —
+     * это дата первого прочтения.
+     */
+    public function getReadersByDay(int $userId, int $days = 30): array
+    {
+        $sql = "
+            SELECT DATE_FORMAT(sv.created_at, '%Y-%m-%d') AS label,
+                   COUNT(*) AS value
+            FROM `story_views` sv
+            JOIN `stories` s ON s.id = sv.story_id
+            WHERE s.user_id = :uid AND s.deleted_at IS NULL
+              AND sv.created_at >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
+            GROUP BY label
+            ORDER BY label ASC
+        ";
+
+        return $this->db->fetchAll($sql, ['uid' => $userId, 'days' => (int)$days]) ?: [];
+    }
+
+    /**
+     * Разбивка читателей по источникам перехода.
+     * Данные наполняются только для новых просмотров (после внедрения трекинга referrer).
+     */
+    public function getTrafficSources(int $userId): array
+    {
+        $sql = "
+            SELECT sv.referrer_type AS label,
+                   COUNT(*) AS value
+            FROM `story_views` sv
+            JOIN `stories` s ON s.id = sv.story_id
+            WHERE s.user_id = :uid AND s.deleted_at IS NULL
+            GROUP BY sv.referrer_type
+            ORDER BY value DESC
+        ";
+
+        return $this->db->fetchAll($sql, ['uid' => $userId]) ?: [];
+    }
+
+    public function getTrafficSourceNames(): array
+    {
+        return [
+            'internal' => 'Внутренние',
+            'external' => 'Внешние сайты',
+            'search'   => 'Поиск',
+            'social'   => 'Соцсети',
+            'direct'   => 'Прямые',
+        ];
+    }
+
+    /**
+     * Динамика статьи: число активных читателей (уникальных пользователей)
+     * за указанный период (в днях от сегодня).
+     */
+    public function getStoryActiveReaders(int $storyId, int $days): int
+    {
+        return (int)$this->db->fetchColumn(
+            "SELECT COUNT(DISTINCT sv.user_id) FROM `story_views` sv
+             WHERE sv.story_id = :sid
+               AND sv.updated_at >= DATE_SUB(NOW(), INTERVAL :days DAY)",
+            ['sid' => (int)$storyId, 'days' => (int)$days]
+        );
     }
 }

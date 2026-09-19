@@ -16,6 +16,8 @@ class StoryView extends Model
         'user_id',
         'story_id',
         'read_seconds',
+        'referrer',
+        'referrer_type',
     ];
 
     public function __construct(Database $db, Logger $logger)
@@ -32,27 +34,35 @@ class StoryView extends Model
 	 * @param int $userId ID пользователя
 	 * @param int $storyId ID статьи
 	 * @param int $seconds Сколько секунд добавить к счётчику
+	 * @param string|null $referrer URL источника перехода (для статистики трафика)
+	 * @param string $referrerType Тип источника (internal/external/search/social/direct)
 	 */
-	public function trackReadTime(int $userId, int $storyId, int $seconds): void
+	public function trackReadTime(int $userId, int $storyId, int $seconds, ?string $referrer = null, string $referrerType = 'direct'): void
 	{
 		if ($userId <= 0 || $storyId <= 0 || $seconds <= 0) {
 			return;
 		}
 
+		if ($referrer !== null && mb_strlen($referrer) > 500) {
+			$referrer = mb_substr($referrer, 0, 500);
+		}
+
 		try {
 			$this->db->query("
 				INSERT INTO `story_views` 
-					(`user_id`, `story_id`, `read_seconds`, `created_at`, `updated_at`)
+					(`user_id`, `story_id`, `read_seconds`, `referrer`, `referrer_type`, `created_at`, `updated_at`)
 				VALUES 
-					(:user_id, :story_id, :seconds1, NOW(), NOW())
+					(:user_id, :story_id, :seconds1, :referrer, :referrer_type, NOW(), NOW())
 				ON DUPLICATE KEY UPDATE 
 					`read_seconds` = `read_seconds` + :seconds2,
 					`updated_at` = NOW()
 			", [
-				'user_id'  => $userId,
-				'story_id' => $storyId,
-				'seconds1' => $seconds,  // ← для VALUES
-				'seconds2' => $seconds,  // ← для ON DUPLICATE KEY UPDATE
+				'user_id'       => $userId,
+				'story_id'      => $storyId,
+				'seconds1'      => $seconds,  // ← для VALUES
+				'seconds2'      => $seconds,  // ← для ON DUPLICATE KEY UPDATE
+				'referrer'      => $referrer,
+				'referrer_type' => $referrerType,
 			]);
 		} catch (\Exception $e) {
 			$this->logger?->error("StoryView::trackReadTime failed", [
@@ -62,6 +72,39 @@ class StoryView extends Model
 				'error'    => $e->getMessage(),
 			]);
 		}
+	}
+
+	/**
+	 * Классифицирует referrer по типу источника.
+	 *
+	 * @param string|null $referrer URL источника перехода
+	 * @param string $internalHost Хост нашего сайта (для internal)
+	 * @return string internal|external|search|social|direct
+	 */
+	public function classifyReferrer(?string $referrer, string $internalHost = ''): string
+	{
+		if (empty($referrer)) {
+			return 'direct';
+		}
+
+		$host = parse_url($referrer, PHP_URL_HOST) ?: '';
+
+		// Внутренний переход (лента, теги, профиль и т.п.)
+		if ($internalHost !== '' && $host !== '' && mb_strtolower($host) === mb_strtolower($internalHost)) {
+			return 'internal';
+		}
+
+		// Поисковики
+		if (preg_match('/(^|\.)(google|yandex|bing|mail\.ru|rambler|duckduckgo|yahoo|baidu)\./i', $host)) {
+			return 'search';
+		}
+
+		// Соцсети и мессенджеры
+		if (preg_match('/(^|\.)(vk\.com|ok\.ru|facebook\.com|instagram\.com|t\.me|telegram|twitter\.com|x\.com|youtube\.com|dzen\.ru|pinterest|reddit\.com|linkedin\.com)/i', $host)) {
+			return 'social';
+		}
+
+		return 'external';
 	}
 
     public function getUserTopTags(int $userId, int $limit = 10): array
@@ -108,7 +151,7 @@ class StoryView extends Model
         return $stmt->fetchAll(\PDO::FETCH_COLUMN) ?: [];
     }
 
-    public function getViewedStories(int $userId, int $limit = 50): array
+public function getViewedStories(int $userId, int $limit = 50): array
     {
         if ($userId <= 0) {
             return [];

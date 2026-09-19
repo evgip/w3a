@@ -14,7 +14,9 @@ class ChangePasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'current_password'          => 'required',
+            // current_password не required: пользователи OAuth (без заданного пароля) могут
+            // задать новый пароль без указания текущего. Проверка выполняется в UserService.
+            'current_password'          => '',
             'new_password'              => 'required|min:6|max:255',
             'new_password_confirmation' => 'required|match:new_password',
         ];
@@ -32,7 +34,6 @@ class ChangePasswordRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'current_password.required'          => 'Текущий пароль обязателен для заполнения',
             'new_password.required'              => 'Новый пароль обязателен для заполнения',
             'new_password.min'                   => 'Новый пароль должен содержать минимум 6 символов',
             'new_password.max'                   => 'Новый пароль слишком длинный',
