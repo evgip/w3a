@@ -164,6 +164,17 @@ class Story extends Model
                 
             } elseif ($type === 'code') {
                 $plainTextParts[] = htmlspecialchars($d['code'] ?? '', ENT_QUOTES, 'UTF-8');
+            } elseif (strtolower($type) === 'linkcard') {
+                // Карточка-ссылка на свою статью: запекаем свежий «снимок» на сервере.
+                // Сервер — источник истины, поэтому пересобираем метаданные заново.
+                $url = (string)($d['url'] ?? ($d['story_id'] ?? ''));
+                $snapshot = $this->buildLinkCardData($url);
+                if ($snapshot !== null) {
+                    $block['data'] = $snapshot;
+                } else {
+                    // Статья не найдена/не опубликована — убираем блок из выдачи
+                    $block['data'] = [];
+                }
             }
             // paywall-блок пропускаем — он не содержит текста для поиска
         }
@@ -642,5 +653,98 @@ class Story extends Model
         }
 
         return $slug;
+    }
+
+    // ============================================================
+    // ИНТЕРНАЛЬНЫЕ КАРТОЧКИ-ССЫЛКИ (linkCard, аналог Medium)
+    // ============================================================
+
+    /**
+     * Достаёт ID статьи из внутренней ссылки вида /story/{id} или /story/{id}/slug.
+     *
+     * @return int|null
+     */
+    public function resolveStoryLinkId(string $url): ?int
+    {
+        $url = trim($url);
+
+        if (preg_match('~/(?:story|stories)/(\d+)(?:/|$|\?|#)~i', $url, $m)) {
+            return (int)$m[1];
+        }
+
+        // Разрешаем просто номер статьи
+        if (preg_match('/^\d+$/', $url)) {
+            return (int)$url;
+        }
+
+        return null;
+    }
+
+    /**
+     * Возвращает метаданные опубликованной статьи для карточки-превью.
+     *
+     * @param int $id ID статьи
+     * @return array|null
+     */
+    public function getStoryPreview(int $id): ?array
+    {
+        $stmt = $this->db->query(
+            "SELECT s.id, s.title, s.slug, s.description_text, s.description_json,
+                    s.cover_image, s.reading_time,
+                    u.username AS author_name, up.avatar AS author_avatar
+             FROM `stories` s
+             JOIN `users` u ON u.id = s.user_id
+             LEFT JOIN `user_profiles` up ON u.id = up.user_id
+             WHERE s.id = :id
+               AND s.status = 'published'
+               AND s.deleted_at IS NULL
+             LIMIT 1",
+            ['id' => $id]
+        );
+
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    /**
+     * Собирает «запечённый снимок» блока linkCard по ссылке/иду статьи.
+     * Это данные, которые попадут в description_json и будут рендериться.
+     *
+     * @param string $url Внутренняя ссылка вида /story/{id} или номер статьи
+     * @return array|null Снимок или null, если статья не найдена/не опубликована
+     */
+    public function buildLinkCardData(string $url): ?array
+    {
+        $id = $this->resolveStoryLinkId($url);
+        if ($id === null) {
+            return null;
+        }
+
+        $preview = $this->getStoryPreview($id);
+        if (!$preview) {
+            return null;
+        }
+
+        $excerpt = strip_tags((string)($preview['description_text'] ?? ''));
+        $excerpt = preg_replace('/\s+/u', ' ', $excerpt);
+        $excerpt = trim((string)$excerpt);
+        if (mb_strlen($excerpt) > 180) {
+            $excerpt = mb_substr($excerpt, 0, 177) . '…';
+        }
+
+        $cover = function_exists('get_story_first_image')
+            ? get_story_first_image($preview, 'small')
+            : null;
+
+        return [
+            'url'           => '/story/' . (int)$preview['id'],
+            'story_id'      => (int)$preview['id'],
+            'title'         => (string)($preview['title'] ?? ''),
+            'author_name'   => (string)($preview['author_name'] ?? ''),
+            'author_avatar' => (string)($preview['author_avatar'] ?? ''),
+            'cover_image'   => (string)($cover ?? ''),
+            'excerpt'       => $excerpt,
+            'reading_time'  => (int)($preview['reading_time'] ?? 0),
+        ];
     }
 }

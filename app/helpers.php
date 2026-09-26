@@ -627,7 +627,11 @@ if (!function_exists('render_editorjs_content')) {
                 }
             }
 
-            switch ($type) {
+            // Editor.js сохраняет регистр имени тула (например linkCard),
+            // поэтому сравниваем все типы регистронезависимо.
+            $blockType = strtolower($type);
+
+            switch ($blockType) {
                 case 'header':
                     $level = min((int)($d['level'] ?? 2), 4);
                     $text = strip_tags($d['text'] ?? '', $inlineTags);
@@ -736,6 +740,50 @@ case 'image':
 						$html .= "</figure>\n";
 					}
 					break;
+
+				case 'linkcard': {
+					// Карточка-ссылка на свою статью (аналог Medium)
+					$lcUrl  = (string)($d['url'] ?? '');
+					$title  = e((string)($d['title'] ?? ''));
+					$author = e((string)($d['author_name'] ?? ''));
+					$cover  = (string)($d['cover_image'] ?? '');
+					$excerpt = (string)($d['excerpt'] ?? '');
+					$readingTime = (int)($d['reading_time'] ?? 0);
+
+					if ($lcUrl === '') {
+						$storyId = (int)($d['story_id'] ?? 0);
+						if ($storyId > 0) {
+							$lcUrl = '/story/' . $storyId;
+						}
+					}
+
+					if ($lcUrl !== '') {
+						$html .= "<a class=\"editorjs-linkcard\" href=\"" . e($lcUrl) . "\"{$dataAttrs}>";
+
+						if ($cover !== '') {
+							$html .= "<span class=\"editorjs-linkcard__media\">";
+							$html .= "<img src=\"" . e($cover) . "\" alt=\"" . $title . "\" loading=\"lazy\" decoding=\"async\">";
+							$html .= "</span>";
+						}
+
+						$html .= "<span class=\"editorjs-linkcard__body\">";
+						$html .= "<span class=\"editorjs-linkcard__title\">" . ($title !== '' ? $title : 'Просмотреть статью') . "</span>";
+						if ($excerpt !== '') {
+							$html .= "<span class=\"editorjs-linkcard__excerpt\">" . e($excerpt) . "</span>";
+						}
+						$html .= "<span class=\"editorjs-linkcard__meta\">";
+						if ($author !== '') {
+							$html .= "<span class=\"editorjs-linkcard__author\">" . $author . "</span>";
+						}
+						if ($readingTime > 0) {
+							$html .= "<span class=\"editorjs-linkcard__time\">" . $readingTime . " мин чтения</span>";
+						}
+						$html .= "</span>";
+						$html .= "</span>";
+						$html .= "</a>\n";
+					}
+					break;
+				}
 
 				case 'embed': {
 					$embedUrl = $d['embed'] ?? '';
@@ -1101,7 +1149,7 @@ if (!function_exists('editorjs_to_markdown')) {
             $type = $block['type'] ?? '';
             $d = $block['data'] ?? [];
 
-            switch ($type) {
+            switch (strtolower($type)) {
                 case 'header':
                     $level = min(max((int)($d['level'] ?? 2), 1), 6);
                     $lines[] = str_repeat('#', $level) . ' ' . editorjs_inline_to_markdown((string)($d['text'] ?? ''));
@@ -1172,6 +1220,21 @@ if (!function_exists('editorjs_to_markdown')) {
                     $embedUrl = $d['embed'] ?? $d['source'] ?? '';
                     if ($embedUrl !== '') {
                         $lines[] = $embedUrl;
+                        $lines[] = '';
+                    }
+                    break;
+
+                case 'linkcard':
+                    $lUrl = (string)($d['url'] ?? '');
+                    $lTitle = (string)($d['title'] ?? '');
+                    if ($lUrl === '') {
+                        $sid = (int)($d['story_id'] ?? 0);
+                        if ($sid > 0) {
+                            $lUrl = '/story/' . $sid;
+                        }
+                    }
+                    if ($lUrl !== '') {
+                        $lines[] = '[' . ($lTitle !== '' ? $lTitle : $lUrl) . '](' . $lUrl . ')';
                         $lines[] = '';
                     }
                     break;

@@ -50,6 +50,10 @@ $router->add('GET', '/staff-picks', StoriesController::class . '@staffPicks', 's
 // API для трекинга времени чтения
 $router->add('POST', '/api/stories/track-reading', StoriesController::class . '@trackReadingTime', 'api.story.trackReading');
 
+// API метаданных статьи для карточки-ссылки (linkCard) в редакторе
+$router->add('GET', '/stories/link-preview', StoriesController::class . '@linkPreview', 'story.linkPreview');
+$router->add('POST', '/stories/link-preview', StoriesController::class . '@linkPreview', 'story.linkPreview.post');
+
 // =========================================================================
 // МАРШРУТЫ ДЛЯ АВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ
 // =========================================================================

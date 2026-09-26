@@ -124,6 +124,230 @@ $initialDataJson = json_encode($initialData, JSON_UNESCAPED_UNICODE | JSON_HEX_T
 })();
 </script>
 
+<script nonce="<?= $nonce ?>">
+/**
+ * LinkCard Block для Editor.js
+ * Карточка-ссылка на свою статью (аналог Medium).
+ * Сервер перезапекает метаданные при сохранении — здесь только preview.
+ */
+(function() {
+    'use strict';
+
+    const API_URL = '/stories/link-preview?url=';
+
+    class LinkCardBlock {
+        static get toolbox() {
+            return {
+                title: 'Карточка статьи',
+                icon: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+            };
+        }
+
+        static get isReadOnlySupported() {
+            return true;
+        }
+
+        static get pasteConfig() {
+            return {
+                patterns: {
+                    linkcard: /^(?:https?:\/\/[^\s\/]+)?\/story\/\d+(?:[\/\?\#][^\s]*)?$/i,
+                },
+            };
+        }
+
+        static onPaste(event) {
+            const url = (event.detail && event.detail.data) || '';
+            return { url: String(url || '').trim() };
+        }
+
+        constructor({ data, api, readOnly }) {
+            this.api = api;
+            this.readOnly = readOnly;
+            this.data = LinkCardBlock._normalize(data || { url: '' });
+        }
+
+        static _normalize(d) {
+            return {
+                url: d.url || '',
+                story_id: d.story_id || 0,
+                title: d.title || '',
+                author_name: d.author_name || '',
+                author_avatar: d.author_avatar || '',
+                cover_image: d.cover_image || '',
+                excerpt: d.excerpt || '',
+                reading_time: d.reading_time || 0,
+            };
+        }
+
+        render() {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'editorjs-linkcard-tool';
+            this._wrapper = wrapper;
+
+            if (this.readOnly) {
+                wrapper.appendChild(LinkCardBlock._card(this.data));
+                return wrapper;
+            }
+
+            // Вставлено по ссылке (onPaste) — метаданных ещё нет, подтягиваем
+            if (this.data.url && !this.data.story_id) {
+                this._fetch(() => this._refresh());
+            }
+
+            this._refresh();
+            return wrapper;
+        }
+
+        _refresh() {
+            const w = this._wrapper;
+            if (!w) return;
+            while (w.firstChild) w.removeChild(w.firstChild);
+
+            if (this.data.url) {
+                w.appendChild(LinkCardBlock._card(this.data));
+                w.appendChild(this._actions());
+            } else {
+                w.appendChild(this._form());
+            }
+        }
+
+        _actions() {
+            const box = document.createElement('div');
+            box.className = 'editorjs-linkcard__actions';
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'editorjs-linkcard__btn';
+            btn.textContent = '🔗 Сменить';
+            btn.addEventListener('click', () => this._refreshForm());
+
+            box.appendChild(btn);
+            return box;
+        }
+
+        _refreshForm() {
+            const w = this._wrapper;
+            if (!w) return;
+            while (w.firstChild) w.removeChild(w.firstChild);
+            w.appendChild(this._form());
+        }
+
+        _form() {
+            const form = document.createElement('div');
+            form.className = 'editorjs-linkcard__form';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'editorjs-linkcard__input';
+            input.value = this.data.url || '';
+            input.placeholder = 'Вставьте ссылку на статью (/story/123)';
+
+            const apply = document.createElement('button');
+            apply.type = 'button';
+            apply.className = 'editorjs-linkcard__btn editorjs-linkcard__btn--primary';
+            apply.textContent = 'Прикрепить';
+
+            apply.addEventListener('click', () => {
+                const url = input.value.trim();
+                if (!url) return;
+                this.data = LinkCardBlock._normalize({ url: url });
+                this._fetch(() => this._refresh());
+            });
+
+            form.appendChild(input);
+            form.appendChild(apply);
+            return form;
+        }
+
+        _fetch(cb) {
+            const url = this.data.url;
+            if (!url) return;
+            fetch(API_URL + encodeURIComponent(url), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+                .then(r => r.json())
+                .then(json => {
+                    if (json && json.success) this.data = LinkCardBlock._normalize(json.data);
+                })
+                .catch(() => {})
+                .finally(() => { if (cb) cb(); });
+        }
+
+        static _card(d) {
+            const card = document.createElement('a');
+            card.className = 'editorjs-linkcard';
+            card.href = d.url || '/story/' + (d.story_id || 0);
+            card.target = '_blank';
+            card.rel = 'noopener noreferrer';
+
+            if (d.cover_image) {
+                const media = document.createElement('span');
+                media.className = 'editorjs-linkcard__media';
+                const img = document.createElement('img');
+                img.src = d.cover_image;
+                img.alt = d.title || '';
+                img.loading = 'lazy';
+                media.appendChild(img);
+                card.appendChild(media);
+            }
+
+            const body = document.createElement('span');
+            body.className = 'editorjs-linkcard__body';
+
+            const title = document.createElement('span');
+            title.className = 'editorjs-linkcard__title';
+            title.textContent = d.title || 'Просмотреть статью';
+            body.appendChild(title);
+
+            if (d.excerpt) {
+                const excerpt = document.createElement('span');
+                excerpt.className = 'editorjs-linkcard__excerpt';
+                excerpt.textContent = d.excerpt;
+                body.appendChild(excerpt);
+            }
+
+            const meta = document.createElement('span');
+            meta.className = 'editorjs-linkcard__meta';
+            if (d.author_name) {
+                const author = document.createElement('span');
+                author.className = 'editorjs-linkcard__author';
+                author.textContent = d.author_name;
+                meta.appendChild(author);
+            }
+            if (d.reading_time) {
+                const time = document.createElement('span');
+                time.className = 'editorjs-linkcard__time';
+                time.textContent = d.reading_time + ' мин чтения';
+                meta.appendChild(time);
+            }
+            body.appendChild(meta);
+
+            card.appendChild(body);
+            return card;
+        }
+
+        save() {
+            return this.data;
+        }
+
+        static get sanitize() {
+            return {
+                url: {},
+                title: {},
+                author_name: {},
+                author_avatar: {},
+                cover_image: {},
+                excerpt: {},
+                story_id: true,
+                reading_time: true,
+            };
+        }
+    }
+
+    window.LinkCardBlock = LinkCardBlock;
+})();
+</script>
+
 
 <script nonce="<?= $nonce ?>">
 document.addEventListener('DOMContentLoaded', function() {
@@ -179,6 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
 				"Unordered List": "Маркированный",  
 				"Checklist": "Чеклист",
                 "Embed": "Видео",
+                "Карточка статьи": "Карточка статьи",
             },
             tools: {
                 heading: { "Heading": "Заголовок" },
@@ -294,6 +519,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         };
+    }
+
+    // Карточка-ссылка на свою статью (linkCard)
+    if (window.LinkCardBlock) {
+        tools.linkCard = { class: window.LinkCardBlock };
     }
 
     const editor = new EditorJS({

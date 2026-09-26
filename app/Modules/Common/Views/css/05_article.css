@@ -797,3 +797,141 @@ pre:hover .copy-button {
     margin-left: -50vw;
   }
 }
+
+/* ==========================================================================
+   Карточка-ссылка на свою статью (linkCard, аналог Medium)
+   ========================================================================== */
+a.editorjs-linkcard {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  margin: 1.6rem 0;
+  padding: 0;
+  border: 1px solid var(--border-color, rgba(128, 128, 128, 0.3));
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  background: var(--card-bg, transparent);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+a.editorjs-linkcard:hover {
+  border-color: rgba(128, 128, 128, 0.55);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+a.editorjs-linkcard:visited,
+a.editorjs-linkcard:link {
+  color: inherit;
+}
+.editorjs-linkcard__media {
+  flex: 0 0 150px;
+  min-width: 120px;
+  max-width: 180px;
+  background: #f0f0f0;
+}
+.editorjs-linkcard__media img {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  object-fit: cover;
+  display: block;
+  margin: 0;
+}
+.editorjs-linkcard__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 18px;
+  min-width: 0;
+}
+.editorjs-linkcard__title {
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: inherit;
+}
+.editorjs-linkcard__excerpt {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: rgba(128, 128, 128, 0.95);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.editorjs-linkcard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: rgba(128, 128, 128, 0.9);
+}
+.editorjs-linkcard__author {
+  font-weight: 500;
+  color: inherit;
+  opacity: 0.85;
+}
+
+[data-theme="dark"] a.editorjs-linkcard {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] a.editorjs-linkcard:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+[data-theme="dark"] .editorjs-linkcard__excerpt,
+[data-theme="dark"] .editorjs-linkcard__meta {
+  color: rgba(255, 255, 255, 0.6);
+}
+[data-theme="dark"] .editorjs-linkcard__media {
+  background: #1a1a1a;
+}
+
+/* --- редактор --- */
+.editorjs-custom-wrapper .editorjs-linkcard {
+  cursor: pointer;
+}
+.editorjs-custom-wrapper a.editorjs-linkcard {
+  margin: 8px 0;
+}
+.editorjs-linkcard-tool {
+  border-radius: 12px;
+}
+.editorjs-linkcard__actions {
+  margin-top: 6px;
+  text-align: right;
+}
+.editorjs-linkcard__btn {
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  background: transparent;
+  color: inherit;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.editorjs-linkcard__btn--primary {
+  border-color: var(--accent, #1a73e8);
+  background: var(--accent, #1a73e8);
+  color: #fff;
+}
+.editorjs-linkcard__form {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+}
+.editorjs-linkcard__input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+}
+.editorjs-linkcard__loading {
+  padding: 14px 16px;
+  font-size: 0.9rem;
+  color: rgba(128, 128, 128, 0.9);
+}

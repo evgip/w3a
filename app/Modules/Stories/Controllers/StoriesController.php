@@ -966,6 +966,30 @@ $feed = $this->service(StoryFeedBuilder::class)->build(
     }
 	
     /**
+     * API: метаданные статьи для карточки-ссылки (linkCard) в редакторе.
+     */
+    public function linkPreview(): JsonResponse
+    {
+        $url = (string)$this->request->query('url', '');
+        if ($url === '') {
+            $url = (string)$this->request->post('url', '');
+        }
+
+        if ($url === '') {
+            return $this->json(['success' => false, 'error' => 'Не указан URL статьи'], 400);
+        }
+
+        $storyModel = $this->container->get(Story::class);
+        $snapshot = $storyModel->buildLinkCardData($url);
+
+        if (!$snapshot) {
+            return $this->json(['success' => false, 'error' => 'Статья не найдена или не опубликована'], 404);
+        }
+
+        return $this->json(['success' => true, 'data' => $snapshot]);
+    }
+
+    /**
      * Создание новой friend link для статьи
      */
     public function createFriendLink(string $id): JsonResponse
