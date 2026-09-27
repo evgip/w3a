@@ -15,6 +15,7 @@ use W3a\Core\Support\Logger;
 use App\Modules\Users\Models\User;
 use W3a\Core\Auth\Models\RememberToken;
 use W3a\Core\Auth\Models\EmailActivation;
+use W3a\Core\Auth\Exceptions\RegistrationFailedException;
 use App\Modules\Mail\Core\Mailer;
 
 /**
@@ -63,6 +64,16 @@ class AppAuthService extends BaseAuthService
      */
     public function register(string $username, string $email, string $password): int
     {
+        // Блокировка по домену почты (см. config/banned_domains.php)
+        if ($this->isDomainBanned($email)) {
+            $this->audit->log('auth.register_blocked', 'Отклонена регистрация с запрещённого домена', 'auth', [
+                'email' => $email,
+            ]);
+            throw new RegistrationFailedException(
+                (string) $this->config->getString('banned_domains.blocked_message', 'Регистрация с этой почты запрещена.')
+            );
+        }
+
         $userId = parent::register($username, $email, $password);
 
         $this->userModel->update((int)$userId, [
@@ -70,6 +81,42 @@ class AppAuthService extends BaseAuthService
         ]);
 
         return $userId;
+    }
+
+    /**
+     * Проверяет, что домен письма попал в список запрещённых.
+     */
+    protected function isDomainBanned(string $email): bool
+    {
+        if (!$this->config->getBool('banned_domains.enabled', false)) {
+            return false;
+        }
+
+        $atPos = strrpos($email, '@');
+        if ($atPos === false) {
+            return false;
+        }
+
+        $domain = mb_strtolower(trim(substr($email, $atPos + 1)));
+        if ($domain === '') {
+            return false;
+        }
+
+        $banned = $this->config->getArray('banned_domains.domains', []);
+        if (empty($banned)) {
+            return false;
+        }
+
+        foreach ($banned as $bannedDomain) {
+            $bannedDomain = mb_strtolower(trim((string)$bannedDomain));
+            // Точное совпадение "outlook.com" или поддомен "test.outlook.com"
+            if ($bannedDomain !== ''
+                && ($domain === $bannedDomain || str_ends_with($domain, '.' . $bannedDomain))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
