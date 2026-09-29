@@ -32,7 +32,8 @@ class MuteController extends BaseController
         $muteService = $this->service(MuteService::class);
         $mutedUsers = $muteService->getMutedList($userContext['id']);
 
-
+        // Единый макет списка
+        Layout::set(Layout::FULL);
 
         return $this->render('list', [
             'title' => 'Игнорируемые пользователи',

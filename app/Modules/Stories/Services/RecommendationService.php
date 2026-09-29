@@ -68,6 +68,67 @@ class RecommendationService
         return $stories;
     }
 
+    /**
+     * Похожие статьи: сначала с общими тегами (чем больше пересечений — тем релевантнее),
+     * при нехватке добиваем популярными за неделю.
+     */
+    public function getSimilarStories(int $storyId, int $limit = 6): array
+    {
+        $stories = $this->getStoriesBySharedTags($storyId, $limit);
+
+        if (count($stories) < $limit) {
+            $excludeIds = array_merge([$storyId], array_column($stories, 'id'));
+            $excludeIds = array_values(array_unique(array_map('intval', $excludeIds)));
+            $popular = $this->getPopularFallback($limit - count($stories), $excludeIds);
+            $stories = array_merge($stories, $popular);
+        }
+
+        return $stories;
+    }
+
+    private function getStoriesBySharedTags(int $storyId, int $limit): array
+    {
+        $tagStmt = $this->db->query(
+            "SELECT `tag_id` FROM `taggings` WHERE `story_id` = ?",
+            [$storyId]
+        );
+        $tagIds = array_map('intval', array_column($tagStmt->fetchAll(\PDO::FETCH_ASSOC), 'tag_id'));
+
+        if (empty($tagIds)) {
+            return [];
+        }
+
+        $tagPlaceholders = implode(',', array_fill(0, count($tagIds), '?'));
+        $stmt = $this->db->query(
+            "SELECT
+                s.*,
+                u.username AS author_name,
+                up.avatar AS author_avatar,
+                (SELECT COUNT(DISTINCT tc.tag_id)
+                   FROM `taggings` tc
+                  WHERE tc.story_id = s.id
+                    AND tc.tag_id IN ($tagPlaceholders)
+                ) AS shared_tags
+             FROM `stories` s
+             JOIN `users` u ON s.user_id = u.id
+             LEFT JOIN `user_profiles` up ON u.id = up.user_id
+             WHERE s.id != ?
+               AND s.status = 'published'
+               AND s.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM `taggings` te
+                   WHERE te.story_id = s.id AND te.tag_id IN ($tagPlaceholders)
+               )
+             ORDER BY shared_tags DESC, s.hotness DESC, s.created_at DESC
+             LIMIT " . (int)$limit,
+            array_merge($tagIds, [$storyId], $tagIds)
+        );
+
+        $stories = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+
+        return $this->tagAttachment->attach($stories);
+    }
+
     private function getRecommendedStories(
         int $userId,
         array $followedUserIds,

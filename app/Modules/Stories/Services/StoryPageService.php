@@ -141,6 +141,12 @@ class StoryPageService
 		}
 		unset($c);
 
+		// 4.3 === Похожие статьи (по общим тегам, как у Medium) ===
+		$recommendationService = $this->container->get(
+			\App\Modules\Stories\Services\RecommendationService::class
+		);
+		$similarStories = $recommendationService->getSimilarStories($storyId, 6);
+
 		// 5. Read Ribbon (лента прочтения)
 		$readRibbonModel = $this->container->get(ReadRibbon::class);
 		$ribbonData = $readRibbonModel->getForStories($userContext['id'], [$storyId]);
@@ -223,6 +229,8 @@ class StoryPageService
 			hasFriendLinkAccess: $hasFriendLinkAccess,
 			// === для Collections ===
 			storyCollections: $storyCollections,
+			// === для похожих статей ===
+			similarStories: $similarStories,
 		);
 	}
 }

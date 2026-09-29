@@ -33,7 +33,8 @@ class SavedController extends BaseController
             return $this->redirect('/login');
         }
 
-
+        // Единый макет списка (как «Библиотека»)
+        Layout::set(Layout::FULL);
 
         $currentPage = max(1, (int)$this->request->getParams('page', 1));
         $perPage = config('constants.pagination.stories_per_page', 15, 'int');

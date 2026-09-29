@@ -21,7 +21,7 @@ class AuthorStatsController extends BaseController
             return $this->redirect('/login');
         }
 
-        Layout::set(Layout::MEDIUM);
+        Layout::set(Layout::FULL);
 
         $model = $this->service(AuthorStatsModel::class);
 

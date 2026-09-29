@@ -116,6 +116,20 @@ class Conversation extends Model
     }
     
     /**
+     * Общее число непрочитанных входящих сообщений по всем беседам.
+     */
+    public function getTotalUnreadCount(int $userId): int
+    {
+        $sql = "SELECT COUNT(*) FROM `messages` m
+                JOIN `conversations` c ON c.id = m.conversation_id
+                WHERE (c.user_one = :user_id OR c.user_two = :user_id)
+                  AND m.sender_id != :user_id
+                  AND m.is_read = 0";
+
+        return (int)$this->db->fetchColumn($sql, ['user_id' => $userId]);
+    }
+
+    /**
      * Пометить все сообщения в беседе как прочитанные
      */
     public function markAsRead(int $conversationId, int $userId): bool

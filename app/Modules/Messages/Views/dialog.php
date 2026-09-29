@@ -4,11 +4,11 @@
     
     <?php if (!empty($recipient['avatar'])): ?>
         <img src="/uploads/avatars/<?= substr($recipient['avatar'], 0, 2) ?>/<?= e($recipient['avatar']) ?>" 
-             class="dialog-avatar" alt="avatar">
+             class="avatar avatar--md" alt="avatar">
     <?php else: ?>
-        <div class="dialog-avatar-placeholder">
+        <span class="avatar avatar--md avatar--placeholder">
             <?= e(mb_substr($recipient['username'], 0, 1)) ?>
-        </div>
+        </span>
     <?php endif; ?>
     
     <span class="dialog-title">
@@ -40,6 +40,23 @@
                 <div class="dialog-message-text">
                     <?= nl2br(e($msg['message'])) ?>
                 </div>
+                <?php if ($isOutgoing): ?>
+                    <details class="dialog-edit">
+                        <summary class="dialog-edit-toggle">Изменить</summary>
+                        <form action="<?= route('messages.edit.submit') ?>" method="POST" class="dialog-edit-form">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="message_id" value="<?= (int)$msg['id'] ?>">
+                            <input type="hidden" name="conversation_id" value="<?= (int)$conversationId ?>">
+                            <input type="hidden" name="chat_page" value="<?= (int)$currentPage ?>">
+                            <label class="dialog-edit-label" for="edit-message-<?= (int)$msg['id'] ?>">Текст сообщения</label>
+                            <textarea id="edit-message-<?= (int)$msg['id'] ?>" name="message_text" required class="dialog-edit-input"><?= e($msg['message']) ?></textarea>
+                            <div class="dialog-edit-actions">
+                                <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+                                <a href="?chat_page=<?= (int)$currentPage ?>" class="btn btn-secondary btn-sm">Отмена</a>
+                            </div>
+                        </form>
+                    </details>
+                <?php endif; ?>
                 <div class="dialog-message-time">
                     <?= e(date('d.m H:i', strtotime($msg['created_at']))) ?>
                 </div>

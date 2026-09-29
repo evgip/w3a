@@ -41,7 +41,7 @@
                         <div class="staff-pick-compact__meta">
                             <?php if (!empty($story['author_avatar'])): ?>
                                 <img src="/uploads/avatars/<?= substr($story['author_avatar'], 0, 2) ?>/<?= e($story['author_avatar']) ?>" 
-                                     class="staff-pick-card__avatar" alt="">
+                                     class="avatar avatar--sm" alt="">
                             <?php endif; ?>
                             <a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>" 
                                class="staff-pick-card__author">

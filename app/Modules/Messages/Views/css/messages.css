@@ -1,207 +1,163 @@
-/* ---------- Личные сообщения (Messages) ---------- */
-.messages-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
+/* ---------- Обновлённое оформление личных сообщений ---------- */
+.messages-list { list-style: none; margin: 0; padding: 0; }
+.messages-list > li { margin: 0; }
 .message-item {
     display: block;
-    padding: 0.75em 0;
-    border-bottom: 1px solid var(--color-box-bg-shaded);
-    text-decoration: none;
+    padding: 1rem 0.75rem;
+    border-bottom: 1px solid var(--color-fg-shape);
+    border-radius: var(--radius-md);
     color: var(--color-fg);
+    text-decoration: none;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
-
-.message-item:hover {
-    background-color: var(--color-box-bg-shaded);
-}
-
+.message-item:hover { background-color: var(--color-box-bg-shaded); }
 .message-item.unread {
     background-color: var(--color-flash-bg-notice);
+    border-left: 3px solid var(--color-fg-author);
+    padding-left: calc(0.75rem - 3px);
 }
+.message-item.unread:hover { background-color: var(--color-flash-bg-notice); opacity: 0.88; }
+.message-item-inner { display: flex; align-items: center; gap: 1rem; }
+.message-content { flex-grow: 1; min-width: 0; }
+.message-username { margin-bottom: 0.2rem; font-weight: 600; }
+.message-item.unread .message-username { font-weight: 700; }
+.message-preview { color: var(--opacity-fg-67); font-size: 0.9rem; }
+.message-preview-empty, .message-timestamp { color: var(--opacity-fg-54); }
+.message-timestamp { font-size: 0.8rem; margin-left: auto; white-space: nowrap; }
 
-.message-item.unread:hover {
-    background-color: var(--color-flash-bg-notice);
-    opacity: 0.9;
-}
-
-.message-item-inner {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75em;
-}
-
-.message-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 3px;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.message-avatar-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 3px;
-    background-color: var(--color-fg-accent);
-    color: white;
-    font-size: 0.9em;
-    font-weight: bold;
-    flex-shrink: 0;
-}
-
-.message-content {
-    flex-grow: 1;
-    min-width: 0;
-}
-
-.message-username {
-    font-weight: bold;
-    color: var(--color-fg);
-    margin-bottom: 0.2em;
-}
-
-.message-preview {
-    color: var(--opacity-fg-contrast-6);
-    font-size: 0.9em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.message-preview-empty {
-    color: var(--opacity-fg-contrast-4-5);
-    font-style: italic;
-}
-
-.message-timestamp {
-    color: var(--opacity-fg-contrast-4-5);
-    font-size: 0.85em;
-    flex-shrink: 0;
-    margin-left: auto;
-}
-
-/* ---------- Диалог (Dialog) ---------- */
 .dialog-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75em;
-    margin-bottom: 1em;
-    padding-bottom: 0.5em;
-    border-bottom: 1px solid var(--color-fg-shape);
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom-color: var(--color-fg-shape);
 }
-
-.dialog-back-link {
-    color: var(--color-fg-link);
+.dialog-back-link { color: var(--opacity-fg-67); white-space: nowrap; }
+.dialog-title { font-size: 1rem; font-weight: 600; }
+.dialog-pagination { margin: 1rem 0; }
+.dialog-load-older {
+    display: inline-block;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid var(--color-box-border);
+    border-radius: var(--radius-full);
+    color: var(--opacity-fg-67);
+    font-size: 0.85rem;
     text-decoration: none;
-    font-size: 0.9em;
 }
-
-.dialog-back-link:hover {
-    text-decoration: underline;
-}
-
-.dialog-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 3px;
-    object-fit: cover;
-}
-
-.dialog-avatar-placeholder {
+.dialog-load-older:hover { background-color: var(--color-box-bg-shaded); text-decoration: none; }
+.dialog-pagination-status { color: var(--opacity-fg-54); }
+.dialog-messages {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 3px;
-    background-color: var(--color-fg-accent);
-    color: white;
-    font-size: 1.2em;
-    font-weight: bold;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin: 1.25rem 0;
+    padding: 0.5rem 0;
 }
-
-.dialog-title {
-    font-weight: bold;
+.dialog-message {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-width: min(78%, 560px);
+    margin: 0;
+    padding: 0;
+}
+.dialog-message.incoming { align-self: flex-start; }
+.dialog-message.outgoing {
+    align-self: flex-end;
+    padding-left: 0;
     color: var(--color-fg);
 }
-
-.dialog-pagination {
-    text-align: center;
-    margin: 1em 0;
-    padding: 0.5em 0;
-}
-
-.dialog-load-older {
-    color: var(--color-fg-link);
-    text-decoration: none;
-    font-size: 0.9em;
-}
-
-.dialog-load-older:hover {
-    text-decoration: underline;
-}
-
-.dialog-pagination-status {
-    color: var(--opacity-fg-contrast-4-5);
-    font-size: 0.85em;
-    font-style: italic;
-}
-
-.dialog-messages {
-    margin: 1.5em 0;
-}
-
-.dialog-message {
-    margin-bottom: 1em;
-    padding: 0.5em 0;
-}
-
-.dialog-message.incoming {
-    padding-left: 0;
-}
-
-.dialog-message.outgoing {
-    padding-left: 2em;
-    color: var(--opacity-fg-contrast-7-5);
-}
-
 .dialog-message-text {
-    margin-bottom: 0.3em;
-    word-wrap: break-word;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0;
+    padding: 0.7rem 0.95rem;
+    border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
+    background-color: var(--color-box-bg-shaded);
+    color: var(--color-fg);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
 }
-
-.dialog-message-time {
-    color: var(--opacity-fg-contrast-4-5);
-    font-size: 0.8em;
+.dialog-message.outgoing .dialog-message-text {
+    border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+    background-color: var(--color-fg-accent);
+    color: #fff;
 }
-
+.dialog-message-time { padding: 0 0.35rem; color: var(--opacity-fg-54); font-size: 0.75rem; }
+.dialog-message.outgoing .dialog-message-time { align-self: flex-end; }
 .dialog-empty {
-    text-align: center;
-    padding: 2em 0;
-    color: var(--opacity-fg-contrast-6);
-    font-style: italic;
+    margin: 0;
+    padding: 2rem 1rem;
+    border: 1px dashed var(--color-box-border);
+    border-radius: var(--radius-lg);
+    color: var(--opacity-fg-67);
 }
-
-.dialog-form {
-    margin-top: 1.5em;
-    padding-top: 1em;
-    border-top: 1px solid var(--color-fg-shape);
-}
-
-.dialog-form-row {
-    display: flex;
-    gap: 0.5em;
-}
-
-.dialog-form-input {
-    flex-grow: 1;
-}
-
+.dialog-form { margin-top: 1.5rem; padding-top: 1rem; border-top-color: var(--color-fg-shape); }
+.dialog-form-row { align-items: center; }
+.dialog-form-input { min-width: 0; border-radius: var(--radius-full); }
 .dialog-form-button {
-    flex-shrink: 0;
+    border-color: var(--color-fg-accent);
+    border-radius: var(--radius-full);
+    background-color: var(--color-fg-accent);
+    color: #fff;
+    font-weight: 600;
+}
+.dialog-form-button:hover {
+    border-color: var(--color-button-bg-accent-hover);
+    background-color: var(--color-button-bg-accent-hover);
+    color: #fff;
+}
+
+@media (max-width: 640px) {
+    .message-item { padding: 0.85rem 0.5rem; }
+    .message-item.unread { padding-left: calc(0.5rem - 3px); }
+    .message-item-inner { gap: 0.75rem; }
+    .message-timestamp { font-size: 0.72rem; }
+    .dialog-header { gap: 0.65rem; flex-wrap: wrap; }
+    .dialog-title { flex: 1 1 calc(100% - 60px); }
+    .dialog-message { max-width: 90%; }
+    .dialog-form-row { align-items: stretch; }
+    .dialog-form-button { padding-right: 0.85rem; padding-left: 0.85rem; }
+}
+
+.dialog-edit {
+    align-self: flex-end;
+    font-size: 0.8rem;
+}
+.dialog-edit-toggle {
+    display: inline-block;
+    padding: 0.2rem 0.35rem;
+    border-radius: var(--radius-sm);
+    color: var(--opacity-fg-54);
+    cursor: pointer;
+    list-style: none;
+}
+.dialog-edit-toggle::-webkit-details-marker { display: none; }
+.dialog-edit-toggle:hover { background-color: var(--color-box-bg-shaded); color: var(--color-fg); }
+.dialog-edit-form {
+    width: min(100%, 520px);
+    margin-top: 0.35rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-box-border);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-box-bg);
+    text-align: left;
+}
+.dialog-edit-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--opacity-fg-67);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.dialog-edit-input {
+    display: block;
+    min-height: 96px;
+    margin-bottom: 0.65rem;
+    resize: vertical;
+}
+.dialog-edit-actions { display: flex; justify-content: flex-end; align-items: center; gap: 0.4rem; }
+
+@media (max-width: 640px) {
+    .dialog-edit-form { width: min(82vw, 520px); }
+    .dialog-edit-input { min-height: 84px; }
 }

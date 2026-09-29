@@ -664,17 +664,6 @@
 
 /* .section-header вынесен в 04_feed.css */
 
-.section-header__link {
-    font-size: 0.9375rem;
-    color: var(--color-fg-accent);
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.section-header__link:hover {
-    text-decoration: underline;
-}
-
 .collections-preview-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

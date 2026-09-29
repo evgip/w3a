@@ -150,7 +150,8 @@ class UsersController extends BaseController
         $user = $userOrRedirect;
         $settings = $this->getUserService()->getUserSettings($userContext['id']);
 
-
+        // Настройки — форма: узкий центрированный макет (как вход/регистрация)
+        Layout::set(Layout::NARROW);
 
         return $this->render('settings', [
             'title' => 'Настройки профиля',

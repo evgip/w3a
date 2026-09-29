@@ -50,48 +50,15 @@ $tabs = [
     </p>
 <?php else: ?>
     <ol class="stories">
-        <?php foreach ($stories as $story):
-            $storyId = (int)$story['id'];
-            $isDraft = $activeTab === 'drafts';
-            $isScheduled = $activeTab === 'scheduled';
-            $link = ($isDraft || $isScheduled)
-                ? '/stories/' . $storyId . '/edit'
-                : route('story.show', ['id' => $storyId]);
-        ?>
-            <li class="draft-card">
-                <h3>
-                    <a href="<?= $link ?>">
-                        <?= e($story['title'] ?: 'Без названия') ?>
-                    </a>
-                </h3>
-
-                <?php if (!empty($story['description_text'])): ?>
-                    <p class="hint">
-                        <?= e(mb_substr($story['description_text'], 0, 150)) ?>
-                    </p>
-                <?php endif; ?>
-
-                <p class="hint">
-                    <?php if ($isDraft): ?>
-                        🕒 Обновлён: <?= date('d.m.Y H:i', strtotime($story['updated_at'])) ?>
-                    <?php else: ?>
-                        🗓 <?= date('d.m.Y H:i', strtotime($story['created_at'])) ?>
-                    <?php endif; ?>
-                </p>
-
-                <div class="form-actions v-center">
-                    <?php if ($isDraft): ?>
-                        <a href="/stories/<?= $storyId ?>/edit" class="btn btn--small">Продолжить</a>
-                    <?php elseif ($isScheduled): ?>
-                        <a href="/stories/<?= $storyId ?>/edit" class="btn btn--small">Редактировать</a>
-                        <a href="/stories/<?= $storyId ?>/export.md" class="btn btn--small btn--secondary" title="Скачать в Markdown">⬇ .md</a>
-                    <?php else: ?>
-                        <a href="<?= route('story.show', ['id' => $storyId]) ?>" class="btn btn--small">Открыть</a>
-                        <a href="/stories/<?= $storyId ?>/edit" class="btn btn--small btn--secondary">Редактировать</a>
-                        <a href="/stories/<?= $storyId ?>/export.md" class="btn btn--small btn--secondary" title="Скачать в Markdown">⬇ .md</a>
-                    <?php endif; ?>
-                </div>
-            </li>
+        <?php foreach ($stories as $story): ?>
+            <?php partial('Stories::_story_row', [
+                'story'         => $story,
+                'currentUserId' => $currentUserId,
+                'isAdmin'       => $isAdmin,
+                'currentVotes'  => [],
+                'newCommentsMap'=> [],
+                'isMyStories'   => true,
+            ]); ?>
         <?php endforeach; ?>
     </ol>
 

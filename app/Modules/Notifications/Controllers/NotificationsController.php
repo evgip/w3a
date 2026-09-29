@@ -35,7 +35,8 @@ class NotificationsController extends BaseController
     {
         $userContext = $this->getUserContext();
 
-
+        // Единый макет списков (как в «Моих историях» и «Библиотеке»)
+        Layout::set(Layout::FULL);
 
         $type = (string)$this->request->getParams('type', 'all');
         $page = max(1, (int)$this->request->getParams('page', 1));

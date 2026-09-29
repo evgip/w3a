@@ -95,15 +95,17 @@ class StoriesController extends BaseController
 			excludeUserId: $userContext['isLoggedIn'] ? $userContext['id'] : null
 		);
 
-		// Добавляем флаг подписки для каждого автора
+		// Исключаем из «Авторов» тех, на кого пользователь уже подписан
+		// (они и так видны в левом сайдбаре в блоке «Я читаю») — чтобы не дублировались.
 		if ($userContext['isLoggedIn'] && !empty($topAuthors)) {
 			$subscriptionService = $this->service(\App\Modules\Subscriptions\Services\SubscriptionService::class);
-			foreach ($topAuthors as &$author) {
-				$author['is_following'] = $subscriptionService->isFollowingUser(
-					$userContext['id'], (int)$author['id']
-				);
-			}
-			unset($author);
+			$followedIds = $subscriptionService->getFollowedUserIds($userContext['id']);
+			$followedMap = array_fill_keys(array_map('intval', $followedIds), true);
+
+			$topAuthors = array_values(array_filter(
+				$topAuthors,
+				fn($author) => empty($followedMap[(int)($author['id'] ?? 0)])
+			));
 		}
 
 		$viewModel = new \App\Modules\Stories\ViewModels\HomeFeedViewModel(
@@ -525,7 +527,7 @@ $feed = $this->service(StoryFeedBuilder::class)->build(
     }
 
     // =========================================================================
-    // ЛЕНТА ПОДПИСОК
+    // ПОДПИСКИ (менеджер, Medium-стиль: Лента / Авторы / Темы)
     // =========================================================================
     public function subscribed(): ViewResponse
     {
@@ -535,57 +537,104 @@ $feed = $this->service(StoryFeedBuilder::class)->build(
             return $this->redirect('/');
         }
 
+        // Как у «Мои истории» и «Библиотека» — широкий макет страницы
+        Layout::set(Layout::FULL);
 
+        $activeTab = (string)$this->request->getParams('tab', 'feed');
+        if (!in_array($activeTab, ['feed', 'authors', 'topics'], true)) {
+            $activeTab = 'feed';
+        }
 
         $subscriptionService = $this->service(\App\Modules\Subscriptions\Services\SubscriptionService::class);
         $followedUserIds = $subscriptionService->getFollowedUserIds($userContext['id']);
         $followedTagIds = $subscriptionService->getFollowedTagIds($userContext['id']);
 
-        $isEmptyState = empty($followedUserIds) && empty($followedTagIds);
+        $viewData = [
+            'activeTab'       => $activeTab,
+            'currentUserId'   => $userContext['id'],
+            'isAdmin'         => $userContext['isAdmin'],
+            'title'           => 'Подписки',
+        ];
 
-        if ($isEmptyState) {
-            $stories = [];
-            $currentPage = 1;
-            $totalPages = 0;
-            $newCommentsMap = [];
-            $sort = 'new';
-        } else {
-            $page = max(1, (int)$this->request->getParams('page', 1));
-            $limit = 20;
-            $offset = ($page - 1) * $limit;
-            $sort = $this->request->getParams('sort', 'new');
+        // ---- ФЕД / Лента: истории из подписок ----
+        if ($activeTab === 'feed') {
+            $isEmptyState = empty($followedUserIds) && empty($followedTagIds);
 
-            $storyModel = $this->container->get(Story::class);
-            $stories = $storyModel->getSubscribedFeed(
-                $userContext['id'], $followedUserIds, $followedTagIds, $limit, $offset, $sort
-            );
-            
-            $totalCount = $storyModel->getSubscribedTotalCount(
-                $userContext['id'], $followedUserIds, $followedTagIds
-            );
-            $totalPages = (int)ceil($totalCount / $limit);
+            if ($isEmptyState) {
+                $viewData['stories'] = [];
+                $viewData['currentPage'] = 1;
+                $viewData['totalPages'] = 0;
+                $viewData['newCommentsMap'] = [];
+                $viewData['sort'] = 'new';
+                $viewData['isEmptyState'] = true;
+            } else {
+                $page = max(1, (int)$this->request->getParams('page', 1));
+                $limit = 20;
+                $offset = ($page - 1) * $limit;
+                $sort = $this->request->getParams('sort', 'new');
 
-            $storyIds = array_column($stories, 'id');
-            $muteService = $this->service(\App\Modules\Muted\Services\MuteService::class);
-            $mutedUserIds = $muteService->getMutedUserIds($userContext['id']);
-            
-            $readRibbon = $this->container->get(\App\Modules\Stories\Models\ReadRibbon::class);
-            $newCommentsMap = $readRibbon->getNewCommentsCounts($userContext['id'], $storyIds, $mutedUserIds);
+                $storyModel = $this->container->get(Story::class);
+                $stories = $storyModel->getSubscribedFeed(
+                    $userContext['id'], $followedUserIds, $followedTagIds, $limit, $offset, $sort
+                );
+                $totalCount = $storyModel->getSubscribedTotalCount(
+                    $userContext['id'], $followedUserIds, $followedTagIds
+                );
+
+                $storyIds = array_column($stories, 'id');
+                $muteService = $this->service(\App\Modules\Muted\Services\MuteService::class);
+                $mutedUserIds = $muteService->getMutedUserIds($userContext['id']);
+                $readRibbon = $this->container->get(\App\Modules\Stories\Models\ReadRibbon::class);
+                $newCommentsMap = $readRibbon->getNewCommentsCounts($userContext['id'], $storyIds, $mutedUserIds);
+
+                $viewData['stories'] = $stories;
+                $viewData['currentPage'] = $page;
+                $viewData['totalPages'] = (int)ceil($totalCount / $limit);
+                $viewData['newCommentsMap'] = $newCommentsMap;
+                $viewData['sort'] = $sort;
+                $viewData['isEmptyState'] = false;
+            }
         }
 
-        return $this->render('index', [
-            'stories' => $stories,
-            'currentPage' => $currentPage ?? 1,
-            'totalPages' => $totalPages ?? 0,
-            'newCommentsMap' => $newCommentsMap,
-            'sort' => $sort ?? 'new',
-            'currentUserId' => $userContext['id'],
-            'isAdmin' => $userContext['isAdmin'],
-            'currentVotes' => [],
-            'rssFeed' => '',
-            'title' => 'Мои подписки',
-            'isEmptyState' => $isEmptyState,
-        ]);
+        // ---- Авторы: кого читаю ----
+        if ($activeTab === 'authors') {
+            $userModel = $this->container->get(User::class);
+            $viewData['followedAuthors'] = $userModel->getUsersByIds($followedUserIds, 200);
+            $viewData['followedUserCount'] = count($followedUserIds);
+        }
+
+        // ---- Темы: теги, на которые подписан ----
+        if ($activeTab === 'topics') {
+            $tagModel = $this->container->get(Tag::class);
+            $viewData['followedTopics'] = $this->buildFollowedTopicsList($tagModel, $followedTagIds);
+            $viewData['followedTopicCount'] = count($followedTagIds);
+        }
+
+        return $this->render('subscribed', $viewData);
+    }
+
+    /**
+     * Преобразует id тегов в список ['id','name','slug'] в исходном порядке подписки.
+     */
+    private function buildFollowedTopicsList(Tag $tagModel, array $followedTagIds): array
+    {
+        if (empty($followedTagIds)) {
+            return [];
+        }
+
+        $details = $tagModel->getDetailsByIds($followedTagIds);
+        $list = [];
+        foreach ($followedTagIds as $tagId) {
+            $tagId = (int)$tagId;
+            if (isset($details[$tagId])) {
+                $list[] = [
+                    'id'   => $tagId,
+                    'name' => $details[$tagId]['name'] ?? '',
+                    'slug' => $details[$tagId]['slug'] ?? '',
+                ];
+            }
+        }
+        return $list;
     }
     
     /**
@@ -885,6 +934,20 @@ $feed = $this->service(StoryFeedBuilder::class)->build(
 		];
 
 		$data = $service->getUserStoriesByStatus($userId, $statusMap[$tab], $page, $perPage);
+
+		// Дообогащаем строки полями владельца, чтобы переиспользовать общий _story_row
+		$session = $this->container->get(\W3a\Core\Http\Session::class);
+		$ownerName = (string)$session->get('user_name', '');
+		$ownerAvatar = (string)$session->get('user_avatar', '');
+		$ownerStatus = $statusMap[$tab];
+		foreach ($data['stories'] as &$story) {
+			$story['user_id']        = $userId;
+			$story['author_name']    = $ownerName;
+			$story['author_avatar']  = $ownerAvatar;
+			$story['status']         = $ownerStatus;
+			$story['tags_with_names'] = [];
+		}
+		unset($story);
 
 		$totalPages = (int)ceil($counts[$tab] / $perPage);
 

@@ -40,7 +40,8 @@ readonly class StoryShowViewModel
         public readonly bool $canSeeFullContent = true,
         public readonly bool $hasFriendLinkAccess = false,
         
-        public readonly array $storyCollections = [],
+public readonly array $storyCollections = [],
+        public readonly array $similarStories = [],
         public int $userClaps = 0,
     ) {}
 

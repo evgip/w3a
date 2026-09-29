@@ -67,6 +67,33 @@ class Message extends Model
     }
 
     /**
+     * Update a message only when it belongs to the given sender and conversation.
+     */
+    public function updateOwnedMessage(int $messageId, int $conversationId, int $senderId, string $messageText): bool
+    {
+        $parameters = [
+            'mid' => $messageId,
+            'cid' => $conversationId,
+            'sid' => $senderId,
+        ];
+        $ownedMessageCount = (int)$this->db->fetchColumn(
+            "SELECT COUNT(*) FROM `messages` WHERE `id` = :mid AND `conversation_id` = :cid AND `sender_id` = :sid AND `deleted_at` IS NULL",
+            $parameters
+        );
+
+        if ($ownedMessageCount < 1) {
+            return false;
+        }
+
+        $this->db->execute(
+            "UPDATE `messages` SET `message` = :message WHERE `id` = :mid AND `conversation_id` = :cid AND `sender_id` = :sid AND `deleted_at` IS NULL",
+            $parameters + ['message' => $messageText]
+        );
+
+        return true;
+    }
+
+    /**
      * Instantly mark an conversation message thread bundle as read internally
      */
     public function markAsRead(int $conversationId, int $readerId): void

@@ -30,7 +30,7 @@ if ($useViewModel):
 
         <?php if ($viewModel->shouldShowForYou()): ?>
         <section class="tt-section">
-            <h2 class="tt-section__title">Рекомендации</h2>
+            <h2 class="section-title section-title--sm">Рекомендации</h2>
             <div class="tt-feed__list">
                 <?php foreach (array_slice($forYou, 0, 5) as $story): ?>
                     <?php partial('Stories::_story_row', [
@@ -44,7 +44,7 @@ if ($useViewModel):
         <?php endif; ?>
 
         <section class="tt-section">
-            <h2 class="tt-section__title">Новые публикации</h2>
+            <h2 class="section-title section-title--sm">Новые публикации</h2>
 
             <?php if (!empty($stories)): ?>
                 <div class="tt-feed__list">
@@ -80,9 +80,9 @@ if ($useViewModel):
                 <?php foreach ($topAuthors as $author): ?>
                     <a href="<?= route('user.profile', ['username' => $author['author_name']]) ?>" class="tt-author">
                         <?php if (!empty($author['avatar'])): ?>
-                            <img class="tt-author__avatar" src="/uploads/avatars/<?= substr($author['avatar'], 0, 2) ?>/<?= e($author['avatar']) ?>" alt="">
+                            <img class="avatar avatar--xs" src="/uploads/avatars/<?= substr($author['avatar'], 0, 2) ?>/<?= e($author['avatar']) ?>" alt="">
                         <?php else: ?>
-                            <span class="tt-author__avatar tt-author__avatar--placeholder"><?= e(mb_substr($author['author_name'], 0, 1)) ?></span>
+                            <span class="avatar avatar--xs avatar--placeholder"><?= e(mb_substr($author['author_name'], 0, 1)) ?></span>
                         <?php endif; ?>
                         <div class="tt-author__info">
                             <span class="tt-author__name"><?= e($author['author_name']) ?></span>

@@ -55,6 +55,16 @@ $router->group(['middleware' => ['web', 'auth']], function($router) {
         MessagesController::class . '@sendMessage', 
         'messages.send.submit'
     );
+
+    /**
+     * Редактирование собственного сообщения.
+     */
+    $router->add(
+        'POST',
+        '/messages/edit',
+        MessagesController::class . '@editMessage',
+        'messages.edit.submit'
+    );
     
     /**
      * Создание нового диалога или переход в существующий.

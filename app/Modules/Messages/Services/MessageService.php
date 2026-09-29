@@ -2,7 +2,7 @@
 
 namespace App\Modules\Messages\Services;
 
-use W3a\Core\Http\Session;
+use W3a\Core\Support\MessageBag;
 use App\Modules\Messages\Models\Message;
 use App\Modules\Messages\Models\Conversation;
 use App\Modules\Notifications\Services\NotificationService;
@@ -38,7 +38,7 @@ class MessageService
 		
 		// Валидация в сервисе
 		if (empty($messageText)) {
-			Session::setFlash('error', 'Текст сообщения не может быть пустым');
+			MessageBag::flashMessage('error', 'Текст сообщения не может быть пустым');
 			return null;
 		}
 
@@ -65,8 +65,37 @@ class MessageService
 
 			return (int)$messageId;
 		} catch (\Throwable $e) {
-			Session::setFlash('error', 'Ошибка при отправке сообщения');
+			MessageBag::flashMessage('error', 'Ошибка при отправке сообщения');
 			return null;
+		}
+	}
+
+	/**
+	 * Update a message after validating its owner and text.
+	 */
+	public function editMessage(int $messageId, int $conversationId, int $senderId, string $messageText): bool
+	{
+		$messageText = trim($messageText);
+		if ($messageId < 1 || $conversationId < 1) {
+			MessageBag::flashMessage('error', 'Не удалось определить сообщение или диалог');
+			return false;
+		}
+		if ($messageText === '') {
+			MessageBag::flashMessage('error', 'Текст сообщения не может быть пустым');
+			return false;
+		}
+
+		try {
+			if (!$this->messageModel->updateOwnedMessage($messageId, $conversationId, $senderId, $messageText)) {
+				MessageBag::flashMessage('error', 'Сообщение не найдено или у вас нет прав на его изменение');
+				return false;
+			}
+
+			MessageBag::flashMessage('success', 'Сообщение изменено');
+			return true;
+		} catch (\Throwable $e) {
+			MessageBag::flashMessage('error', 'Ошибка при изменении сообщения');
+			return false;
 		}
 	}
 

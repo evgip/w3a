@@ -133,6 +133,8 @@ $bodyClass = Layout::getBodyClass();
 
 							<a href="<?= route('account.settings') ?>" class="dropdown-menu__item"><span>⚙️ <?= __('settings') ?></span></a>
 
+							<a href="<?= route('messages.index') ?>" class="dropdown-menu__item"><span>✉️ Сообщения<?php if (($unreadMessagesCount ?? 0) > 0): ?> <span class="nav-badge"><?= (int)$unreadMessagesCount ?></span><?php endif; ?></span></a>
+
 						    <div class="dropdown-menu__divider"></div>
 							
 							<a href="<?= route('story.create') ?>" class="dropdown-menu__item"><span>➕ <?= __('share') ?></span></a>
@@ -186,15 +188,32 @@ $bodyClass = Layout::getBodyClass();
 	            <div class="global-sidebar__nav">
 	                <?php $__uri = $_SERVER['REQUEST_URI'] ?? ''; ?>
 	                <a href="/" class="global-sidebar__link <?= $__uri === '/' ? 'is-active' : '' ?>">🏠 Главная</a>
-	                <a href="<?= route('stories.subscribed') ?>" class="global-sidebar__link <?= str_contains($__uri, '/subscribed') ? 'is-active' : '' ?>">📡 Подписки</a>
 	                <a href="<?= route('user.stats') ?>" class="global-sidebar__link <?= str_contains($__uri, '/user/stats') ? 'is-active' : '' ?>">📊 Статистика</a>
 	                <a href="<?= route('library.index') ?>" class="global-sidebar__link <?= str_contains($__uri, '/me/library') ? 'is-active' : '' ?>">📚 Библиотека</a>
 	                <a href="<?= route('me.stories') ?>" class="global-sidebar__link <?= str_contains($__uri, '/me/stories') ? 'is-active' : '' ?>">🖋 Мои истории</a>
-	                <a href="<?= route('messages.index') ?>" class="global-sidebar__link <?= str_contains($__uri, '/messages') ? 'is-active' : '' ?>">✉️ Сообщения</a>
-	                <a href="<?= route('notifications.index') ?>" class="global-sidebar__link <?= str_contains($__uri, '/notifications') ? 'is-active' : '' ?>">🔔 Уведомления</a>
 	                <a href="/muted" class="global-sidebar__link <?= str_contains($__uri, '/muted') ? 'is-active' : '' ?>">🔇 Игнорируемые</a>
-	                <div class="global-sidebar__divider"></div>
-	                <a href="<?= route('account.settings') ?>" class="global-sidebar__link <?= str_contains($__uri, '/account/settings') ? 'is-active' : '' ?>">⚙️ Настройки</a>
+
+	                <?php if (!empty($followedUsers)): ?>
+	                	<div class="global-sidebar__divider"></div>
+	                	<div class="global-sidebar__label">Я читаю</div>
+	                	<?php foreach (array_slice($followedUsers, 0, 3) as $followedAuthor): ?>
+	                		<a href="<?= route('user.profile', ['username' => $followedAuthor['username']]) ?>" class="global-sidebar__link">
+	                			<?php if (!empty($followedAuthor['avatar'])): ?>
+	                				<img src="/uploads/avatars/<?= substr($followedAuthor['avatar'], 0, 2) ?>/<?= e($followedAuthor['avatar']) ?>" class="mini-avatar-img" alt="">
+	                			<?php else: ?>
+	                				<span class="mini-avatar-placeholder"><?= e(mb_substr($followedAuthor['username'] ?? '?', 0, 1)) ?></span>
+	                			<?php endif; ?>
+	                			<span class="global-sidebar__followed-name">
+	                				<?= e($followedAuthor['username']) ?>
+	                				<?php if (!empty($followedAuthor['has_unread'])): ?>
+	                					<span class="global-sidebar__unread-dot" title="Есть непрочитанные публикации"></span>
+	                				<?php endif; ?>
+	                			</span>
+	                		</a>
+	                	<?php endforeach; ?>
+	                <?php endif; ?>
+
+	                <a href="<?= route('stories.subscribed') ?>" class="global-sidebar__link global-sidebar__link--subscribed <?= str_contains($__uri, '/subscribed') ? 'is-active' : '' ?>">📡 Подписки</a>
 	            </div>
 	        </nav>
 	        <div class="global-content">

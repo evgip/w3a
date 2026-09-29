@@ -14,14 +14,14 @@
                    class="message-item <?= $isUnread ? 'unread' : '' ?>">
                     <div class="message-item-inner">
                         
-                        <!-- Аватар -->
+                        <!-- Аватар (общий компонент) -->
                         <?php if (!empty($chat['participant_avatar'])): ?>
                             <img src="/uploads/avatars/<?= substr($chat['participant_avatar'], 0, 2) ?>/<?= e($chat['participant_avatar']) ?>" 
-                                 class="message-avatar" alt="avatar">
+                                 class="mini-avatar-img" alt="avatar">
                         <?php else: ?>
-                            <div class="message-avatar-placeholder">
+                            <span class="mini-avatar-placeholder">
                                 <?= e(mb_substr($chat['participant_name'], 0, 1)) ?>
-                            </div>
+                            </span>
                         <?php endif; ?>
 
                         <!-- Содержимое -->

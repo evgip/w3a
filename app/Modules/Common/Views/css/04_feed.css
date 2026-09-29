@@ -15,6 +15,17 @@ ol.stories {
   padding: 0;
 }
 
+/* Единый вид личных списков: ограничение ширины контента (как Библиотека, Medium-стиль)
+   Применяется к `FULL`-страницам (Мои истории, Закладки, Сообщения, Уведомления и т.д.),
+   главная лента (WIDE) остаётся полноширинной. */
+.content-full ol.stories,
+.content-full .story-list,
+.content-full .notification-list,
+.content-full .messages-list,
+.content-full .follow-manager__list {
+  max-width: var(--content-width);
+}
+
 /* Карточка Medium-style: текст слева, превью справа.
    Единый формат всех лент статей (_story_item.php). */
 li.story {
@@ -124,14 +135,22 @@ li .link .tags {
 }
 
 /* ---------- Byline (автор, дата, действия) ---------- */
+/* Базовый мета-блок строки: автор · время · комментарии */
+.item-meta,
 .byline,
-.story-meta {
+.story-meta,
+.tt-row__meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
   font-size: 0.8125rem;
   color: var(--opacity-fg-54);
+}
+
+/* Byline (в карточках статей) — большие отступы */
+.byline,
+.story-meta {
+  gap: 0.75rem;
   margin-top: 0.5rem;
   padding-top: 0.5rem;
 }
@@ -195,16 +214,6 @@ li .link .tags {
 /* ---------- Main Feed ---------- */
 .tt-section {
   margin-bottom: 2.5rem;
-}
-
-.tt-section__title {
-  font-family: var(--font-sans);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin: 0 0 1.5rem;
-  color: var(--opacity-fg-54);
 }
 
 .tt-feed__list {
@@ -310,9 +319,21 @@ h2.tt-row__title {
   color: var(--color-fg);
   text-decoration: none;
 }
-
 .tt-row__title a:hover {
-  color: var(--color-fg-accent);
+  text-decoration: underline;
+}
+
+.tt-row__status {
+  display: inline-block;
+  margin: 0.35rem 0 0;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--color-box-bg-shaded);
+  color: var(--opacity-fg-67);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .tt-row__excerpt {
@@ -337,12 +358,7 @@ h2.tt-row__title {
 }
 
 .tt-row__meta {
-  display: flex;
-  align-items: center;
   gap: 0.25rem;
-  font-size: 0.8125rem;
-  color: var(--opacity-fg-54);
-  flex-wrap: wrap;
   margin-top: 0.15rem;
 }
 
@@ -364,13 +380,6 @@ h2.tt-row__title {
 .tt-row__new {
   color: var(--color-fg-negative);
   font-weight: 500;
-}
-
-.tt-row__avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  object-fit: cover;
 }
 
 .tt-row__comments {
@@ -463,24 +472,6 @@ h2.tt-row__title {
 
 .tt-author:last-child {
   border-bottom: none;
-}
-
-.tt-author__avatar {
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.tt-author__avatar--placeholder {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--color-fg);
-  color: var(--color-bg);
-  font-size: 0.875rem;
-  font-weight: 600;
 }
 
 .tt-author__info {
@@ -787,17 +778,6 @@ li.story .staff-pick-badge {
   margin-bottom: 1.5rem;
 }
 
-.section-header__link {
-  font-size: 0.9375rem;
-  color: var(--color-fg-accent);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.section-header__link:hover {
-  text-decoration: underline;
-}
-
 .section-subtitle {
   font-size: 0.9375rem;
   color: var(--opacity-fg-54);
@@ -812,6 +792,13 @@ li.story .staff-pick-badge {
   letter-spacing: 0.08em;
   margin: 0;
   color: var(--opacity-fg-67);
+}
+
+.section-title--sm {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  margin: 0 0 1.5rem;
+  color: var(--opacity-fg-54);
 }
 
 .story-list {
@@ -996,4 +983,86 @@ li.story.story--simple .story-thumbnail img {
   width: 100%;
   height: auto;
   max-height: 320px;
+}
+
+/* ==========================================================================
+   Подписки: менеджер (Лента / Авторы / Темы)
+   ========================================================================== */
+.subscribed-feed__sort {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+.subscribed-feed__sort .sort-link {
+  color: var(--opacity-fg-67);
+  text-decoration: none;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-md);
+}
+.subscribed-feed__sort .sort-link:hover {
+  color: var(--color-fg);
+}
+.subscribed-feed__sort .sort-link.is-active {
+  color: var(--color-fg);
+  font-weight: 600;
+  background: var(--color-box-bg-shaded);
+}
+
+.follow-manager__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.follow-manager__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-fg-shape);
+  border-radius: var(--radius-md);
+  background: var(--color-box-bg);
+}
+
+.follow-manager__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: var(--color-fg);
+  min-width: 0;
+}
+
+.follow-manager__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-box-bg-shaded);
+  color: var(--opacity-fg-67);
+  font-weight: 600;
+}
+.follow-manager__avatar--tag {
+  border-radius: var(--radius-md);
+  font-size: 1.1rem;
+}
+
+.follow-manager__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.follow-manager__form {
+  flex: none;
 }

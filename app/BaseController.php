@@ -13,6 +13,9 @@ use App\Modules\Notifications\Models\Notification;
 use App\Modules\Muted\Services\MuteService;
 use App\Modules\Flags\Models\Flag;
 use App\Modules\Suggestions\Models\Suggestion;
+use App\Modules\Subscriptions\Services\SubscriptionService;
+use App\Modules\Users\Models\User;
+use App\Modules\Messages\Models\Conversation;
 
 /**
  * Базовый контроллер приложения.
@@ -69,6 +72,8 @@ abstract class BaseController extends CoreController
             'unreadNotificationsCount' => 0,
             'pendingFlagsCount' => 0,
             'activeSuggestionsCount' => 0,
+            'unreadMessagesCount' => 0,
+            'followedUsers' => [],
         ];
 
         try {
@@ -91,10 +96,41 @@ abstract class BaseController extends CoreController
             ];
 
             $data['unreadNotificationsCount'] = $this->getUnreadNotificationsCount((int)$userId);
+
+            // Непрочитанные личные сообщения (для бейджа в меню шапки)
+            try {
+                $conversationModel = $this->container->get(Conversation::class);
+                $data['unreadMessagesCount'] = $conversationModel->getTotalUnreadCount((int)$userId);
+            } catch (\Throwable $e) {
+                $data['unreadMessagesCount'] = 0;
+            }
 			
             if ($data['currentUser']['isModerator']) {
                 $data['pendingFlagsCount'] = $this->getPendingFlagsCount();
                 $data['activeSuggestionsCount'] = $this->getActiveSuggestionsCount();
+            }
+
+            // До 3 авторов, на которых подписан пользователь (блок «Я читаю» в сайдбаре)
+            try {
+                $subscriptionService = $this->container->get(SubscriptionService::class);
+                $userModel = $this->container->get(User::class);
+                $storyModel = $this->container->get(\App\Modules\Stories\Models\Story::class);
+                $followedIds = $subscriptionService->getFollowedUserIds((int)$userId);
+                $followedUsers = $userModel->getUsersByIds($followedIds, 3);
+
+                // Зелёная точка: есть опубликованные статьи автора, которые пользователь не открывал
+                if (!empty($followedUsers)) {
+                    $authorIds = array_column($followedUsers, 'id');
+                    $unreadCounts = $storyModel->getUnreadCountsByAuthors((int)$userId, $authorIds);
+                    foreach ($followedUsers as &$author) {
+                        $author['has_unread'] = ($unreadCounts[(int)$author['id']] ?? 0) > 0;
+                    }
+                    unset($author);
+                }
+
+                $data['followedUsers'] = $followedUsers;
+            } catch (\Throwable $e) {
+                $data['followedUsers'] = [];
             }
         } catch (\Throwable $e) {
             $this->logError($e, 'BaseController.getAppViewData');

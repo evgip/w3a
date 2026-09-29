@@ -222,6 +222,21 @@ a.navbar-logo:hover {
   margin-left: auto;
 }
 
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-fg-negative);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
 .header-notification-link {
   position: relative;
   display: inline-flex;
@@ -445,6 +460,45 @@ html.sidebar-collapsed .global-sidebar {
   height: 1px;
   background-color: var(--color-fg-shape);
   margin: 0.5rem 0.75rem;
+}
+
+.global-sidebar__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--opacity-fg-40);
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.global-sidebar__link--subscribed {
+  margin-top: 0.5rem;
+  color: var(--opacity-fg-67);
+}
+
+.global-sidebar__followed-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.global-sidebar__unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #2e7d32;
+  flex: 0 0 8px;
+}
+
+.global-sidebar__nav .global-sidebar__link .mini-avatar-img,
+.global-sidebar__nav .global-sidebar__link .mini-avatar-placeholder {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
 }
 
 .global-content {

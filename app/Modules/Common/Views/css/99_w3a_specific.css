@@ -92,12 +92,6 @@
     gap: 1rem;
   }
 
-  .profile-avatar-large,
-  .profile-avatar-placeholder-large {
-    width: 80px;
-    height: 80px;
-  }
-
   .profile-username {
     font-size: 1.5rem;
   }

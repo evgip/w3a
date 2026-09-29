@@ -395,4 +395,33 @@ class User extends Model
 
 		return $this->db->fetchAll($sql, $params);
 	}
+
+	/**
+	 * Возвращает пользователей по списку ID (для блока «Я читаю» в сайдбаре).
+	 * Сохраняет порядок переданного массива.
+	 *
+	 * @param int[] $ids
+	 * @param int $limit
+	 * @return array Массив: [['id', 'username', 'avatar']]
+	 */
+	public function getUsersByIds(array $ids, int $limit = 10): array
+	{
+		$ids = array_values(array_unique(array_map('intval', $ids)));
+		if (empty($ids)) {
+			return [];
+		}
+
+		$ids = array_slice($ids, 0, $limit);
+		$placeholders = implode(',', array_fill(0, count($ids), '?'));
+		$order = implode(',', $ids); // intval'ы — безопасно встраивать
+
+		$sql = "SELECT u.id, u.username, up.avatar
+				FROM `{$this->table}` u
+				LEFT JOIN `user_profiles` up ON up.user_id = u.id
+				WHERE u.id IN ({$placeholders})
+				  AND u.deleted_at IS NULL
+				ORDER BY FIELD(u.id, {$order})";
+
+		return $this->db->fetchAll($sql, $ids);
+	}
 }	

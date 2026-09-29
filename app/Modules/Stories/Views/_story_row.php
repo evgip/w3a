@@ -7,15 +7,23 @@ $hideAuthor       = $hideAuthor ?? false;
 $isSavedPage      = $isSavedPage ?? false;
 $relevance        = $relevance ?? null;
 $savedIds         = $savedIds ?? [];
+$isMyStories      = $isMyStories ?? false;
 
 $story         = $story ?? [];
 $newCount      = $newCommentsMap[$story['id']] ?? 0;
 $excerptHtml   = get_story_excerpt($story, 1);
 $firstImage    = get_story_first_image($story, 'medium');
 $isExternal    = !empty($story['url']);
+$isOwnerDraft  = $isMyStories && (($story['status'] ?? '') !== 'published');
 $targetUrl     = $isExternal ? e($story['url']) : route('story.show', ['id' => $story['id']]);
+if ($isOwnerDraft) {
+    $targetUrl = '/stories/' . (int)$story['id'] . '/edit';
+}
 $externalAttrs = $isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
 $isDeleted     = !empty($story['deleted_at']);
+
+$storyStatusLabel = (($story['status'] ?? '') === 'draft') ? 'Черновик'
+    : ((($story['status'] ?? '') === 'scheduled') ? 'Запланировано' : '');
 
 $tags = $story['tags_with_names'] ?? [];
 
@@ -51,6 +59,10 @@ $isSaved      = $currentUserId > 0 && in_array((int)$story['id'], array_map('int
             </a>
         </h2>
 
+        <?php if ($isMyStories && $storyStatusLabel !== ''): ?>
+        <span class="tt-row__status"><?= e($storyStatusLabel) ?></span>
+        <?php endif; ?>
+
         <?php if ($excerptHtml && !$isDeleted): ?>
         <div class="tt-row__excerpt"><?= $excerptHtml ?></div>
         <?php endif; ?>
@@ -58,7 +70,7 @@ $isSaved      = $currentUserId > 0 && in_array((int)$story['id'], array_map('int
         <div class="tt-row__meta">
             <?php if (!$hideAuthor): ?>
                 <?php if (!empty($story['author_avatar'])): ?>
-                    <img class="tt-row__avatar" src="/uploads/avatars/<?= substr($story['author_avatar'], 0, 2) ?>/<?= e($story['author_avatar']) ?>" alt="">
+                    <img class="avatar avatar--sm" src="/uploads/avatars/<?= substr($story['author_avatar'], 0, 2) ?>/<?= e($story['author_avatar']) ?>" alt="">
                 <?php endif; ?>
                 <a href="<?= route('user.profile', ['username' => $story['author_name']]) ?>" class="tt-row__author">
                     <?= e($story['author_name'] ?? '') ?>
@@ -85,6 +97,7 @@ $isSaved      = $currentUserId > 0 && in_array((int)$story['id'], array_map('int
                 <span class="tt-row__new">+<?= $newCount ?> новых</span>
             <?php endif; ?>
 
+            <?php if (!$isOwnerDraft): ?>
             <a href="<?= route('story.show', ['id' => $story['id']]) ?>#comments" class="tt-row__comments">
                 <?php $commentsCount = (int)($story['comments_count'] ?? 0); ?>
                 <?php if ($commentsCount === 0): ?>
@@ -93,6 +106,7 @@ $isSaved      = $currentUserId > 0 && in_array((int)$story['id'], array_map('int
                     <?= $commentsCount ?> <?= plural($commentsCount, ['комментарий', 'комментария', 'комментариев']) ?>
                 <?php endif; ?>
             </a>
+            <?php endif; ?>
 
             <!-- Действия -->
             <span class="tt-row__actions">
@@ -117,6 +131,9 @@ $isSaved      = $currentUserId > 0 && in_array((int)$story['id'], array_map('int
                     <div class="dropdown-menu" role="menu">
                         <?php if ($canManage): ?>
                             <a href="<?= route('story.edit', ['id' => $story['id']]) ?>" class="dropdown-menu__item" role="menuitem"><span>✏️ Редактировать</span></a>
+                        <?php endif; ?>
+                        <?php if ($canManage && $isMyStories): ?>
+                            <a href="/stories/<?= (int)$story['id'] ?>/export.md" class="dropdown-menu__item" role="menuitem"><span>⬇ Экспорт .md</span></a>
                         <?php endif; ?>
                         <button type="button" class="dropdown-menu__item" role="menuitem" data-copy-link="<?= route('story.show', ['id' => $story['id']]) ?>"><span>🔗 Скопировать ссылку</span></button>
                         <?php if ($currentUserId > 0 && !$isAuthor && !$isDeleted): ?>

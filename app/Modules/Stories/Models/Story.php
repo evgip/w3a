@@ -570,7 +570,7 @@ class Story extends Model
 
         $offset = ($page - 1) * $perPage;
 
-        $sql = "SELECT id, title, description_text, cover_image,
+        $sql = "SELECT id, title, description_text, description_json, cover_image,
                        word_count, reading_time, created_at, updated_at, draft_version, slug, comments_count
                 FROM stories
                 WHERE user_id = :user_id
@@ -653,6 +653,47 @@ class Story extends Model
         }
 
         return $slug;
+    }
+
+    // ============================================================
+    // НЕПРОЧИТАННЫЕ СТАТЬИ ПО АВТОРАМ (зелёная точка в сайдбаре)
+    // ============================================================
+
+    /**
+     * Для каждого автора считает, сколько его опубликованных статей
+     * пользователь ни разу не открывал (нет записи в story_views).
+     *
+     * @param int   $userId   Текущий пользователь
+     * @param int[] $authorIds Авторы, по которым считаем
+     * @return array<int,int> author_id => количество непрочитанных (0 если все прочитаны)
+     */
+    public function getUnreadCountsByAuthors(int $userId, array $authorIds): array
+    {
+        if ($userId <= 0 || empty($authorIds)) {
+            return [];
+        }
+
+        $authorIds = array_values(array_unique(array_map('intval', $authorIds)));
+        $placeholders = implode(',', array_fill(0, count($authorIds), '?'));
+
+        $sql = "SELECT s.user_id AS author_id, COUNT(*) AS unread_count
+                FROM `stories` s
+                WHERE s.user_id IN ({$placeholders})
+                  AND s.status = 'published'
+                  AND s.deleted_at IS NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM `story_views` sv
+                      WHERE sv.story_id = s.id AND sv.user_id = ?
+                  )
+                GROUP BY s.user_id";
+
+        $stmt = $this->db->query($sql, array_merge($authorIds, [$userId]));
+        $result = array_fill_keys($authorIds, 0);
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            $result[(int)$row['author_id']] = (int)$row['unread_count'];
+        }
+
+        return $result;
     }
 
     // ============================================================

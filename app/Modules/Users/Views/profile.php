@@ -13,12 +13,12 @@ $activeTab = $activeTab ?? 'stories';
             <div class="profile-hero__top">
                 <?php if (!empty($profileUser['avatar'])): ?>
                     <img src="/uploads/avatars/<?= substr($profileUser['avatar'], 0, 2) ?>/<?= e($profileUser['avatar']) ?>"
-                         class="profile-avatar-large profile-hero__avatar"
+                         class="avatar avatar--xl profile-hero__avatar"
                          alt="<?= e(mb_substr($profileUser['username'], 0, 1)) ?>">
                 <?php else: ?>
-                    <div class="profile-avatar-placeholder-large profile-hero__avatar">
+                    <span class="avatar avatar--xl avatar--placeholder profile-hero__avatar">
                         <?= e(mb_substr($profileUser['username'], 0, 1)) ?>
-                    </div>
+                    </span>
                 <?php endif; ?>
 
                 <h1 class="profile-username"><?= e($profileUser['username']) ?></h1>

@@ -1,16 +1,12 @@
 /* Стили страницы Библиотека (/me/library) */
-
-.library-stories,
-ol.comments.library-comments {
-  max-width: var(--content-width);
-}
+/* Ширина списка теперь общая для всех личных списков (см. 04_feed.css: .content-full ol.stories) */
 
 ol.comments.library-comments {
   margin-left: 0;
+  max-width: var(--content-width);
 }
 
 @media (max-width: 640px) {
-  .library-stories,
   ol.comments.library-comments {
     max-width: 100%;
   }

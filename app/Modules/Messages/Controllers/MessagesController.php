@@ -33,7 +33,8 @@ class MessagesController extends BaseController
         $userContext = $this->getUserContext();
         $chats = $this->service(ConversationService::class)->getUserConversations($userContext['id']);
 
-
+        // Единый макет списка (как «Библиотека»)
+        Layout::set(Layout::FULL);
 
         return $this->render('index', [
             'title' => 'Мои диалоги',
@@ -95,6 +96,32 @@ class MessagesController extends BaseController
         $this->service(MessageService::class)->sendMessage($conversationId, $userContext['id'], $messageText);
 
         return $this->redirect('/messages/chat/' . $conversationId);
+    }
+
+    /**
+     * Редактирование собственного сообщения.
+     */
+    public function editMessage(): RedirectResponse
+    {
+        $messageId = (int)$this->request->getParams('message_id', 0);
+        $conversationId = (int)$this->request->getParams('conversation_id', 0);
+        $currentPage = max(1, (int)$this->request->getParams('chat_page', 1));
+        $messageText = $this->request->getParams('message_text', '');
+        $userContext = $this->getUserContext();
+
+        if ($conversationId < 1 || !$this->service(ConversationService::class)->getConversationWithAccessCheck($conversationId, $userContext['id'])) {
+            MessageBag::flashMessage('error', 'Диалог не найден или доступ запрещён.');
+            return $this->redirect('/messages');
+        }
+
+        $this->service(MessageService::class)->editMessage(
+            $messageId,
+            $conversationId,
+            $userContext['id'],
+            is_string($messageText) ? $messageText : ''
+        );
+
+        return $this->redirect('/messages/chat/' . $conversationId . '?chat_page=' . $currentPage);
     }
 
     // =========================================================================

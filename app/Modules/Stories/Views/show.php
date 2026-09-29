@@ -613,6 +613,23 @@ $isStoryDeleted = !empty($viewModel->story['deleted_at']);
 <?php endif; ?>
 <?php endif; ?>
 
+<?php if (!empty($viewModel->similarStories)): ?>
+<section class="tt-section similar-stories">
+	<h2 class="section-title section-title--sm">Похожие статьи</h2>
+	<div class="tt-feed__list">
+		<?php foreach ($viewModel->similarStories as $similarStory): ?>
+			<?php partial('Stories::_story_row', [
+				'story' => $similarStory,
+				'currentUserId' => $viewModel->currentUserId,
+				'isAdmin' => $viewModel->isAdmin,
+				'currentVotes' => [],
+				'newCommentsMap' => [],
+			]); ?>
+		<?php endforeach; ?>
+	</div>
+</section>
+<?php endif; ?>
+
 
 <div class="lightbox-overlay" id="lightbox" role="dialog" aria-modal="true" aria-hidden="true">
 	<button type="button" class="lightbox-close" aria-label="Закрыть">
