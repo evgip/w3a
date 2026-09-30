@@ -90,6 +90,16 @@ $activeTab = $activeTab ?? 'stories';
 
 <?php if ($activeTab === 'stories'): ?>
         <section class="user-stories">
+            <?php if (!empty($hasUnreadStories)): ?>
+                <div class="section-header">
+                    <h2 class="section-title">Истории</h2>
+                    <form method="POST" action="/users/<?= urlencode($profileUser['username']) ?>/mark-read">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-pill btn-outline-secondary">✓ Отметить всё прочитанным</button>
+                    </form>
+                </div>
+            <?php endif; ?>
+
             <?php if (empty($stories)): ?>
                 <p class="hint">Пользователь пока не опубликовал ни одной статьи.</p>
             <?php else: ?>

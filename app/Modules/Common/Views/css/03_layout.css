@@ -486,12 +486,20 @@ html.sidebar-collapsed .global-sidebar {
   white-space: nowrap;
 }
 
-.global-sidebar__unread-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #2e7d32;
-  flex: 0 0 8px;
+.global-sidebar__unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background-color: var(--color-fg-negative, #057642);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  flex: 0 0 auto;
 }
 
 .global-sidebar__nav .global-sidebar__link .mini-avatar-img,

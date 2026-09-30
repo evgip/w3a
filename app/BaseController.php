@@ -123,7 +123,9 @@ abstract class BaseController extends CoreController
                     $authorIds = array_column($followedUsers, 'id');
                     $unreadCounts = $storyModel->getUnreadCountsByAuthors((int)$userId, $authorIds);
                     foreach ($followedUsers as &$author) {
-                        $author['has_unread'] = ($unreadCounts[(int)$author['id']] ?? 0) > 0;
+                        $unread = $unreadCounts[(int)$author['id']] ?? 0;
+                        $author['has_unread'] = $unread > 0;
+                        $author['unread_count'] = $unread;
                     }
                     unset($author);
                 }

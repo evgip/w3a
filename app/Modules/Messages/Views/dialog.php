@@ -70,13 +70,15 @@
 
 <!-- Форма отправки сообщения -->
 <div class="dialog-form">
-    <form action="<?= route('messages.send.submit') ?>" method="POST" class="dialog-form-row">
+    <form action="<?= route('messages.send.submit') ?>" method="POST">
         <?= csrf_field() ?>
         <input type="hidden" name="conversation_id" value="<?= (int)$conversationId ?>">
-        
-        <input type="text" name="message_text" required autocomplete="off" 
-               placeholder="Введите ваше сообщение..." class="dialog-form-input">
-        
-        <button type="submit" class="dialog-form-button">Отправить</button>
+
+        <textarea name="message_text" rows="3" required autocomplete="off"
+                  placeholder="Введите ваше сообщение..." class="dialog-form-input"></textarea>
+
+        <div class="dialog-form-actions">
+            <button type="submit" class="dialog-form-button">Отправить</button>
+        </div>
     </form>
 </div>

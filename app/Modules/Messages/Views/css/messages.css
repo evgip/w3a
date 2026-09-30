@@ -92,14 +92,40 @@
     color: var(--opacity-fg-67);
 }
 .dialog-form { margin-top: 1.5rem; padding-top: 1rem; border-top-color: var(--color-fg-shape); }
-.dialog-form-row { align-items: center; }
-.dialog-form-input { min-width: 0; border-radius: var(--radius-full); }
+
+/* Поле ввода сообщения — многострочное */
+.dialog-form-input {
+    display: block;
+    width: 100%;
+    min-height: 4.5rem;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--color-box-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font: inherit;
+    line-height: 1.5;
+    resize: vertical;
+    box-sizing: border-box;
+}
+.dialog-form-input:focus {
+    outline: none;
+    border-color: var(--color-fg-accent);
+}
+
+.dialog-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.6rem;
+}
+
 .dialog-form-button {
     border-color: var(--color-fg-accent);
     border-radius: var(--radius-full);
     background-color: var(--color-fg-accent);
     color: #fff;
     font-weight: 600;
+    padding: 0.45rem 1.25rem;
 }
 .dialog-form-button:hover {
     border-color: var(--color-button-bg-accent-hover);
@@ -115,12 +141,11 @@
     .dialog-header { gap: 0.65rem; flex-wrap: wrap; }
     .dialog-title { flex: 1 1 calc(100% - 60px); }
     .dialog-message { max-width: 90%; }
-    .dialog-form-row { align-items: stretch; }
-    .dialog-form-button { padding-right: 0.85rem; padding-left: 0.85rem; }
 }
 
 .dialog-edit {
-    align-self: flex-end;
+    width: 100%;
+    margin-top: 0.35rem;
     font-size: 0.8rem;
 }
 .dialog-edit-toggle {

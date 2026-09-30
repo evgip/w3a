@@ -94,6 +94,17 @@ class UsersController extends BaseController
 				userContext: $userContext,
 				pageData: ['title' => 'Публикации ' . e($username)]
 			);
+
+			// Пометка «новое»: статьи, которые текущий пользователь ещё не открывал
+			if (!empty($userContext['isLoggedIn']) && !empty($feed->stories)) {
+				$storyView = $this->container->get(\App\Modules\Stories\Models\StoryView::class);
+				$viewedIds = $storyView->getViewedStoryIds((int)$userContext['id'], 200);
+				$viewedMap = array_fill_keys(array_map('intval', $viewedIds), true);
+				foreach ($feed->stories as &$s) {
+					$s['is_unread'] = empty($viewedMap[(int)$s['id']]);
+				}
+				unset($s);
+			}
 		}
 
 		$collectionModel = $this->container->get(\App\Modules\Collections\Models\Collection::class);
@@ -118,7 +129,7 @@ class UsersController extends BaseController
 // 🔑 Устанавливаем широкий макет для профиля
 		Layout::set(Layout::WIDE);
 
-		return $this->render('profile', [
+return $this->render('profile', [
 			'title' => 'Профиль пользователя ' . e($user['username']),
 			'profileUser' => $user,
 			'userKarma' => $userKarma ?? 0,
@@ -127,13 +138,15 @@ class UsersController extends BaseController
 			'activeTab' => $activeTab,
 			'storiesCount' => $stats['stories_count'] ?? ($feed ? count($feed->stories) : 0),
 			'commentsCount' => $stats['comments_count'] ?? 0,
-			'collectionsCount' => $collectionsCount,  
+			'collectionsCount' => $collectionsCount,
 			'collectionsAll' => $allCollections,
 			'isOwner' => $isOwner,
 			'followersCount' => $followersCount,
 			'stories' => $feed ? $feed->stories : [],
 			'currentPage' => $feed ? $feed->currentPage : 1,
 			'totalPages' => $feed ? $feed->totalPages : 0,
+			'hasUnreadStories' => $activeTab === 'stories' && !$isOwner
+				&& !empty($feed) && collect($feed->stories)->contains(fn($s) => !empty($s['is_unread'])),
 		]);
 	}
 
@@ -289,7 +302,38 @@ class UsersController extends BaseController
 		}
 	}
 
-    private function getUserByUsername(string $username): array
+	/**
+	 * Пометить все публикации автора как прочитанные (Medium-style «Mark all as read»).
+	 */
+	public function markAllRead(string $username): \W3a\Core\Http\RedirectResponse
+	{
+		$userContext = $this->getUserContext();
+		if (!$userContext['isLoggedIn']) {
+			return $this->redirect('/login');
+		}
+
+		try {
+			$author = $this->getUserByUsername(trim($username));
+			$authorId = (int)$author['id'];
+
+			// Опубликованные статьи автора
+			$storyModel = $this->container->get(\App\Modules\Stories\Models\Story::class);
+			$stories = $storyModel->getPublishedByAuthor($authorId);
+			$storyIds = array_column($stories, 'id');
+
+			$storyView = $this->container->get(\App\Modules\Stories\Models\StoryView::class);
+			$storyView->markStoriesAsRead((int)$userContext['id'], $storyIds);
+
+			MessageBag::flashMessage('success', 'Все публикации автора отмечены как прочитанные.');
+		} catch (\Throwable $e) {
+			$this->logError($e, 'Users.markAllRead');
+			MessageBag::flashMessage('error', 'Не удалось отметить публикации как прочитанные.');
+		}
+
+		return $this->redirectBack();
+	}
+
+	private function getUserByUsername(string $username): array
     {
         $userModel = $this->container->get(User::class);
         $user = $userModel->findBy('username', $username);

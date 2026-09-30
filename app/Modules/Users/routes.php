@@ -50,18 +50,6 @@ $router->add(
     'user.profile.collections'
 );
 
-/**
- * Вкладка «Коллекции» профиля пользователя.
- * 
- * @param string $username URL-имя пользователя
- */
-$router->add(
-    'GET', 
-    '/@{username}/collections', 
-    UsersController::class . '@profileCollections', 
-    'user.profile.collections'
-);
-
 // =========================================================================
 // МАРШРУТЫ ДЛЯ АВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ
 // =========================================================================
@@ -100,5 +88,15 @@ $router->group(['middleware' => ['web', 'auth']], function($router) {
         '/account/settings/password', 
         UsersController::class . '@updatePassword', 
         'account.password.submit'
+    );
+
+    /**
+     * Пометить все публикации автора как прочитанные.
+     */
+    $router->add(
+        'POST',
+        '/users/{username}/mark-read',
+        UsersController::class . '@markAllRead',
+        'user.markAllRead'
     );
 });

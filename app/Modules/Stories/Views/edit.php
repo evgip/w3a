@@ -11,18 +11,10 @@
 <form action="/stories/<?= (int)$story['id'] ?>/edit" method="POST" id="story-form">
     <?= csrf_field() ?>
 
-    <div class="form-field-group">
-        <label><strong>Теги</strong></label>
-        <p class="hint">Выберите один или несколько тегов, соответствующих теме публикации:</p>
-
-        <?php foreach ($availableTags as $tagItem): ?>
-            <?php $isBound = in_array((int)$tagItem['id'], $activeTagIds); ?>
-            <div class="tag-checkbox">
-                <input type="checkbox" name="tags[]" value="<?= (int)$tagItem['id'] ?>" <?= $isBound ? 'checked' : '' ?>>
-                <span><?= e($tagItem['name']) ?></span>
-            </div>
-        <?php endforeach; ?>
-    </div>
+    <?php partial('Common::_tags', [
+        'availableTags' => $availableTags,
+        'selectedTagIds' => $activeTagIds,
+    ]); ?>
 
     <?php
     partial('Common::_editor', [

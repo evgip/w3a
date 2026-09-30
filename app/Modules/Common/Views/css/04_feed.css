@@ -262,6 +262,11 @@ li .link .tags {
   position: relative;
 }
 
+/* Превью справа от текста (Medium-style: текст слева, фото справа) */
+.tt-row__img-wrap--right {
+  order: 2;
+}
+
 .tt-row__body {
   flex: 1;
   min-width: 0;
@@ -270,10 +275,8 @@ li .link .tags {
   gap: 0.35rem;
 }
 
-.tt-row__tags,
 .tt-row__title a,
 .tt-row__meta a,
-.tt-row__tag,
 .tt-row__author,
 .tt-row__actions button,
 .story-menu-wrapper,
@@ -308,7 +311,7 @@ li .link .tags {
 .tt-row__title,
 h2.tt-row__title {
   font-family: var(--font-sans);
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.35;
   margin: 0;
@@ -336,9 +339,14 @@ h2.tt-row__title {
   letter-spacing: 0.04em;
 }
 
+.tt-row__status--new {
+  background: rgba(5, 118, 66, 0.12);
+  color: #057642;
+}
+
 .tt-row__excerpt {
   font-family: var(--font-serif);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--opacity-fg-67);
   overflow: hidden;

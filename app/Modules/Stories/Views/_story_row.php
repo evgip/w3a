@@ -25,8 +25,6 @@ $isDeleted     = !empty($story['deleted_at']);
 $storyStatusLabel = (($story['status'] ?? '') === 'draft') ? 'Черновик'
     : ((($story['status'] ?? '') === 'scheduled') ? 'Запланировано' : '');
 
-$tags = $story['tags_with_names'] ?? [];
-
 $storyUserId  = (int)($story['user_id'] ?? 0);
 $isAuthor     = $currentUserId > 0 && $storyUserId === $currentUserId;
 $canManage    = $currentUserId > 0 && ($isAuthor || $isAdmin) && !$isDeleted;
@@ -37,20 +35,12 @@ $isSaved      = $currentUserId > 0 && in_array((int)$story['id'], array_map('int
 <article class="tt-row <?= $isDeleted ? 'tt-row--deleted' : '' ?>">
 
     <?php if ($firstImage && !$isDeleted): ?>
-    <a href="<?= $targetUrl ?>" <?= $externalAttrs ?> class="tt-row__img-wrap">
+    <a href="<?= $targetUrl ?>" <?= $externalAttrs ?> class="tt-row__img-wrap tt-row__img-wrap--right">
         <img class="tt-row__img" src="<?= e($firstImage) ?>" alt="" loading="lazy">
     </a>
     <?php endif; ?>
 
     <div class="tt-row__body">
-        <?php if (!empty($tags)): ?>
-        <div class="tt-row__tags">
-            <?php foreach (array_slice($tags, 0, 2) as $tag): ?>
-                <a href="<?= route('tags.filter', ['tagslug' => e($tag['slug'])]) ?>" class="tt-row__tag"><?= e($tag['name']) ?></a>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-
         <h2 class="tt-row__title">
             <a href="<?= $targetUrl ?>" <?= $externalAttrs ?>>
                 <?php if (!empty($story['is_staff_pick'])): ?><span class="staff-pick-badge">⭐</span><?php endif; ?>
@@ -61,6 +51,8 @@ $isSaved      = $currentUserId > 0 && in_array((int)$story['id'], array_map('int
 
         <?php if ($isMyStories && $storyStatusLabel !== ''): ?>
         <span class="tt-row__status"><?= e($storyStatusLabel) ?></span>
+        <?php elseif (!empty($story['is_unread'])): ?>
+        <span class="tt-row__status tt-row__status--new" title="Вы ещё не читали эту публикацию">Новое</span>
         <?php endif; ?>
 
         <?php if ($excerptHtml && !$isDeleted): ?>

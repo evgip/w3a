@@ -206,7 +206,7 @@ $bodyClass = Layout::getBodyClass();
 	                			<span class="global-sidebar__followed-name">
 	                				<?= e($followedAuthor['username']) ?>
 	                				<?php if (!empty($followedAuthor['has_unread'])): ?>
-	                					<span class="global-sidebar__unread-dot" title="Есть непрочитанные публикации"></span>
+	                					<span class="global-sidebar__unread-badge" title="Непрочитанных публикаций"><?= (int)($followedAuthor['unread_count'] ?? 0) ?></span>
 	                				<?php endif; ?>
 	                			</span>
 	                		</a>

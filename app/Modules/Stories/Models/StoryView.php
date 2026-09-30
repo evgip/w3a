@@ -75,6 +75,37 @@ class StoryView extends Model
 	}
 
 	/**
+	 * Пометить статьи автора как прочитанные (INSERT IGNORE, чтобы не трогать существующие просмотры).
+	 */
+	public function markStoriesAsRead(int $userId, array $storyIds): int
+	{
+		if ($userId <= 0 || empty($storyIds)) {
+			return 0;
+		}
+
+		$storyIds = array_values(array_unique(array_map('intval', $storyIds)));
+		$valuesPlaceholders = [];
+		$values = [];
+		foreach ($storyIds as $sid) {
+			$valuesPlaceholders[] = '(?, ?, 1, NULL, \'manual\', NOW(), NOW())';
+			$values[] = $userId;
+			$values[] = $sid;
+		}
+
+		try {
+			return (int)$this->db->execute(
+				"INSERT IGNORE INTO `story_views`
+					(`user_id`, `story_id`, `read_seconds`, `referrer`, `referrer_type`, `created_at`, `updated_at`)
+				 VALUES " . implode(', ', $valuesPlaceholders),
+				$values
+			);
+		} catch (\Exception $e) {
+			$this->logger?->error("StoryView::markStoriesAsRead failed", ['error' => $e->getMessage()]);
+			return 0;
+		}
+	}
+
+	/**
 	 * Классифицирует referrer по типу источника.
 	 *
 	 * @param string|null $referrer URL источника перехода
