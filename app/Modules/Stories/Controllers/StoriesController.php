@@ -196,6 +196,12 @@ class StoriesController extends BaseController
 		$friendLinkToken = $this->request->query('fl', null);
 		$viewModel = $this->service(StoryPageService::class)->buildShowPageData($storyId, $userContext, $friendLinkToken);
 
+		// Мгновенно помечаем статью как прочитанную при открытии (сбрасывает метку «Новое»)
+		if ($userContext['isLoggedIn']) {
+			$storyView = $this->container->get(\App\Modules\Stories\Models\StoryView::class);
+			$storyView->markStoriesAsRead((int)$userContext['id'], [$storyId]);
+		}
+
 		$ogImage = get_story_first_image($viewModel->story, 'large');
 
 		$this->setOpenGraph([

@@ -95,13 +95,21 @@ class UsersController extends BaseController
 				pageData: ['title' => 'Публикации ' . e($username)]
 			);
 
-			// Пометка «новое»: статьи, которые текущий пользователь ещё не открывал
-			if (!empty($userContext['isLoggedIn']) && !empty($feed->stories)) {
+			// Пометка «новое»: только для чужих статей, которые текущий пользователь ещё не открывал.
+			// Свои статьи не считаем непрочитанными (автор их «знает»).
+			$isOwnProfile = $userContext['isLoggedIn'] && $userContext['id'] === (int)$user['id'];
+			if (!empty($userContext['isLoggedIn']) && !$isOwnProfile && !empty($feed->stories)) {
 				$storyView = $this->container->get(\App\Modules\Stories\Models\StoryView::class);
 				$viewedIds = $storyView->getViewedStoryIds((int)$userContext['id'], 200);
 				$viewedMap = array_fill_keys(array_map('intval', $viewedIds), true);
 				foreach ($feed->stories as &$s) {
 					$s['is_unread'] = empty($viewedMap[(int)$s['id']]);
+				}
+				unset($s);
+			} elseif (!empty($feed->stories)) {
+				// На своём профиле (или для юзера) не подсвечиваем
+				foreach ($feed->stories as &$s) {
+					$s['is_unread'] = false;
 				}
 				unset($s);
 			}

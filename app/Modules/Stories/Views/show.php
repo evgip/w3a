@@ -456,7 +456,7 @@ $isStoryDeleted = !empty($viewModel->story['deleted_at']);
 
 <div class="comment_form_container" id="comment-form-container">
     <?php if ($viewModel->areCommentsDisabled()): ?>
-        <p class="hint">Комментарии к этой статье отключены автором.</p>
+        <!-- При отключённых комментариях форма не показывается (оповение ниже в блоке Комментарии) -->
     <?php elseif ($viewModel->currentUserId > 0 && !$isStoryDeleted): ?>
         <h3>Оставить комментарий</h3>
         <form action="/comments/create" method="POST" id="main-comment-form">
@@ -550,9 +550,9 @@ $isStoryDeleted = !empty($viewModel->story['deleted_at']);
 <!-- КОММЕНТАРИИ -->
 <?php if ($viewModel->areCommentsDisabled()): ?>
     <div class="comment-head">
-        <h3 id="comments">Комментарии (<?= (int)$viewModel->story['comments_count'] ?>)</h3>
+        <h3 id="comments">Комментарии</h3>
     </div>
-    <p class="hint">Комментарии к этой статье отключены автором.</p>
+    <p class="hint">Автор отключил комментарии к этой статье.</p>
 <?php else: ?>
 <div class="comment-head">
     <h3 id="comments">Комментарии (<?= (int)$viewModel->story['comments_count'] ?>)</h3>
