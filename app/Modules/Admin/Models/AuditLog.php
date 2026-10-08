@@ -54,8 +54,8 @@ class AuditLog extends Model
         return $this->db->fetchAll($sql, $bindings);
     }
 
-    /**
-     * Подсчет общего количества строк с учетом текущих фильтров (для пагинации)
+/**
+     * Подсчёт общего количества строк с учётом текущих фильтров (для пагинации)
      */
     public function getFilteredCount(
         ?int $userId,
@@ -148,5 +148,61 @@ class AuditLog extends Model
             "SELECT COUNT(*) FROM `audit_logs` WHERE `category` = :category",
             [':category' => $category]
         );
+    }
+
+    /**
+     * Для списка пользователей возвращает IP регистрации и последний IP входа.
+     *
+     * @param int[] $userIds
+     * @return array<int, array{reg_ip:?string, last_ip:?string}>
+     */
+    public function getUsersIps(array $userIds): array
+    {
+        if (empty($userIds)) {
+            return [];
+        }
+
+        $userIds = array_values(array_unique(array_map('intval', $userIds)));
+        $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+        $result = [];
+        foreach ($userIds as $id) {
+            $result[$id] = ['reg_ip' => null, 'last_ip' => null];
+        }
+
+        // IP регистрации (первая запись auth.register для пользователя)
+        $reg = $this->db->fetchAll(
+            "SELECT a.user_id, a.ip_address
+             FROM `audit_logs` a
+             JOIN (
+                 SELECT user_id, MIN(id) AS mid FROM `audit_logs`
+                 WHERE action = 'auth.register' AND user_id IN ({$placeholders})
+                 GROUP BY user_id
+             ) s ON s.user_id = a.user_id AND s.mid = a.id"
+            , $userIds
+        );
+        foreach ($reg as $row) {
+            if (isset($result[(int)$row['user_id']])) {
+                $result[(int)$row['user_id']]['reg_ip'] = $row['ip_address'] ?? null;
+            }
+        }
+
+        // Последний IP входа (самая свежая запись входа)
+        $login = $this->db->fetchAll(
+            "SELECT a.user_id, a.ip_address
+             FROM `audit_logs` a
+             JOIN (
+                 SELECT user_id, MAX(id) AS mid FROM `audit_logs`
+                 WHERE action IN ('auth.login', 'auth.login_success') AND user_id IN ({$placeholders})
+                 GROUP BY user_id
+             ) s ON s.user_id = a.user_id AND s.mid = a.id"
+            , $userIds
+        );
+        foreach ($login as $row) {
+            if (isset($result[(int)$row['user_id']])) {
+                $result[(int)$row['user_id']]['last_ip'] = $row['ip_address'] ?? null;
+            }
+        }
+
+        return $result;
     }
 }

@@ -1635,6 +1635,12 @@ ALTER TABLE `users`
     AFTER `password`;
 
 
+ALTER TABLE `users`
+    ADD COLUMN `registration_ip` VARCHAR(45) NULL DEFAULT NULL
+    COMMENT 'IP адрес при регистрации'
+    AFTER `created_at`;
+
+
 DELIMITER $$
 --
 -- События

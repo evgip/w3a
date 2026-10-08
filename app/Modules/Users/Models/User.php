@@ -256,6 +256,66 @@ class User extends Model
     }
 
     /**
+     * Поиск пользователей для админки по логину, email или IP регистрации.
+     */
+    public function searchAdminUsers(string $q, int $limit = 100): array
+    {
+        $q = trim($q);
+        if ($q === '') {
+            return [];
+        }
+
+        $like = '%' . $q . '%';
+        $sql = "
+            SELECT 
+                u.*,
+                (
+                    SELECT COUNT(*) 
+                    FROM `user_bans` b 
+                    WHERE b.`user_id` = u.id 
+                      AND b.`unbanned_at` IS NULL 
+                      AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+                ) > 0 AS `is_banned`,
+                (
+                    SELECT b.`reason` 
+                    FROM `user_bans` b 
+                    WHERE b.`user_id` = u.id 
+                      AND b.`unbanned_at` IS NULL 
+                      AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+                    LIMIT 1
+                ) AS `ban_reason`,
+                (
+                    SELECT b.`created_at` 
+                    FROM `user_bans` b 
+                    WHERE b.`user_id` = u.id 
+                      AND b.`unbanned_at` IS NULL 
+                      AND (b.`expires_at` IS NULL OR b.`expires_at` > NOW())
+                    LIMIT 1
+                ) AS `banned_at`
+            FROM `users` u
+            WHERE u.`deleted_at` IS NULL
+              AND (
+                    u.`username` LIKE :q1
+                    OR u.`email` LIKE :q2
+                    OR u.`registration_ip` LIKE :q3
+                    OR EXISTS (
+                        SELECT 1 FROM `audit_logs` a
+                        WHERE a.`user_id` = u.id AND a.`ip_address` LIKE :q4
+                    )
+              )
+            ORDER BY u.`created_at` DESC
+            LIMIT " . (int)$limit
+        ;
+
+        return $this->db->fetchAll($sql, [
+            'q1' => $like,
+            'q2' => $like,
+            'q3' => $like,
+            'q4' => $like,
+        ]);
+    }
+
+    /**
      * Получает информацию об активном бане пользователя.
      */
     public function getBanInfo(int $userId): ?array

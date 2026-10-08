@@ -64,7 +64,8 @@ class Mailer
             $mail->Password   = $this->config['password'];
             $mail->SMTPSecure = $this->config['encryption'];
             $mail->Port       = (int)$this->config['port'];
-            $mail->CharSet    = 'utf-8';
+            $mail->CharSet    = 'UTF-8';
+			$mail->Encoding	  = 'base64';
 
             $this->logger->info("Mailer: Attempting to send via {$this->config['host']}:{$this->config['port']} as {$this->config['username']}");
 

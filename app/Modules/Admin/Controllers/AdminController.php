@@ -71,9 +71,28 @@ class AdminController extends BaseController
 
     public function users(): ViewResponse
     {
+        $q = trim((string)$this->request->query('q', ''));
+
+        if ($q !== '') {
+            $users = $this->container->get(\App\Modules\Users\Models\User::class)->searchAdminUsers($q, 100);
+        } else {
+            $users = $this->service(AdminUserService::class)->getAllUsers();
+        }
+
+        // IP регистрации берём из users.registration_ip, последний вход — из аудита
+        $ids = array_column($users, 'id');
+        $ipMap = $this->container->get(\App\Modules\Admin\Models\AuditLog::class)->getUsersIps($ids);
+        foreach ($users as &$u) {
+            $uid = (int)($u['id'] ?? 0);
+            $u['registration_ip'] = $u['registration_ip'] ?? null;
+            $u['last_ip'] = $ipMap[$uid]['last_ip'] ?? null;
+        }
+        unset($u);
+
         return $this->render('users_list', [
             'title' => 'Управление пользователями',
-            'users' => $this->service(AdminUserService::class)->getAllUsers()
+            'users' => $users,
+            'q' => $q,
         ]);
     }
 

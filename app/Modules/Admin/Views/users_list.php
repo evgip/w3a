@@ -11,9 +11,19 @@
     Список всех зарегистрированных пользователей системы. Здесь вы можете изменять их роли или удалять учетные записи.
 </p>
 
+<form method="get" action="/admin/users" class="form-field-group">
+    <input type="text" name="q" value="<?= e($q ?? '') ?>" placeholder="Поиск по логину, email или IP..." class="form-input-wide">
+    <div class="form-actions">
+        <button type="submit" class="btn btn-sm">Искать</button>
+        <?php if (!empty($q)): ?>
+            <a href="/admin/users" class="btn btn-sm btn-secondary">Сбросить</a>
+        <?php endif; ?>
+    </div>
+</form>
+
 <?php if (empty($users)): ?>
     <p class="hint">
-        Пользователи пока не найдены.
+        <?= !empty($q) ? 'Ничего не найдено по запросу «' . e($q) . '».' : 'Пользователи пока не найдены.' ?>
     </p>
 <?php else: ?>
     <table class="data">
@@ -33,7 +43,9 @@
                 <tr>
                     <td><?= (int)($user['id'] ?? 0) ?></td>
                     <td>
-                        <strong><code><?= e($user['username'] ?? '') ?></code></strong>
+                        <a href="/@<?= urlencode($user['username'] ?? '') ?>" class="btn-link">
+                            <strong><code><?= e($user['username'] ?? '') ?></code></strong>
+                        </a>
                     </td>
                     <td>
                         <?= e($user['email'] ?? '') ?>
@@ -78,7 +90,13 @@
                         <?php endif; ?>
                     </td>
                     <td>
-                        <?= e($user['created_at'] ?? '—') ?>
+                        <div><?= e($user['created_at'] ?? '—') ?></div>
+                        <?php if (!empty($user['registration_ip'])): ?>
+                            <div class="hint" style="font-size: 0.8em;">IP: <?= e($user['registration_ip']) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($user['last_ip'])): ?>
+                            <div class="hint" style="font-size: 0.8em;">Последний вход: <?= e($user['last_ip']) ?></div>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <a href="<?= route('admin.users.edit', ['id' => $user['id']]) ?>" class="button">

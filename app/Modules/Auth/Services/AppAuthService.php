@@ -80,6 +80,16 @@ class AppAuthService extends BaseAuthService
             'password_set_at' => date('Y-m-d H:i:s'),
         ]);
 
+        // Фиксируем IP регистрации (для админки)
+        try {
+            $ip = $this->request->getIp();
+            if ($ip !== '') {
+                $this->userModel->update((int)$userId, ['registration_ip' => $ip]);
+            }
+        } catch (\Throwable $e) {
+            // не прерываем регистрацию из-за ошибки записи IP
+        }
+
         return $userId;
     }
 
@@ -170,6 +180,15 @@ class AppAuthService extends BaseAuthService
     public function createSession(array $user, bool $remember = false): void
     {
         parent::createSession($user, $remember);
+
+        // Фиксируем факт входа (user_id сессия уже установлена — Audit подставит его и IP сам)
+        try {
+            $this->audit->log('auth.login', 'Пользователь вошёл в систему', 'auth', [
+                'username' => $user['username'] ?? '',
+            ]);
+        } catch (\Throwable $e) {
+            // Не прерываем вход из-за ошибки аудита
+        }
 
         /** @var User $userModel */
         $userModel = $this->userModel;
