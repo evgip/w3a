@@ -719,7 +719,6 @@ case 'image':
 							$html .= "<figure class=\"{$classString}\" data-lightbox=\"true\">\n";
 							$html .= "    <div class=\"lightbox-trigger\" data-full-src=\"{$fullUrl}\" data-caption=\"{$caption}\">\n";
 							$html .= "        <img src=\"{$url}\" alt=\"{$caption}\" loading=\"lazy\" decoding=\"async\">\n";
-							$html .= "        </div>\n";
 						}
 						
 						// 🆕 Иконка лупы (видна при hover)
