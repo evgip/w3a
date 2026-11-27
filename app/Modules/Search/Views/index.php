@@ -6,15 +6,12 @@ $currentVotes = $currentVotes ?? [];
 
 <h1>Поиск</h1>
 
-<form action="/search" method="GET">
-    <p>
-        <input type="text" name="q" value="<?= e($query) ?>" 
-               placeholder="Поисковый запрос..." required autofocus
-			   class="w-60">
-        <button type="submit">Искать</button>
-    </p>
+<form class="search-form" action="/search" method="GET">
+    <input type="text" name="q" value="<?= e($query) ?>" 
+           placeholder="Поисковый запрос..." required autofocus>
+    <button type="submit">Искать</button>
 
-    <p class="hint">
+    <div class="hint search-hint">
         Искать в:
         <label><input type="radio" name="what" value="stories" <?= $what === 'stories' ? 'checked' : '' ?>> статьях</label>
         <label><input type="radio" name="what" value="comments" <?= $what === 'comments' ? 'checked' : '' ?>> комментариях</label>
@@ -22,7 +19,7 @@ $currentVotes = $currentVotes ?? [];
         Сортировка:
         <label><input type="radio" name="order" value="relevance" <?= $sortBy === 'relevance' ? 'checked' : '' ?>> по релевантности</label>
         <label><input type="radio" name="order" value="date" <?= $sortBy === 'date' ? 'checked' : '' ?>> по дате</label>
-    </p>
+    </div>
 </form>
 
 <?php if (!empty($query) && strlen($query) >= 3): ?>

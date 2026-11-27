@@ -48,6 +48,25 @@
   border-color: var(--color-fg-negative);
 }
 
+/* ---------- Форма поиска (инпут + кнопка на одной строке) ---------- */
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.search-form input[type="text"] {
+  width: 15rem;
+  max-width: 100%;
+  flex: 0 1 auto;
+}
+
+.search-form .search-hint {
+  flex-basis: 100%;
+  margin-top: 0.25rem;
+}
+
 /* ---------- Кнопки ---------- */
 .btn {
   display: inline-flex;

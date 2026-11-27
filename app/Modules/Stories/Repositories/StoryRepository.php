@@ -362,6 +362,26 @@ class StoryRepository
     }
 	
     /**
+     * Исключает истории авторов-банов (например, замьюченных пользователей).
+     * Требует наличия JOIN с `users`, поэтому гарантирует его добавление.
+     *
+     * @param array $mutedUserIds Массив ID пользователей, чьи истории исключаются
+     * @return self
+     */
+    public function excludingUsers(array $mutedUserIds): self
+    {
+        if (empty($mutedUserIds)) {
+            return $this;
+        }
+
+        $this->withAuthor(); // гарантируем JOIN c users
+        $inData = $this->db->buildInClause($mutedUserIds, 'muted_user');
+        $this->where[] = "s.user_id NOT IN ({$inData['clause']})";
+        $this->bindings = array_merge($this->bindings, $inData['bindings']);
+        return $this;
+    }
+
+    /**
      * Переключает статус подписки автора на свою историю.
      * Безопасно: обновляет запись только если user_id совпадает с автором истории.
      */

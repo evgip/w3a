@@ -9,6 +9,7 @@ use W3a\Core\Http\ViewResponse;
 use App\BaseController;
 use App\Modules\Search\Models\SearchResult;
 use App\Modules\Votes\Models\Vote;
+use App\Modules\Muted\Services\MuteService;
 
 /**
  * Контроллер поиска.
@@ -18,6 +19,12 @@ use App\Modules\Votes\Models\Vote;
 class SearchController extends BaseController
 {
     /**
+     * Максимальная длина поискового запроса (в символах).
+     * Более длинные строки обрезаются, а в форму подставляется усечённое значение.
+     */
+    private const MAX_QUERY_LENGTH = 100;
+
+    /**
      * Обработка контекстного поиска по историям или комментариям (GET /search?q=...)
      */
     public function index(): ViewResponse
@@ -26,17 +33,28 @@ class SearchController extends BaseController
         $sortBy = $this->request->getParams('order', 'relevance');
         $what   = $this->request->getParams('what', 'stories');
 
+        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+            $query = mb_substr($query, 0, self::MAX_QUERY_LENGTH);
+            $session = $this->service(Session::class);
+            $session->flash('error', 'Запрос слишком длинный, он обрезан до ' . self::MAX_QUERY_LENGTH . ' символов.');
+        }
+
         $results = [];
         if (strlen($query) >= 3) {
             $searchModel = $this->service(SearchResult::class);
 
+            // Авторы-баны (mute): исключаем их истории и комментарии,
+            // как в основной ленте, для консистентности результатов поиска.
+            $currentUserId = (int)$this->getUserContext()['id'];
+            $mutedUserIds = $this->service(MuteService::class)->getMutedUserIds($currentUserId);
+
             if ($what === 'comments') {
-                $results = $searchModel->searchComments($query, $sortBy);
+                $results = $searchModel->searchComments($query, $sortBy, $mutedUserIds);
             } else {
-                $results = $searchModel->searchStories($query, $sortBy);
+                $results = $searchModel->searchStories($query, $sortBy, $mutedUserIds);
             }
         } elseif (!empty($query)) {
-            $session = $this->container->get(Session::class);
+            $session = $this->service(Session::class);
             $session->flash('error', 'Поисковый запрос должен содержать минимум 3 символа.');
         }
 
@@ -44,7 +62,7 @@ class SearchController extends BaseController
 
         $userClaps = [];
         if ($userContext['isLoggedIn'] && $what === 'stories' && !empty($results)) {
-            $voteModel = $this->container->get(Vote::class);
+            $voteModel = $this->service(Vote::class);
             $storyIds = array_column($results, 'id');
             $userClaps = $voteModel->getUserClapsForStories($userContext['id'], $storyIds);
         }
